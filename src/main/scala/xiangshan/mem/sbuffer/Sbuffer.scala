@@ -208,7 +208,7 @@ class Sbuffer(implicit p: Parameters)
 
   val dataModule = Module(new SbufferData)
   dataModule.io.writeReq <> DontCare
-  val prefetcher = Module(new StorePfWrapper())
+//  val prefetcher = Module(new StorePfWrapper())
   val writeReq = dataModule.io.writeReq
 
   val ptag = Reg(Vec(StoreBufferSize, UInt(PTagWidth.W)))
@@ -388,33 +388,34 @@ class Sbuffer(implicit p: Parameters)
   io.in(0).ready := firstCanInsert
   io.in(1).ready := secondCanInsert && io.in(0).ready
 
-  for (i <- 0 until EnsbufferWidth) {
-    // train
-    if (EnableStorePrefetchSPB) {
-      prefetcher.io.sbuffer_enq(i).valid := io.in(i).fire && io.in(i).bits.vecValid
-      prefetcher.io.sbuffer_enq(i).bits := DontCare
-      prefetcher.io.sbuffer_enq(i).bits.vaddr := io.in(i).bits.vaddr
-    } else {
-      prefetcher.io.sbuffer_enq(i).valid := false.B
-      prefetcher.io.sbuffer_enq(i).bits := DontCare
-    }
-
-    // prefetch req
-    if (EnableStorePrefetchAtCommit) {
-      if (EnableAtCommitMissTrigger) {
-        io.store_prefetch(i).valid := prefetcher.io.prefetch_req(i).valid || (io.in(i).fire && io.in(i).bits.vecValid && io.in(i).bits.prefetch)
-      } else {
-        io.store_prefetch(i).valid := prefetcher.io.prefetch_req(i).valid || (io.in(i).fire && io.in(i).bits.vecValid)
-      }
-      io.store_prefetch(i).bits.paddr := DontCare
-      io.store_prefetch(i).bits.vaddr := Mux(prefetcher.io.prefetch_req(i).valid, prefetcher.io.prefetch_req(i).bits.vaddr, io.in(i).bits.vaddr)
-      prefetcher.io.prefetch_req(i).ready := io.store_prefetch(i).ready
-    } else {
-      io.store_prefetch(i) <> prefetcher.io.prefetch_req(i)
-    }
-    io.store_prefetch zip prefetcher.io.prefetch_req drop 2 foreach (x => x._1 <> x._2)
-  }
-  prefetcher.io.memSetPattenDetected := io.memSetPattenDetected
+//  for (i <- 0 until EnsbufferWidth) {
+//    // train
+//    if (EnableStorePrefetchSPB) {
+//      prefetcher.io.sbuffer_enq(i).valid := io.in(i).fire && io.in(i).bits.vecValid
+//      prefetcher.io.sbuffer_enq(i).bits := DontCare
+//      prefetcher.io.sbuffer_enq(i).bits.vaddr := io.in(i).bits.vaddr
+//    } else {
+//      prefetcher.io.sbuffer_enq(i).valid := false.B
+//      prefetcher.io.sbuffer_enq(i).bits := DontCare
+//    }
+//
+//    // prefetch req
+//    if (EnableStorePrefetchAtCommit) {
+//      if (EnableAtCommitMissTrigger) {
+//        io.store_prefetch(i).valid := prefetcher.io.prefetch_req(i).valid || (io.in(i).fire && io.in(i).bits.vecValid && io.in(i).bits.prefetch)
+//      } else {
+//        io.store_prefetch(i).valid := prefetcher.io.prefetch_req(i).valid || (io.in(i).fire && io.in(i).bits.vecValid)
+//      }
+//      io.store_prefetch(i).bits.paddr := DontCare
+//      io.store_prefetch(i).bits.vaddr := Mux(prefetcher.io.prefetch_req(i).valid, prefetcher.io.prefetch_req(i).bits.vaddr, io.in(i).bits.vaddr)
+//      prefetcher.io.prefetch_req(i).ready := io.store_prefetch(i).ready
+//    } else {
+//      io.store_prefetch(i) <> prefetcher.io.prefetch_req(i)
+//    }
+//    io.store_prefetch zip prefetcher.io.prefetch_req drop 2 foreach (x => x._1 <> x._2)
+//  }
+//  prefetcher.io.memSetPattenDetected := io.memSetPattenDetected
+  io.store_prefetch := DontCare
 
   def wordReqToBufLine( // allocate a new line in sbuffer
     req: DCacheWordReq,
@@ -515,7 +516,7 @@ class Sbuffer(implicit p: Parameters)
   }
 
   // for now, when enq, trigger a prefetch (if EnableAtCommitMissTrigger)
-  require(EnsbufferWidth <= StorePipelineWidth)
+//  require(EnsbufferWidth <= StorePipelineWidth)
 
   // ---------------------- Send Dcache Req ---------------------
 

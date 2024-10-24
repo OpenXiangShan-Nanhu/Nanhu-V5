@@ -333,6 +333,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   dontTouch(io.inner_hc_perfEvents)
   dontTouch(io.outer_hc_perfEvents)
 
+  require(StdCnt == 1)
+  require(StaCnt == 1)
+
   val redirect = RegNextWithEnable(io.redirect)
 
   private val dcache = outer.dcache.module
@@ -362,10 +365,19 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // The number of vector load/store units is decoupled with the number of load/store units
   val vlSplit = Seq.fill(VlduCnt)(Module(new VLSplitImp))
   val vsSplit = Seq.fill(VstuCnt)(Module(new VSSplitImp))
+  require(VstuCnt == 1)
+  require(StaCnt == 1)
+
   val vlMergeBuffer = Module(new VLMergeBufferImp)
   val vsMergeBuffer = Seq.fill(VstuCnt)(Module(new VSMergeBufferImp))
   val vSegmentUnit  = Module(new VSegmentUnit)
   val vfofBuffer    = Module(new VfofBuffer)
+
+  vfofBuffer.io := DontCare
+  vlMergeBuffer.io := DontCare
+  vsMergeBuffer.foreach(_.io := DontCare)
+  vSegmentUnit.io := DontCare
+
 
   // misalign Buffer
   val loadMisalignBuffer = Module(new LoadMisalignBuffer)
@@ -527,6 +539,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val sbuffer = Module(new Sbuffer)
   // if you wants to stress test dcache store, use FakeSbuffer
   // val sbuffer = Module(new FakeSbuffer) // out of date now
+  lsq.io := DontCare
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
 
   dcache.io.hartId := io.hartId
@@ -1595,7 +1608,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     storeUnits(i).io.stin.valid := false.B
 
     state := s_atomics(i)
-    assert(!st_atomics.zipWithIndex.filterNot(_._2 == i).unzip._1.reduce(_ || _))
+//    assert(!st_atomics.zipWithIndex.filterNot(_._2 == i).unzip._1.reduce(_ || _))
   }
   for (i <- 0 until HyuCnt) when(st_atomics(StaCnt + i)) {
     io.ooo_to_mem.issueHya(i).ready := atomicsUnit.io.in.ready

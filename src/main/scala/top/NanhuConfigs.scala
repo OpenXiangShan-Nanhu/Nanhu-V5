@@ -147,6 +147,8 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
     StoreQueueSize = 32,            // Default: 64
     StoreBufferSize = 8,            // Default: 16
     LoadPipelineWidth = 2,          // Default: 3
+    StorePipelineWidth = 1,         // Default: 2
+    VecStorePipelineWidth = 1,      // Default: 2
 
     l2tlbParameters = L2TLBParameters(
       name = "l2tlb",

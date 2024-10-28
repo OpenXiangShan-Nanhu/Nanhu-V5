@@ -557,7 +557,8 @@ class SchedulerMemImp(override val wrapper: Scheduler)(implicit params: SchdBloc
 
   ldAddrIQs.zipWithIndex.foreach {
     case (imp: IssueQueueMemAddrImp, i) =>
-      imp.io.memIO.get.feedbackIO.head := 0.U.asTypeOf(imp.io.memIO.get.feedbackIO.head)
+//      imp.io.memIO.get.feedbackIO.head := 0.U.asTypeOf(imp.io.memIO.get.feedbackIO.head)
+      imp.io.memIO.get.feedbackIO.head := io.fromMem.get.ldaFeedback(i)
       imp.io.memIO.get.checkWait.stIssuePtr := io.fromMem.get.stIssuePtr
       imp.io.memIO.get.checkWait.memWaitUpdateReq := io.fromMem.get.memWaitUpdateReq
     case _ =>

@@ -35,6 +35,8 @@ class OthersEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockPar
   val validReg = GatedValidRegNext(common.validRegNext, false.B)
   val entryReg = RegNext(entryRegNext)
 
+  validReg.suggestName("OthersEntryValidReg")
+  entryReg.suggestName("OthersEntryPayloadReg")
   //Wire
   CommonWireConnect(common, hasWakeupIQ, validReg, entryReg.status, io.commonIn, false)
 

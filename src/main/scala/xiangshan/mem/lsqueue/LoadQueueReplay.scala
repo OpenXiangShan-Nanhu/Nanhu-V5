@@ -599,13 +599,14 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   // LoadQueueReplay can't backpressure.
   // We think LoadQueueReplay can always enter, as long as it is the same size as VirtualLoadQueue.
-  assert(freeList.io.canAllocate.reduce(_ || _) || !io.enq.map(_.valid).reduce(_ || _), s"LoadQueueReplay Overflow")
+//  assert(freeList.io.canAllocate.reduce(_ || _) || !io.enq.map(_.valid).reduce(_ || _), s"LoadQueueReplay Overflow")
 
   // Allocate logic
   val newEnqueue = (0 until LoadPipelineWidth).map(i => {
     needEnqueue(i) && !io.enq(i).bits.isLoadReplay
   })
 
+  val canAcceptCount = PopCount(freeList.io.canAllocate)
   for ((enq, w) <- io.enq.zipWithIndex) {
     vaddrModule.io.wen(w) := false.B
     freeList.io.doAllocate(w) := false.B
@@ -616,8 +617,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val offset = PopCount(newEnqueue.take(w))
     val enqIndex = Mux(enq.bits.isLoadReplay, enq.bits.schedIndex, freeList.io.allocateSlot(offset))
     enqIndexOH(w) := UIntToOH(enqIndex)
-    enq.ready := true.B
-
+//    enq.ready := true.B
+    val canAccept = canAcceptCount >= (w+1).U
+    enq.ready := Mux(enq.bits.isLoadReplay, true.B, canAccept)
     when (needEnqueue(w) && enq.ready) {
 
       val debug_robIdx = enq.bits.uop.robIdx.asUInt

@@ -44,7 +44,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
     // misalignBuffer issue path
     val misalign_stin   = Flipped(Decoupled(new LsPipelineBundle))
     val misalign_stout  = Valid(new SqWriteBundle)
-    val tlb             = new TlbRequestIO()
+    val tlb             = new TlbRequestIO(2)
     val dcache          = new DCacheStoreIO
     val pmp             = Flipped(new PMPRespBundle())
     val lsq             = ValidIO(new LsPipelineBundle)

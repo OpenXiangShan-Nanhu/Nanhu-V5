@@ -31,7 +31,7 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
   val memEtyResps: Seq[ValidIO[EntryDeqRespBundle]] = {
     val resps =
       if (params.isLdAddrIQ && !params.isStAddrIQ)                                                    //LDU
-        Seq(io.fromLoad.get.finalIssueResp, io.fromMem.get.slowResp)
+        Seq(io.fromLoad.get.finalIssueResp, io.fromMem.get.slowResp, io.fromMem.get.fastResp)
       else if (params.isLdAddrIQ && params.isStAddrIQ || params.isHyAddrIQ)                           //HYU
         Seq(io.fromLoad.get.finalIssueResp, io.fromLoad.get.memAddrIssueResp, io.fromMem.get.fastResp, io.fromMem.get.slowResp)
       else if (params.isStAddrIQ)                                                                     //STU

@@ -163,8 +163,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     val ld_fast_imm      = Input(UInt(12.W))
 
     // rs feedback
+    val replayQValidCount = Input(UInt(log2Up(LoadQueueReplaySize + 1).W))
     val wakeup = ValidIO(new DynInst)
-    val feedback_fast = ValidIO(new RSFeedback) // stage 2
+    val feedback_fast = ValidIO(new RSFeedback) // stage 0
     val feedback_slow = ValidIO(new RSFeedback) // stage 3
     val ldCancel = Output(new LoadCancelIO()) // use to cancel the uops waked by this load, and cancel load
 
@@ -734,6 +735,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s0_out.alignedType    := s0_sel_src.alignedType
   s0_out.mbIndex        := s0_sel_src.mbIndex
   s0_out.vecBaseVaddr   := s0_sel_src.vecBaseVaddr
+  s0_out.feedbacked := io.feedback_fast.valid
   // s0_out.flowPtr         := s0_sel_src.flowPtr
   s0_out.uop.exceptionVec(loadAddrMisaligned) := (!s0_addr_aligned || s0_sel_src.uop.exceptionVec(loadAddrMisaligned)) && s0_sel_src.vecActive
   s0_out.forward_tlDchannel := s0_src_select_vec(super_rep_idx)
@@ -790,6 +792,18 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.wakeup.valid := s0_fire && !s0_sel_src.isvec && !s0_sel_src.frm_mabuf &&
                     (s0_src_valid_vec(super_rep_idx) || s0_src_valid_vec(fast_rep_idx) || s0_src_valid_vec(lsq_rep_idx) || ((s0_src_valid_vec(int_iss_idx) && !s0_sel_src.prf) && !s0_src_valid_vec(vec_iss_idx) && !s0_src_valid_vec(high_pf_idx))) || s0_mmio_fire
   io.wakeup.bits := s0_wakeup_uop
+
+  val canFastFeedback = s0_valid && s0_src_valid_vec(int_iss_idx) && (io.replayQValidCount > 8.U)
+
+  io.feedback_fast.valid                 := canFastFeedback
+  io.feedback_fast.bits.hit              := true.B
+  io.feedback_fast.bits.flushState       := DontCare
+  io.feedback_fast.bits.robIdx           := s0_sel_src.uop.robIdx
+  io.feedback_fast.bits.sqIdx            := s0_sel_src.uop.sqIdx
+  io.feedback_fast.bits.lqIdx            := s0_sel_src.uop.lqIdx
+  io.feedback_fast.bits.sourceType       := RSFeedbackType.lrqFull
+  io.feedback_fast.bits.dataInvalidSqIdx := DontCare
+
 
   // prefetch.i(Zicbop)
   io.ifetchPrefetch.valid := RegNext(s0_src_select_vec(int_iss_idx) && s0_sel_src.prf_i)
@@ -1221,7 +1235,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s2_out.forwardData         := s2_fwd_data
   s2_out.handledByMSHR       := s2_cache_handled
   s2_out.miss                := s2_dcache_miss && s2_troublem
-  s2_out.feedbacked          := io.feedback_fast.valid
   s2_out.uop.vpu.vstart      := Mux(s2_in.isLoadReplay || s2_in.isFastReplay, s2_in.uop.vpu.vstart, s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew)
 
   // Generate replay signal caused by:
@@ -1255,15 +1268,15 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   // if ld-ld violation is detected, replay from this inst from fetch
   val debug_ldld_nuke_rep = false.B // s2_ldld_violation && !s2_mmio && !s2_is_prefetch && !s2_in.tlbMiss
 
-  // to be removed
-  io.feedback_fast.valid                 := false.B
-  io.feedback_fast.bits.hit              := false.B
-  io.feedback_fast.bits.flushState       := s2_in.ptwBack
-  io.feedback_fast.bits.robIdx           := s2_in.uop.robIdx
-  io.feedback_fast.bits.sqIdx            := s2_in.uop.sqIdx
-  io.feedback_fast.bits.lqIdx            := s2_in.uop.lqIdx
-  io.feedback_fast.bits.sourceType       := RSFeedbackType.lrqFull
-  io.feedback_fast.bits.dataInvalidSqIdx := DontCare
+//  // to be removed
+//  io.feedback_fast.valid                 := false.B
+//  io.feedback_fast.bits.hit              := false.B
+//  io.feedback_fast.bits.flushState       := s2_in.ptwBack
+//  io.feedback_fast.bits.robIdx           := s2_in.uop.robIdx
+//  io.feedback_fast.bits.sqIdx            := s2_in.uop.sqIdx
+//  io.feedback_fast.bits.lqIdx            := s2_in.uop.lqIdx
+//  io.feedback_fast.bits.sourceType       := RSFeedbackType.lrqFull
+//  io.feedback_fast.bits.dataInvalidSqIdx := DontCare
 
   io.ldCancel.ld1Cancel := false.B
 
@@ -1367,7 +1380,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.fast_rep_out.valid := s3_valid && s3_fast_rep && !s3_in.uop.robIdx.needFlush(io.redirect)
   io.fast_rep_out.bits := s3_in
 
-  io.lsq.ldin.valid := s3_valid && (!s3_fast_rep || s3_fast_rep_canceled) && !s3_in.feedbacked && !s3_frm_mabuf
+  io.lsq.ldin.valid := s3_valid && (!s3_fast_rep || s3_fast_rep_canceled) && !s3_frm_mabuf
   // TODO: check this --by hx
   // io.lsq.ldin.valid := s3_valid && (!s3_fast_rep || !io.fast_rep_out.ready) && !s3_in.feedbacked && !s3_in.lateKill
   io.lsq.ldin.bits := s3_in

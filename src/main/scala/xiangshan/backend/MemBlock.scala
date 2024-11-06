@@ -765,11 +765,12 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   for (i <- 0 until LduCnt) {
     loadUnits(i).io.redirect <> redirect
+    loadUnits(i).io.replayQValidCount := lsq.io.replayQValidCount
 
     // get input form dispatch
     loadUnits(i).io.ldin <> io.ooo_to_mem.issueLda(i)
-    loadUnits(i).io.feedback_slow <> io.mem_to_ooo.ldaIqFeedback(i).feedbackSlow
-    io.mem_to_ooo.ldaIqFeedback(i).feedbackFast := DontCare
+    io.mem_to_ooo.ldaIqFeedback(i).feedbackSlow := loadUnits(i).io.feedback_slow
+    io.mem_to_ooo.ldaIqFeedback(i).feedbackFast := loadUnits(i).io.feedback_fast
     loadUnits(i).io.correctMissTrain := correctMissTrain
     io.mem_to_ooo.ldCancel.drop(HyuCnt)(i) := loadUnits(i).io.ldCancel
     io.mem_to_ooo.wakeup.drop(HyuCnt)(i) := loadUnits(i).io.wakeup

@@ -201,6 +201,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     val lqEmpty = Output(Bool())
 
     val lqDeqPtr = Output(new LqPtr)
+    val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
 
     val debugTopDown = new LoadQueueTopDownIO
   })
@@ -324,6 +325,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   // TODO: implement it!
   loadQueueReplay.io.vecFeedback := io.vecFeedback
 
+  io.replayQValidCount := loadQueueReplay.io.validCount
   loadQueueReplay.io.debugTopDown <> io.debugTopDown
 
   val full_mask = Cat(loadQueueRAR.io.lqFull, loadQueueRAW.io.lqFull, loadQueueReplay.io.lqFull)

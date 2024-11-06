@@ -207,6 +207,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val tlb_hint = Flipped(new TlbHintIO)
     val tlbReplayDelayCycleCtrl = Vec(4, Input(UInt(ReSelectLen.W)))
 
+    // to IssueQueue
+    val validCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
+
     val debugTopDown = new LoadQueueTopDownIO
   })
 
@@ -285,6 +288,8 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val lqFull = freeList.io.empty
   val lqFreeNums = freeList.io.validCount
 
+  io.validCount := lqFreeNums
+  dontTouch(lqFreeNums)
   // replay logic
   // release logic generation
   val storeAddrInSameCycleVec = Wire(Vec(LoadQueueReplaySize, Bool()))

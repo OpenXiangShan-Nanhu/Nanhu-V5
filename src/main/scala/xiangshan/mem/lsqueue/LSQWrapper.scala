@@ -124,6 +124,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val flushSbuffer = new SbufferFlushBundle
     val force_write = Output(Bool())
     val lqEmpty = Output(Bool())
+    val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
 
     // top-down
     val debugTopDown = new LoadQueueTopDownIO
@@ -147,6 +148,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   io.enq.canAccept := loadQueue.io.enq.canAccept && storeQueue.io.enq.canAccept
   io.lqCanAccept := loadQueue.io.enq.canAccept
   io.sqCanAccept := storeQueue.io.enq.canAccept
+  io.replayQValidCount := loadQueue.io.replayQValidCount
   loadQueue.io.enq.sqCanAccept := storeQueue.io.enq.canAccept
   storeQueue.io.enq.lqCanAccept := loadQueue.io.enq.canAccept
   io.lqDeqPtr := loadQueue.io.lqDeqPtr

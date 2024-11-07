@@ -372,7 +372,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     io.out(i).bits := uops(i)
     // Todo: move these shit in decode stage
     // dirty code for fence. The lsrc is passed by imm.
-    when (io.out(i).bits.fuType === FuType.fence.U) {
+    when (io.out(i).bits.fuType === FuType.fence.id.U) {
       io.out(i).bits.imm := Cat(io.in(i).bits.lsrc(1), io.in(i).bits.lsrc(0))
     }
 
@@ -386,7 +386,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
 
     // dirty code for lui+addi(w) fusion
     if (i < RenameWidth - 1) {
-      val fused_lui32 = io.in(i).bits.selImm === SelImm.IMM_LUI32 && io.in(i).bits.fuType === FuType.alu.U
+      val fused_lui32 = io.in(i).bits.selImm === SelImm.IMM_LUI32 && io.in(i).bits.fuType === FuType.alu.id.U
       when (fused_lui32) {
         val lui_imm = io.in(i).bits.imm(19, 0)
         val add_imm = io.in(i + 1).bits.imm(11, 0)
@@ -540,7 +540,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     // Todo: better implementation for fields reuse
     // For fused-lui-load, load.src(0) is replaced by the imm.
     val last_is_lui = io.in(i - 1).bits.selImm === SelImm.IMM_U && io.in(i - 1).bits.srcType(0) =/= SrcType.pc
-    val this_is_load = io.in(i).bits.fuType === FuType.ldu.U
+    val this_is_load = io.in(i).bits.fuType === FuType.ldu.id.U
     val lui_to_load = io.in(i - 1).valid && io.in(i - 1).bits.ldest === io.in(i).bits.lsrc(0)
     val fused_lui_load = last_is_lui && this_is_load && lui_to_load
     when (fused_lui_load) {
@@ -731,7 +731,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
   XSPerfHistogram("out_fire_range",  PopCount(io.out.map(_.fire)),  true.B, 0, DecodeWidth + 1, 1)
 
   XSPerfAccumulate("move_instr_count", PopCount(io.out.map(out => out.fire && out.bits.isMove)))
-  val is_fused_lui_load = io.out.map(o => o.fire && o.bits.fuType === FuType.ldu.U && o.bits.srcType(0) === SrcType.imm)
+  val is_fused_lui_load = io.out.map(o => o.fire && o.bits.fuType === FuType.ldu.id.U && o.bits.srcType(0) === SrcType.imm)
   XSPerfAccumulate("fused_lui_load_instr_count", PopCount(is_fused_lui_load))
 
   val renamePerf = Seq(

@@ -319,7 +319,7 @@ case class IssueBlockParams(
   }
 
   def canAccept(fuType: UInt): Bool = {
-    Cat(getFuCfgs.map(_.fuType.U === fuType)).orR
+    Cat(getFuCfgs.map(_.fuType.id.U === fuType)).orR
   }
 
   def bindBackendParam(param: BackendParams): Unit = {

@@ -9,7 +9,7 @@ import xiangshan.backend.fu.FuType
 import xiangshan.backend.fu.vector.Utils
 import xiangshan.backend.issue.EntryBundles.RespType
 
-class FuBusyTableWrite(fuLatencyMap: Map[FuType.OHType, Int]) (implicit p: Parameters, iqParams: IssueBlockParams) extends XSModule {
+class FuBusyTableWrite(fuLatencyMap: Map[FuType.Value, Int]) (implicit p: Parameters, iqParams: IssueBlockParams) extends XSModule {
   private val latencyValMax: Int = fuLatencyMap.values.fold(0)(_ max _)
   private val tableSize = latencyValMax + 1
   val io = IO(new FuBusyTableWriteIO(latencyValMax))
@@ -28,7 +28,7 @@ class FuBusyTableWrite(fuLatencyMap: Map[FuType.OHType, Int]) (implicit p: Param
   /**
     * Map[latency, Set[fuType]]
     */
-  private val latMappedFuTypeSet: Map[Int, Set[FuType.OHType]] = MapUtils.groupByValueUnique(fuLatencyMap)
+  private val latMappedFuTypeSet: Map[Int, Set[FuType.Value]] = MapUtils.groupByValueUnique(fuLatencyMap)
 
   private val deqRespSuccess = deqResp.valid
   private val og0RespFail = og0Resp.valid
@@ -43,7 +43,7 @@ class FuBusyTableWrite(fuLatencyMap: Map[FuType.OHType, Int]) (implicit p: Param
       lat =>
         Cat(
           latMappedFuTypeSet.getOrElse(lat, Set()).toSeq.sorted.map(
-            fuType => resp.bits.fuType(fuType.id)
+            fuType => resp.bits.fuType(fuType.id.U)
           ).toSeq
         ).orR
     })

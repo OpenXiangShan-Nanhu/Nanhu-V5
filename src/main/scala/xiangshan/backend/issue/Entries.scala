@@ -504,12 +504,12 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
     val fuName = FuType.functionNameMap(t)
     if (params.getFuCfgs.map(_.fuType == t).reduce(_ | _) && params.getFuCfgs.size > 1) {
       for (srcIdx <- 0 until params.numRegSrc) {
-        XSPerfAccumulate(s"allEntry_futype_${fuName}_wakeup_wb_src${srcIdx}_cnt", PopCount(perfWakeupByWBVec.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx) && fu(t.id) }))
+        XSPerfAccumulate(s"allEntry_futype_${fuName}_wakeup_wb_src${srcIdx}_cnt", PopCount(perfWakeupByWBVec.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx) && fu(t.id.U) }))
         if (params.hasIQWakeUp) {
-          XSPerfAccumulate(s"allEntry_futype_${fuName}_ldCancel_src${srcIdx}_cnt", PopCount(perfLdCancelVec.get.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx) && fu(t.id) }))
-          XSPerfAccumulate(s"allEntry_futype_${fuName}_og0Cancel_src${srcIdx}_cnt", PopCount(perfOg0CancelVec.get.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx) && fu(t.id) }))
+          XSPerfAccumulate(s"allEntry_futype_${fuName}_ldCancel_src${srcIdx}_cnt", PopCount(perfLdCancelVec.get.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx) && fu(t.id.U) }))
+          XSPerfAccumulate(s"allEntry_futype_${fuName}_og0Cancel_src${srcIdx}_cnt", PopCount(perfOg0CancelVec.get.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx) && fu(t.id.U) }))
           for (iqIdx <- 0 until params.numWakeupFromIQ) {
-            XSPerfAccumulate(s"allEntry_futype_${fuName}_wakeup_iq_from_exu${params.wakeUpSourceExuIdx(iqIdx)}_src${srcIdx}_cnt", PopCount(perfWakeupByIQVec.get.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx)(iqIdx) && fu(t.id) }))
+            XSPerfAccumulate(s"allEntry_futype_${fuName}_wakeup_iq_from_exu${params.wakeUpSourceExuIdx(iqIdx)}_src${srcIdx}_cnt", PopCount(perfWakeupByIQVec.get.zip(fuTypeVec).map{ case(x, fu) => x(srcIdx)(iqIdx) && fu(t.id.U) }))
           }
         }
       }

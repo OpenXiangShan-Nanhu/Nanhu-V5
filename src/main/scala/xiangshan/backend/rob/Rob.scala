@@ -1359,30 +1359,30 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   private val deqHeadInfo = debug_microOp(deqPtr.value)
   val deqUopCommitType = debug_microOp(deqPtr.value).commitType
 
-  XSPerfAccumulate("waitAluCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.alu.U)
-  XSPerfAccumulate("waitMulCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.mul.U)
-  XSPerfAccumulate("waitDivCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.div.U)
-  XSPerfAccumulate("waitBrhCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.brh.U)
-  XSPerfAccumulate("waitJmpCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.jmp.U)
-  XSPerfAccumulate("waitCsrCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.csr.U)
-  XSPerfAccumulate("waitFenCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.fence.U)
-  XSPerfAccumulate("waitBkuCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.bku.U)
-  XSPerfAccumulate("waitLduCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.ldu.U)
-  XSPerfAccumulate("waitStuCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.stu.U)
-  XSPerfAccumulate("waitStaCycle", deqUopNotWritebacked && deqHeadInfo.fuType === FuType.stu.U)
-  XSPerfAccumulate("waitStdCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.stu.U)
-  XSPerfAccumulate("waitAtmCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.mou.U)
+  XSPerfAccumulate("waitAluCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.alu.id.U)
+  XSPerfAccumulate("waitMulCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.mul.id.U)
+  XSPerfAccumulate("waitDivCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.div.id.U)
+  XSPerfAccumulate("waitBrhCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.brh.id.U)
+  XSPerfAccumulate("waitJmpCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.jmp.id.U)
+  XSPerfAccumulate("waitCsrCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.csr.id.U)
+  XSPerfAccumulate("waitFenCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.fence.id.U)
+  XSPerfAccumulate("waitBkuCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.bku.id.U)
+  XSPerfAccumulate("waitLduCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.ldu.id.U)
+  XSPerfAccumulate("waitStuCycle", deqNotWritebacked && deqHeadInfo.fuType === FuType.stu.id.U)
+  XSPerfAccumulate("waitStaCycle", deqUopNotWritebacked && deqHeadInfo.fuType === FuType.stu.id.U)
+  XSPerfAccumulate("waitStdCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.stu.id.U)
+  XSPerfAccumulate("waitAtmCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.mou.id.U)
 
-  XSPerfAccumulate("waitVfaluCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.vfalu.U)
-  XSPerfAccumulate("waitVfmaCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.vfma.U)
-  XSPerfAccumulate("waitVfdivCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.vfdiv.U)
+  XSPerfAccumulate("waitVfaluCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.vfalu.id.U)
+  XSPerfAccumulate("waitVfmaCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.vfma.id.U)
+  XSPerfAccumulate("waitVfdivCycle", deqStdNotWritebacked && deqHeadInfo.fuType === FuType.vfdiv.id.U)
 
   val vfalufuop = Seq(VfaluType.vfadd, VfaluType.vfwadd, VfaluType.vfwadd_w, VfaluType.vfsub, VfaluType.vfwsub, VfaluType.vfwsub_w, VfaluType.vfmin, VfaluType.vfmax,
     VfaluType.vfmerge, VfaluType.vfmv, VfaluType.vfsgnj, VfaluType.vfsgnjn, VfaluType.vfsgnjx, VfaluType.vfeq, VfaluType.vfne, VfaluType.vflt, VfaluType.vfle, VfaluType.vfgt,
     VfaluType.vfge, VfaluType.vfclass, VfaluType.vfmv_f_s, VfaluType.vfmv_s_f, VfaluType.vfredusum, VfaluType.vfredmax, VfaluType.vfredmin, VfaluType.vfredosum, VfaluType.vfwredosum)
 
   vfalufuop.zipWithIndex.map{
-    case(fuoptype,i) =>  XSPerfAccumulate(s"waitVfalu_${i}Cycle", deqStdNotWritebacked && deqHeadInfo.fuOpType === fuoptype && deqHeadInfo.fuType === FuType.vfalu.U)
+    case(fuoptype,i) =>  XSPerfAccumulate(s"waitVfalu_${i}Cycle", deqStdNotWritebacked && deqHeadInfo.fuOpType === fuoptype && deqHeadInfo.fuType === FuType.vfalu.id.U)
   }
 
 
@@ -1411,7 +1411,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
 
   for (fuType <- FuType.functionNameMap.keys) {
     val fuName = FuType.functionNameMap(fuType)
-    val commitIsFuType = io.commits.commitValid.zip(commitDebugUop).map(x => x._1 && x._2.fuType === fuType.U)
+    val commitIsFuType = io.commits.commitValid.zip(commitDebugUop).map(x => x._1 && x._2.fuType === fuType.id.U)
     XSPerfRolling(s"ipc_futype_${fuName}", ifCommit(PopCount(commitIsFuType)), 1000, clock, reset)
     XSPerfAccumulate(s"${fuName}_instr_cnt", ifCommit(PopCount(commitIsFuType)))
     XSPerfAccumulate(s"${fuName}_latency_dispatch", ifCommit(latencySum(commitIsFuType, dispatchLatency)))

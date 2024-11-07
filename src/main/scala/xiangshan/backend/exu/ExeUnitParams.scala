@@ -161,7 +161,7 @@ case class ExeUnitParams(
     *
     * @return Map[ [[BigInt]], Latency]
     */
-  def fuLatencyMap: Map[FuType.OHType, Int] = {
+  def fuLatencyMap: Map[FuType.Value, Int] = {
     if (latencyCertain)
       if(needOg2) fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else if (hasUncertainLatencyVal)
@@ -169,7 +169,7 @@ case class ExeUnitParams(
     else
       Map()
   }
-  def wakeUpFuLatencyMap: Map[FuType.OHType, Int] = {
+  def wakeUpFuLatencyMap: Map[FuType.Value, Int] = {
     if (latencyCertain)
       fuConfigs.filterNot(_.hasNoDataWB).map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else if (hasUncertainLatencyVal)
@@ -190,7 +190,7 @@ case class ExeUnitParams(
 
   def latencyValMax: Int = fuLatancySet.fold(0)(_ max _)
 
-  def intFuLatencyMap: Map[FuType.OHType, Int] = {
+  def intFuLatencyMap: Map[FuType.Value, Int] = {
     if (intLatencyCertain) {
       if (isVfExeUnit) {
         // vf exe unit writing back to int regfile should delay 1 cycle
@@ -206,7 +206,7 @@ case class ExeUnitParams(
 
   def intLatencyValMax: Int = intFuLatencyMap.values.fold(0)(_ max _)
 
-  def fpFuLatencyMap: Map[FuType.OHType, Int] = {
+  def fpFuLatencyMap: Map[FuType.Value, Int] = {
     if (fpLatencyCertain)
       if (needOg2) writeFpFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeFpFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
@@ -215,7 +215,7 @@ case class ExeUnitParams(
 
   def fpLatencyValMax: Int = fpFuLatencyMap.values.fold(0)(_ max _)
 
-  def vfFuLatencyMap: Map[FuType.OHType, Int] = {
+  def vfFuLatencyMap: Map[FuType.Value, Int] = {
     if (vfLatencyCertain)
       if(needOg2) writeVfFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeVfFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
@@ -224,7 +224,7 @@ case class ExeUnitParams(
 
   def vfLatencyValMax: Int = vfFuLatencyMap.values.fold(0)(_ max _)
 
-  def v0FuLatencyMap: Map[FuType.OHType, Int] = {
+  def v0FuLatencyMap: Map[FuType.Value, Int] = {
     if (v0LatencyCertain)
       if(needOg2) writeV0FuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeV0FuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
@@ -233,7 +233,7 @@ case class ExeUnitParams(
 
   def v0LatencyValMax: Int = v0FuLatencyMap.values.fold(0)(_ max _)
 
-  def vlFuLatencyMap: Map[FuType.OHType, Int] = {
+  def vlFuLatencyMap: Map[FuType.Value, Int] = {
     if (vlLatencyCertain)
       if(needOg2) writeVlFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeVlFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
@@ -306,7 +306,7 @@ case class ExeUnitParams(
   }
 
   def canAccept(fuType: UInt): Bool = {
-    Cat(fuConfigs.map(_.fuType.U === fuType)).orR
+    Cat(fuConfigs.map(_.fuType.id.U === fuType)).orR
   }
 
   def hasUncertainLatency: Boolean = fuConfigs.map(_.latency.latencyVal.isEmpty).reduce(_ || _)

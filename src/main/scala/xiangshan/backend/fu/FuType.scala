@@ -1,6 +1,7 @@
 package xiangshan.backend.fu
 
 import chisel3._
+import chisel3.util._
 import chisel3.util.BitPat
 import utils.EnumUtils.OHEnumeration
 import org.chipsalliance.cde.config.Parameters
@@ -8,113 +9,113 @@ import xiangshan.XSCoreParamsKey
 
 import scala.language.implicitConversions
 
-object FuType extends OHEnumeration {
-  class OHType(i: Int, name: String) extends super.OHVal(i: Int, name: String)
+object FuType extends Enumeration {
+  // class OHType(i: Int, name: String) extends super.OHVal(i: Int, name: String)
 
-  def OHType(i: Int, name: String): OHType = new OHType(i, name)
+  // def OHType(i: Int, name: String): OHType = new OHType(i, name)
 
-  implicit class fromOHValToLiteral(x: OHType) {
-    def U: UInt = x.ohid.U
-    def U(width: Width): UInt = x.ohid.U(width)
-  }
+  // implicit class fromOHValToLiteral(x: OHType) {
+  //   def U: UInt = x.ohid.U
+  //   def U(width: Width): UInt = x.ohid.U(width)
+  // }
 
   private var initVal = 0
 
-  private def addType(name: String): OHType = {
-    val ohval = OHType(initVal, name)
-    initVal += 1
-    ohval
-  }
+  // private def Value(name: String): OHType = {
+  //   val ohval = OHType(initVal, name)
+  //   initVal += 1
+  //   ohval
+  // }
 
   // int
-  val jmp = addType(name = "jmp")
-  val brh = addType(name = "brh")
-  val i2f = addType(name = "i2f")
-  val i2v = addType(name = "i2v")
-  val f2v = addType(name = "f2v")
-  val csr = addType(name = "csr")
-  val alu = addType(name = "alu")
-  val mul = addType(name = "mul")
-  val div = addType(name = "div")
-  val fence = addType(name = "fence")
-  val bku = addType(name = "bku")
+  val jmp = Value("jmp")
+  val brh = Value("brh")
+  val i2f = Value("i2f")
+  val i2v = Value("i2v")
+  val f2v = Value("f2v")
+  val csr = Value("csr")
+  val alu = Value("alu")
+  val mul = Value("mul")
+  val div = Value("div")
+  val fence = Value("fence")
+  val bku = Value("bku")
 
   // fp
-  val falu = addType(name = "falu")
-  val fmac = addType(name = "fmac")
-  val fcvt = addType(name = "fcvt")
-  val fDivSqrt = addType(name = "fDivSqrt")
+  val falu = Value("falu")
+  val fmac = Value("fmac")
+  val fcvt = Value("fcvt")
+  val fDivSqrt = Value("fDivSqrt")
 
   // ls
-  val ldu = addType(name = "ldu")
-  val stu = addType(name = "stu")
-  val mou = addType(name = "mou")
+  val ldu = Value("ldu")
+  val stu = Value("stu")
+  val mou = Value("mou")
 
   // vec
-  val vipu = addType(name = "vipu")
-  val vialuF = addType(name = "vialuF")
-  val vppu = addType(name = "vppu")
-  val vimac = addType(name = "vimac")
-  val vidiv = addType(name = "vidiv")
-  val vfpu = addType(name = "vfpu") // will be deleted
-  val vfalu = addType(name = "vfalu")
-  val vfma = addType(name = "vfma")
-  val vfdiv = addType(name = "vfdiv")
-  val vfcvt = addType(name = "vfcvt")
-  val vsetiwi = addType(name = "vsetiwi") // vset read rs write rd
-  val vsetiwf = addType(name = "vsetiwf") // vset read rs write vconfig
-  val vsetfwf = addType(name = "vsetfwf") // vset read old vl write vconfig
+  val vipu = Value("vipu")
+  val vialuF = Value("vialuF")
+  val vppu = Value("vppu")
+  val vimac = Value("vimac")
+  val vidiv = Value("vidiv")
+  val vfpu = Value("vfpu") // will be deleted
+  val vfalu = Value("vfalu")
+  val vfma = Value("vfma")
+  val vfdiv = Value("vfdiv")
+  val vfcvt = Value("vfcvt")
+  val vsetiwi = Value("vsetiwi") // vset read rs write rd
+  val vsetiwf = Value("vsetiwf") // vset read rs write vconfig
+  val vsetfwf = Value("vsetfwf") // vset read old vl write vconfig
 
   // vec ls
-  val vldu = addType(name = "vldu")
-  val vstu = addType(name = "vstu")
-  val vsegldu = addType(name = "vsegldu")
-  val vsegstu = addType(name = "vsegstu")
+  val vldu = Value("vldu")
+  val vstu = Value("vstu")
+  val vsegldu = Value("vsegldu")
+  val vsegstu = Value("vsegstu")
 
   val intArithAll = Seq(jmp, brh, i2f, i2v, csr, alu, mul, div, fence, bku)
   // dq0 includes int's iq0 and iq1
   // dq1 includes int's iq2 and iq3
-  def dq0OHTypeSeq(implicit p: Parameters): Seq[Seq[OHType]] = {
+  def dq0OHTypeSeq(implicit p: Parameters): Seq[Seq[Value]] = {
     val intIQParams = p(XSCoreParamsKey).backendParams.intSchdParams.get.issueBlockParams
     val dq0IQNums = intIQParams.size / 2
     val iqParams = intIQParams.take(dq0IQNums)
     val exuParams = iqParams.map(_.exuBlockParams).flatten
     exuParams.map(_.fuConfigs.map(_.fuType))
   }
-  def dq1OHTypeSeq(implicit p: Parameters): Seq[Seq[OHType]] = {
+  def dq1OHTypeSeq(implicit p: Parameters): Seq[Seq[Value]] = {
     val intIQParams = p(XSCoreParamsKey).backendParams.intSchdParams.get.issueBlockParams
     val dq0IQNums = intIQParams.size / 2
     val iqParams = intIQParams.slice(dq0IQNums,intIQParams.size)
     val exuParams = iqParams.map(_.exuBlockParams).flatten
     exuParams.map(_.fuConfigs.map(_.fuType))
   }
-  def intDq0All(implicit p: Parameters): Seq[OHType] = {
+  def intDq0All(implicit p: Parameters): Seq[Value] = {
     dq0OHTypeSeq.flatten.distinct
   }
-  def intDq0Deq0(implicit p: Parameters): Seq[OHType] = {
+  def intDq0Deq0(implicit p: Parameters): Seq[Value] = {
     val fuTypes = dq0OHTypeSeq(p)(0) ++ dq0OHTypeSeq(p)(2)
     fuTypes.distinct
   }
-  def intDq0Deq1(implicit p: Parameters): Seq[OHType] = {
+  def intDq0Deq1(implicit p: Parameters): Seq[Value] = {
     val fuTypes = dq0OHTypeSeq(p)(1) ++ dq0OHTypeSeq(p)(3)
     fuTypes.distinct
   }
-  def intDq1All(implicit p: Parameters): Seq[OHType] = {
+  def intDq1All(implicit p: Parameters): Seq[Value] = {
     dq1OHTypeSeq.flatten.distinct
   }
-  def intDq1Deq0(implicit p: Parameters): Seq[OHType] = {
+  def intDq1Deq0(implicit p: Parameters): Seq[Value] = {
     val fuTypes = dq1OHTypeSeq(p)(0) ++ dq1OHTypeSeq(p)(2)
     fuTypes.distinct
   }
-  def intDq1Deq1(implicit p: Parameters): Seq[OHType] = {
+  def intDq1Deq1(implicit p: Parameters): Seq[Value] = {
     val fuTypes = dq1OHTypeSeq(p)(1) ++ dq1OHTypeSeq(p)(3)
     fuTypes.distinct
   }
-  def intBothDeq0(implicit p: Parameters): Seq[OHType] = {
+  def intBothDeq0(implicit p: Parameters): Seq[Value] = {
     val fuTypes = dq0OHTypeSeq(p)(0).intersect(dq0OHTypeSeq(p)(2)).intersect(dq1OHTypeSeq(p)(0)).intersect(dq1OHTypeSeq(p)(2))
     fuTypes.distinct
   }
-  def intBothDeq1(implicit p: Parameters): Seq[OHType] = {
+  def intBothDeq1(implicit p: Parameters): Seq[Value] = {
     val fuTypes = dq0OHTypeSeq(p)(1).intersect(dq0OHTypeSeq(p)(3)).intersect(dq1OHTypeSeq(p)(1)).intersect(dq1OHTypeSeq(p)(3))
     fuTypes.distinct
   }
@@ -135,13 +136,13 @@ object FuType extends OHEnumeration {
   val scalaNeedFrm = Seq(i2f, fmac, fDivSqrt)
   val vectorNeedFrm = Seq(vfalu, vfma, vfdiv, vfcvt)
 
-  def X = BitPat.N(num) // Todo: Don't Care
-
   def num = this.values.size
 
-  def width = num
+  def width = log2Up(num)
 
-  def apply() = UInt(num.W)
+  def apply() = UInt(width.W)
+
+  def X = BitPat.N(width) // Todo: Don't Care
 
   def isInt(fuType: UInt): Bool = FuTypeOrR(fuType, intArithAll) || FuTypeOrR(fuType, vsetiwi, vsetiwf)
   def isIntDq0(fuType: UInt)(implicit p: Parameters): Bool = FuTypeOrR(fuType, intDq0All)
@@ -212,19 +213,19 @@ object FuType extends OHEnumeration {
   def isVectorNeedFrm(fuType: UInt): Bool = FuTypeOrR(fuType, vectorNeedFrm)
 
   object FuTypeOrR {
-    def apply(fuType: UInt, fu0: OHType, fus: OHType*): Bool = {
+    def apply(fuType: UInt, fu0: Value, fus: Value*): Bool = {
       apply(fuType, fu0 +: fus)
     }
 
-    def apply(fuType: UInt, fus: Seq[OHType]): Bool = {
-      fus.map(x => fuType(x.id)).fold(false.B)(_ || _)
+    def apply(fuType: UInt, fus: Seq[Value]): Bool = {
+      fus.map(x => fuType(x.id.U)).fold(false.B)(_ || _)
     }
 
-    def apply(fuType: OHType, fu0: OHType, fus: OHType*): Boolean = {
+    def apply(fuType: Value, fu0: Value, fus: Value*): Boolean = {
       apply(fuType, fu0 +: fus)
     }
 
-    def apply(fuTupe: OHType, fus: Seq[OHType]): Boolean = {
+    def apply(fuTupe: Value, fus: Seq[Value]): Boolean = {
       fus.map(x => x == fuTupe).fold(false)(_ || _)
     }
   }

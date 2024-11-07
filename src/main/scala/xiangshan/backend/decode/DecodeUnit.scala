@@ -94,7 +94,7 @@ abstract class XSDecodeBase {
 
 case class XSDecode(
   src1: BitPat, src2: BitPat, src3: BitPat,
-  fu: FuType.OHType, fuOp: BitPat, selImm: BitPat,
+  fu: FuType.Value, fuOp: BitPat, selImm: BitPat,
   uopSplitType: BitPat = UopSplitType.X,
   xWen: Boolean = false,
   fWen: Boolean = false,
@@ -107,13 +107,13 @@ case class XSDecode(
   canRobCompress: Boolean = false,
 ) extends XSDecodeBase {
   def generate() : List[BitPat] = {
-    List (src1, src2, src3, BitPat(fu.U(FuType.num.W)), fuOp, xWen.B, fWen.B, (vWen || mWen).B, xsTrap.B, noSpec.B, blockBack.B, flushPipe.B, canRobCompress.B, uopSplitType, selImm)
+    List (src1, src2, src3, BitPat(fu.id.U(FuType.num.W)), fuOp, xWen.B, fWen.B, (vWen || mWen).B, xsTrap.B, noSpec.B, blockBack.B, flushPipe.B, canRobCompress.B, uopSplitType, selImm)
   }
 }
 
 case class FDecode(
   src1: BitPat, src2: BitPat, src3: BitPat,
-  fu: FuType.OHType, fuOp: BitPat, selImm: BitPat = SelImm.X,
+  fu: FuType.Value, fuOp: BitPat, selImm: BitPat = SelImm.X,
   uopSplitType: BitPat = UopSplitType.X,
   xWen: Boolean = false,
   fWen: Boolean = false,
@@ -802,7 +802,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
 
   require(decode_table.map(_._2.length == 15).reduce(_ && _), "Decode tables have different column size")
   // assertion for LUI: only LUI should be assigned `selImm === SelImm.IMM_U && fuType === FuType.alu`
-  val luiMatch = (t: Seq[BitPat]) => t(3).value == FuType.alu.ohid && t.reverse.head.value == SelImm.IMM_U.litValue
+  val luiMatch = (t: Seq[BitPat]) => t(3).value == FuType.alu.id && t.reverse.head.value == SelImm.IMM_U.litValue
   val luiTable = decode_table.filter(t => luiMatch(t._2)).map(_._1).distinct
   assert(luiTable.length == 1 && luiTable.head == LUI, "Conflicts: LUI is determined by FuType and SelImm in Dispatch")
 
@@ -1110,7 +1110,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     decodedInst.exceptionVec(illegalInstr) := io.fromCSR.illegalInst.vsIsOff
   }.elsewhen (isPreW || isPreR || isPreI) {
     decodedInst.selImm := SelImm.IMM_S
-    decodedInst.fuType := FuType.ldu.U
+    decodedInst.fuType := FuType.ldu.id.U
     decodedInst.canRobCompress := false.B
   }.elsewhen (isZimop) {
     // set srcType for zimop
@@ -1125,17 +1125,17 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   io.deq.decodedInst.fuType := Mux1H(Seq(
     // keep condition
     (!FuType.FuTypeOrR(decodedInst.fuType, FuType.vldu, FuType.vstu) && !isCsrrVl && !isCsrrVlenb) -> decodedInst.fuType,
-    (isCsrrVl) -> FuType.vsetfwf.U,
-    (isCsrrVlenb) -> FuType.alu.U,
+    (isCsrrVl) -> FuType.vsetfwf.id.U,
+    (isCsrrVlenb) -> FuType.alu.id.U,
 
     // change vlsu to vseglsu when NF =/= 0.U
     ( FuType.FuTypeOrR(decodedInst.fuType, FuType.vldu, FuType.vstu) && inst.NF === 0.U || (inst.NF =/= 0.U && (inst.MOP === "b00".U && inst.SUMOP === "b01000".U))) -> decodedInst.fuType,
     // MOP === b00 && SUMOP === b01000: unit-stride whole register store
     // MOP =/= b00                    : strided and indexed store
-    ( FuType.FuTypeOrR(decodedInst.fuType, FuType.vstu)              && inst.NF =/= 0.U && ((inst.MOP === "b00".U && inst.SUMOP =/= "b01000".U) || inst.MOP =/= "b00".U)) -> FuType.vsegstu.U,
+    ( FuType.FuTypeOrR(decodedInst.fuType, FuType.vstu)              && inst.NF =/= 0.U && ((inst.MOP === "b00".U && inst.SUMOP =/= "b01000".U) || inst.MOP =/= "b00".U)) -> FuType.vsegstu.id.U,
     // MOP === b00 && LUMOP === b01000: unit-stride whole register load
     // MOP =/= b00                    : strided and indexed load
-    ( FuType.FuTypeOrR(decodedInst.fuType, FuType.vldu)              && inst.NF =/= 0.U && ((inst.MOP === "b00".U && inst.LUMOP =/= "b01000".U) || inst.MOP =/= "b00".U)) -> FuType.vsegldu.U,
+    ( FuType.FuTypeOrR(decodedInst.fuType, FuType.vldu)              && inst.NF =/= 0.U && ((inst.MOP === "b00".U && inst.LUMOP =/= "b01000".U) || inst.MOP =/= "b00".U)) -> FuType.vsegldu.id.U,
   ))
   io.deq.decodedInst.imm := MuxCase(decodedInst.imm, Seq(
     isCsrrVlenb -> (VLEN / 8).U,

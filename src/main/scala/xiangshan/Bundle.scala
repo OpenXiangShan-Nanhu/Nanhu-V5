@@ -220,13 +220,13 @@ class CtrlSignals(implicit p: Parameters) extends XSBundle {
     this
   }
 
-  def isWFI: Bool = fuType === FuType.csr.U && fuOpType === CSROpType.wfi
+  def isWFI: Bool = fuType === FuType.csr.id.U && fuOpType === CSROpType.wfi
   def isSoftPrefetch: Bool = {
-    fuType === FuType.alu.U && fuOpType === ALUOpType.or && selImm === SelImm.IMM_I && ldest === 0.U
+    fuType === FuType.alu.id.U && fuOpType === ALUOpType.or && selImm === SelImm.IMM_I && ldest === 0.U
   }
   def needWriteRf: Bool = rfWen || fpWen || vecWen
   def isHyperInst: Bool = {
-    fuType === FuType.ldu.U && LSUOpType.isHlv(fuOpType) || fuType === FuType.stu.U && LSUOpType.isHsv(fuOpType)
+    fuType === FuType.ldu.id.U && LSUOpType.isHlv(fuOpType) || fuType === FuType.stu.id.U && LSUOpType.isHsv(fuOpType)
   }
 }
 

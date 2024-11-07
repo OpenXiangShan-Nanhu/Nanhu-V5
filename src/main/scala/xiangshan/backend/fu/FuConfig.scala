@@ -45,7 +45,7 @@ import xiangshan.backend.datapath.DataConfig._
   */
 case class FuConfig (
   name          : String,
-  fuType        : FuType.OHType,
+  fuType        : FuType.Value,
   fuGen         : (Parameters, FuConfig) => FuncUnit,
   srcData       : Seq[Seq[DataConfig]],
   piped         : Boolean,
@@ -107,7 +107,7 @@ case class FuConfig (
   def fuSel(uop: ExuInput): Bool = {
     // Don't add more shit here!!!
     // Todo: add new FuType to distinguish f2i, f2f
-    uop.fuType === this.fuType.U
+    uop.fuType === this.fuType.id.U
   }
 
   /**

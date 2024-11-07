@@ -20,7 +20,7 @@ object EntryBundles extends HasCircularQueuePtrHelper {
   class Status(implicit p: Parameters, params: IssueBlockParams) extends XSBundle {
     //basic status
     val robIdx                = new RobPtr
-    val fuType                = IQFuType()
+    val fuType                = FuType()
     //src status
     val srcStatus             = Vec(params.numRegSrc, new SrcStatus)
     //issue status
@@ -286,7 +286,7 @@ object EntryBundles extends HasCircularQueuePtrHelper {
     val cancelWhenWakeup                               = VecInit(hasIQWakeupGet.srcWakeupByIQButCancel.map(_.asUInt.orR)).asUInt.orR
     val respIssueFail                                  = commonIn.issueResp.valid && RespType.isBlocked(commonIn.issueResp.bits.resp)
     entryUpdate.status.robIdx                         := status.robIdx
-    entryUpdate.status.fuType                         := IQFuType.readFuType(status.fuType, params.getFuCfgs.map(_.fuType))
+    entryUpdate.status.fuType                         := status.fuType
     entryUpdate.status.srcStatus.zip(status.srcStatus).zipWithIndex.foreach { case ((srcStatusNext, srcStatus), srcIdx) =>
       val cancel = common.srcCancelVec(srcIdx)
       val wakeupByIQ = hasIQWakeupGet.srcWakeupByIQ(srcIdx).asUInt.orR
@@ -395,7 +395,7 @@ object EntryBundles extends HasCircularQueuePtrHelper {
     commonOut.issued                                  := entryReg.status.issued
     commonOut.canIssue                                := (if (isComp) (common.canIssue || hasIQWakeupGet.canIssueBypass) && !common.flushed
                                                           else common.canIssue && !common.flushed)
-    commonOut.fuType                                  := IQFuType.readFuType(status.fuType, params.getFuCfgs.map(_.fuType)).asUInt
+    commonOut.fuType                                  := status.fuType
     commonOut.robIdx                                  := status.robIdx
     commonOut.dataSource.zipWithIndex.foreach{ case (dataSourceOut, srcIdx) =>
       val wakeupByIQWithoutCancel = hasIQWakeupGet.srcWakeupByIQWithoutCancel(srcIdx).asUInt.orR
@@ -511,11 +511,13 @@ object EntryBundles extends HasCircularQueuePtrHelper {
   object IQFuType {
     def num = FuType.num
 
-    def apply() = Vec(num, Bool())
+    def width = log2Up(num)
 
-    def readFuType(fuType: Vec[Bool], fus: Seq[FuType.OHType]): Vec[Bool] = {
+    def apply() = Vec(width, Bool())
+
+    def readFuType(fuType: Vec[Bool], fus: Seq[FuType.Value]): Vec[Bool] = {
       val res = WireDefault(0.U.asTypeOf(fuType))
-      fus.foreach(x => res(x.id) := fuType(x.id))
+      fus.foreach(x => res := fuType(x.id.U))
       res
     }
   }

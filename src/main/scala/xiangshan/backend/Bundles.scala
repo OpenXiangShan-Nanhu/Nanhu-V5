@@ -134,7 +134,7 @@ object Bundles {
     }
 
     def isSoftPrefetch: Bool = {
-      fuType === FuType.alu.U && fuOpType === ALUOpType.or && selImm === SelImm.IMM_I && ldest === 0.U
+      fuType === FuType.alu.id.U && fuOpType === ALUOpType.or && selImm === SelImm.IMM_I && ldest === 0.U
     }
 
     def connectStaticInst(source: StaticInst): Unit = {
@@ -250,9 +250,9 @@ object Bundles {
 
     def getDebugFuType: UInt = debug_fuType.getOrElse(fuType)
 
-    def isLUI: Bool = this.fuType === FuType.alu.U && (this.selImm === SelImm.IMM_U || this.selImm === SelImm.IMM_LUI32)
+    def isLUI: Bool = this.fuType === FuType.alu.id.U && (this.selImm === SelImm.IMM_U || this.selImm === SelImm.IMM_LUI32)
     def isLUI32: Bool = this.selImm === SelImm.IMM_LUI32
-    def isWFI: Bool = this.fuType === FuType.csr.U && fuOpType === CSROpType.wfi
+    def isWFI: Bool = this.fuType === FuType.csr.id.U && fuOpType === CSROpType.wfi
 
     def isSvinvalBegin(flush: Bool) = FuType.isFence(fuType) && fuOpType === FenceOpType.nofence && !flush
     def isSvinval(flush: Bool) = FuType.isFence(fuType) &&
@@ -261,7 +261,7 @@ object Bundles {
     def isNotSvinval = !FuType.isFence(fuType)
 
     def isHls: Bool = {
-      fuType === FuType.ldu.U && LSUOpType.isHlv(fuOpType) || fuType === FuType.stu.U && LSUOpType.isHsv(fuOpType)
+      fuType === FuType.ldu.id.U && LSUOpType.isHlv(fuOpType) || fuType === FuType.stu.id.U && LSUOpType.isHsv(fuOpType)
     }
 
     def srcIsReady: Vec[Bool] = {

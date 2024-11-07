@@ -478,9 +478,9 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     val headIsInt = FuType.isInt(io.robHead.getDebugFuType)  && io.robHeadNotReady
     val headIsFp  = FuType.isFArith(io.robHead.getDebugFuType)   && io.robHeadNotReady
     val headIsDiv = FuType.isDivSqrt(io.robHead.getDebugFuType) && io.robHeadNotReady
-    val headIsLd  = io.robHead.getDebugFuType === FuType.ldu.U && io.robHeadNotReady || !io.lqCanAccept
-    val headIsSt  = io.robHead.getDebugFuType === FuType.stu.U && io.robHeadNotReady || !io.sqCanAccept
-    val headIsAmo = io.robHead.getDebugFuType === FuType.mou.U && io.robHeadNotReady
+    val headIsLd  = io.robHead.getDebugFuType === FuType.ldu.id.U && io.robHeadNotReady || !io.lqCanAccept
+    val headIsSt  = io.robHead.getDebugFuType === FuType.stu.id.U && io.robHeadNotReady || !io.sqCanAccept
+    val headIsAmo = io.robHead.getDebugFuType === FuType.mou.id.U && io.robHeadNotReady
     val headIsLs  = headIsLd || headIsSt
     val robLsFull = io.robFull || !io.lqCanAccept || !io.sqCanAccept
 

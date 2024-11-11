@@ -218,7 +218,7 @@ object FuType extends Enumeration {
     }
 
     def apply(fuType: UInt, fus: Seq[Value]): Bool = {
-      fus.map(x => fuType(x.id.U)).fold(false.B)(_ || _)
+      fus.map(x => fuType === x.id.U).fold(false.B)(_ || _)
     }
 
     def apply(fuType: Value, fu0: Value, fus: Value*): Boolean = {

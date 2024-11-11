@@ -579,7 +579,6 @@ class CtrlBlockImp(
 
   lsDq.io.enq <> dispatch.io.toLsDq
   lsDq.io.redirect <> s2_s4_redirect
-
   io.toIssueBlock.intUops <> (intDq0.io.deq :++ intDq1.io.deq)
   io.toIssueBlock.fpUops <> fpDq.io.deq
   io.toIssueBlock.vfUops  <> vecDq.io.deq

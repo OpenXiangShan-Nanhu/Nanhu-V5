@@ -515,11 +515,11 @@ object EntryBundles extends HasCircularQueuePtrHelper {
 
     def apply() = Vec(width, Bool())
 
-    def readFuType(fuType: Vec[Bool], fus: Seq[FuType.Value]): Vec[Bool] = {
-      val res = WireDefault(0.U.asTypeOf(fuType))
-      fus.foreach(x => res := fuType(x.id.U))
-      res
-    }
+    // def readFuType(fuType: Vec[Bool], fus: Seq[FuType.Value]): Vec[Bool] = {
+    //   val res = WireDefault(0.U.asTypeOf(fuType))
+    //   fus.foreach(x => res := fuType(x.id.U))
+    //   res
+    // }
   }
 
   class EnqDelayInBundle(implicit p: Parameters, params: IssueBlockParams) extends XSBundle {

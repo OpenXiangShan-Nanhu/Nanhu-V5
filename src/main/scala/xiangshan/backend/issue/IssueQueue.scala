@@ -890,7 +890,13 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
   io.status.validCnt := PopCount(validVec)
 
   protected def getDeqLat(deqPortIdx: Int, fuType: UInt) : UInt = {
-    Mux1H(wakeupFuLatencyMaps(deqPortIdx) map { case (k, v) => (fuType(k.id.U), v.U) })
+    val res = WireDefault(0.U(4.W))
+    wakeupFuLatencyMaps(deqPortIdx) map { case (k, v) => 
+      when(k.id.U === fuType){
+        res := v.U
+      }
+    }
+    res
   }
 
   // issue perf counter

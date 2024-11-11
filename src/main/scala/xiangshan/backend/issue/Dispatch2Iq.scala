@@ -331,11 +331,11 @@ abstract class Dispatch2IqImp(override val wrapper: Dispatch2Iq)(implicit p: Par
     res
   }
 
-  def canAccept(acceptVec: Seq[Int], fuType: UInt): Bool = {
-    (acceptVec.reduce(_ | _).U & fuType).orR
+  def canAccept(acceptVec: Seq[FuType.Value], fuType: UInt): Bool = {
+    acceptVec.map(_.id.U === fuType).reduce(_ || _)
   }
 
-  def canAccept(acceptVec: Seq[Seq[Int]], fuType: UInt): Vec[Bool] = {
+  def canAccept(acceptVec: Seq[Seq[FuType.Value]], fuType: UInt): Vec[Bool] = {
     VecInit(acceptVec.map(x => canAccept(x, fuType)).toSeq)
   }
 
@@ -676,7 +676,7 @@ class Dispatch2IqArithImp(override val wrapper: Dispatch2Iq)(implicit p: Paramet
     val maxSelNum = wrapper.numIn
     val selNum = deqPortIdSeq.length
     val portReadyVec = deqPortIdSeq.map(x => outs(x).ready)
-    val canAcc = uopsIn.map(in => canAccept(fuTypeSeq.map(x => x.id), in.bits.fuType) && in.valid)
+    val canAcc = uopsIn.map(in => canAccept(fuTypeSeq, in.bits.fuType) && in.valid)
     if(selNum <= maxSelNum) {
       val selPort = SelectOne("circ", portReadyVec.toSeq, selNum)
       val select = SelectOne("naive", canAcc, selNum)
@@ -1120,7 +1120,7 @@ class Dispatch2IqMemImp(override val wrapper: Dispatch2Iq)(implicit p: Parameter
       val maxSelNum = wrapper.numIn
       val selNum = deqPortIdSeq.length
       val portReadyVec = deqPortIdSeq.map(x => outs(x).ready)
-      val canAcc = uopsIn.map(in => canAccept(fuTypeSeq.map(x => x.id), in.bits.fuType) && in.valid)
+      val canAcc = uopsIn.map(in => canAccept(fuTypeSeq, in.bits.fuType) && in.valid)
       val selPort = SelectOne("circ", portReadyVec.toSeq, selNum)
       val select = SelectOne("naive", canAcc, selNum)
       for ((portId, j) <- deqPortIdSeq.zipWithIndex) {

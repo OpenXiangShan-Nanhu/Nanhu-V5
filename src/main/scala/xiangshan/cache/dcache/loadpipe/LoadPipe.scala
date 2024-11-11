@@ -19,7 +19,7 @@ package xiangshan.cache
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.tilelink.ClientMetadata
+import freechips.rocketchip.tilelink.{ClientMetadata,ClientStates}
 import utility.{ParallelPriorityMux, OneHot, ChiselDB, ParallelORR, ParallelMux, XSDebug, XSPerfAccumulate, HasPerfEvents}
 import xiangshan.{XSCoreParamsKey, L1CacheErrorInfo}
 import xiangshan.cache.wpu._
@@ -40,9 +40,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
     // req got nacked in stage 0?
     val nack      = Input(Bool())
 
-    // meta and data array read port
-    val meta_read = DecoupledIO(new MetaReadReq)
-    val meta_resp = Input(Vec(nWays, new Meta))
+    // // meta and data array read port
     val extra_meta_resp = Input(Vec(nWays, new DCacheExtraMeta))
 
     val tag_read = DecoupledIO(new TagReadReq)
@@ -110,13 +108,11 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
     val mq_enq_cancel = Input(Bool())
   })
 
-  assert(RegNext(io.meta_read.ready))
-
   val s1_ready = Wire(Bool())
   val s2_ready = Wire(Bool())
   // LSU requests
   // it you got nacked, you can directly passdown
-  val not_nacked_ready = io.meta_read.ready && io.tag_read.ready && s1_ready
+  val not_nacked_ready = io.tag_read.ready && s1_ready
   val nacked_ready     = true.B
 
   // Pipeline
@@ -127,7 +123,6 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
 
   // ready can wait for valid
   io.lsu.req.ready := (!io.nack && not_nacked_ready) || (io.nack && nacked_ready)
-  io.meta_read.valid := io.lsu.req.fire && !io.nack
   io.tag_read.valid := io.lsu.req.fire && !io.nack
 
   val s0_valid = io.lsu.req.fire
@@ -155,13 +150,9 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   }
 
 
-  val meta_read = io.meta_read.bits
   val tag_read = io.tag_read.bits
 
   // Tag read for new requests
-  meta_read.idx := get_idx(io.lsu.req.bits.vaddr)
-  meta_read.way_en := ~0.U(nWays.W)
-  // meta_read.tag := DontCare
 
   tag_read.idx := get_idx(io.lsu.req.bits.vaddr)
   tag_read.way_en := ~0.U(nWays.W)
@@ -191,13 +182,15 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   dump_pipeline_reqs("LoadPipe s1", s1_valid, s1_req)
 
   // tag check
-  val meta_resp = io.meta_resp
+  val meta_resp = io.tag_resp.map { r =>
+    ClientMetadata(r(tagBits + ClientStates.width - 1, tagBits))
+  }
   val tag_resp = io.tag_resp.map(r => r(tagBits - 1, 0))
   def wayMap[T <: Data](f: Int => T) = VecInit((0 until nWays).map(f))
 
   // resp in s1
-  val s1_tag_match_way_dup_dc = wayMap((w: Int) => tag_resp(w) === get_tag(s1_paddr_dup_dcache) && meta_resp(w).coh.isValid()).asUInt
-  val s1_tag_match_way_dup_lsu = wayMap((w: Int) => tag_resp(w) === get_tag(s1_paddr_dup_lsu) && meta_resp(w).coh.isValid()).asUInt
+  val s1_tag_match_way_dup_dc = wayMap((w: Int) => tag_resp(w) === get_tag(s1_paddr_dup_dcache) && meta_resp(w).isValid()).asUInt
+  val s1_tag_match_way_dup_lsu = wayMap((w: Int) => tag_resp(w) === get_tag(s1_paddr_dup_lsu) && meta_resp(w).isValid()).asUInt
   val s1_wpu_pred_valid = RegEnable(io.dwpu.resp(0).valid, s0_fire)
   val s1_wpu_pred_way_en = RegEnable(io.dwpu.resp(0).bits.s0_pred_way_en, s0_fire)
 
@@ -224,7 +217,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
     io.dwpu.cfpred(0).s0_vaddr := s0_vaddr
     io.dwpu.cfpred(0).s1_vaddr := s1_vaddr
     // whether direct_map_way miss with valid tag value
-    io.dwpu.cfpred(0).s1_dm_hit := wayMap((w: Int) => w.U === s1_direct_map_way_num && tag_resp(w) === get_tag(s1_paddr_dup_lsu) && meta_resp(w).coh.isValid()).asUInt.orR
+    io.dwpu.cfpred(0).s1_dm_hit := wayMap((w: Int) => w.U === s1_direct_map_way_num && tag_resp(w) === get_tag(s1_paddr_dup_lsu) && meta_resp(w).isValid()).asUInt.orR
   }else{
     io.dwpu.cfpred(0) := DontCare
   }
@@ -253,7 +246,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   // when there are no tag match, we give it a Fake Meta
   // this simplifies our logic in s2 stage
   val s1_hit_meta = ParallelMux(s1_tag_match_way_dup_dc.asBools, (0 until nWays).map(w => meta_resp(w)))
-  val s1_hit_coh = s1_hit_meta.coh
+  val s1_hit_coh = s1_hit_meta
   val s1_hit_error = ParallelMux(s1_tag_match_way_dup_dc.asBools, (0 until nWays).map(w => io.extra_meta_resp(w).error))
   val s1_hit_prefetch = ParallelMux(s1_tag_match_way_dup_dc.asBools, (0 until nWays).map(w => io.extra_meta_resp(w).prefetch))
   val s1_hit_access = ParallelMux(s1_tag_match_way_dup_dc.asBools, (0 until nWays).map(w => io.extra_meta_resp(w).access))
@@ -262,7 +255,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   io.replace_way.set.valid := false.B
   io.replace_way.set.bits := get_idx(s1_vaddr)
   io.replace_way.dmWay := get_direct_map_way(s1_vaddr)
-  val s1_invalid_vec = wayMap(w => !meta_resp(w).coh.isValid())
+  val s1_invalid_vec = wayMap(w => !meta_resp(w).isValid())
   val s1_have_invalid_way = s1_invalid_vec.asUInt.orR
   val s1_invalid_way_en = ParallelPriorityMux(s1_invalid_vec.zipWithIndex.map(x => x._1 -> UIntToOH(x._2.U(nWays.W))))
 

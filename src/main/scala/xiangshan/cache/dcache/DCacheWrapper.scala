@@ -98,8 +98,8 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   def encRowBits = encWordBits * rowWords // for DuplicatedDataArray only
   def eccBits = encWordBits - wordBits
 
-  def encTagBits = cacheParams.tagCode.width(tagBits)
-  def eccTagBits = encTagBits - tagBits
+  def encTagBits = cacheParams.tagCode.width(tagBits + ClientStates.width)
+  def eccTagBits = encTagBits - tagBits - ClientStates.width
 
   def blockProbeAfterGrantCycles = 8 // give the processor some time to issue a request after a grant
 
@@ -929,14 +929,14 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   val StorePrefetchL1Enabled = EnableStorePrefetchAtCommit || EnableStorePrefetchAtIssue || EnableStorePrefetchSPB
   val MetaReadPort =
         if (StorePrefetchL1Enabled)
-          1 + backendParams.LduCnt + backendParams.StaCnt + backendParams.HyuCnt
+          1 + backendParams.LduCnt + backendParams.StaCnt 
         else
-          1 + backendParams.LduCnt + backendParams.HyuCnt
+          1 + backendParams.LduCnt 
   val TagReadPort =
         if (StorePrefetchL1Enabled)
-          1 + backendParams.LduCnt + backendParams.StaCnt + backendParams.HyuCnt
+          1 + backendParams.LduCnt + backendParams.StaCnt 
         else
-          1 + backendParams.LduCnt + backendParams.HyuCnt
+          1 + backendParams.LduCnt 
 
   // Enable L1 Load prefetch
   val LoadPrefetchL1Enabled = true
@@ -946,7 +946,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   //----------------------------------------
   // core data structures
   val bankedDataArray = if(dwpuParam.enWPU) Module(new SramedDataArray) else Module(new BankedDataArray)
-  val metaArray = Module(new L1CohMetaArray(readPorts = LoadPipelineWidth + 1, writePorts = 1))
+  // val metaArray = Module(new L1CohMetaArray(readPorts = LoadPipelineWidth + 1, writePorts = 1))
   val errorArray = Module(new L1FlagMetaArray(readPorts = LoadPipelineWidth + 1, writePorts = 1))
   val prefetchArray = Module(new L1PrefetchSourceArray(readPorts = PrefetchArrayReadPort, writePorts = 1 + LoadPipelineWidth)) // prefetch flag array
   val accessArray = Module(new L1FlagMetaArray(readPorts = AccessArrayReadPort, writePorts = LoadPipelineWidth + 1))
@@ -963,9 +963,9 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // enableStorePrefetch: main pipe * 1 + load pipe * 2 + store pipe * 1 +
   // hybrid * 1; disable: main pipe * 1 + load pipe * 2 + hybrid * 1
   // higher priority is given to lower indices
-  val MissReqPortCount = if(StorePrefetchL1Enabled) 1 + backendParams.LduCnt + backendParams.StaCnt + backendParams.HyuCnt else 1 + backendParams.LduCnt + backendParams.HyuCnt
+  val MissReqPortCount = if(StorePrefetchL1Enabled) 1 + backendParams.LduCnt + backendParams.StaCnt  else 1 + backendParams.LduCnt 
   val MainPipeMissReqPort = 0
-  val HybridMissReqBase = MissReqPortCount - backendParams.HyuCnt
+  // val HybridMissReqBase = MissReqPortCount 
 
   //----------------------------------------
   // core modules
@@ -997,65 +997,22 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   io.error.valid := RegNext(RegNext(error_valid, init = false.B), init = false.B)
 
   //----------------------------------------
-  // meta array
-  val HybridLoadReadBase = LoadPipelineWidth - backendParams.HyuCnt
-  val HybridStoreReadBase = StorePipelineWidth - backendParams.HyuCnt
-
-  val hybrid_meta_read_ports = Wire(Vec(backendParams.HyuCnt, DecoupledIO(new MetaReadReq)))
-  val hybrid_meta_resp_ports = Wire(Vec(backendParams.HyuCnt, ldu(0).io.meta_resp.cloneType))
-  for (i <- 0 until backendParams.HyuCnt) {
-    val HybridLoadMetaReadPort = HybridLoadReadBase + i
-    val HybridStoreMetaReadPort = HybridStoreReadBase + i
-
-    hybrid_meta_read_ports(i).valid := ldu(HybridLoadMetaReadPort).io.meta_read.valid ||
-                                       (stu(HybridStoreMetaReadPort).io.meta_read.valid && StorePrefetchL1Enabled.B)
-    hybrid_meta_read_ports(i).bits := Mux(ldu(HybridLoadMetaReadPort).io.meta_read.valid, ldu(HybridLoadMetaReadPort).io.meta_read.bits,
-                                          stu(HybridStoreMetaReadPort).io.meta_read.bits)
-
-    ldu(HybridLoadMetaReadPort).io.meta_read.ready := hybrid_meta_read_ports(i).ready
-    stu(HybridStoreMetaReadPort).io.meta_read.ready := hybrid_meta_read_ports(i).ready && StorePrefetchL1Enabled.B
-
-    ldu(HybridLoadMetaReadPort).io.meta_resp := hybrid_meta_resp_ports(i)
-    stu(HybridStoreMetaReadPort).io.meta_resp := hybrid_meta_resp_ports(i)
-  }
-
-  // read / write coh meta
-  val meta_read_ports = ldu.map(_.io.meta_read).take(HybridLoadReadBase) ++
-    Seq(mainPipe.io.meta_read) ++
-    stu.map(_.io.meta_read).take(HybridStoreReadBase) ++ hybrid_meta_read_ports
-
-  val meta_resp_ports = ldu.map(_.io.meta_resp).take(HybridLoadReadBase) ++
-    Seq(mainPipe.io.meta_resp) ++
-    stu.map(_.io.meta_resp).take(HybridStoreReadBase) ++ hybrid_meta_resp_ports
-
-  val meta_write_ports = Seq(
-    mainPipe.io.meta_write
-    // refillPipe.io.meta_write
-  )
-  if(StorePrefetchL1Enabled) {
-    meta_read_ports.zip(metaArray.io.read).foreach { case (p, r) => r <> p }
-    meta_resp_ports.zip(metaArray.io.resp).foreach { case (p, r) => p := r }
-  } else {
-    (meta_read_ports.take(HybridLoadReadBase + 1) ++
-     meta_read_ports.takeRight(backendParams.HyuCnt)).zip(metaArray.io.read).foreach { case (p, r) => r <> p }
-    (meta_resp_ports.take(HybridLoadReadBase + 1) ++
-     meta_resp_ports.takeRight(backendParams.HyuCnt)).zip(metaArray.io.resp).foreach { case (p, r) => p := r }
-
-    meta_read_ports.drop(HybridLoadReadBase + 1).take(HybridStoreReadBase).foreach { case p => p.ready := false.B }
-    meta_resp_ports.drop(HybridLoadReadBase + 1).take(HybridStoreReadBase).foreach { case p => p := 0.U.asTypeOf(p) }
-  }
-  meta_write_ports.zip(metaArray.io.write).foreach { case (p, w) => w <> p }
-
   // read extra meta (exclude stu)
-  (meta_read_ports.take(HybridLoadReadBase + 1) ++
-   meta_read_ports.takeRight(backendParams.HyuCnt)).zip(errorArray.io.read).foreach { case (p, r) => r <> p }
-  (meta_read_ports.take(HybridLoadReadBase + 1) ++
-   meta_read_ports.takeRight(backendParams.HyuCnt)).zip(prefetchArray.io.read).foreach { case (p, r) => r <> p }
-  (meta_read_ports.take(HybridLoadReadBase + 1) ++
-   meta_read_ports.takeRight(backendParams.HyuCnt)).zip(accessArray.io.read).foreach { case (p, r) => r <> p }
-  val extra_meta_resp_ports = ldu.map(_.io.extra_meta_resp).take(HybridLoadReadBase) ++
-    Seq(mainPipe.io.extra_meta_resp) ++
-    ldu.map(_.io.extra_meta_resp).takeRight(backendParams.HyuCnt)
+  // (meta_read_ports.take(HybridLoadReadBase + 1) ++
+  //  meta_read_ports.takeRight(backendParams.HyuCnt)).zip(errorArray.io.read).foreach { case (p, r) => r <> p }
+  // (meta_read_ports.take(HybridLoadReadBase + 1) ++
+  //  meta_read_ports.takeRight(backendParams.HyuCnt)).zip(prefetchArray.io.read).foreach { case (p, r) => r <> p }
+  // (meta_read_ports.take(HybridLoadReadBase + 1) ++
+  //  meta_read_ports.takeRight(backendParams.HyuCnt)).zip(accessArray.io.read).foreach { case (p, r) => r <> p }
+  val tag_read_ports = ldu.map(_.io.tag_read) ++ Seq(mainPipe.io.tag_read)
+  tag_read_ports.zip(errorArray.io.read).foreach { case (p, r) => r <> p}
+  tag_read_ports.zip(prefetchArray.io.read).foreach { case (p, r) => r <> p}
+  tag_read_ports.zip(accessArray.io.read).foreach { case (p, r) => r <> p}
+  
+  // val extra_meta_resp_ports = ldu.map(_.io.extra_meta_resp).take(HybridLoadReadBase) ++
+  //   Seq(mainPipe.io.extra_meta_resp) ++
+  //   ldu.map(_.io.extra_meta_resp).takeRight(backendParams.HyuCnt)
+  val extra_meta_resp_ports = ldu.map(_.io.extra_meta_resp) ++ Seq(mainPipe.io.extra_meta_resp)
   extra_meta_resp_ports.zip(errorArray.io.resp).foreach { case (p, r) => {
     (0 until nWays).map(i => { p(i).error := r(i) })
   }}
@@ -1118,24 +1075,24 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   //----------------------------------------
   // tag array
   if(StorePrefetchL1Enabled) {
-    require(tagArray.io.read.size == (LoadPipelineWidth + StorePipelineWidth - backendParams.HyuCnt + 1))
+    require(tagArray.io.read.size == (LoadPipelineWidth + StorePipelineWidth + 1))
   }else {
     require(tagArray.io.read.size == (LoadPipelineWidth + 1))
   }
   // val tag_write_intend = missQueue.io.refill_pipe_req.valid || mainPipe.io.tag_write_intend
   val tag_write_intend = mainPipe.io.tag_write_intend
   assert(!RegNext(!tag_write_intend && tagArray.io.write.valid))
-  ldu.take(HybridLoadReadBase).zipWithIndex.foreach {
+  ldu.zipWithIndex.foreach {
     case (ld, i) =>
       tagArray.io.read(i) <> ld.io.tag_read
       ld.io.tag_resp := tagArray.io.resp(i)
       ld.io.tag_read.ready := !tag_write_intend
   }
   if(StorePrefetchL1Enabled) {
-    stu.take(HybridStoreReadBase).zipWithIndex.foreach {
+    stu.zipWithIndex.foreach {
       case (st, i) =>
-        tagArray.io.read(HybridLoadReadBase + i) <> st.io.tag_read
-        st.io.tag_resp := tagArray.io.resp(HybridLoadReadBase + i)
+        tagArray.io.read(LoadPipelineWidth + i) <> st.io.tag_read
+        st.io.tag_resp := tagArray.io.resp(LoadPipelineWidth + i)
         st.io.tag_read.ready := !tag_write_intend
     }
   }else {
@@ -1145,36 +1102,36 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
         st.io.tag_resp := 0.U.asTypeOf(st.io.tag_resp)
     }
   }
-  for (i <- 0 until backendParams.HyuCnt) {
-    val HybridLoadTagReadPort = HybridLoadReadBase + i
-    val HybridStoreTagReadPort = HybridStoreReadBase + i
-    val TagReadPort =
-      if (EnableStorePrefetchSPB)
-        HybridLoadReadBase + HybridStoreReadBase + i
-      else
-        HybridLoadReadBase + i
+  // for (i <- 0 until backendParams.HyuCnt) {
+  //   val HybridLoadTagReadPort = HybridLoadReadBase + i
+  //   val HybridStoreTagReadPort = HybridStoreReadBase + i
+  //   val TagReadPort =
+  //     if (EnableStorePrefetchSPB)
+  //       HybridLoadReadBase + HybridStoreReadBase + i
+  //     else
+  //       HybridLoadReadBase + i
 
-    // read tag
-    ldu(HybridLoadTagReadPort).io.tag_read.ready := false.B
-    stu(HybridStoreTagReadPort).io.tag_read.ready := false.B
+  //   // read tag
+  //   ldu(HybridLoadTagReadPort).io.tag_read.ready := false.B
+  //   stu(HybridStoreTagReadPort).io.tag_read.ready := false.B
 
-    if (StorePrefetchL1Enabled) {
-      when (ldu(HybridLoadTagReadPort).io.tag_read.valid) {
-        tagArray.io.read(TagReadPort) <> ldu(HybridLoadTagReadPort).io.tag_read
-        ldu(HybridLoadTagReadPort).io.tag_read.ready := !tag_write_intend
-      } .otherwise {
-        tagArray.io.read(TagReadPort) <> stu(HybridStoreTagReadPort).io.tag_read
-        stu(HybridStoreTagReadPort).io.tag_read.ready := !tag_write_intend
-      }
-    } else {
-      tagArray.io.read(TagReadPort) <> ldu(HybridLoadTagReadPort).io.tag_read
-      ldu(HybridLoadTagReadPort).io.tag_read.ready := !tag_write_intend
-    }
+  //   if (StorePrefetchL1Enabled) {
+  //     when (ldu(HybridLoadTagReadPort).io.tag_read.valid) {
+  //       tagArray.io.read(TagReadPort) <> ldu(HybridLoadTagReadPort).io.tag_read
+  //       ldu(HybridLoadTagReadPort).io.tag_read.ready := !tag_write_intend
+  //     } .otherwise {
+  //       tagArray.io.read(TagReadPort) <> stu(HybridStoreTagReadPort).io.tag_read
+  //       stu(HybridStoreTagReadPort).io.tag_read.ready := !tag_write_intend
+  //     }
+  //   } else {
+  //     tagArray.io.read(TagReadPort) <> ldu(HybridLoadTagReadPort).io.tag_read
+  //     ldu(HybridLoadTagReadPort).io.tag_read.ready := !tag_write_intend
+  //   }
 
-    // tag resp
-    ldu(HybridLoadTagReadPort).io.tag_resp := tagArray.io.resp(TagReadPort)
-    stu(HybridStoreTagReadPort).io.tag_resp := tagArray.io.resp(TagReadPort)
-  }
+  //   // tag resp
+  //   ldu(HybridLoadTagReadPort).io.tag_resp := tagArray.io.resp(TagReadPort)
+  //   stu(HybridStoreTagReadPort).io.tag_resp := tagArray.io.resp(TagReadPort)
+  // }
   tagArray.io.read.last <> mainPipe.io.tag_read
   mainPipe.io.tag_resp := tagArray.io.resp.last
 
@@ -1387,27 +1344,6 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     for (w <- 0 until backendParams.StaCnt) { stu(w).io.miss_req.ready := false.B }
   }
 
-  for (i <- 0 until backendParams.HyuCnt) {
-    val HybridLoadReqPort = HybridLoadReadBase + i
-    val HybridStoreReqPort = HybridStoreReadBase + i
-    val HybridMissReqPort = HybridMissReqBase + i
-
-    ldu(HybridLoadReqPort).io.miss_req.ready := false.B
-    stu(HybridStoreReqPort).io.miss_req.ready := false.B
-
-    if (StorePrefetchL1Enabled) {
-      when (ldu(HybridLoadReqPort).io.miss_req.valid) {
-        missReqArb.io.in(HybridMissReqPort) <> ldu(HybridLoadReqPort).io.miss_req
-        missReadyGen.io.in(HybridMissReqPort) <> ldu(HybridLoadReqPort).io.miss_req
-      } .otherwise {
-        missReqArb.io.in(HybridMissReqPort) <> stu(HybridStoreReqPort).io.miss_req
-        missReadyGen.io.in(HybridMissReqPort) <> stu(HybridStoreReqPort).io.miss_req
-      }
-    } else {
-      missReqArb.io.in(HybridMissReqPort) <> ldu(HybridLoadReqPort).io.miss_req
-      missReadyGen.io.in(HybridMissReqPort) <> ldu(HybridLoadReqPort).io.miss_req
-    }
-  }
 
   for(w <- 0 until LoadPipelineWidth) {
     wb.io.miss_req_conflict_check(w) := ldu(w).io.wbq_conflict_check

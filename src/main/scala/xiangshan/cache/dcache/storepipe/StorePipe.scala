@@ -19,7 +19,7 @@ package xiangshan.cache
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.tilelink.ClientMetadata
+import freechips.rocketchip.tilelink.{ClientMetadata,ClientStates}
 import utility.{XSDebug, XSPerfAccumulate, HasPerfEvents}
 import xiangshan.L1CacheErrorInfo
 
@@ -62,10 +62,6 @@ class StorePipe(id: Int)(implicit p: Parameters) extends DCacheModule{
     val lsu = Flipped(new DCacheStoreIO)
 
     // meta and data array read port
-    val meta_read = DecoupledIO(new MetaReadReq)
-    val meta_resp = Input(Vec(nWays, new Meta))
-    // TODO extra_meta_resp: error; prefetch; access (prefetch hit?)
-    // val extra_meta_resp = Input(Vec(nWays, new DCacheExtraMeta))
 
     val tag_read = DecoupledIO(new TagReadReq)
     val tag_resp = Input(Vec(nWays, UInt(encTagBits.W)))
@@ -92,15 +88,12 @@ class StorePipe(id: Int)(implicit p: Parameters) extends DCacheModule{
   val s0_req = io.lsu.req.bits
   val s0_fire = io.lsu.req.fire
 
-  io.meta_read.valid        := s0_valid
-  io.meta_read.bits.idx     := get_idx(io.lsu.req.bits.vaddr)
-  io.meta_read.bits.way_en  := ~0.U(nWays.W)
 
   io.tag_read.valid         := s0_valid
   io.tag_read.bits.idx      := get_idx(io.lsu.req.bits.vaddr)
   io.tag_read.bits.way_en   := ~0.U(nWays.W)
 
-  io.lsu.req.ready := io.meta_read.ready && io.tag_read.ready
+  io.lsu.req.ready := io.tag_read.ready
 
   XSPerfAccumulate("s0_valid", io.lsu.req.valid)
   XSPerfAccumulate("s0_valid_not_ready", io.lsu.req.valid && !io.lsu.req.ready)
@@ -115,8 +108,10 @@ class StorePipe(id: Int)(implicit p: Parameters) extends DCacheModule{
   val s1_valid = RegNext(s0_fire)
   val s1_req = RegEnable(s0_req, s0_fire)
 
-  val s1_meta_resp = io.meta_resp
-  val s1_tag_resp  = io.tag_resp.map(tag => tag(tagBits - 1, 0))
+  val s1_meta_resp = io.tag_resp.map { r =>
+    ClientMetadata(r(tagBits + ClientStates.width - 1, tagBits))
+  }
+  val s1_tag_resp = io.tag_resp.map(r => r(tagBits - 1, 0))
 
   val s1_paddr = io.lsu.s1_paddr
 
@@ -124,11 +119,11 @@ class StorePipe(id: Int)(implicit p: Parameters) extends DCacheModule{
     * get hit meta
     */
   val s1_tag_match = Wire(UInt(nWays.W))
-  s1_tag_match := wayMap((wayid: Int) => {s1_tag_resp(wayid) === get_tag(s1_paddr) && s1_meta_resp(wayid).coh.isValid()}).asUInt
-  val s1_fake_meta = Wire(new Meta)
-  s1_fake_meta.coh := ClientMetadata.onReset
+  s1_tag_match := wayMap((wayid: Int) => {s1_tag_resp(wayid) === get_tag(s1_paddr) && s1_meta_resp(wayid).isValid()}).asUInt
+  val s1_fake_meta = Wire(new ClientMetadata)
+  s1_fake_meta := ClientMetadata.onReset
   val s1_hit_meta = Mux(s1_tag_match.orR, Mux1H(s1_tag_match, wayMap((wayid: Int) => {s1_meta_resp(wayid)})), s1_fake_meta)
-  val s1_hit_coh = s1_hit_meta.coh
+  val s1_hit_coh = s1_hit_meta
 
   val (s1_has_permission, _, s1_new_hit_coh) = s1_hit_coh.onAccess(s1_req.cmd)
   val s1_hit = s1_has_permission && s1_new_hit_coh === s1_hit_coh && s1_tag_match.orR

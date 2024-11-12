@@ -793,7 +793,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                     (s0_src_valid_vec(super_rep_idx) || s0_src_valid_vec(fast_rep_idx) || s0_src_valid_vec(lsq_rep_idx) || ((s0_src_valid_vec(int_iss_idx) && !s0_sel_src.prf) && !s0_src_valid_vec(vec_iss_idx) && !s0_src_valid_vec(high_pf_idx))) || s0_mmio_fire
   io.wakeup.bits := s0_wakeup_uop
 
-  val canFastFeedback = s0_valid && s0_src_valid_vec(int_iss_idx) && (io.replayQValidCount > 8.U)
+  val canFastFeedback = io.ldin.fire && s0_src_valid_vec(int_iss_idx) && (io.replayQValidCount > 8.U)
 
   io.feedback_fast.valid                 := canFastFeedback
   io.feedback_fast.bits.hit              := true.B

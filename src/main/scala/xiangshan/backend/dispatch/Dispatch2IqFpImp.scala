@@ -40,10 +40,10 @@ class Dispatch2IqFpImp(override val wrapper: Dispatch2Iq)(implicit p: Parameters
   println(s"[Dispatch2IqFpImp] fuConfigMultiIQ: ${fuConfigMultiIQ.map(_.name)}")
   val uopsInFuType = VecInit(uopsIn.map(x => Mux(x.valid, x.bits.fuType, 0.U.asTypeOf(x.bits.fuType))))
   val inFuTypeIsMultiIQ = VecInit(uopsInFuType.map{ case x =>
-    VecInit(fuConfigMultiIQ.map{ case y => x(y.fuType.id.U)})
+    VecInit(fuConfigMultiIQ.map{ case y => x === y.fuType.id.U})
   })
   val inFuTypeIsOnlyOneIQ  = VecInit(uopsInFuType.map { case x =>
-    VecInit(fuConfigOnlyOneIQ.map { case y => x(y.fuType.id.U) })
+    VecInit(fuConfigOnlyOneIQ.map { case y => x === y.fuType.id.U})
   })
   val popFuType = Wire(Vec(numEnq, Vec(fuConfigMultiIQ.size, UInt(numEnq.U.getWidth.W))))
   popFuType.zipWithIndex.map{ case (p, i) =>

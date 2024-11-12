@@ -42,6 +42,7 @@ object LmultoRegNum {
 
 class VecExceptionGen(implicit p: Parameters) extends XSModule{
   val io = IO(new Bundle(){
+    val valid = Input(Bool())
     val inst = Input(UInt(32.W))
     val decodedInst = Input(new DecodedInst)
     val vtype = Input(new VType)
@@ -50,13 +51,13 @@ class VecExceptionGen(implicit p: Parameters) extends XSModule{
     val illegalInst = Output(Bool())
   })
 
-  private val inst: XSInstBitFields = io.inst.asTypeOf(new XSInstBitFields)
-  private val isVArithMem = FuType.isVArithMem(io.decodedInst.fuType)
-  private val isVArith = FuType.isVArith(io.decodedInst.fuType)
-  private val isVset = FuType.isVset(io.decodedInst.fuType)
+  private val inst: XSInstBitFields = RegEnable(io.inst.asTypeOf(new XSInstBitFields), io.valid)
+  private val isVArithMem = RegEnable(FuType.isVArithMem(io.decodedInst.fuType), io.valid)
+  private val isVArith = RegEnable(FuType.isVArith(io.decodedInst.fuType), io.valid)
+  private val isVset = RegEnable(FuType.isVset(io.decodedInst.fuType), io.valid)
 
-  private val SEW = io.vtype.vsew(1, 0)
-  private val LMUL = Cat(~io.vtype.vlmul(2), io.vtype.vlmul(1, 0))
+  private val SEW = RegEnable(io.vtype.vsew(1, 0), io.valid)
+  private val LMUL = RegEnable(Cat(~io.vtype.vlmul(2), io.vtype.vlmul(1, 0)), io.valid)
 
   private val lsStrideInst = Seq(
     VLE8_V, VLE16_V, VLE32_V, VLE64_V, VSE8_V, VSE16_V, VSE32_V, VSE64_V, 

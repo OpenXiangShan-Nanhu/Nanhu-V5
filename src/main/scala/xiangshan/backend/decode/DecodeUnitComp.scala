@@ -125,8 +125,8 @@ class DecodeUnitComp()(implicit p : Parameters) extends XSModule with DecodeUnit
     }
   }
 
-  val latchedInst = RegEnable(inDecodedInst, inValid && inReady)
-  val latchedUopInfo = RegEnable(inUopInfo, inValid && inReady)
+  val latchedInst = inDecodedInst
+  val latchedUopInfo = inUopInfo
   //input bits
   private val instFields: XSInstBitFields = latchedInst.instr.asTypeOf(new XSInstBitFields)
 

@@ -31,6 +31,7 @@ import xiangshan.backend.fu.wrapper.CSRToDecode
 import yunsuan.VpermType
 import xiangshan.ExceptionNO.{illegalInstr, virtualInstr}
 import xiangshan.frontend.FtqPtr
+import xiangshan.ExceptionNO.illegalInstr
 
 class DecodeStage(implicit p: Parameters) extends XSModule
   with HasPerfEvents
@@ -133,15 +134,24 @@ class DecodeStage(implicit p: Parameters) extends XSModule
   vtypeGen.io.walkVType := io.fromRob.walkVType
   vtypeGen.io.vsetvlVType := io.vsetvlVType
 
+  val vecException = Module(new VecExceptionGen)
+  vecException.io.valid := complexValid && !io.fromRob.isResumeVType
+  vecException.io.inst := complexInst.instr
+  vecException.io.decodedInst := complexInst
+  vecException.io.vtype := complexInst.vpu.vtype
+  vecException.io.vstart := complexInst.vpu.vstart
+
   //Comp 1
   decoderComp.io.redirect := io.redirect
   decoderComp.io.csrCtrl := io.csrCtrl
   decoderComp.io.vtypeBypass := vtypeGen.io.vtype
   // The input inst of decoderComp is latched last cycle.
   // Set input empty, if there is no complex inst latched last cycle.
-  decoderComp.io.in.valid := complexValid && !io.fromRob.isResumeVType
-  decoderComp.io.in.bits.simpleDecodedInst := complexInst
-  decoderComp.io.in.bits.uopInfo := complexUopInfo
+  decoderComp.io.in.valid := GatedRegNext(complexValid && !io.fromRob.isResumeVType)
+  decoderComp.io.in.bits.simpleDecodedInst := RegEnable(complexInst, complexValid && !io.fromRob.isResumeVType)
+  decoderComp.io.in.bits.simpleDecodedInst.exceptionVec(illegalInstr) := RegEnable(complexInst.exceptionVec(illegalInstr), complexValid && !io.fromRob.isResumeVType) || vecException.io.illegalInst
+  decoderComp.io.in.bits.simpleDecodedInst.numUops := Mux(vecException.io.illegalInst, 1.U, RegEnable(complexInst.numUops, complexValid && !io.fromRob.isResumeVType))
+  decoderComp.io.in.bits.uopInfo := RegEnable(complexUopInfo, complexValid && !io.fromRob.isResumeVType)
   decoderComp.io.out.complexDecodedInsts.zipWithIndex.foreach { case (out, i) => out.ready := io.out(i).ready }
 
   val complexDecodedInst = VecInit(decoderComp.io.out.complexDecodedInsts.map(_.bits))

@@ -184,7 +184,8 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val bankNumWidth = log2Up(bankNum)
   val deqPtrWidth = deqPtr.value.getWidth
   val robIdxThisLine = VecInit((0 until bankNum).map(i => Cat(deqPtr.value(deqPtrWidth - 1, bankNumWidth), i.U(bankNumWidth.W))))
-  val robIdxNextLine = VecInit((0 until bankNum).map(i => Cat(deqPtr.value(deqPtrWidth - 1, bankNumWidth) + 1.U, i.U(bankNumWidth.W))))
+  // val robIdxNextLine = VecInit((0 until bankNum).map(i => Cat(deqPtr.value(deqPtrWidth - 1, bankNumWidth) + 1.U, i.U(bankNumWidth.W))))
+  val robIdxNextLine = VecInit((0 until bankNum).map(i => Cat((deqPtr + bankNumWidth.U).value(deqPtrWidth - 1, bankNumWidth), i.U(bankNumWidth.W))))
   // robBanks read
   val robBanksRdataThisLine = VecInit(robBanks.map{ case bank =>
     Mux1H(robBanksRaddrThisLine, bank)
@@ -1255,7 +1256,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val traceBlocks = io.trace.traceCommitInfo.blocks
   val traceBlockInPipe = io.trace.traceCommitInfo.blocks.map(_.bits.tracePipe)
 
-  traceTrap := trapTraceInfoFromCsr.bits
+  traceTrap := trapTraceInfoFromCsr
 
   for (i <- 0 until CommitWidth) {
     traceBlocks(i).bits.ftqIdx.foreach(_ := rawInfo(i).ftqIdx)

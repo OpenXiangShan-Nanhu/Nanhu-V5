@@ -23,9 +23,13 @@ class TraceBuffer(implicit val p: Parameters) extends Module
   })
 
   // buffer: compress info from robCommit
-  val traceTrap    = Reg(new TraceTrap)
+  val traceTrap    = Reg(ValidIO(new TraceTrap))
   val traceEntries = Reg(Vec(CommitWidth, ValidIO(new TraceBlock(false, IretireWidthCompressed))))
-  traceTrap := io.in.fromRob.trap
+  when (io.in.fromRob.trap.valid){
+    traceTrap.valid := io.in.fromRob.trap.valid
+    traceTrap.bits := io.in.fromRob.trap.bits
+  }
+  
 
   val blockCommit = RegInit(false.B) // to rob
 

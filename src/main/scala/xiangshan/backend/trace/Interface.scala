@@ -27,7 +27,7 @@ class TraceBlock(hasIaddr: Boolean, iretireWidth: Int)(implicit val p: Parameter
 }
 
 class TraceBundle(hasIaddr: Boolean, blockSize: Int, iretireWidth: Int)(implicit val p: Parameters) extends Bundle with HasXSParameter {
-  val trap = Output(new TraceTrap)
+  val trap = ValidIO(new TraceTrap)
   val blocks = Vec(blockSize, ValidIO(new TraceBlock(hasIaddr, iretireWidth)))
 }
 

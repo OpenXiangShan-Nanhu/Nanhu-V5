@@ -19,7 +19,7 @@ package xiangshan.backend.rename
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xs.utils.{HasCircularQueuePtrHelper, ParallelPriorityMux, GatedValidRegNext}
+import xs.utils.{HasCircularQueuePtrHelper, ParallelPriorityMux, GatedValidRegNext, GatedRegNext}
 import xs.utils.perf.{XSError}
 import xiangshan._
 
@@ -124,9 +124,9 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
   val t1_redirect = GatedValidRegNext(io.redirect, false.B)
   val t1_raddr = io.readPorts.map(p => RegEnable(p.addr, !p.hold))
   val t1_rdata_use_t1_raddr = VecInit(t1_raddr.map(spec_table(_)))
-  val t1_wSpec = RegNext(Mux(io.redirect, 0.U.asTypeOf(io.specWritePorts), io.specWritePorts))
+  val t1_wSpec = GatedRegNext(Mux(io.redirect, 0.U.asTypeOf(io.specWritePorts), io.specWritePorts))
 
-  val t1_snpt = RegNext(io.snpt, 0.U.asTypeOf(io.snpt))
+  val t1_snpt = GatedRegNext(io.snpt)
 
   val snapshots = SnapshotGenerator(spec_table, t1_snpt.snptEnq, t1_snpt.snptDeq, t1_redirect, t1_snpt.flushVec)
 
@@ -147,7 +147,7 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
   // READ: decode-rename stage
   for ((r, i) <- io.readPorts.zipWithIndex) {
     val t0_bypass = io.specWritePorts.map(w => w.wen && Mux(r.hold, w.addr === t1_raddr(i), w.addr === r.addr))
-    val t1_bypass = RegNext(Mux(io.redirect, 0.U.asTypeOf(VecInit(t0_bypass)), VecInit(t0_bypass)))
+    val t1_bypass = GatedRegNext(Mux(io.redirect, 0.U.asTypeOf(VecInit(t0_bypass)), VecInit(t0_bypass)))
     val bypass_data = ParallelPriorityMux(t1_bypass.reverse, t1_wSpec.map(_.data).reverse)
     r.data := Mux(t1_bypass.asUInt.orR, bypass_data, t1_rdata_use_t1_raddr(i))
   }

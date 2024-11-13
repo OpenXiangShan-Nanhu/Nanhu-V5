@@ -127,7 +127,6 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
     RobSize = 96,                   // Default: 160
     RabSize = 96,                  // Default: 256
     VTypeBufferSize = 24,           // Default: 64
-    WaitTableSize = 512,             // Default: 1024
     IssueQueueSize = 16,            // Default: 24
     IssueQueueCompEntrySize = 12,    // Default: 16
     NRPhyRegs = 128,                // Default: 192

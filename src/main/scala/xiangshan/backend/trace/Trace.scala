@@ -64,8 +64,8 @@ class Trace(implicit val p: Parameters) extends Module with HasXSParameter {
   val s3_in_trap = s2_out_trap
   val s3_in_block = s2_out_block
 
-  val s3_out_trap  = RegNext(s3_in_trap)
-  val s3_out_block = RegNext(s3_in_block)
+  val s3_out_trap  = RegEnable(s3_in_trap, 0.U.asTypeOf(s3_in_trap), s3_in_trap.valid)
+  val s3_out_block = RegEnable(s3_in_block, 0.U.asTypeOf(s3_in_block) , s3_in_block.map(_.valid).reduce(_ || _))
 
   toPcMem := s3_in_block
 

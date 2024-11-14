@@ -80,7 +80,8 @@ class MEFreeList(size: Int)(implicit p: Parameters) extends BaseFreeList(size) w
   val freeRegCnt = Mux(doWalkRename && !lastCycleRedirect, distanceBetween(tailPtrNext, headPtr) - PopCount(io.walkReq),
                    Mux(doNormalRename,                     distanceBetween(tailPtrNext, headPtr) - PopCount(io.allocateReq),
                                                            distanceBetween(tailPtrNext, headPtr)))
-  val freeRegCntReg = RegNext(freeRegCnt)
+  
+  val freeRegCntReg = Mux(io.redirect, 0.U,RegNext(freeRegCnt))
   io.canAllocate := freeRegCntReg >= RenameWidth.U
 
   if(backendParams.debugEn){

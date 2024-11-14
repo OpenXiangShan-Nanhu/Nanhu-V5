@@ -147,7 +147,7 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
   // READ: decode-rename stage
   for ((r, i) <- io.readPorts.zipWithIndex) {
     val t0_bypass = io.specWritePorts.map(w => w.wen && Mux(r.hold, w.addr === t1_raddr(i), w.addr === r.addr))
-    val t1_bypass = GatedRegNext(Mux(io.redirect, 0.U.asTypeOf(VecInit(t0_bypass)), VecInit(t0_bypass)))
+    val t1_bypass = (Mux(io.redirect, 0.U.asTypeOf(VecInit(t0_bypass)), RegNext(VecInit(t0_bypass))))
     val bypass_data = ParallelPriorityMux(t1_bypass.reverse, t1_wSpec.map(_.data).reverse)
     r.data := Mux(t1_bypass.asUInt.orR, bypass_data, t1_rdata_use_t1_raddr(i))
   }
@@ -157,9 +157,16 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
       arch_table_next(w.addr) := w.data
     }
     val arch_mask = VecInit.fill(PhyRegIdxWidth)(w.wen).asUInt
-    old_pdest(i) :=
-      MuxCase(arch_table(w.addr) & arch_mask,
+    when (w.wen) {
+      old_pdest(i) :=
+        MuxCase(arch_table(w.addr) & arch_mask,
               io.archWritePorts.take(i).reverse.map(x => (x.wen && x.addr === w.addr, x.data & arch_mask)))
+    }.otherwise {
+      old_pdest(i) := arch_table(w.addr) & arch_mask
+    }
+    // old_pdest(i) :=
+    //   MuxCase(arch_table(w.addr) & arch_mask,
+    //           io.archWritePorts.take(i).reverse.map(x => (x.wen && x.addr === w.addr, x.data & arch_mask)))
   }
   arch_table := arch_table_next
 

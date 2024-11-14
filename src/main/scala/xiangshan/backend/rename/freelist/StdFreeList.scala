@@ -113,7 +113,7 @@ class StdFreeList(freeListSize: Int, numLogicRegs: Int, regType: RegType, realNu
   XSPerfAccumulate("allocation_blocked_cycle", !io.canAllocate)
   XSPerfAccumulate("can_alloc_wrong", !io.canAllocate && freeRegCnt >= RenameWidth.U)
 
-  val freeRegCntReg = RegNext(freeRegCnt)
+  val freeRegCntReg = Mux(io.redirect, 0.U,RegNext(freeRegCnt))
   val perfEvents = Seq(
     ("std_freelist_1_4_valid", freeRegCntReg <  (freeListSize / 4).U                                    ),
     ("std_freelist_2_4_valid", freeRegCntReg >= (freeListSize / 4).U && freeRegCntReg < (freeListSize / 2).U    ),

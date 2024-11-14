@@ -225,10 +225,15 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val commitInfo = VecInit((0 until CommitWidth).map(i => robDeqGroup(deqPtrVec(i).value(bankAddrWidth-1,0)))).toSeq
   val walkInfo = VecInit((0 until CommitWidth).map(i => robDeqGroup(walkPtrVec(i).value(bankAddrWidth-1, 0)))).toSeq
   for (i <- 0 until CommitWidth) {
-    connectCommitEntry(robDeqGroup(i), robBanksRdataThisLineUpdate(i))
-    when(allCommitted){
-      connectCommitEntry(robDeqGroup(i), robBanksRdataNextLineUpdate(i))
+    when (robBanksRdataThisLineUpdate(i).valid || robBanksRdataNextLineUpdate(i).valid) {
+      connectCommitEntry(robDeqGroup(i), robBanksRdataThisLineUpdate(i))
+      when(allCommitted){
+        connectCommitEntry(robDeqGroup(i), robBanksRdataNextLineUpdate(i))
+      }
+    }.otherwise {
+      robDeqGroup(i) := 0.U.asTypeOf(new RobCommitEntryBundle)
     }
+    
   }
   
   // In each robentry, the ftqIdx and ftqOffset belong to the first instruction that was compressed,

@@ -39,6 +39,7 @@ import xiangshan.frontend.{FtqPtr, FtqRead, Ftq_RF_Components}
 import xiangshan.mem.{LqPtr, LsqEnqIO}
 import xiangshan.backend.issue.{FpScheduler, IntScheduler, MemScheduler, VfScheduler}
 import xiangshan.backend.trace._
+import freechips.rocketchip.util.DataToAugmentedData
 
 class CtrlToFtqIO(implicit p: Parameters) extends XSBundle {
   val rob_commits = Vec(CommitWidth, Valid(new RobCommitInfo))
@@ -69,6 +70,18 @@ class CtrlBlockImp(
 {
 
   val io = IO(new CtrlBlockIO())
+
+  private val writebackSource = params.allExuParams.map(_.name)
+
+  writebackSource.zipWithIndex.foreach({case (wb, idx) =>
+    println(s"writeback source $idx for ctrl is $wb")
+  })
+
+  val io_writeback = IO(Flipped(MixedVec(params.genWrite2CtrlBundles)))
+  io_writeback.zipWithIndex.zip(writebackSource).map({case ((port, idx), name) => 
+    port.suggestName("io_Writeback_from" + name + "_" + idx)
+  })
+
 
   val gpaMem = wrapper.gpaMem.module
   val decode = Module(new DecodeStage)
@@ -110,7 +123,7 @@ class CtrlBlockImp(
   val s2_s4_redirect = RegNextWithEnable(s1_s3_redirect)
   val s3_s5_redirect = RegNextWithEnable(s2_s4_redirect)
 
-  private val delayedNotFlushedWriteBack = io.fromWB.wbData.map(x => {
+  private val delayedNotFlushedWriteBack = io_writeback.map(x => {
     val valid = x.valid
     val killedByOlder = x.bits.robIdx.needFlush(Seq(s1_s3_redirect, s2_s4_redirect))
     val delayed = Wire(Valid(new ExuOutput(x.bits.params)))
@@ -119,9 +132,9 @@ class CtrlBlockImp(
     delayed.bits.debugInfo.writebackTime := GTimer()
     delayed
   }).toSeq
-  private val delayedWriteBack = Wire(chiselTypeOf(io.fromWB.wbData))
+  private val delayedWriteBack = Wire(chiselTypeOf(io_writeback))
   delayedWriteBack.zipWithIndex.map{ case (x,i) =>
-    x.valid := GatedValidRegNext(io.fromWB.wbData(i).valid)
+    x.valid := GatedValidRegNext(io_writeback(i).valid)
     x.bits := delayedNotFlushedWriteBack(i).bits
   }
   val delayedNotFlushedWriteBackNeedFlush = Wire(Vec(params.allExuParams.filter(_.needExceptionGen).length, Bool()))
@@ -130,18 +143,18 @@ class CtrlBlockImp(
       (if (x.bits.trigger.nonEmpty) TriggerAction.isDmode(x.bits.trigger.get) else false.B)
   }
 
-  val wbDataNoStd = io.fromWB.wbData.filter(!_.bits.params.hasStdFu)
-  val intScheWbData = io.fromWB.wbData.filter(_.bits.params.schdType.isInstanceOf[IntScheduler])
-  val fpScheWbData = io.fromWB.wbData.filter(_.bits.params.schdType.isInstanceOf[FpScheduler])
-  val vfScheWbData = io.fromWB.wbData.filter(_.bits.params.schdType.isInstanceOf[VfScheduler])
+  val wbDataNoStd = io_writeback.filter(!_.bits.params.hasStdFu)
+  val intScheWbData = io_writeback.filter(_.bits.params.schdType.isInstanceOf[IntScheduler])
+  val fpScheWbData = io_writeback.filter(_.bits.params.schdType.isInstanceOf[FpScheduler])
+  val vfScheWbData = io_writeback.filter(_.bits.params.schdType.isInstanceOf[VfScheduler])
   val intCanCompress = intScheWbData.filter(_.bits.params.CanCompress)
   val i2vWbData = intScheWbData.filter(_.bits.params.writeVecRf)
   val f2vWbData = fpScheWbData.filter(_.bits.params.writeVecRf)
-  val memVloadWbData = io.fromWB.wbData.filter(x => x.bits.params.schdType.isInstanceOf[MemScheduler] && x.bits.params.hasVLoadFu)
+  val memVloadWbData = io_writeback.filter(x => x.bits.params.schdType.isInstanceOf[MemScheduler] && x.bits.params.hasVLoadFu)
   private val delayedNotFlushedWriteBackNums = wbDataNoStd.map(x => {
     val valid = x.valid
     val killedByOlder = x.bits.robIdx.needFlush(Seq(s1_s3_redirect, s2_s4_redirect, s3_s5_redirect))
-    val delayed = Wire(Valid(UInt(io.fromWB.wbData.size.U.getWidth.W)))
+    val delayed = Wire(Valid(UInt(io_writeback.size.U.getWidth.W)))
     delayed.valid := GatedValidRegNext(valid && !killedByOlder)
     val isIntSche = intCanCompress.contains(x)
     val isFpSche = fpScheWbData.contains(x)
@@ -173,10 +186,10 @@ class CtrlBlockImp(
   }).toSeq
 
   private val exuPredecode = VecInit(
-    io.fromWB.wbData.filter(_.bits.redirect.nonEmpty).map(x => x.bits.predecodeInfo.get).toSeq
+    io_writeback.filter(_.bits.redirect.nonEmpty).map(x => x.bits.predecodeInfo.get).toSeq
   )
 
-  private val exuRedirects: Seq[ValidIO[Redirect]] = io.fromWB.wbData.filter(_.bits.redirect.nonEmpty).map(x => {
+  private val exuRedirects: Seq[ValidIO[Redirect]] = io_writeback.filter(_.bits.redirect.nonEmpty).map(x => {
     val out = Wire(Valid(new Redirect()))
     out.valid := x.valid && x.bits.redirect.get.valid && x.bits.redirect.get.bits.cfiUpdate.isMisPred && !x.bits.robIdx.needFlush(Seq(s1_s3_redirect, s2_s4_redirect))
     out.bits := x.bits.redirect.get.bits
@@ -313,11 +326,10 @@ class CtrlBlockImp(
     io.tracePcRead(i).offset := trace.toPcMem(i).bits.ftqOffset.get
     trace.io.fromPcMem(i) := io.tracePcRead(i).data
   }
-  
 
-  io.traceCoreInterface.toEncoder.cause     :=  trace.io.toEncoder.trap.cause.asUInt
-  io.traceCoreInterface.toEncoder.tval      :=  trace.io.toEncoder.trap.tval.asUInt
-  io.traceCoreInterface.toEncoder.priv      :=  trace.io.toEncoder.trap.priv.asUInt
+  io.traceCoreInterface.toEncoder.cause     :=  trace.io.toEncoder.trap.bits.cause.asUInt
+  io.traceCoreInterface.toEncoder.tval      :=  trace.io.toEncoder.trap.bits.tval.asUInt
+  io.traceCoreInterface.toEncoder.priv      :=  trace.io.toEncoder.trap.bits.priv.asUInt
   io.traceCoreInterface.toEncoder.iaddr     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.iaddr.get)).asUInt
   io.traceCoreInterface.toEncoder.itype     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.itype)).asUInt
   io.traceCoreInterface.toEncoder.iretire   :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.iretire)).asUInt
@@ -648,14 +660,14 @@ class CtrlBlockImp(
   io.toVecExcpMod.ratOldPest match {
     case fromRat =>
       (0 until RabCommitWidth).foreach { idx =>
-        fromRat.v0OldVdPdest(idx).valid := RegNext(
+        fromRat.v0OldVdPdest(idx).valid := GatedRegNext(
           rat.io.rabCommits.isCommit &&
           rat.io.rabCommits.isWalk &&
           rat.io.rabCommits.commitValid(idx) &&
           rat.io.rabCommits.info(idx).v0Wen
         )
         fromRat.v0OldVdPdest(idx).bits := rat.io.v0_old_pdest(idx)
-        fromRat.vecOldVdPdest(idx).valid := RegNext(
+        fromRat.vecOldVdPdest(idx).valid := GatedRegNext(
           rat.io.rabCommits.isCommit &&
           rat.io.rabCommits.isWalk &&
           rat.io.rabCommits.commitValid(idx) &&
@@ -709,9 +721,12 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
   }
   val intIQValidNumVec = Input(MixedVec(params.genIntIQValidNumBundle))
   val fpIQValidNumVec = Input(MixedVec(params.genFpIQValidNumBundle))
-  val fromWB = new Bundle {
-    val wbData = Flipped(MixedVec(params.genWrite2CtrlBundles))
-  }
+  // val fromWB = new Bundle {
+  //   val wbData = Flipped(MixedVec(params.genWrite2CtrlBundles))
+  // }
+  // fromWB.wbData.zipWithIndex.zip(params.allExuParams.map(_.name)).foreach({case ((port, idx), name) =>
+  //   port.suggestName("io_fromWB_wbData"+idx+"_"+name)
+  // })
   val redirect = ValidIO(new Redirect)
   val fromMem = new Bundle {
     val stIn = Vec(params.StaExuCnt, Flipped(ValidIO(new DynInst))) // use storeSetHit, ssid, robIdx

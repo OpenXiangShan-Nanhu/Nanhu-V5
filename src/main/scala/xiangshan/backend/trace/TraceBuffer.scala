@@ -29,7 +29,7 @@ class TraceBuffer(implicit val p: Parameters) extends Module
     traceTrap.valid := io.in.fromRob.trap.valid
     traceTrap.bits := io.in.fromRob.trap.bits
   }.otherwise{
-    traceTrap := 0.U.asTypeOf(new TraceTrap)
+    traceTrap := 0.U.asTypeOf(io.in.fromRob.trap)
   }
   
 

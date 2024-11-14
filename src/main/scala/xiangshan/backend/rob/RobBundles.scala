@@ -66,7 +66,7 @@ object RobBundles extends HasCircularQueuePtrHelper {
     // data end
     
     // trace
-    val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2))
+    val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2 + 1))
     // status begin
     val valid = Bool()
     val fflags = UInt(5.W)
@@ -116,7 +116,7 @@ object RobBundles extends HasCircularQueuePtrHelper {
     // val isMove = Bool()      // for perfEvents
     val needFlush = Bool()
     // trace
-    val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2))
+    val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2 + 1))
     // debug_begin
     val debug_pc = OptionWrapper(backendParams.debugEn, UInt(VAddrBits.W))
     val debug_instr = OptionWrapper(backendParams.debugEn, UInt(32.W))

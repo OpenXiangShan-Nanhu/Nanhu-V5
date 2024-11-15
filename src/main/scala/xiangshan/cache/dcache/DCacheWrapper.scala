@@ -619,17 +619,29 @@ class DCacheLineIO(implicit p: Parameters) extends DCacheBundle
   val resp = Flipped(DecoupledIO(new DCacheLineResp))
 }
 
+class RefillToSbuffer(implicit p: Parameters) extends  DCacheBundle{
+  val data = Output(UInt(l1BusDataWidth.W))
+  val id = Output(UInt(reqIdWidth.W))
+  val refill_count = Output(UInt((blockBytes/beatBytes).W))
+  val isKeyword = Output(Bool())
+}
+
 class DCacheToSbufferIO(implicit p: Parameters) extends DCacheBundle {
   // sbuffer will directly send request to dcache main pipe
   val req = Flipped(Decoupled(new DCacheLineReq))
 
   val main_pipe_hit_resp = ValidIO(new DCacheLineResp)
+  val amo_hit_resp = ValidIO(new DCacheLineResp)
   //val refill_hit_resp = ValidIO(new DCacheLineResp)
 
   val replay_resp = ValidIO(new DCacheLineResp)
 
+  val refill_row_data = ValidIO(new RefillToSbuffer)
+  val refill_to_mp_req = new MainPipeInfoToSbuffer
+  val refill_to_mp_resp = Flipped(ValidIO(new DCacheLineReq))
+
   //def hit_resps: Seq[ValidIO[DCacheLineResp]] = Seq(main_pipe_hit_resp, refill_hit_resp)
-  def hit_resps: Seq[ValidIO[DCacheLineResp]] = Seq(main_pipe_hit_resp)
+  def hit_resps: Seq[ValidIO[DCacheLineResp]] = Seq(main_pipe_hit_resp, amo_hit_resp)
 }
 
 // forward tilelink channel D's data to ldu
@@ -1456,16 +1468,31 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   probeQueue.io.update_resv_set <> mainPipe.io.update_resv_set
 
   val refill_req = RegNext(missQueue.io.main_pipe_req.valid && ((missQueue.io.main_pipe_req.bits.isLoad) | (missQueue.io.main_pipe_req.bits.isStore)))
+  val refill_req_data_from_sb = missQueue.io.main_pipe_req.bits.isStore | missQueue.io.main_pipe_req.bits.isAMO
+  val refill_req_data_from_sb_s1 = RegEnable(refill_req_data_from_sb, missQueue.io.main_pipe_req.fire)
+  val refill_req_data_from_sb_s2 = RegNext(refill_req_data_from_sb_s1)
   //----------------------------------------
   // mainPipe
   // when a req enters main pipe, if it is set-conflict with replace pipe or refill pipe,
   // block the req in main pipe
   probeQueue.io.pipe_req <> mainPipe.io.probe_req
+  probeQueue.io.pipe_resp <> mainPipe.io.probe_resp
   io.lsu.store.req <> mainPipe.io.store_req
+
+
+  //sbuffer
+  io.lsu.store.refill_row_data <> missQueue.io.refill_to_sbuffer
+  io.lsu.store.refill_to_mp_req <> mainPipe.io.sbuffer_info
+  when(io.lsu.store.refill_to_mp_resp.valid){
+    mainPipe.io.refill_info.bits.store_data := io.lsu.store.refill_to_mp_resp.bits.data
+    mainPipe.io.refill_info.bits.store_mask := io.lsu.store.refill_to_mp_resp.bits.mask
+  }
+
 
   io.lsu.store.replay_resp.valid := RegNext(mainPipe.io.store_replay_resp.valid)
   io.lsu.store.replay_resp.bits := RegEnable(mainPipe.io.store_replay_resp.bits, mainPipe.io.store_replay_resp.valid)
   io.lsu.store.main_pipe_hit_resp := mainPipe.io.store_hit_resp
+  io.lsu.store.amo_hit_resp := mainPipe.io.amo_hit_resp
 
   mainPipe.io.atomic_req <> io.lsu.atomics.req
 

@@ -44,6 +44,7 @@ class ProbeReq(implicit p: Parameters) extends DCacheBundle
 class ProbeResp(implicit p: Parameters) extends DCacheBundle {
   // probe queue entry ID
   val id = UInt(log2Up(cfg.nProbeEntries).W)
+  val replay = Bool()
 }
 
 class ProbeEntry(implicit p: Parameters) extends DCacheModule {
@@ -116,9 +117,14 @@ class ProbeEntry(implicit p: Parameters) extends DCacheModule {
   }
 
   when (state === s_wait_resp) {
-    when (io.pipe_resp.valid && io.id === io.pipe_resp.bits.id) {
-      state := s_invalid
+    when(io.pipe_resp.valid && io.id === io.pipe_resp.bits.id){
+      when (io.pipe_resp.bits.replay) {
+        state := s_pipe_req
+      }.otherwise{
+        state := s_invalid
+      }
     }
+
   }
 
   // perfoemance counters
@@ -133,6 +139,7 @@ class ProbeQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule w
   val io = IO(new Bundle {
     val mem_probe = Flipped(Decoupled(new TLBundleB(edge.bundle)))
     val pipe_req  = DecoupledIO(new MainPipeReq)
+    val pipe_resp = Input(Valid(new ProbeResp))
     val lrsc_locked_block = Input(Valid(UInt()))
     val update_resv_set = Input(Bool())
   })
@@ -179,8 +186,7 @@ class ProbeQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule w
     pipe_req_arb.io.in(i) <> entry.io.pipe_req
 
     // pipe_resp
-    entry.io.pipe_resp.valid := io.pipe_req.fire
-    entry.io.pipe_resp.bits.id := io.pipe_req.bits.id
+    entry.io.pipe_resp <> io.pipe_resp
 
     entry.io.lrsc_locked_block := io.lrsc_locked_block
 

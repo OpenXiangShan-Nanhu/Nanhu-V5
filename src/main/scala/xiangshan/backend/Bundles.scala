@@ -23,6 +23,7 @@ import xiangshan.frontend._
 import xiangshan.mem.{LqPtr, SqPtr}
 import yunsuan.vector.VIFuParam
 import xiangshan.backend.trace._
+import xs.utils.HasCircularQueuePtrHelper
 
 object Bundles {
   /**
@@ -145,7 +146,7 @@ object Bundles {
     }
   }
 
-  class TrapInstInfo(implicit p: Parameters) extends XSBundle {
+  class TrapInstInfo(implicit p: Parameters) extends XSBundle with HasCircularQueuePtrHelper{
     val instr = UInt(32.W)
     val ftqPtr = new FtqPtr
     val ftqOffset = UInt(log2Up(PredictWidth).W)

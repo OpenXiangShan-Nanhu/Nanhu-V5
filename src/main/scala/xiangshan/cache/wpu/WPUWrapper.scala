@@ -3,7 +3,7 @@ package xiangshan.cache.wpu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.XSPerfAccumulate
+import xs.utils.perf.XSPerfAccumulate
 import xiangshan._
 import xiangshan.cache.{DCacheModule, HasDCacheParameters}
 import xiangshan.frontend.icache.HasICacheParameters

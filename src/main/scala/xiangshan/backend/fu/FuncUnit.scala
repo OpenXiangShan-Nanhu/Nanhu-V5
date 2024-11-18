@@ -3,7 +3,7 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.DataHoldBypass
+import xs.utils.DataHoldBypass
 import utils.OptionWrapper
 import xiangshan._
 import xiangshan.backend.Bundles.VPUCtrlSignals

@@ -4,7 +4,8 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import utility.{GTimer, GatedValidRegNext, HasCircularQueuePtrHelper, SelectOne, XSPerfAccumulate, XSPerfHistogram}
+import xs.utils.{GTimer, GatedValidRegNext, HasCircularQueuePtrHelper, SelectOne}
+import xs.utils.perf.{XSPerfAccumulate, XSPerfHistogram}
 import xiangshan._
 import xiangshan.backend.Bundles._
 import xiangshan.backend.issue.EntryBundles._

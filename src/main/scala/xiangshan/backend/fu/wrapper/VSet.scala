@@ -2,7 +2,7 @@ package xiangshan.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import utility.ZeroExt
+import xs.utils.ZeroExt
 import xiangshan.{VSETOpType, CSROpType}
 import xiangshan.backend.decode.{Imm_VSETIVLI, Imm_VSETVLI}
 import xiangshan.backend.decode.isa.bitfield.InstVType

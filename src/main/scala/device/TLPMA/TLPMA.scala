@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
 import freechips.rocketchip.regmapper.RegFieldGroup
 import freechips.rocketchip.tilelink.TLRegisterNode
 import xiangshan.backend.fu.{MMPMAMethod, PMAConst, PMPChecker, PMPReqBundle, PMPRespBundle}

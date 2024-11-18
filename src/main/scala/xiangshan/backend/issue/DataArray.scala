@@ -3,7 +3,8 @@ package xiangshan.backend.issue
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{AsyncRawDataModuleTemplate, XSDebug, XSError}
+import xs.utils.{AsyncRawDataModuleTemplate}
+import xs.utils.perf.{XSDebug, XSError}
 import xiangshan.XSModule
 
 class OHReadBundle[T <: Data](addrLen: Int, gen: T) extends Bundle {

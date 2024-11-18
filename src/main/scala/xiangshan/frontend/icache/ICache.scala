@@ -24,8 +24,11 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.BundleFieldBase
 import huancun.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
-import utility._
-import utility.mbist.MbistPipeline
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.tl._
+import xs.utils.sram._
+import xs.utils.mbist.MbistPipeline
 import utils._
 import xiangshan._
 import xiangshan.cache._
@@ -288,7 +291,7 @@ class ICacheMetaArray()(implicit p: Parameters) extends ICacheArray
   io.readResp.metas <> DontCare
   io.readResp.codes <> DontCare
   val readMetaEntries = tagArrays.map{ port =>
-    port.io.r.resp.asTypeOf(Vec(nWays, new ICacheMetaEntry()))
+    port.io.r.resp.data.asTypeOf(Vec(nWays, new ICacheMetaEntry()))
   }
   val readMetas = readMetaEntries.map(_.map(_.meta))
   val readCodes = readMetaEntries.map(_.map(_.code))
@@ -404,7 +407,7 @@ class ICacheDataArray(implicit p: Parameters) extends ICacheArray
   val masksReg          = RegEnable(masks, 0.U.asTypeOf(masks), io.read(0).valid)
   val readDataWithCode  = (0 until ICacheDataBanks).map(bank =>
                             Mux1H(VecInit(masksReg.map(_(bank))).asTypeOf(UInt(nWays.W)),
-                                  dataArrays.map(_(bank).io.r.resp.asUInt)))
+                                  dataArrays.map(_(bank).io.r.resp.data.asUInt)))
   val readEntries       = readDataWithCode.map(_.asTypeOf(new ICacheDataEntry()))
   val readDatas         = VecInit(readEntries.map(_.data))
   val readCodes         = VecInit(readEntries.map(_.code))
@@ -681,7 +684,7 @@ class ICachePartWayArray[T <: Data](gen: T, pWay: Int)(implicit p: Parameters) e
 
   io.read.req.map(_.ready := !io.write.valid && srams.map(_.io.r.req.ready).reduce(_&&_))
 
-  io.read.resp.rdata := VecInit(srams.map(bank => bank.io.r.resp.asTypeOf(Vec(pWay,gen))))
+  io.read.resp.rdata := VecInit(srams.map(bank => bank.io.r.resp.data.asTypeOf(Vec(pWay,gen))))
 
 }
 
@@ -741,7 +744,7 @@ class SRAMTemplateWithFixedWidth[T <: Data]
                            srams(bank).io.r.resp.data(i)
                          )).asTypeOf(UInt(totalBits.W))(dataBits-1, 0).asTypeOf(gen.cloneType)
   }
-
+  io.r.resp.valid := DontCare
   io.r.req.ready := srams.head.io.r.req.ready
   io.w.req.ready := srams.head.io.w.req.ready
 }

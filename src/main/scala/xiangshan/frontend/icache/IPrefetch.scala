@@ -28,7 +28,8 @@ import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
 import huancun.PreferCacheKey
 import xiangshan.XSCoreParamsKey
 import xiangshan.SoftIfetchPrefetchBundle
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 abstract class IPrefetchBundle(implicit p: Parameters) extends ICacheBundle
 abstract class IPrefetchModule(implicit p: Parameters) extends ICacheModule

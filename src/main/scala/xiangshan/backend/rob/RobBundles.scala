@@ -22,7 +22,7 @@ import chisel3.{Mem, Mux, Vec, _}
 import chisel3.util._
 import difftest._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import utility._
+import xs.utils._
 import utils._
 import xiangshan._
 import xiangshan.backend.BackendParams

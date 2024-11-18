@@ -25,7 +25,7 @@ import freechips.rocketchip.util._
 import system.HasSoCParameter
 import device.{IMSICAsync, MsiInfoBundle}
 import coupledL2.tl2chi.{AsyncPortIO, CHIAsyncBridgeSource, PortIO}
-import utility.{DFTResetSignals, IntBuffer, ResetGen}
+import xs.utils.{DFTResetSignals, IntBuffer, ResetGen}
 import xiangshan.backend.trace.TraceCoreInterface
 
 // This module is used for XSNoCTop for async time domain and divide different
@@ -77,9 +77,9 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
       }
     })
 
-    val reset_sync = withClockAndReset(clock, reset)(ResetGen())
-    val noc_reset_sync = EnableCHIAsyncBridge.map(_ => withClockAndReset(clock, noc_reset.get)(ResetGen()))
-    val soc_reset_sync = withClockAndReset(clock, soc_reset)(ResetGen())
+    val reset_sync = withClockAndReset(clock, reset)(ResetGen(2, None))
+    val noc_reset_sync = EnableCHIAsyncBridge.map(_ => withClockAndReset(clock, noc_reset.get)(ResetGen(2, None)))
+    val soc_reset_sync = withClockAndReset(clock, soc_reset)(ResetGen(2, None))
 
     // override LazyRawModuleImp's clock and reset
     childClock := clock

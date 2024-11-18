@@ -3,7 +3,7 @@ package xiangshan.backend.issue
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.SelectOne
+import xs.utils.SelectOne
 import xiangshan.XSModule
 
 class EnqPolicyIO(implicit p: IssueBlockParams) extends Bundle {

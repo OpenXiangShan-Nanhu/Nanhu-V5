@@ -19,7 +19,7 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.LookupTree
+import xs.utils.LookupTree
 import xiangshan._
 
 class BranchModule(implicit p: Parameters) extends XSModule {

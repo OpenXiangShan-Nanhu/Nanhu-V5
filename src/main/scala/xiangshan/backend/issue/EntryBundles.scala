@@ -5,7 +5,8 @@ import chisel3._
 import chisel3.util._
 import ujson.IndexedValue.True
 import utils.MathUtils
-import utility.{HasCircularQueuePtrHelper, XSError}
+import xs.utils.{HasCircularQueuePtrHelper}
+import xs.utils.perf.{XSError}
 import xiangshan._
 import xiangshan.backend.Bundles._
 import xiangshan.backend.datapath.DataSource

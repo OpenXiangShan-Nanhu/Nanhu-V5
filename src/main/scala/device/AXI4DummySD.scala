@@ -21,7 +21,8 @@ import chisel3._
 import chisel3.util._
 import difftest.common.DifftestSDCard
 import freechips.rocketchip.diplomacy.AddressSet
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 trait HasSDConst {
   def MemorySize = 4L * 1024 * 1024 * 1024 // 4GB

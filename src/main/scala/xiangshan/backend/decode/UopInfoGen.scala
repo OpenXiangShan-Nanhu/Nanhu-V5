@@ -23,7 +23,8 @@ import chisel3.util._
 import freechips.rocketchip.rocket.Instructions
 import freechips.rocketchip.util.uintToBitPat
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.ExceptionNO.illegalInstr
 import xiangshan._
 import xiangshan.backend.fu.fpu.FPU

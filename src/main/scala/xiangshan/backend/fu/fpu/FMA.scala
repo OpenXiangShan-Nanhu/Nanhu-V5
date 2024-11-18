@@ -22,7 +22,8 @@ import chisel3._
 import chisel3.util._
 import fudian._
 import fudian.utils.Multiplier
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan._
 import xiangshan.backend.rob.RobPtr
 import xiangshan.backend.fu.FuConfig

@@ -21,7 +21,8 @@ import chisel3._
 import chisel3.experimental.hierarchy.{Definition, instantiable}
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.fu.{CSRFileIO, FenceIO, FuncUnitInput}
 import xiangshan.backend.Bundles.{ExuInput, ExuOutput, MemExuInput, MemExuOutput}
 import xiangshan.{AddrTransType, FPUCtrlSignals, HasXSParameter, Redirect, XSBundle, XSModule}

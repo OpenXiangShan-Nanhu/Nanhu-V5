@@ -22,8 +22,6 @@ import chisel3.util._
 import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import system.HasSoCParameter
-import utility._
-import utility.sram.{SramBroadcastBundle, SramHelper}
 //import utils.{HPerfMonitor, HasPerfEvents, PerfEvent}
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, IssueQueueIQWakeUpBundle, LoadShouldCancel, MemExuInput, MemExuOutput, VPUCtrlSignals}
@@ -45,6 +43,11 @@ import xiangshan.frontend.{FtqPtr, FtqRead, PreDecodeInfo}
 import xiangshan.mem.{LqPtr, LsqEnqIO, SqPtr}
 
 import scala.collection.mutable
+
+import xs.utils._
+import xs.utils.tl._
+import xs.utils.sram._
+import xs.utils.perf.{HPerfMonitor, PerfEvent, HasPerfEvents}
 
 class Backend(val params: BackendParams)(implicit p: Parameters) extends LazyModule
   with HasXSParameter {

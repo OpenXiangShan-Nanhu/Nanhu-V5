@@ -26,7 +26,7 @@ import utils._
 import huancun.{HCCacheParameters, HCCacheParamsKey, HuanCun, PrefetchRecv, TPmetaResp}
 import coupledL2.EnableCHI
 import openLLC.DummyLLC
-import utility._
+import xs.utils._
 import system._
 import device._
 import chisel3.stage.ChiselGeneratorAnnotation
@@ -39,6 +39,7 @@ import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.jtag.JTAGIO
 import chisel3.experimental.{annotate, ChiselAnnotation}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
+import xs.utils.perf.{LogUtilsOptionsKey, PerfCounterOptionsKey}
 
 abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
   with BindingScope
@@ -229,8 +230,8 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       })
     })
 
-    val reset_sync = withClockAndReset(io.clock.asClock, io.reset) { ResetGen() }
-    val jtag_reset_sync = withClockAndReset(io.systemjtag.jtag.TCK, io.systemjtag.reset) { ResetGen() }
+    val reset_sync = withClockAndReset(io.clock.asClock, io.reset) { ResetGen(2, None) }
+    val jtag_reset_sync = withClockAndReset(io.systemjtag.jtag.TCK, io.systemjtag.reset) { ResetGen(2, None) }
 
     // override LazyRawModuleImp's clock and reset
     childClock := io.clock.asClock

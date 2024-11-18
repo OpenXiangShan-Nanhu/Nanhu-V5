@@ -23,7 +23,8 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket.DecodeLogic
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.{SelImm, SrcType, UopSplitType, XSCoreParamsKey, XSModule}
 import xiangshan.backend.fu.FuConfig
 import xiangshan.backend.fu.vector.Bundles.VSew

@@ -21,7 +21,8 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 class WakeupQueue(number: Int)(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle {

@@ -24,7 +24,7 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.SignExt
+import xs.utils.SignExt
 import xiangshan.backend.fu.util.CSA3_2
 
 /** A Radix-4 SRT Integer Divider

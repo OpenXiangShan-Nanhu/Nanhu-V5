@@ -23,8 +23,9 @@ import xiangshan._
 import xiangshan.cache._
 import xiangshan.cache.mmu.HasTlbConst
 import utils._
-import utility._
-import utility.mbist.MbistPipeline
+import xs.utils.sram._
+import xs.utils.mbist._
+import xs.utils.perf._
 
 case object BOPParamsKey extends Field[BOPParameters]
 

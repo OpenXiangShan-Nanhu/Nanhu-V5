@@ -3,8 +3,8 @@ package xiangshan.backend.rob
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.{CircularQueuePtr, CircularShift, HasCircularQueuePtrHelper, OneHot, SyncDataModuleTemplate, GatedValidRegNext}
-import utility.{QueuePerf, XSError, XSPerfAccumulate}
+import xs.utils.{CircularQueuePtr, CircularShift, HasCircularQueuePtrHelper, OneHot, SyncDataModuleTemplate, GatedValidRegNext}
+import xs.utils.perf.{QueuePerf, XSError, XSPerfAccumulate}
 import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.fu.vector.Bundles.VType
 import xiangshan.backend.rename.SnapshotGenerator

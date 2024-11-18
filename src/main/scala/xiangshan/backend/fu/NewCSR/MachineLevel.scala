@@ -5,7 +5,8 @@ import chisel3.experimental.SourceInfo
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.rocket.CSRs
-import utility.{SignExt, PerfEvent}
+import xs.utils._
+import xs.utils.perf.{PerfEvent}
 import xiangshan.backend.fu.NewCSR.CSRBundles._
 import xiangshan.backend.fu.NewCSR.CSRDefines._
 import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW, _}

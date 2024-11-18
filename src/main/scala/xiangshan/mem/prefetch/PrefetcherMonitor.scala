@@ -6,7 +6,8 @@ import org.chipsalliance.cde.config.Parameters
 import xiangshan._
 import xiangshan.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 trait HasPrefetcherMonitorHelper {
   val TIMELY_CHECK_INTERVAL = 1000

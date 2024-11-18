@@ -5,7 +5,8 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.{RabToVecExcpMod, RegWriteFromRab}
 import xiangshan.backend.decode.VectorConstants

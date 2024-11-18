@@ -22,7 +22,7 @@ import device._
 import freechips.rocketchip.amba.axi4.{AXI4EdgeParameters, AXI4MasterNode, AXI4Xbar}
 import freechips.rocketchip.diplomacy.{AddressSet, InModuleBody, LazyModule, LazyModuleImp}
 import difftest._
-import utility.AXI4Error
+import xs.utils.AXI4Error
 import system.{HasPeripheralRanges, HasSoCParameter}
 
 class SimMMIO(edge: AXI4EdgeParameters)(implicit p: Parameters) extends LazyModule

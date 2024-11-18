@@ -20,13 +20,14 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import utils._
-import utility._
-import utility.mbist.{MbistInterface, MbistPipeline}
-import utility.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils._
+import xs.utils.mbist.{MbistInterface, MbistPipeline}
+import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xiangshan._
 import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
 import xiangshan.cache.mmu._
 import xiangshan.frontend.icache._
+import xs.utils.perf.{HasPerfEvents, HasPerfLogging, XSError, XSPerfAccumulate, PerfEvent, HPerfMonitor}
 
 class Frontend()(implicit p: Parameters) extends LazyModule with HasXSParameter {
   override def shouldBeInlined: Boolean = false

@@ -24,7 +24,8 @@ import freechips.rocketchip.tilelink.ClientStates
 import xiangshan._
 import xiangshan.cache.mmu._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
 import xiangshan.frontend.{FtqICacheInfo, FtqToICacheRequestBundle, ExceptionType}
 

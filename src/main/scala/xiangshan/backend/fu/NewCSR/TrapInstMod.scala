@@ -3,7 +3,8 @@ package xiangshan.backend.fu.NewCSR
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.{HasCircularQueuePtrHelper, XSError}
+import xs.utils.{HasCircularQueuePtrHelper}
+import xs.utils.perf.{XSError}
 import xiangshan._
 import xiangshan.backend.Bundles.TrapInstInfo
 import xiangshan.backend.decode.Imm_Z

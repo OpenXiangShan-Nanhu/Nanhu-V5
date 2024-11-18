@@ -21,8 +21,10 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
-import utility.mbist.MbistPipeline
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.sram._
+import xs.utils.mbist.MbistPipeline
 
 import scala.math.min
 import scala.{Tuple2 => &}

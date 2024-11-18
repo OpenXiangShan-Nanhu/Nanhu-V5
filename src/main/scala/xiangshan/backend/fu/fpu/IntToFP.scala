@@ -22,7 +22,7 @@ package xiangshan.backend.fu.fpu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{SignExt, ZeroExt}
+import xs.utils.{SignExt, ZeroExt}
 import xiangshan.backend.fu.FuConfig
 
 class IntToFPDataModule(latency: Int)(implicit p: Parameters) extends FPUDataModule {

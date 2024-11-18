@@ -22,7 +22,8 @@ import xiangshan._
 import xiangshan.backend.rob.RobPtr
 import xiangshan.cache._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.Bundles.DynInst
 
 class LoadQueueRAR(implicit p: Parameters) extends XSModule

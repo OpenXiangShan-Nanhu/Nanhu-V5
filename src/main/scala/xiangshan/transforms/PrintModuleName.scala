@@ -33,7 +33,7 @@ class PrintModuleName extends firrtl.options.Phase {
 
     def onStmt(s: firrtl.ir.Statement): firrtl.ir.Statement = s match {
       case firrtl.ir.Print(info, firrtl.ir.StringLit(string), args, clk, en) =>
-        firrtl.ir.Print(info, firrtl.ir.StringLit(string.replace(utility.XSLog.MagicStr, "%m")), args, clk, en)
+        firrtl.ir.Print(info, firrtl.ir.StringLit(string.replace(xs.utils.perf.XSLog.MagicStr, "%m")), args, clk, en)
       case other: firrtl.ir.Statement =>
         other.mapStmt(onStmt)
     }

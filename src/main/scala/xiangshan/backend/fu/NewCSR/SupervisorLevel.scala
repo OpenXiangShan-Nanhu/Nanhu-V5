@@ -3,7 +3,7 @@ package xiangshan.backend.fu.NewCSR
 import chisel3._
 import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util.{BitPat, Cat, Fill, Mux1H, MuxCase, ValidIO}
-import utility.{SignExt, ZeroExt}
+import xs.utils.{SignExt, ZeroExt}
 import freechips.rocketchip.rocket.CSRs
 import xiangshan.backend.fu.NewCSR.CSRBundles._
 import xiangshan.backend.fu.NewCSR.CSRDefines._

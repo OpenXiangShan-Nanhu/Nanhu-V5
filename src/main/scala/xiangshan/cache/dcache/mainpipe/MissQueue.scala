@@ -27,13 +27,15 @@ import freechips.rocketchip.tilelink.TLPermissions._
 import freechips.rocketchip.tilelink._
 import huancun.{AliasKey, DirtyKey, PrefetchKey}
 import org.chipsalliance.cde.config.Parameters
-import utility._
 import utils._
 import xiangshan._
 import xiangshan.mem.AddPipelineReg
 import xiangshan.mem.prefetch._
 import xiangshan.mem.trace._
 import xiangshan.mem.LqPtr
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.tl._
 
 class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   val source = UInt(sourceTypeWidth.W)

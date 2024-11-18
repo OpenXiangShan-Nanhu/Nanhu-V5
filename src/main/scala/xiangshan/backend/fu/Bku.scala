@@ -19,8 +19,8 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{LookupTreeDefault, ParallelMux, ParallelXOR, SignExt, ZeroExt}
-import utility.{XSDebug, XSError}
+import xs.utils.{LookupTreeDefault, ParallelMux, ParallelXOR, SignExt, ZeroExt}
+import xs.utils.perf.{XSDebug, XSError}
 import xiangshan._
 import xiangshan.backend.fu.util._
 

@@ -2,7 +2,7 @@ package xiangshan.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import utility.SignExt
+import xs.utils.SignExt
 import xiangshan.backend.decode.ImmUnion
 import xiangshan.backend.fu.{BranchModule, FuConfig, FuncUnit}
 import xiangshan.backend.datapath.DataConfig.VAddrData

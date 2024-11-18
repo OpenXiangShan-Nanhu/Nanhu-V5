@@ -26,7 +26,9 @@ import freechips.rocketchip.tilelink._
 import xiangshan._
 import xiangshan.cache._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.tl._
 import difftest._
 
 

@@ -25,7 +25,8 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan._
 import xiangshan.backend.fu.util.CSA3_2
 

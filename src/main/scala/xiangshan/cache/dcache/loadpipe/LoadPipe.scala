@@ -20,7 +20,9 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.tilelink.ClientMetadata
-import utility.{ParallelPriorityMux, OneHot, ChiselDB, ParallelORR, ParallelMux, XSDebug, XSPerfAccumulate, HasPerfEvents}
+import xs.utils._
+import xs.utils.{ParallelPriorityMux, OneHot, ChiselDB, ParallelORR, ParallelMux}
+import xs.utils.perf.{XSDebug, XSPerfAccumulate, HasPerfEvents}
 import xiangshan.{XSCoreParamsKey, L1CacheErrorInfo}
 import xiangshan.cache.wpu._
 import xiangshan.mem.HasL1PrefetchSourceParameter

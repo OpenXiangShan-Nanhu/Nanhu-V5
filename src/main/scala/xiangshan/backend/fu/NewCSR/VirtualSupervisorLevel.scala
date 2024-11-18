@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util._
 import freechips.rocketchip.rocket.CSRs
-import utility.{SignExt, ZeroExt}
+import xs.utils.{SignExt, ZeroExt}
 import xiangshan.backend.fu.NewCSR.CSRBundles._
 import xiangshan.backend.fu.NewCSR.CSRDefines.{VirtMode, CSRROField => RO, CSRRWField => RW, CSRWARLField => WARL, CSRWLRLField => WLRL, _}
 import xiangshan.backend.fu.NewCSR.CSREvents.{SretEventSinkBundle, TrapEntryVSEventSinkBundle}

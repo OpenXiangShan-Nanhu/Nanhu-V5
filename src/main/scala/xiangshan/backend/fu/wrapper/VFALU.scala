@@ -3,7 +3,7 @@ package xiangshan.backend.fu.wrapper
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.XSError
+import xs.utils.perf.{XSError}
 import xiangshan.backend.fu.FuConfig
 import xiangshan.backend.fu.vector.Bundles.{VLmul, VSew}
 import xiangshan.backend.fu.vector.utils.VecDataSplitModule

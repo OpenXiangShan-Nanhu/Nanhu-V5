@@ -8,7 +8,7 @@ import xiangshan.XSCoreParamsKey
 import xiangshan.backend.decode.isa.bitfield.InstVType
 import xiangshan.backend.fu.VtypeStruct
 import _root_.utils.NamedUInt
-import utility.ZeroExt
+import xs.utils.ZeroExt
 
 object Bundles {
 

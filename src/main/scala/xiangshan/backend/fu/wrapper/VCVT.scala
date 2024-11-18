@@ -4,7 +4,7 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.decode._
-import utility.XSError
+import xs.utils.perf.{XSError}
 import xiangshan.backend.fu.FuConfig
 import xiangshan.backend.fu.vector.{Mgu, VecPipedFuncUnit}
 import xiangshan.ExceptionNO

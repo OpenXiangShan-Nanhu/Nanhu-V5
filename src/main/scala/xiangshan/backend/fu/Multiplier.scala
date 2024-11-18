@@ -19,7 +19,8 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import utils._
 import xiangshan._
 import xiangshan.backend.fu.util.{C22, C32, C53}

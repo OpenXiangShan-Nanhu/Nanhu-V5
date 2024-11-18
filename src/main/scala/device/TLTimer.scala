@@ -23,7 +23,7 @@ import org.chipsalliance.cde.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.RegField
 import utils.HasTLDump
-import utility.XSDebug
+import xs.utils.perf.XSDebug
 
 class TLTimer(address: Seq[AddressSet], sim: Boolean, numCores: Int)(implicit p: Parameters) extends LazyModule {
 

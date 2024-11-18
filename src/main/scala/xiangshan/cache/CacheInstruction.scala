@@ -4,7 +4,8 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import xiangshan.frontend.icache._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import org.chipsalliance.cde.config.Parameters
 import xiangshan.backend.fu.util.HasCSRConst
 

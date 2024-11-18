@@ -19,7 +19,8 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{LookupTree, LookupTreeDefault, ParallelMux, SignExt, XSDebug, ZeroExt}
+import xs.utils.{LookupTree, LookupTreeDefault, ParallelMux, SignExt, ZeroExt}
+import xs.utils.perf.{XSDebug}
 import xiangshan._
 
 class AddModule(implicit p: Parameters) extends XSModule {

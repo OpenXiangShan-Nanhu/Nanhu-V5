@@ -22,7 +22,8 @@ import chisel3.util._
 import xiangshan._
 import xiangshan.backend.rename.SnapshotGenerator
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import scala.math.max
 
 

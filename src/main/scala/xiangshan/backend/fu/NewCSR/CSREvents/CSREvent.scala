@@ -3,7 +3,7 @@ package xiangshan.backend.fu.NewCSR.CSREvents
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.{SignExt, ZeroExt}
+import xs.utils.{SignExt, ZeroExt}
 import xiangshan.HasXSParameter
 import xiangshan.backend.fu.NewCSR.CSRBundles.{CauseBundle, PrivState}
 import xiangshan.backend.fu.NewCSR.CSRConfig._

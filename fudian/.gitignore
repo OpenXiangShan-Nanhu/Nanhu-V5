@@ -1,0 +1,10 @@
+out/
+.bsp/
+.idea/
+.idea_modules/
+build/
+test_run_dir
+testfloat_gen
+.bloop/
+.metals/
+.vscode/

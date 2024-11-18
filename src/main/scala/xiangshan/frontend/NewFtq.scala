@@ -20,13 +20,15 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import utils._
-import utility._
 import xiangshan._
 import xiangshan.frontend.icache._
 import xiangshan.backend.CtrlToFtqIO
 import xiangshan.backend.decode.ImmUnion
-import utility.ChiselDB
-import utility.mbist.MbistPipeline
+import xs.utils._
+import xs.utils.sram._
+import xs.utils.perf._
+import xs.utils.{ChiselDB, CircularQueuePtr}
+import xs.utils.mbist.MbistPipeline
 
 class FtqDebugBundle extends Bundle {
   val pc = UInt(39.W)

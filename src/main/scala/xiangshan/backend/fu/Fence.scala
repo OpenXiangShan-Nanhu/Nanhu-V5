@@ -19,7 +19,7 @@ package xiangshan.backend.fu
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.XSDebug
+import xs.utils.perf.XSDebug
 import xiangshan.ExceptionNO.{illegalInstr, virtualInstr}
 import xiangshan._
 

@@ -6,7 +6,8 @@ import difftest._
 import freechips.rocketchip.rocket.CSRs
 import org.chipsalliance.cde.config.Parameters
 import top.{ArgParser, Generator}
-import utility.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt, HPerfMonitor, PerfEvent}
+import xs.utils.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt}
+import xs.utils.perf.{PerfEvent, HPerfMonitor}
 import utils.OptionWrapper
 import xiangshan.backend.fu.NewCSR.CSRBundles.{CSRCustomState, PrivState, RobCommitCSR}
 import xiangshan.backend.fu.NewCSR.CSRDefines._

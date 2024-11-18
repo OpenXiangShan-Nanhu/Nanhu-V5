@@ -22,7 +22,9 @@ import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.TLMessages._
 import freechips.rocketchip.tilelink._
-import utility.{GTimer, MemReqSource, ReqSourceKey, XSPerfAccumulate}
+import xs.utils.GTimer
+import xs.utils.perf.XSPerfAccumulate
+import xs.utils.tl.{MemReqSource, ReqSourceKey}
 
 class BusPerfMonitor(name: String, stat_latency: Boolean)(implicit p: Parameters) extends LazyModule {
   val node = TLAdapterNode()

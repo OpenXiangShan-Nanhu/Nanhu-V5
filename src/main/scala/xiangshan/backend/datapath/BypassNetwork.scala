@@ -3,7 +3,7 @@ package xiangshan.backend.datapath
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{GatedValidRegNext, SignExt, ZeroExt}
+import xs.utils.{GatedValidRegNext, SignExt, ZeroExt}
 import xiangshan.{XSBundle, XSModule}
 import xiangshan.backend.BackendParams
 import xiangshan.backend.Bundles.{ExuBypassBundle, ExuInput, ExuOH, ExuOutput, ExuVec, ImmInfo}

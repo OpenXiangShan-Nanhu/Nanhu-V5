@@ -24,7 +24,8 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.BundleFieldBase
 import huancun.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import utils._
 import xiangshan._
 import xiangshan.cache._

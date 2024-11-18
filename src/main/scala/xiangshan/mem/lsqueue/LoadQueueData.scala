@@ -25,7 +25,8 @@ import xiangshan.cache.{DCacheWordIO, DCacheLineIO, MemoryOpConstants}
 import xiangshan.mem._
 import xiangshan.backend.rob.RobPtr
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 // Data module define
 // These raw data modules are like SyncDataModuleTemplate, but support cam-like ops

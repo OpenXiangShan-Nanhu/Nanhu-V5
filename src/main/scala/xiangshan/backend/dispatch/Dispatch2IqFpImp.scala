@@ -5,7 +5,8 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.decode._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import utility.{Constantin, PriorityMuxDefault, SelectOne, XSPerfAccumulate}
+import xs.utils.{Constantin, PriorityMuxDefault, SelectOne}
+import xs.utils.perf.{XSPerfAccumulate}
 import xiangshan._
 import xiangshan.backend.fu.{FuConfig, FuType}
 import xiangshan.backend.rename.BusyTableReadIO

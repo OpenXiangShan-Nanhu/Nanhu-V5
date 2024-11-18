@@ -23,7 +23,8 @@ import freechips.rocketchip.rocket.CSRs
 import freechips.rocketchip.rocket.Instructions._
 import freechips.rocketchip.rocket.CustomInstructions._
 import freechips.rocketchip.util.uintToBitPat
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import utils._
 import xiangshan.ExceptionNO.{EX_II, breakPoint, illegalInstr, virtualInstr}
 import xiangshan._

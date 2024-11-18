@@ -27,10 +27,11 @@ import freechips.rocketchip.amba.axi4._
 import device.MsiInfoBundle
 import system.HasSoCParameter
 import top.{ArgParser, BusPerfMonitor, Generator}
-import utility.{ChiselDB, Constantin, DFTResetSignals, DelayN, FileRegisters, ResetGen, TLClientsMerger, TLEdgeBuffer, TLLogger}
 import coupledL2.EnableCHI
 import coupledL2.tl2chi.PortIO
-import utility.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils._
+import xs.utils.tl._
+import xs.utils.sram._
 import xiangshan.backend.trace.TraceCoreInterface
 class XSTile()(implicit p: Parameters) extends LazyModule
   with HasXSParameter

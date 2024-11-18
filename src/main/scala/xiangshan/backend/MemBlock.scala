@@ -27,7 +27,6 @@ import freechips.rocketchip.tilelink._
 import coupledL2.{CMOReq, CMOResp, PrefetchRecv}
 import device.MsiInfoBundle
 import utils._
-import utility._
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, MemExuInput, MemExuOutput}
 import xiangshan.backend.ctrlblock.{DebugLSIO, LsTopdownInfo}
@@ -46,8 +45,12 @@ import xiangshan.backend.datapath.NewPipelineConnect
 import system.SoCParamsKey
 import xiangshan.backend.fu.NewCSR.TriggerUtil
 import xiangshan.ExceptionNO._
-import utility.mbist.{MbistInterface, MbistPipeline}
-import utility.sram.{SramBroadcastBundle, SramHelper}
+
+import xs.utils._
+import xs.utils.mbist.{MbistInterface, MbistPipeline}
+import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.perf.{PerfEvent, XSDebug, XSPerfAccumulate, HasPerfLogging, HasPerfEvents, XSError}
+import xs.utils.perf.{HPerfMonitor, XSPerfHistogram}
 
 trait HasMemBlockParameters extends HasXSParameter {
   // number of memory units

@@ -21,7 +21,8 @@ import freechips.rocketchip.rocket.{RVCDecoder, ExpandedInstruction}
 import chisel3.{util, _}
 import chisel3.util._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan._
 import xiangshan.frontend.icache._
 import xiangshan.backend.decode.isa.predecode.PreDecodeInst

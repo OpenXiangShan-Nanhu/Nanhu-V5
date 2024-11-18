@@ -21,8 +21,10 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
 import xiangshan.ExceptionNO._
+import xs.utils.perf.{HasPerfEvents, HasPerfLogging, XSDebug, XSError}
+import xs.utils.perf._
 
 class IBufPtr(implicit p: Parameters) extends CircularQueuePtr[IBufPtr](
   p => p(XSCoreParamsKey).IBufSize
@@ -153,7 +155,10 @@ class IBufEntry(implicit p: Parameters) extends XSBundle {
   }
 }
 
-class IBuffer(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper with HasPerfEvents {
+class IBuffer(implicit p: Parameters) extends XSModule 
+  with HasCircularQueuePtrHelper 
+  with HasPerfEvents 
+  {
   val io = IO(new IBufferIO)
 
   // io alias

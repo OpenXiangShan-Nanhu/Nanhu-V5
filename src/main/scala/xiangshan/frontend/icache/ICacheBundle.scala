@@ -23,7 +23,8 @@ import chisel3.util._
 import freechips.rocketchip.tilelink.{ClientMetadata, TLPermissions}
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 class ICacheReadBundle(implicit p: Parameters) extends ICacheBundle
 {

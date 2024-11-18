@@ -21,7 +21,7 @@ import freechips.rocketchip.diplomacy._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.interrupts._
-import utility.IntBuffer
+import xs.utils.IntBuffer
 
 class StandAlonePLIC (
   useTL: Boolean = false,

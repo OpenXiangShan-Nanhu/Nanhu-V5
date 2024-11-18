@@ -29,7 +29,7 @@ import system.SoCParamsKey
 import xiangshan.XSCoreParamsKey
 import xiangshan.XSTileKey
 import device.DebugModule
-import utility.{IntBuffer, RegNextN}
+import xs.utils.{IntBuffer, RegNextN}
 
 class StandAloneDebugModule (
   useTL: Boolean = false,

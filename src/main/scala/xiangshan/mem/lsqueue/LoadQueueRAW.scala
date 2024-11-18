@@ -25,7 +25,8 @@ import xiangshan.cache._
 import xiangshan.frontend.FtqPtr
 import xiangshan.mem.mdp._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.Bundles.DynInst
 
 class LoadQueueRAW(implicit p: Parameters) extends XSModule

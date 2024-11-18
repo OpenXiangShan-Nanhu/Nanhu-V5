@@ -21,7 +21,8 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 import scala.math.min
 import xiangshan.backend.decode.ImmUnion
@@ -230,7 +231,10 @@ class PredictorIO(implicit p: Parameters) extends XSBundle {
   val reset_vector = Input(UInt(PAddrBits.W))
 }
 
-class Predictor(implicit p: Parameters) extends XSModule with HasBPUConst with HasPerfEvents with HasCircularQueuePtrHelper {
+class Predictor(implicit p: Parameters) extends XSModule 
+  with HasBPUConst 
+  with HasPerfEvents 
+  with HasCircularQueuePtrHelper {
   val io = IO(new PredictorIO)
 
   val ctrl = DelayN(io.ctrl, 1)

@@ -20,7 +20,8 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import utils._
 import xiangshan.ExceptionNO._
 import xiangshan._

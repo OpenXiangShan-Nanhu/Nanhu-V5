@@ -21,7 +21,8 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 class Composer(implicit p: Parameters) extends BasePredictor with HasBPUConst with HasPerfEvents {
   val (components, resp) = getBPDComponents(io.in.bits.resp_in(0), p)

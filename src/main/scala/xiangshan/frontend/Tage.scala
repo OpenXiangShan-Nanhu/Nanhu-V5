@@ -21,13 +21,15 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.sram._
+import xs.utils.mbist.MbistPipeline
 
 import scala.math.min
 import scala.util.matching.Regex
 import scala.{Tuple2 => &}
 import os.followLink
-import utility.mbist.MbistPipeline
 
 trait TageParams extends HasBPUConst with HasXSParameter {
   // println(BankTageTableInfos)

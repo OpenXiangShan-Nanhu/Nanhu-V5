@@ -22,7 +22,8 @@
 //import chisel3._
 //import chisel3.util._
 //import utils._
-//import utility._
+//import xs.utils._
+import xs.utils.perf._
 //import yunsuan.vector.alu.{VAluOpcode, VIAlu}
 //import yunsuan.{VectorElementFormat, VipuType}
 //import xiangshan.{SelImm, SrcType, UopSplitType, XSCoreParamsKey, XSModule,FuType}

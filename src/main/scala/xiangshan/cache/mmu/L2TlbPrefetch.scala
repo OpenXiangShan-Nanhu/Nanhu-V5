@@ -20,7 +20,8 @@ import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xiangshan.{SfenceBundle, XSModule}
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 class L2TlbPrefetchIO(implicit p: Parameters) extends MMUIOBaseBundle with HasPtwConst {
   val in = Flipped(ValidIO(new Bundle {

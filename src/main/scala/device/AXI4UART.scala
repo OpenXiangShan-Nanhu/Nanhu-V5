@@ -21,7 +21,7 @@ import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy.AddressSet
 import utils._
-import utility._
+import xs.utils._
 import difftest._
 
 class AXI4UART

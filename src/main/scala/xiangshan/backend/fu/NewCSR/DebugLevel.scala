@@ -16,7 +16,7 @@ import xiangshan.backend.fu.NewCSR.CSRFunc._
 import xiangshan.backend.fu.NewCSR.CSREvents._
 import xiangshan.backend.fu.NewCSR.CSRBundles._
 import CSRConfig._
-import utility.SignExt
+import xs.utils.SignExt
 import xiangshan.TriggerAction
 
 import scala.collection.immutable.SeqMap

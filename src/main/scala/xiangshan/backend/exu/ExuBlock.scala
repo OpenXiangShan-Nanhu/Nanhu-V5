@@ -8,7 +8,8 @@ import xiangshan.backend.fu.{CSRFileIO, FenceIO}
 import xiangshan.backend.Bundles._
 import xiangshan.backend.issue.SchdBlockParams
 import xiangshan.{HasXSParameter, Redirect, XSBundle}
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.fu.FuConfig.{AluCfg, BrhCfg}
 import xiangshan.backend.fu.vector.Bundles.{VType, Vxrm}
 import xiangshan.backend.fu.fpu.Bundles.Frm

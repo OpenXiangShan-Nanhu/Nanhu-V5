@@ -3,7 +3,7 @@ package xiangshan.backend.fu.fpu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.DataHoldBypass
+import xs.utils.DataHoldBypass
 import xiangshan.backend.fu.{FuConfig, FuncUnit}
 
 class FpNonPipedFuncUnit(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)

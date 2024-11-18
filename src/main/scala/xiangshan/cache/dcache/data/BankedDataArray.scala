@@ -19,11 +19,13 @@ package xiangshan.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import utils._
-import utility._
 import chisel3.util._
+import utils._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.sram._
+import xs.utils.mbist.MbistPipeline
 import freechips.rocketchip.tilelink.{ClientMetadata, TLClientParameters, TLEdgeOut}
-import utility.mbist.MbistPipeline
 import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
 
 import scala.math.max

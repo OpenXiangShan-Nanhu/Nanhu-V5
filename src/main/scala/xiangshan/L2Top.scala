@@ -30,10 +30,12 @@ import coupledL2.tl2chi.{TL2CHICoupledL2, PortIO, CHIIssue}
 import huancun.BankBitsKey
 import system.HasSoCParameter
 import top.BusPerfMonitor
-import utility._
-import utility.sram.SramBroadcastBundle
+import xs.utils._
+import xs.utils.tl._
+import xs.utils.sram.SramBroadcastBundle
 import xiangshan.cache.mmu.TlbRequestIO
 import xiangshan.backend.fu.PMPRespBundle
+import xs.utils.perf.{LogUtilsOptionsKey, PerfEvent, PerfCounterOptionsKey}
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle with HasSoCParameter {
   val ecc_error = Valid(UInt(soc.PAddrBits.W))

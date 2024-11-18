@@ -26,7 +26,7 @@ import difftest._
 import freechips.rocketchip.amba.axi4.AXI4Bundle
 import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
 import freechips.rocketchip.util.HeterogeneousBag
-import utility.{ChiselDB, Constantin, FileRegisters, GTimer}
+import xs.utils.{ChiselDB, Constantin, FileRegisters, GTimer}
 import xiangshan.DebugOptionsKey
 import system.SoCParamsKey
 

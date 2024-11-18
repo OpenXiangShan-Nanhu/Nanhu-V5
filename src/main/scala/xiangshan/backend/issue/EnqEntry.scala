@@ -3,7 +3,7 @@ package xiangshan.backend.issue
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{HasCircularQueuePtrHelper, GatedValidRegNext}
+import xs.utils.{HasCircularQueuePtrHelper, GatedValidRegNext}
 import utils.{MathUtils, OptionWrapper}
 import xiangshan._
 import xiangshan.backend.Bundles._

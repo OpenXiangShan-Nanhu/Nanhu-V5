@@ -20,18 +20,13 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
 import system._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams, XLen}
 import xiangshan.frontend.icache.ICacheParameters
 import freechips.rocketchip.devices.debug._
 import freechips.rocketchip.tile.{MaxHartIdBits, XLen}
-import system._
-import utility._
-import utils._
-import huancun._
-import xiangshan._
 import xiangshan.backend.dispatch.DispatchParameters
 import xiangshan.backend.regfile.{IntPregParams, FpPregParams, VfPregParams}
 import xiangshan.cache.DCacheParameters

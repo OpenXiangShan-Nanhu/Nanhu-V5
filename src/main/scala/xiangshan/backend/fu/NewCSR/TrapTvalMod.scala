@@ -3,7 +3,7 @@ package xiangshan.backend.fu.NewCSR
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.HasCircularQueuePtrHelper
+import xs.utils.HasCircularQueuePtrHelper
 import xiangshan._
 import xiangshan.backend.fu.NewCSR.CSREvents.TargetPCBundle
 import xiangshan.backend.rob.RobPtr

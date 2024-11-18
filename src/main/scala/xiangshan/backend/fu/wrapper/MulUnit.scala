@@ -2,7 +2,7 @@ package xiangshan.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import utility.{LookupTree, SignExt, ZeroExt}
+import xs.utils.{LookupTree, SignExt, ZeroExt}
 import xiangshan.MULOpType
 import xiangshan.backend.fu.{ArrayMulDataModule, FuncUnit, HasPipelineReg, MulDivCtrl}
 import xiangshan.backend.fu.FuConfig

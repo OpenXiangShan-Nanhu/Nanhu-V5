@@ -22,7 +22,8 @@
 //import chisel3.{Mux, _}
 //import chisel3.util._
 //import utils._
-//import utility._
+//import xs.utils._
+import xs.utils.perf._
 //import yunsuan.vector.{VectorFloatAdder,VectorFloatFMA,VectorFloatDivider}
 //import yunsuan.VfpuType
 //import xiangshan.{FuType, XSCoreParamsKey}

@@ -23,7 +23,7 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import fudian.FCMP
-import utility.SignExt
+import xs.utils.SignExt
 import xiangshan.backend.fu.FuConfig
 
 

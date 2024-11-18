@@ -3,7 +3,7 @@ package xiangshan.backend.fu.NewCSR
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket.CSRs
-import utility.GatedValidRegNext
+import xs.utils.GatedValidRegNext
 import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW, CSRWARLField => WARL}
 import xiangshan.backend.fu.NewCSR.CSRFunc._
 import xiangshan.backend.fu.vector.Bundles._

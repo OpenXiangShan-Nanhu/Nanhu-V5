@@ -3,7 +3,7 @@ package xiangshan.backend.fu.NewCSR.CSREvents
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.SignExt
+import xs.utils.SignExt
 import xiangshan.ExceptionNO
 import xiangshan.backend.fu.NewCSR.CSRBundles.{CauseBundle, OneFieldBundle, PrivState}
 import xiangshan.backend.fu.NewCSR.CSRConfig.{VaddrMaxWidth, XLEN}

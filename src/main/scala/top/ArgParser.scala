@@ -26,7 +26,8 @@ import difftest.DifftestModule
 import scala.annotation.tailrec
 import scala.sys.exit
 import chisel3.util.log2Up
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 object ArgParser {
   // TODO: add more explainations

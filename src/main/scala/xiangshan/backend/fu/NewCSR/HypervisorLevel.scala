@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket.CSRs
 import org.chipsalliance.cde.config.Parameters
-import utility.ZeroExt
+import xs.utils.ZeroExt
 import xiangshan.backend.fu.NewCSR.CSRBundles._
 import xiangshan.backend.fu.NewCSR.CSRConfig._
 import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW, _}

@@ -3,7 +3,7 @@ package xiangshan.backend.fu.vector
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.DataHoldBypass
+import xs.utils.DataHoldBypass
 import xiangshan.backend.fu.vector.Bundles.VConfig
 import xiangshan.backend.fu.vector.utils.ScalaDupToVector
 import xiangshan.backend.fu.{FuConfig, FuncUnit}

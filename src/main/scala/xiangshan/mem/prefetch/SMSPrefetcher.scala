@@ -5,7 +5,10 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.sram._
+import xs.utils.tl._
 import xiangshan.cache.HasDCacheParameters
 import xiangshan.cache.mmu._
 import xiangshan.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}

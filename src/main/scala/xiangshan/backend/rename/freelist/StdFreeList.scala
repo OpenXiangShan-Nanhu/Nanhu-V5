@@ -22,7 +22,8 @@ import chisel3.util._
 import xiangshan._
 import xiangshan.backend.rename._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 
 class StdFreeList(freeListSize: Int, numLogicRegs: Int, regType: RegType, realNumLogicRegs: Int = 32)(implicit p: Parameters) extends BaseFreeList(freeListSize, realNumLogicRegs) with HasPerfEvents {

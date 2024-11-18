@@ -22,7 +22,8 @@ import chisel3.util._
 import xiangshan._
 import xiangshan.cache._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 trait HasPrefetchParameters extends HasXSParameter {
   val bopParams = p(BOPParamsKey)

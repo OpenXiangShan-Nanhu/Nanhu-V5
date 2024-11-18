@@ -22,11 +22,12 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.MaskedRegMap.WritableMask
+import xs.utils.MaskedRegMap.WritableMask
 import xiangshan._
 import xiangshan.backend.fu.util.HasCSRConst
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.cache.mmu.{TlbCmd, TlbExceptionBundle}
 
 trait PMPConst extends HasPMParameters {

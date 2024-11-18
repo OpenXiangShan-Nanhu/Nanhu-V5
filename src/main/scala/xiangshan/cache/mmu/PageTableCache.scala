@@ -23,10 +23,13 @@ import chisel3.util._
 import xiangshan._
 import xiangshan.cache.{HasDCacheParameters, MemoryOpConstants}
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.tl._
+import xs.utils.sram._
+import xs.utils.mbist.MbistPipeline
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink._
-import utility.mbist.MbistPipeline
 
 /* ptw cache caches the page table of all the three layers
  * ptw cache resp at next cycle

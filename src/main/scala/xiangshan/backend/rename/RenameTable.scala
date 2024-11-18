@@ -19,10 +19,8 @@ package xiangshan.backend.rename
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.HasCircularQueuePtrHelper
-import utility.ParallelPriorityMux
-import utility.GatedValidRegNext
-import utility.XSError
+import xs.utils.{HasCircularQueuePtrHelper, ParallelPriorityMux, GatedValidRegNext}
+import xs.utils.perf.{XSError}
 import xiangshan._
 
 abstract class RegType

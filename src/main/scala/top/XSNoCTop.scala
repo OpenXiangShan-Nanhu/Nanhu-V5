@@ -20,7 +20,8 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import system._
 import device._
 import org.chipsalliance.cde.config._

@@ -21,7 +21,8 @@
 //import chisel3.util.{Mux1H, _}
 //import xiangshan.backend.fu.FunctionUnit
 //import xiangshan.{SelImm, SrcType}
-//import utility._
+//import xs.utils._
+import xs.utils.perf._
 //
 //abstract class VPUDataModule(len: Int = 128)(implicit p: Parameters) extends FunctionUnit(len: Int)
 //{

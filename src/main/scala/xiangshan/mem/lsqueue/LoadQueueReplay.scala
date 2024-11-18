@@ -30,7 +30,8 @@ import xiangshan.ExceptionNO._
 import xiangshan.cache.wpu.ReplayCarry
 import xiangshan.mem.mdp._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
 import math._
 

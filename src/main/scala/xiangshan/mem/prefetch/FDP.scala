@@ -25,10 +25,11 @@ import freechips.rocketchip.tilelink.TLPermissions._
 import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates, TLPermissions}
 import xiangshan.backend.rob.RobDebugRollingIO
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.{CircularQueuePtr}
 import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
 import xiangshan.mem.HasL1PrefetchSourceParameter
-import utility.{CircularQueuePtr}
 import xiangshan.cache._
 import xiangshan.{XSBundle, XSModule}
 

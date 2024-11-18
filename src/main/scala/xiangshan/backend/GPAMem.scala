@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import org.chipsalliance.cde.config.Parameters
-import utility.SyncDataModuleTemplate
+import xs.utils.SyncDataModuleTemplate
 import xiangshan.HasXSParameter
 import xiangshan.frontend.{FtqPtr, IfuToBackendIO}
 

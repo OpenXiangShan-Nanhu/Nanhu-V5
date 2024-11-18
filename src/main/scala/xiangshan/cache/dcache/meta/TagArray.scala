@@ -19,8 +19,9 @@ package xiangshan.cache
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.{SRAMTemplate, XSPerfAccumulate}
-import utility.mbist.MbistPipeline
+import xs.utils.perf.{XSPerfAccumulate}
+import xs.utils.sram.{SRAMTemplate}
+import xs.utils.mbist.MbistPipeline
 import xiangshan.cache.CacheInstrucion._
 
 class TagReadReq(implicit p: Parameters) extends DCacheBundle {

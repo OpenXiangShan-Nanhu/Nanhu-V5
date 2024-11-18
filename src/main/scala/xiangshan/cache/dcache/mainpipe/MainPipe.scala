@@ -24,7 +24,8 @@ import freechips.rocketchip.tilelink.MemoryOpCategories._
 import freechips.rocketchip.tilelink.TLPermissions._
 import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates, TLPermissions}
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
 import xiangshan.mem.prefetch._
 import xiangshan.mem.HasL1PrefetchSourceParameter

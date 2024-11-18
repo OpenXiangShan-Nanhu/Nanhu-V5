@@ -20,7 +20,7 @@ import chisel3._
 import chisel3.util._
 import xiangshan.MatchTriggerIO
 import org.chipsalliance.cde.config.Parameters
-import utility.XSDebug
+import xs.utils.perf._
 
 object ChainCheck {
   def TimingCheck(prevTiming: Bool, thisTiming: Bool, chain: Bool) = !((prevTiming ^ thisTiming) && chain)

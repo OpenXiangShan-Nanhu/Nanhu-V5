@@ -3,7 +3,7 @@ package xiangshan.backend.fu.wrapper
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.RegEnable
-import utility.{SignExt, ZeroExt}
+import xs.utils.{SignExt, ZeroExt}
 import xiangshan.DIVOpType
 import xiangshan.backend.fu.{FuncUnit, MulDivCtrl, SRT16DividerDataModule}
 import xiangshan.backend.fu.FuConfig

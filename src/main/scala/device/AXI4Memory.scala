@@ -22,7 +22,8 @@ import chisel3.util._
 import difftest.common.DifftestMem
 import freechips.rocketchip.amba.axi4.{AXI4MasterNode, AXI4Parameters, AXI4SlaveNode}
 import freechips.rocketchip.diplomacy.{AddressSet, InModuleBody, LazyModule, LazyModuleImp}
-import utility._
+import xs.utils._
+import xs.utils.perf._
 
 class MemoryRequestHelper(requestType: Int)
   extends ExtModule(Map("REQUEST_TYPE" -> requestType))

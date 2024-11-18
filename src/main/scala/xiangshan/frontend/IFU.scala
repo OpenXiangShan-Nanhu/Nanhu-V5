@@ -25,10 +25,11 @@ import xiangshan._
 import xiangshan.cache.mmu._
 import xiangshan.frontend.icache._
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
 import xiangshan.backend.GPAMemEntry
-import utility.ChiselDB
+import xs.utils.ChiselDB
 
 trait HasInstrMMIOConst extends HasXSParameter with HasIFUConst{
   def mmioBusWidth = 64

@@ -3,9 +3,10 @@ package xiangshan.backend.issue
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utility.HasCircularQueuePtrHelper
 import utils._
-import utility._
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.HasCircularQueuePtrHelper
 import xiangshan._
 import xiangshan.backend.Bundles._
 import xiangshan.backend.datapath.DataConfig.VAddrData

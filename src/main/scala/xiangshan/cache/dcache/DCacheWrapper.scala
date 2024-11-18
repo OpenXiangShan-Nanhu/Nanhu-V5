@@ -27,7 +27,6 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.BundleFieldBase
 import huancun.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
-import utility._
 import utils._
 import xiangshan._
 import xiangshan.backend.Bundles.DynInst
@@ -36,6 +35,10 @@ import xiangshan.cache.wpu._
 import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
 import xiangshan.mem.prefetch._
 import xiangshan.mem.LqPtr
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.tl._
+import xs.utils.sram._
 
 // DCache specific parameters
 case class DCacheParameters

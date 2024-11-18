@@ -21,7 +21,8 @@ import chisel3._
 import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
-import utility._
+import xs.utils._
+import xs.utils.perf._
 import utils._
 import xiangshan.backend.decode.{ImmUnion, XDecode}
 import xiangshan.backend.fu.FuType
@@ -33,18 +34,11 @@ import xiangshan.backend.fu.vector.Bundles.VType
 import xiangshan.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
 import xiangshan.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
 import xiangshan.cache.HasDCacheParameters
-import utility._
 
-import org.chipsalliance.cde.config.Parameters
-import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util.experimental.decode.EspressoMinimizer
 import xiangshan.backend.CtrlToFtqIO
 import xiangshan.backend.fu.NewCSR.{Mcontrol6, Tdata1Bundle, Tdata2Bundle}
 import xiangshan.backend.fu.PMPEntry
-import xiangshan.frontend.Ftq_Redirect_SRAMEntry
-import xiangshan.frontend.AllFoldedHistories
-import xiangshan.frontend.AllAheadFoldedHistoryOldestBits
-import xiangshan.frontend.RASPtr
 import xiangshan.backend.rob.RobBundles.RobCommitEntryBundle
 
 class ValidUndirectioned[T <: Data](gen: T) extends Bundle {

@@ -24,10 +24,10 @@ import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tile.HasFPUParameters
 import system.HasSoCParameter
-import utils._
-import utility._
-import utility.mbist.{MbistInterface, MbistPipeline}
-import utility.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils._
+import xs.utils.perf._
+import xs.utils.mbist.{MbistInterface, MbistPipeline}
+import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xiangshan.backend._
 import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface

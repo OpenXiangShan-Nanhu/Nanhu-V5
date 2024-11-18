@@ -2,7 +2,7 @@ package xiangshan.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
-import utility.DelayN
+import xs.utils.DelayN
 import utils._
 import xiangshan.ExceptionNO
 import xiangshan.backend.fu.NewCSR.CSRBundles.{CauseBundle, PrivState, XtvecBundle}

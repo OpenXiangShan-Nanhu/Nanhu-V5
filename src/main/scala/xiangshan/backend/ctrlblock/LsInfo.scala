@@ -6,11 +6,6 @@ import chisel3.util._
 import xiangshan.XSBundle
 import xiangshan.mem.LoadReplayCauses
 
-class DebugMdpInfo(implicit p: Parameters) extends XSBundle{
-  val ssid = UInt(SSIDWidth.W)
-  val waitAllStore = Bool()
-}
-
 class DebugLsInfo(implicit p: Parameters) extends XSBundle{
   val s1_isTlbFirstMiss = Bool() // in s1
   val s1_isLoadToLoadForward = Bool()

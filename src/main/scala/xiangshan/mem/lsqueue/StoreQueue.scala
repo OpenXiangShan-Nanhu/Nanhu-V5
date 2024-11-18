@@ -36,10 +36,20 @@ import xiangshan.backend.fu.FuConfig._
 import xiangshan.backend.fu.FuType
 import xiangshan.ExceptionNO._
 import coupledL2.{CMOReq, CMOResp}
+import xiangshan.mem.mdp.MDPResUpdateIO
 
 class SqPtr(implicit p: Parameters) extends CircularQueuePtr[SqPtr](
   p => p(XSCoreParamsKey).StoreQueueSize
 ){
+
+
+  def getDistance(front: SqPtr, back: SqPtr): UInt = {
+    val sameFlag = front.flag === back.flag
+    val sameFlagD = back.value - front.value
+    val distance = Mux(sameFlag, sameFlagD, back.entries.U - sameFlagD)
+    distance
+  }
+
 }
 
 object SqPtr {
@@ -181,6 +191,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
     val vecmmioStout = DecoupledIO(new MemExuOutput(isVector = true))
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
+    val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
     // TODO: scommit is only for scalar store
     val rob = Flipped(new RobLsqIO)
     val uncache = new UncacheWordIO
@@ -624,6 +635,35 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     // i.e. forward1 is the target entries with the same flag bits and forward2 otherwise
     val differentFlag = deqPtrExt(0).flag =/= io.forward(i).sqIdx.flag
     val forwardMask = io.forward(i).sqIdxMask
+
+    val newMDPStIdxValue = io.forward(i).waitStIdx.value
+    val newMDPHit = io.forward(i).valid && io.forward(i).mdpHit
+    val newMDPAllocatedFail = newMDPHit && !allocated(newMDPStIdxValue)
+    val newMDPAddrFail = newMDPHit && allocated(newMDPStIdxValue) && !addrvalid(newMDPStIdxValue)
+    val newMDPFail = newMDPAllocatedFail || newMDPAddrFail
+    val newMDPHitVec = WireInit(VecInit((0 until StoreQueueSize).map(j => io.forward(i).mdpHit && j.U === io.forward(i).waitStIdx.value)))
+    val newMDPMaySuccess = io.forward(i).isReplayForRAW && !newMDPFail
+    val newMDPUpdateValid = newMDPMaySuccess | newMDPFail
+
+    dontTouch(newMDPHit)
+    dontTouch(newMDPAllocatedFail)
+    dontTouch(newMDPAddrFail)
+    dontTouch(newMDPFail)
+    dontTouch(newMDPMaySuccess)
+
+    XSPerfAccumulate("newMDPHit_" + i.toString, io.forward(i).valid && newMDPHitVec.reduce(_|_))
+    XSPerfAccumulate("newMDPAllocatedFail_" + i.toString, newMDPAllocatedFail)
+    XSPerfAccumulate("newMDPAddrFail_" + i.toString, newMDPAddrFail)
+    XSPerfAccumulate("newMDPFail_" + i.toString, newMDPFail)
+
+    io.mdpTrainUpdate(i).valid := io.forward(i).valid & newMDPUpdateValid
+    io.mdpTrainUpdate(i).bits.ldPC := io.forward(i).pc
+    io.mdpTrainUpdate(i).bits.distance := io.forward(i).waitStIdx.getDistance(io.forward(i).waitStIdx,io.forward(i).sqIdx)
+    io.mdpTrainUpdate(i).bits.fail := newMDPFail
+    when(io.mdpTrainUpdate(i).valid){
+      assert(!(newMDPFail && newMDPMaySuccess))
+    }
+
     // all addrvalid terms need to be checked
     // Real Vaild: all scalar stores, and vector store with (!inactive && !secondInvalid)
     val addrRealValidVec = WireInit(VecInit((0 until StoreQueueSize).map(j => addrvalid(j) && allocated(j))))
@@ -631,12 +671,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val addrValidVec = WireInit(VecInit((0 until StoreQueueSize).map(j => addrvalid(j) && allocated(j))))
     val dataValidVec = WireInit(VecInit((0 until StoreQueueSize).map(j => datavalid(j))))
     val allValidVec  = WireInit(VecInit((0 until StoreQueueSize).map(j => addrvalid(j) && datavalid(j) && allocated(j))))
-
-    val lfstEnable = Constantin.createRecord("LFSTEnable", LFSTEnable)
-    val storeSetHitVec = Mux(lfstEnable,
-      WireInit(VecInit((0 until StoreQueueSize).map(j => io.forward(i).uop.loadWaitBit && uop(j).robIdx === io.forward(i).uop.waitForRobIdx))),
-      WireInit(VecInit((0 until StoreQueueSize).map(j => uop(j).storeSetHit && uop(j).ssid === io.forward(i).uop.ssid)))
-    )
 
     val forwardMask1 = Mux(differentFlag, ~deqMask, deqMask ^ forwardMask)
     val forwardMask2 = Mux(differentFlag, forwardMask, 0.U(StoreQueueSize.W))
@@ -703,8 +737,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
     // If SSID match, address not ready, mark it as addrInvalid
     // load_s2: generate addrInvalid
-    val addrInvalidMask1 = (~addrValidVec.asUInt & storeSetHitVec.asUInt & forwardMask1.asUInt)
-    val addrInvalidMask2 = (~addrValidVec.asUInt & storeSetHitVec.asUInt & forwardMask2.asUInt)
+    val addrInvalidMask1 = (~addrValidVec.asUInt & newMDPHitVec.asUInt & forwardMask1.asUInt)
+    val addrInvalidMask2 = (~addrValidVec.asUInt & newMDPHitVec.asUInt & forwardMask2.asUInt)
     // make chisel happy
     val addrInvalidMask1Reg = Wire(UInt(StoreQueueSize.W))
     addrInvalidMask1Reg := RegNext(addrInvalidMask1)
@@ -758,7 +792,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
 
 
-    when (RegEnable(io.forward(i).uop.loadWaitStrict, io.forward(i).valid)) {
+    when (RegEnable(false.B, io.forward(i).valid)) {  //todo:mdp
       io.forward(i).addrInvalidSqIdx := RegEnable((io.forward(i).uop.sqIdx - 1.U), io.forward(i).valid)
     } .elsewhen (addrInvalidFlag) {
       io.forward(i).addrInvalidSqIdx.flag := Mux(!s2_differentFlag || addrInvalidSqIdx >= s2_deqPtrExt.value, s2_deqPtrExt.flag, s2_enqPtrExt.flag)
@@ -767,7 +801,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       // may be store inst has been written to sbuffer already.
       io.forward(i).addrInvalidSqIdx := RegEnable(io.forward(i).uop.sqIdx, io.forward(i).valid)
     }
-    io.forward(i).addrInvalid := Mux(RegEnable(io.forward(i).uop.loadWaitStrict, io.forward(i).valid), RegNext(hasInvalidAddr), addrInvalidFlag)
+//    io.forward(i).addrInvalid := Mux(RegEnable(io.forward(i).uop.loadWaitStrict, io.forward(i).valid), RegNext(hasInvalidAddr), addrInvalidFlag)
+    io.forward(i).addrInvalid := addrInvalidFlag //todo:mdp
 
     // data invalid sq index
     // make chisel happy

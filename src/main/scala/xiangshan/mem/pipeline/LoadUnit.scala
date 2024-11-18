@@ -193,6 +193,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     // Load RAR rollback
     val rollback = Valid(new Redirect)
 
+    //MDP
+    val s0_reqMDP = Output(ValidIO(new MDPQuery))
+    val s1_respMDP = Input(ValidIO(new MDPResp))
     // perf
     val debug_ls         = Output(new DebugLsInfoBundle)
     val lsTopdownInfo    = Output(new LsTopdownInfo)
@@ -255,6 +258,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     val elemIdxInsideVd = UInt(elemIdxBits.W)
     val alignedType   = UInt(alignTypeBits.W)
     val vecBaseVaddr  = UInt(VAddrBits.W)
+    val isReplayForRAW = Bool()
   }
   val s0_sel_src = Wire(new FlowSource)
 
@@ -382,6 +386,13 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.dcache.pf_source             := Mux(s0_hw_prf_select, io.prefetch_req.bits.pf_source.value, L1_HW_PREFETCH_NULL)
   io.dcache.is128Req              := s0_sel_src.is128bit
 
+  io.s0_reqMDP.valid := s0_valid
+  io.s0_reqMDP.bits.ld_stIdx := s0_sel_src.uop.sqIdx
+  io.s0_reqMDP.bits.ldFoldPc := s0_sel_src.uop.mdpTag
+
+
+  val s1_mdpResp = io.s1_respMDP
+
   // load flow priority mux
   def fromNullSource(): FlowSource = {
     val out = WireInit(0.U.asTypeOf(new FlowSource))
@@ -496,6 +507,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     out.elemIdx       := src.elemIdx
     out.elemIdxInsideVd := src.elemIdxInsideVd
     out.alignedType   := src.alignedType
+    out.isReplayForRAW := src.isReplayForRAW
     out
   }
 
@@ -737,6 +749,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s0_out.mbIndex        := s0_sel_src.mbIndex
   s0_out.vecBaseVaddr   := s0_sel_src.vecBaseVaddr
   s0_out.feedbacked := io.feedback_fast.valid
+  s0_out.isReplayForRAW := s0_sel_src.isReplayForRAW
   // s0_out.flowPtr         := s0_sel_src.flowPtr
   s0_out.uop.exceptionVec(loadAddrMisaligned) := (!s0_addr_aligned || s0_sel_src.uop.exceptionVec(loadAddrMisaligned)) && s0_sel_src.vecActive
   s0_out.forward_tlDchannel := s0_src_select_vec(super_rep_idx)
@@ -884,7 +897,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.sbuffer.sqIdx := s1_in.uop.sqIdx
   io.sbuffer.mask  := s1_in.mask
   io.sbuffer.pc    := s1_in.uop.pc // FIXME: remove it
+  io.sbuffer.mdpFoldPc := DontCare
 
+  val enableNewMDP = true.B
   io.lsq.forward.valid     := s1_valid && !(s1_exception || s1_tlb_miss || s1_kill || s1_dly_err || s1_prf)
   io.lsq.forward.vaddr     := s1_vaddr
   io.lsq.forward.paddr     := s1_paddr_dup_lsu
@@ -892,7 +907,11 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.lsq.forward.sqIdx     := s1_in.uop.sqIdx
   io.lsq.forward.sqIdxMask := 0.U
   io.lsq.forward.mask      := s1_in.mask
-  io.lsq.forward.pc        := s1_in.uop.pc // FIXME: remove it
+  io.lsq.forward.pc        := DontCare
+  io.lsq.forward.mdpFoldPc := s1_in.uop.mdpTag
+  io.lsq.forward.mdpHit    := s1_mdpResp.bits.hit & enableNewMDP
+  io.lsq.forward.waitStIdx := s1_mdpResp.bits.waitStIdx
+  io.lsq.forward.isReplayForRAW := s1_in.isReplayForRAW
 
   // st-ld violation query
     // if store unit is 128-bits memory access, need match 128-bit
@@ -1109,8 +1128,10 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                          !s2_in.tlbMiss
 
   val s2_full_fwd      = Wire(Bool())
-  val s2_mem_amb       = s2_in.uop.storeSetHit &&
-                         io.lsq.forward.addrInvalid && RegNext(io.lsq.forward.valid)
+//  val s2_mem_amb       = s2_in.uop.storeSetHit &&
+//                         io.lsq.forward.addrInvalid && RegNext(io.lsq.forward.valid)
+  val s2_mem_amb = RegNext(s1_mdpResp.valid && s1_mdpResp.bits.hit, false.B) &&
+                  io.lsq.forward.addrInvalid && RegNext(io.lsq.forward.valid)
 
   val s2_tlb_miss      = s2_in.tlbMiss
   val s2_fwd_fail      = io.lsq.forward.dataInvalid && RegNext(io.lsq.forward.valid)
@@ -1306,6 +1327,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.prefetch_train.bits.miss          := RegEnable(io.dcache.resp.bits.miss, s2_prefetch_train_valid) // TODO: use trace with bank conflict?
   io.prefetch_train.bits.meta_prefetch := RegEnable(io.dcache.resp.bits.meta_prefetch, s2_prefetch_train_valid)
   io.prefetch_train.bits.meta_access   := RegEnable(io.dcache.resp.bits.meta_access, s2_prefetch_train_valid)
+  io.prefetch_train.bits.isReplayForRAW := DontCare
   io.s1_prefetch_spec := s1_fire
   io.s2_prefetch_spec := s2_prefetch_train_valid
 
@@ -1316,6 +1338,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.prefetch_train_l1.bits.miss          := RegEnable(io.dcache.resp.bits.miss, s2_prefetch_train_l1_valid)
   io.prefetch_train_l1.bits.meta_prefetch := RegEnable(io.dcache.resp.bits.meta_prefetch, s2_prefetch_train_l1_valid)
   io.prefetch_train_l1.bits.meta_access   := RegEnable(io.dcache.resp.bits.meta_access, s2_prefetch_train_l1_valid)
+  io.prefetch_train_l1.bits.isReplayForRAW := DontCare
   if (env.FPGAPlatform){
     io.dcache.s0_pc := DontCare
     io.dcache.s1_pc := DontCare

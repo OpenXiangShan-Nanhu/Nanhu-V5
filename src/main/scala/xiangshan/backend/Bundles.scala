@@ -227,15 +227,7 @@ object Bundles {
     // Take snapshot at this CFI inst
     val snapshot        = Bool()
     val debugInfo       = new PerfDebugInfo
-    val storeSetHit     = Bool() // inst has been allocated an store set
-    val waitForRobIdx   = new RobPtr // store set predicted previous store robIdx
-    // Load wait is needed
-    // load inst will not be executed until former store (predicted by mdp) addr calcuated
-    val loadWaitBit     = Bool()
-    // If (loadWaitBit && loadWaitStrict), strict load wait is needed
-    // load inst will not be executed until ALL former store addr calcuated
-    val loadWaitStrict  = Bool()
-    val ssid            = UInt(SSIDWidth.W)
+    val mdpTag          = UInt(MemPredPCWidth.W)
     // Todo
     val lqIdx = new LqPtr
     val sqIdx = new SqPtr
@@ -715,11 +707,7 @@ object Bundles {
       val target = UInt(VAddrData().dataWidth.W)
       val taken = Bool()
     }) else None
-    val loadWaitBit    = OptionWrapper(params.hasLoadExu, Bool())
-    val waitForRobIdx  = OptionWrapper(params.hasLoadExu, new RobPtr) // store set predicted previous store robIdx
-    val storeSetHit    = OptionWrapper(params.hasLoadExu, Bool()) // inst has been allocated an store set
-    val loadWaitStrict = OptionWrapper(params.hasLoadExu, Bool()) // load inst will not be executed until ALL former store addr calcuated
-    val ssid           = OptionWrapper(params.hasLoadExu, UInt(SSIDWidth.W))
+    val mdpTag         = OptionWrapper(params.hasLoadExu, UInt(MemPredPCWidth.W))
     // only vector load store need
     val numLsElem      = OptionWrapper(params.hasVecLsFu, NumLsElem())
 
@@ -774,11 +762,7 @@ object Bundles {
       this.ftqIdx        .foreach(_ := source.common.ftqIdx.get)
       this.ftqOffset     .foreach(_ := source.common.ftqOffset.get)
       this.predictInfo   .foreach(_ := source.common.predictInfo.get)
-      this.loadWaitBit   .foreach(_ := source.common.loadWaitBit.get)
-      this.waitForRobIdx .foreach(_ := source.common.waitForRobIdx.get)
-      this.storeSetHit   .foreach(_ := source.common.storeSetHit.get)
-      this.loadWaitStrict.foreach(_ := source.common.loadWaitStrict.get)
-      this.ssid          .foreach(_ := source.common.ssid.get)
+      this.mdpTag        .foreach(_ := source.common.mdpTag.get)
       this.lqIdx         .foreach(_ := source.common.lqIdx.get)
       this.sqIdx         .foreach(_ := source.common.sqIdx.get)
       this.numLsElem     .foreach(_ := source.common.numLsElem.get)

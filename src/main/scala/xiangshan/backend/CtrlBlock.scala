@@ -26,7 +26,7 @@ import utils._
 import xiangshan.ExceptionNO._
 import xiangshan._
 import xiangshan.backend.Bundles.{DecodedInst, DynInst, ExceptionInfo, ExuOutput, StaticInst, TrapInstInfo}
-import xiangshan.backend.ctrlblock.{DebugLSIO, DebugLsInfoBundle, LsTopdownInfo, MemCtrl, RedirectGenerator}
+import xiangshan.backend.ctrlblock.{DebugLSIO, DebugLsInfoBundle, LsTopdownInfo, RedirectGenerator}
 import xiangshan.backend.datapath.DataConfig.VAddrData
 import xiangshan.backend.decode.{DecodeStage, FusionDecoder}
 import xiangshan.backend.dispatch.{CoreDispatchTopDownIO, Dispatch, DispatchQueue}
@@ -97,7 +97,6 @@ class CtrlBlockImp(
   val redirectGen = Module(new RedirectGenerator)
   private def hasRen: Boolean = true
   private val rob = wrapper.rob.module
-  private val memCtrl = Module(new MemCtrl(params))
 
   private val disableFusion = decode.io.csrCtrl.singlestep || !decode.io.csrCtrl.fusion_enable
 
@@ -499,13 +498,14 @@ class CtrlBlockImp(
   }
 
   // currently, we only update mdp info when isReplay
-  memCtrl.io.redirect := s1_s3_redirect
-  memCtrl.io.csrCtrl := io.csrCtrl                          // RegNext in memCtrl
-  memCtrl.io.stIn := io.fromMem.stIn                        // RegNext in memCtrl
-  memCtrl.io.memPredUpdate := redirectGen.io.memPredUpdate  // RegNext in memCtrl
-  memCtrl.io.mdpFoldPcVecVld := mdpFlodPcVecVld
-  memCtrl.io.mdpFlodPcVec := mdpFlodPcVec
-  memCtrl.io.dispatchLFSTio <> dispatch.io.lfst
+//  memCtrl.io.redirect := s1_s3_redirect
+//  memCtrl.io.csrCtrl := io.csrCtrl                          // RegNext in memCtrl
+//  memCtrl.io.stIn := io.fromMem.stIn                        // RegNext in memCtrl
+//  memCtrl.io.memPredUpdate := redirectGen.io.memPredUpdate  // RegNext in memCtrl
+//  memCtrl.io.mdpFoldPcVecVld := mdpFlodPcVecVld
+//  memCtrl.io.mdpFlodPcVec := mdpFlodPcVec
+//  memCtrl.io.dispatchLFSTio <> dispatch.io.lfst
+  io.memPredUpdate := redirectGen.io.memPredUpdate
 
   rat.io.redirect := s1_s3_redirect.valid
   rat.io.rabCommits := rob.io.rabCommits
@@ -519,10 +519,10 @@ class CtrlBlockImp(
   rename.io.redirect := s1_s3_redirect
   rename.io.rabCommits := rob.io.rabCommits
   rename.io.singleStep := GatedValidRegNext(io.csrCtrl.singlestep)
-  rename.io.waittable := (memCtrl.io.waitTable2Rename zip decode.io.out).map{ case(waittable2rename, decodeOut) =>
-    RegEnable(waittable2rename, decodeOut.fire)
-  }
-  rename.io.ssit := memCtrl.io.ssit2Rename
+//  rename.io.waittable := (memCtrl.io.waitTable2Rename zip decode.io.out).map{ case(waittable2rename, decodeOut) =>
+//    RegEnable(waittable2rename, decodeOut.fire)
+//  }
+//  rename.io.ssit := memCtrl.io.ssit2Rename
   rename.io.intReadPorts := VecInit(rat.io.intReadPorts.map(x => VecInit(x.map(_.data))))
   rename.io.fpReadPorts := VecInit(rat.io.fpReadPorts.map(x => VecInit(x.map(_.data))))
   rename.io.vecReadPorts := VecInit(rat.io.vecReadPorts.map(x => VecInit(x.map(_.data))))
@@ -786,7 +786,7 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
 
   val sqCanAccept = Input(Bool())
   val lqCanAccept = Input(Bool())
-
+  val memPredUpdate = Output(new MemPredUpdateReq)
   val debugTopDown = new Bundle {
     val fromRob = new RobCoreTopDownIO
     val fromCore = new CoreDispatchTopDownIO

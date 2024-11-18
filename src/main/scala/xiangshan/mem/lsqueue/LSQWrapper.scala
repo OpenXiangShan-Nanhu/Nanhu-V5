@@ -25,13 +25,14 @@ import xs.utils.perf._
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
 import xiangshan.cache._
-import xiangshan.cache.{DCacheWordIO, DCacheLineIO, MemoryOpConstants}
-import xiangshan.cache.mmu.{TlbRequestIO, TlbHintIO}
+import xiangshan.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
+import xiangshan.cache.mmu.{TlbHintIO, TlbRequestIO}
 import xiangshan.mem._
 import xiangshan.backend._
 import xiangshan.backend.rob.RobLsqIO
 import coupledL2.{CMOReq, CMOResp}
 import xiangshan.backend.fu.FuType
+import xiangshan.mem.mdp.MDPResUpdateIO
 
 class ExceptionAddrIO(implicit p: Parameters) extends XSBundle {
   val isStore = Input(Bool())
@@ -126,6 +127,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val force_write = Output(Bool())
     val lqEmpty = Output(Bool())
     val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
+    val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
 
     // top-down
     val debugTopDown = new LoadQueueTopDownIO
@@ -136,6 +138,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
 
   storeQueue.io.hartId := io.hartId
   storeQueue.io.uncacheOutstanding := io.uncacheOutstanding
+  io.mdpTrainUpdate := storeQueue.io.mdpTrainUpdate
 
 
   dontTouch(loadQueue.io.tlbReplayDelayCycleCtrl)

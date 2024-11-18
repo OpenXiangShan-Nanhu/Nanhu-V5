@@ -5,8 +5,9 @@ import chisel3.util._
 import chisel3._
 import xs.utils.{HasCircularQueuePtrHelper, XORFold, GatedValidRegNext}
 import xiangshan.frontend.{FtqRead, PreDecodeInfo, Ftq_RF_Components}
+import xiangshan.frontend.{FtqRead, PreDecodeInfo}
+import xiangshan.mem.mdp.MDPPCFold
 import xiangshan.{MemPredUpdateReq, Redirect, XSBundle, XSModule}
-import xiangshan.frontend.FtqPtr
 
 class RedirectGenerator(implicit p: Parameters) extends XSModule
   with HasCircularQueuePtrHelper {
@@ -82,15 +83,20 @@ class RedirectGenerator(implicit p: Parameters) extends XSModule
   // store_pc is used to update store set
   val store_pc = io.memPredPcRead.data
   val real_pc = s1_redirect_bits_reg.cfiUpdate.pc
+  val stIdx = s1_redirect_bits_reg.stIdx
+  val ld_stIdx = s1_redirect_bits_reg.ld_stIdx
   // update load violation predictor if load violation redirect triggered
   val s2_redirect_bits_reg = RegEnable(s1_redirect_bits_reg, s1_redirect_valid_reg)
-  io.memPredUpdate.valid := GatedValidRegNext(s1_isReplay && s1_redirect_valid_reg && s1_redirect_bits_reg.flushItself() && s1_redirect_bits_reg.isStLd, init = false.B)
+  io.memPredUpdate.valid := RegNext(s1_isReplay && s1_redirect_valid_reg && s1_redirect_bits_reg.flushItself() && s1_redirect_bits_reg.isStLd, init = false.B)
   // update wait table
-  io.memPredUpdate.waddr := RegEnable(XORFold(real_pc(VAddrBits - 1, 1), MemPredPCWidth), s1_isReplay && s1_redirect_valid_reg)
+  io.memPredUpdate.waddr := DontCare
   io.memPredUpdate.wdata := true.B
   // update store set
-  io.memPredUpdate.ldpc := RegEnable(XORFold(real_pc(VAddrBits - 1, 1), MemPredPCWidth), s1_isReplay && s1_redirect_valid_reg)
+  io.memPredUpdate.ldpc := DontCare
   // store pc is ready 1 cycle after s1_isReplay is judged
-  io.memPredUpdate.stpc := RegEnable(XORFold(store_pc(VAddrBits - 1, 1), MemPredPCWidth), s1_isReplay && s1_redirect_valid_reg)
-
+  io.memPredUpdate.stpc := DontCare
+  io.memPredUpdate.stIdx := RegEnable(stIdx, s1_isReplay && s1_redirect_valid_reg)
+  io.memPredUpdate.ldFoldPc := RegEnable(MDPPCFold(real_pc(VAddrBits - 1, 1),MemPredPCWidth), s1_isReplay && s1_redirect_valid_reg)
+  io.memPredUpdate.stFoldPc := RegEnable(MDPPCFold(store_pc(VAddrBits - 1, 1),MemPredPCWidth), s1_isReplay && s1_redirect_valid_reg)
+  io.memPredUpdate.ld_stIdx := RegEnable(ld_stIdx, s1_isReplay && s1_redirect_valid_reg)
 }

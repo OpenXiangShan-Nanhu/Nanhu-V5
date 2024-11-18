@@ -347,12 +347,14 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
   val rollbackLqWb = Wire(Vec(StorePipelineWidth, Valid(new DynInst)))
   val stFtqIdx = Wire(Vec(StorePipelineWidth, new FtqPtr))
   val stFtqOffset = Wire(Vec(StorePipelineWidth, UInt(log2Up(PredictWidth).W)))
+  val stIdx = Wire(Vec(StorePipelineWidth, new SqPtr))
   for (w <- 0 until StorePipelineWidth) {
     val detectedRollback = detectRollback(w)
     rollbackLqWb(w).valid := detectedRollback._1 && DelayN(storeIn(w).valid && !storeIn(w).bits.miss, TotalSelectCycles)
     rollbackLqWb(w).bits  := detectedRollback._2
     stFtqIdx(w) := DelayNWithValid(storeIn(w).bits.uop.ftqPtr, storeIn(w).valid, TotalSelectCycles)._2
     stFtqOffset(w) := DelayNWithValid(storeIn(w).bits.uop.ftqOffset, storeIn(w).valid, TotalSelectCycles)._2
+    stIdx(w) := DelayNWithValid(storeIn(w).bits.uop.sqIdx, storeIn(w).valid, TotalSelectCycles)._2
   }
 
   // select rollback (part2), generate rollback request, then fire rollback request
@@ -373,12 +375,18 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     redirect.bits.stFtqOffset := stFtqOffset(i)
     redirect.bits.level       := RedirectLevel.flush
     redirect.bits.isStLd      := true.B
+    redirect.bits.stIdx       := stIdx(i)
+    redirect.bits.ld_stIdx    := rollbackLqWb(i).bits.sqIdx
     redirect.bits.cfiUpdate.target := rollbackLqWb(i).bits.pc
     redirect.bits.debug_runahead_checkpoint_id := rollbackLqWb(i).bits.debugInfo.runahead_checkpoint_id
     redirect
   })
   io.rollback := allRedirect
 
+//  val table_RAWVio = ChiselDB.createTable("stLdVioTrace", new Redirect, basicDB = false)
+//  (0 until StorePipelineWidth).foreach(i => {
+//    table_RAWVio.log(allRedirect(i), i.toString, clock, reset)
+//  })
   // perf cnt
   val canEnqCount = PopCount(io.query.map(_.req.fire))
   val validCount = freeList.io.validCount

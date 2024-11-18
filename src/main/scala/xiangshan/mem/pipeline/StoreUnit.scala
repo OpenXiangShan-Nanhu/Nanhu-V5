@@ -471,6 +471,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   // TODO: add prefetch and access bit
   io.prefetch_train.bits.meta_prefetch := false.B
   io.prefetch_train.bits.meta_access := false.B
+  io.prefetch_train.bits.isReplayForRAW := DontCare
 
   // Pipeline
   // --------------------------------------------------------------------------------

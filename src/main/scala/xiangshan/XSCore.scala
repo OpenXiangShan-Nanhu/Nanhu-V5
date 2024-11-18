@@ -126,8 +126,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     sink.valid := source.valid
     sink.bits := 0.U.asTypeOf(sink.bits)
     sink.bits.robIdx := source.bits.uop.robIdx
-    sink.bits.ssid := source.bits.uop.ssid
-    sink.bits.storeSetHit := source.bits.uop.storeSetHit
     // The other signals have not been used
   }
   backend.io.mem.memoryViolation := memBlock.io.mem_to_ooo.memoryViolation
@@ -155,6 +153,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   backend.io.mem.writebackVldu <> memBlock.io.mem_to_ooo.writebackVldu
   backend.io.mem.robLsqIO.mmio := memBlock.io.mem_to_ooo.lsqio.mmio
   backend.io.mem.robLsqIO.uop := memBlock.io.mem_to_ooo.lsqio.uop
+  memBlock.io.memPredUpdate := backend.io.memPredUpdate
 
   // memblock error exception writeback, 1 cycle after normal writeback
   backend.io.mem.s3_delayed_load_error := memBlock.io.mem_to_ooo.s3_delayed_load_error

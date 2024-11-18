@@ -144,7 +144,6 @@ class CtrlFlow(implicit p: Parameters) extends XSBundle {
   val pd = new PreDecodeInfo
   val pred_taken = Bool()
   val crossPageIPFFix = Bool()
-  val storeSetHit = Bool() // inst has been allocated an store set
   val waitForRobIdx = new RobPtr // store set predicted previous store robIdx
   // Load wait is needed
   // load inst will not be executed until former store (predicted by mdp) addr calcuated
@@ -303,6 +302,8 @@ class MicroOpRbExt(implicit p: Parameters) extends XSBundleWithMicroOp {
 class Redirect(implicit p: Parameters) extends XSBundle {
   val isRVC = Bool()
   val isStLd = Bool()
+  val stIdx = new SqPtr
+  val ld_stIdx = new SqPtr
   val robIdx = new RobPtr
   val ftqIdx = new FtqPtr
   val ftqOffset = UInt(log2Up(PredictWidth).W)
@@ -563,8 +564,15 @@ class MemPredUpdateReq(implicit p: Parameters) extends XSBundle  {
 
   // store set update
   // by default, ldpc/stpc should be xor folded
-  val ldpc = UInt(MemPredPCWidth.W)
-  val stpc = UInt(MemPredPCWidth.W)
+//  val ldpc = UInt(MemPredPCWidth.W)
+//  val stpc = UInt(MemPredPCWidth.W)
+  val ldpc = UInt(VAddrBits.W)
+  val stpc = UInt(VAddrBits.W)
+
+  val ldFoldPc = UInt(MemPredPCWidth.W)
+  val stFoldPc = UInt(MemPredPCWidth.W)
+  val stIdx = new SqPtr
+  val ld_stIdx = new SqPtr
 }
 
 class CustomCSRCtrlIO(implicit p: Parameters) extends XSBundle {

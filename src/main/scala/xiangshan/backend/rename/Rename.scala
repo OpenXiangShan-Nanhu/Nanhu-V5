@@ -54,10 +54,6 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     // from decode
     val in = Vec(RenameWidth, Flipped(DecoupledIO(new DecodedInst)))
     val fusionInfo = Vec(DecodeWidth - 1, Flipped(new FusionDecodeInfo))
-    // ssit read result
-    val ssit = Flipped(Vec(RenameWidth, Output(new SSITEntry)))
-    // waittable read result
-    val waittable = Flipped(Vec(RenameWidth, Output(Bool())))
     // to rename table
     val intReadPorts = Vec(RenameWidth, Vec(2, Input(UInt(PhyRegIdxWidth.W))))
     val fpReadPorts = Vec(RenameWidth, Vec(3, Input(UInt(PhyRegIdxWidth.W))))
@@ -188,7 +184,6 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     uop.debugInfo     := DontCare
     uop.lqIdx         := DontCare
     uop.sqIdx         := DontCare
-    uop.waitForRobIdx := DontCare
     uop.singleStep    := DontCare
     uop.snapshot      := DontCare
     uop.srcLoadDependency := DontCare
@@ -288,15 +283,9 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
      */
     uops(i).waitForward := io.in(i).bits.waitForward && !isRoCsrr(i)
     uops(i).blockBackward := io.in(i).bits.blockBackward && !isCsrr(i)
-
-    // update cf according to ssit result
-    uops(i).storeSetHit := io.ssit(i).valid
-    uops(i).loadWaitStrict := io.ssit(i).strict && io.ssit(i).valid
-    uops(i).ssid := io.ssit(i).ssid
+    uops(i).mdpTag := MDPPCFold(io.in(i).bits.pc(VAddrBits - 1, 1), MemPredPCWidth)
 
     // update cf according to waittable result
-    uops(i).loadWaitBit := io.waittable(i)
-
     uops(i).replayInst := false.B // set by IQ or MemQ
     // alloc a new phy reg
     needV0Dest(i) := io.in(i).valid && needDestReg(Reg_V0, io.in(i).bits)

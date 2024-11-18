@@ -267,10 +267,11 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   ctrlBlock.io.debugEnqLsq.needAlloc := memScheduler.io.memIO.get.lsqEnqIO.needAlloc
   ctrlBlock.io.debugEnqLsq.iqAccept := memScheduler.io.memIO.get.lsqEnqIO.iqAccept
   ctrlBlock.io.fromVecExcpMod.busy := vecExcpMod.o.status.busy
-  ctrlBlock.io.redirectPcRead <> pcTargetMem.io.toCtrl.redirectRead
   ctrlBlock.io.memPredPcRead <> pcTargetMem.io.toCtrl.memPredRead
+  ctrlBlock.io.redirectPcRead <> pcTargetMem.io.toCtrl.redirectRead
   ctrlBlock.io.exceptionPcRead <> pcTargetMem.io.toCtrl.exceptionRead
   ctrlBlock.io.tracePcRead <> pcTargetMem.io.toCtrl.tracePcRead
+  io.memPredUpdate := ctrlBlock.io.memPredUpdate
 
   intScheduler.io.fromTop.hartId := io.fromTop.hartId
   intScheduler.io.fromCtrlBlock.flush := ctrlBlock.io.toIssueBlock.flush
@@ -695,11 +696,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     sink.bits.uop.vlWen          := source.bits.vlWen.getOrElse(false.B)
     sink.bits.uop.flushPipe      := source.bits.flushPipe.getOrElse(false.B)
     sink.bits.uop.pc             := source.bits.pc.getOrElse(0.U)
-    sink.bits.uop.loadWaitBit    := Mux(enableMdp, source.bits.loadWaitBit.getOrElse(false.B), false.B)
-    sink.bits.uop.waitForRobIdx  := Mux(enableMdp, source.bits.waitForRobIdx.getOrElse(0.U.asTypeOf(new RobPtr)), 0.U.asTypeOf(new RobPtr))
-    sink.bits.uop.storeSetHit    := Mux(enableMdp, source.bits.storeSetHit.getOrElse(false.B), false.B)
-    sink.bits.uop.loadWaitStrict := Mux(enableMdp, source.bits.loadWaitStrict.getOrElse(false.B), false.B)
-    sink.bits.uop.ssid           := Mux(enableMdp, source.bits.ssid.getOrElse(0.U(SSIDWidth.W)), 0.U(SSIDWidth.W))
+    sink.bits.uop.mdpTag         := Mux(enableMdp, source.bits.mdpTag.getOrElse(0.U(MemPredPCWidth.W)), 0.U(MemPredPCWidth.W))
     sink.bits.uop.lqIdx          := source.bits.lqIdx.getOrElse(0.U.asTypeOf(new LqPtr))
     sink.bits.uop.sqIdx          := source.bits.sqIdx.getOrElse(0.U.asTypeOf(new SqPtr))
     sink.bits.uop.ftqPtr         := source.bits.ftqIdx.getOrElse(0.U.asTypeOf(new FtqPtr))
@@ -958,6 +955,7 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
   val tlb = Output(new TlbCsrBundle)
 
   val csrCustomCtrl = Output(new CustomCSRCtrlIO)
+  val memPredUpdate = Output(new MemPredUpdateReq)
 
   val debugTopDown = new Bundle {
     val fromRob = new RobCoreTopDownIO

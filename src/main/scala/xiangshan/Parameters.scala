@@ -862,7 +862,7 @@ trait HasXSParameter {
   def ResetTimeMin2Pow = 10 //1024
   // wait table parameters
   def WaitTableSize = coreParams.WaitTableSize
-  def MemPredPCWidth = log2Up(WaitTableSize)
+  def MemPredPCWidth = 10
   def LWTUse2BitCounter = true
   // store set parameters
   def SSITSize = WaitTableSize

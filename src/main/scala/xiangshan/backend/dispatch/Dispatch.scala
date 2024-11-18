@@ -96,8 +96,6 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     val redirect = Flipped(ValidIO(new Redirect))
     // singleStep
     val singleStep = Input(Bool())
-    // lfst
-    val lfst = new DispatchLFSTIO
     // perf only
     val robHead = Input(new DynInst)
     val stallReason = Flipped(new StallReasonIO(RenameWidth))
@@ -235,19 +233,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     when (io.fromRename(i).bits.isLUI) {
       updatedUop(i).psrc(0) := 0.U
     }
-    //TODO: vec ls mdp
-    io.lfst.req(i).valid := io.fromRename(i).fire && updatedUop(i).storeSetHit
-    io.lfst.req(i).bits.isstore := isStore(i)
-    io.lfst.req(i).bits.ssid := updatedUop(i).ssid
-    io.lfst.req(i).bits.robIdx := updatedUop(i).robIdx // speculatively assigned in rename
 
-    // override load delay ctrl signal with store set result
-    if(StoreSetEnable) {
-      updatedUop(i).loadWaitBit := io.lfst.resp(i).bits.shouldWait
-      updatedUop(i).waitForRobIdx := io.lfst.resp(i).bits.robIdx
-    } else {
-      updatedUop(i).loadWaitBit := isLs(i) && !isStore(i) && io.fromRename(i).bits.loadWaitBit
-    }
     // // update singleStep, singleStep exception only enable in next machine instruction.
     updatedUop(i).singleStep := io.singleStep && (io.fromRename(i).bits.robIdx =/= robidxCanCommitStepping)
     when (io.fromRename(i).fire) {
@@ -266,20 +252,6 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       }
     }
   }
-
-  // store set perf count
-  XSPerfAccumulate("waittable_load_wait", PopCount((0 until RenameWidth).map(i =>
-    io.fromRename(i).fire && io.fromRename(i).bits.loadWaitBit && !isStore(i) && isLs(i)
-  )))
-  XSPerfAccumulate("storeset_load_wait", PopCount((0 until RenameWidth).map(i =>
-    io.fromRename(i).fire && updatedUop(i).loadWaitBit && !isStore(i) && isLs(i)
-  )))
-  XSPerfAccumulate("storeset_load_strict_wait", PopCount((0 until RenameWidth).map(i =>
-    io.fromRename(i).fire && updatedUop(i).loadWaitBit && updatedUop(i).loadWaitStrict && !isStore(i) && isLs(i)
-  )))
-  XSPerfAccumulate("storeset_store_wait", PopCount((0 until RenameWidth).map(i =>
-    io.fromRename(i).fire && updatedUop(i).loadWaitBit && isStore(i)
-  )))
 
   /**
     * Part 3:

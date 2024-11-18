@@ -314,6 +314,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     val outer_l2_pf_enable = Output(Bool())
     val inner_hc_perfEvents = Output(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val outer_hc_perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
+    val memPredUpdate = Input(new MemPredUpdateReq)
 
     // reset signals of frontend & backend are generated in memblock
     val reset_backend = Output(Reset())
@@ -354,6 +355,14 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     io.error.bits.report_to_beu := false.B
     io.error.valid := false.B
   }
+
+  val mdp = Module(new NewMDP)
+  mdp.io.reUpdate.valid := io.memPredUpdate.valid
+  mdp.io.reUpdate.bits.stIdx := io.memPredUpdate.stIdx
+  mdp.io.reUpdate.bits.ld_stIdx := io.memPredUpdate.ld_stIdx
+  mdp.io.reUpdate.bits.ldFoldPc := io.memPredUpdate.ldFoldPc
+  mdp.io.reUpdate.bits.stFoldPc := io.memPredUpdate.stFoldPc
+
 
   val loadUnits = Seq.fill(LduCnt)(Module(new LoadUnit))
   val storeUnits = Seq.fill(StaCnt)(Module(new StoreUnit))
@@ -513,6 +522,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // if you wants to stress test dcache store, use FakeSbuffer
   // val sbuffer = Module(new FakeSbuffer) // out of date now
   lsq.io := DontCare
+  mdp.io.ldUpdate := lsq.io.mdpTrainUpdate
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
 
   dcache.io.hartId := io.hartId
@@ -771,7 +781,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   for (i <- 0 until LduCnt) {
     loadUnits(i).io.redirect <> redirect
     loadUnits(i).io.replayQValidCount := lsq.io.replayQValidCount
-
+    mdp.io.ldReq(i) := loadUnits(i).io.s0_reqMDP
+    loadUnits(i).io.s1_respMDP := mdp.io.ldResp(i)
     // get input form dispatch
     loadUnits(i).io.ldin <> io.ooo_to_mem.issueLda(i)
     io.mem_to_ooo.ldaIqFeedback(i).feedbackSlow := loadUnits(i).io.feedback_slow

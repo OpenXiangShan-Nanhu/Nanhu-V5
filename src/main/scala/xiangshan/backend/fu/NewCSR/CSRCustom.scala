@@ -81,7 +81,7 @@ class SlvpredctlBundle extends CSRBundle {
   val STORESET_NO_FAST_WAKEUP = RW(3).withReset(false.B)
   val STORESET_WAIT_STORE     = RW(2).withReset(false.B)
   val NO_SPEC_LOAD            = RW(1).withReset(false.B)
-  val LVPRED_DISABLE          = RW(0).withReset(false.B)
+  val LVPRED_DISABLE          = RW(0).withReset(true.B)
 }
 
 class SmblockctlBundle extends CSRBundle {

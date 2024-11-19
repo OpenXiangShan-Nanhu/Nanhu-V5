@@ -369,6 +369,8 @@ class LoadNukeQueryReq(implicit p: Parameters) extends XSBundle { // provide lqI
   val paddr      = UInt(PAddrBits.W)
   // dataInvalid: load data is invalid.
   val data_valid = Bool()
+  val full_fwd = Bool()
+  // val fwd_mask = Wire(Vec((VLEN/8), Bool()))
 }
 
 class LoadNukeQueryResp(implicit p: Parameters) extends XSBundle {

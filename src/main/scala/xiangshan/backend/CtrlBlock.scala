@@ -315,9 +315,9 @@ class CtrlBlockImp(
   }
   
 
-  io.traceCoreInterface.toEncoder.cause     :=  trace.io.toEncoder.trap.cause.asUInt
-  io.traceCoreInterface.toEncoder.tval      :=  trace.io.toEncoder.trap.tval.asUInt
-  io.traceCoreInterface.toEncoder.priv      :=  trace.io.toEncoder.trap.priv.asUInt
+  io.traceCoreInterface.toEncoder.cause     :=  trace.io.toEncoder.trap.bits.cause.asUInt
+  io.traceCoreInterface.toEncoder.tval      :=  trace.io.toEncoder.trap.bits.tval.asUInt
+  io.traceCoreInterface.toEncoder.priv      :=  trace.io.toEncoder.trap.bits.priv.asUInt
   io.traceCoreInterface.toEncoder.iaddr     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.iaddr.get)).asUInt
   io.traceCoreInterface.toEncoder.itype     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.itype)).asUInt
   io.traceCoreInterface.toEncoder.iretire   :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.iretire)).asUInt

@@ -737,9 +737,8 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   val w_grantfirst_forward_info = Mux(isKeyword, w_grantlast, w_grantfirst)
   val w_grantlast_forward_info = Mux(isKeyword, w_grantfirst, w_grantlast)
-   val refill_and_store_data = VecInit(Seq.fill(blockRows)(0.U(rowBits.W)))
-   io.forwardInfo.apply(false.B, req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info)
-// io.forwardInfo.apply(req_valid, req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info)
+  val refill_and_store_data = VecInit(Seq.fill(blockRows)(0.U(rowBits.W)))
+  io.forwardInfo.apply(req_valid && (req.isFromLoad || req.isFromPrefetch), req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info)
 
   io.matched := req_valid && (get_block(req.addr) === get_block(io.req.bits.addr)) && !prefetch
   io.prefetch_info.late_prefetch := io.req.valid && !(io.req.bits.isFromPrefetch) && req_valid && (get_block(req.addr) === get_block(io.req.bits.addr)) && prefetch
@@ -919,13 +918,22 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   io.memSetPattenDetected := memSetPattenDetected
 
+  (0 until LoadPipelineWidth).map(i => {
+    dataBuffer.io.forward(i).valid := false.B
+    dataBuffer.io.forward(i).bits := DontCare
+  })
+
+  //only load or prefetch mshr can be forwarded
   val forwardInfo_vec = VecInit(entries.map(_.io.forwardInfo))
   (0 until LoadPipelineWidth).map(i => {
     val id = io.forward(i).mshrid
     val req_valid = io.forward(i).valid
     val paddr = io.forward(i).paddr
+    dataBuffer.io.forward(i).valid := req_valid
+    dataBuffer.io.forward(i).bits.rid := id
+    val forwardRawData = dataBuffer.io.forwardData(i)
 
-    val (forward_mshr, forwardData) = forwardInfo_vec(id).forward(req_valid, paddr)
+    val (forward_mshr, forwardData) = forwardInfo_vec(id).forward(req_valid, paddr, forwardRawData)
     io.forward(i).forward_result_valid := forwardInfo_vec(id).check(req_valid, paddr)
     io.forward(i).forward_mshr := forward_mshr
     io.forward(i).forwardData := forwardData
@@ -1169,7 +1177,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
 
 class dataBufferReadReq(implicit p: Parameters) extends DCacheBundle {
-  val rid = UInt(log2Up(cfg.nMissEntries).W) //onhot
+  val rid = Output(UInt(log2Up(cfg.nMissEntries).W)) //onhot
 }
 
 class dataBufferWriteReq(implicit p: Parameters) extends DCacheBundle {
@@ -1185,6 +1193,8 @@ class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
     val rdata = Output(UInt(CacheLineSize.W))
     val free = Flipped(ValidIO(UInt(log2Up(cfg.nMissEntries).W)))
     val write = Flipped(ValidIO(new dataBufferWriteReq))
+    val forward = Vec(LoadPipelineWidth, Flipped(ValidIO(new dataBufferReadReq)))
+    val forwardData = Output(Vec(LoadPipelineWidth, Vec(blockRows, UInt(rowBits.W))))
     val full = Bool()
   })
 
@@ -1205,12 +1215,19 @@ class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   val raddr = WireInit(0.U(log2Up(numEntries).W))
   val freeOh = WireInit(VecInit(List.fill(numEntries)(false.B)))
   val freeAddr = WireInit(0.U(log2Up(numEntries).W))
+  val forwardOh =VecInit(Seq.fill(LoadPipelineWidth)(VecInit(Seq.fill(numEntries)(false.B))))
+  val forwardAddr = VecInit(Seq.fill(LoadPipelineWidth)(0.U(log2Up(numEntries).W)))
   val infilght = RegInit(0.U(log2Up(numEntries).W))
   dontTouch(raddrOh)
 
   id.zipWithIndex.foreach({ case(id, i) =>
     raddrOh(i) := Mux(id === io.read.bits.rid, 1.B, 0.B) && valid(i)
     freeOh(i) := Mux(id === io.free.bits, 1.B, 0.B) && valid(i)
+    (0 until LoadPipelineWidth).map{ j =>
+      forwardOh(j)(i) := Mux(RegNext(io.write.valid) && RegNext(io.write.bits.wid) === io.forward(j).bits.rid && infilght === i.U, true.B,
+      Mux(id === io.forward(j).bits.rid && valid(i), true.B, false.B))
+    }
+    
   })
 
   io.rdata := DontCare
@@ -1226,6 +1243,21 @@ class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   when(io.free.valid && real_free){
     valid(freeAddr) := false.B
     assert(PopCount(freeOh.asUInt) <= 1.U)
+  }
+  
+  (0 until LoadPipelineWidth).map({ i =>
+    io.forwardData := DontCare
+  })
+
+  (0 until LoadPipelineWidth).map{ i =>
+    forwardAddr(i) := OHToUInt(forwardOh(i).asUInt)
+    val real_forward = forwardOh(i).reduce(_ | _)
+    when(io.forward(i).valid){
+      val flatData = data(forwardAddr(i)).reduceLeft((a,b) => Cat(b,a))
+      val reshapedData = VecInit(Seq.tabulate(8)(j => flatData(((j + 1) * 64) - 1, j * 64)))
+      io.forwardData(i) := reshapedData
+      assert(PopCount(forwardOh(i).asUInt) <= 1.U)
+    }     
   }
 
   io.full := valid.reduce(_ && _)

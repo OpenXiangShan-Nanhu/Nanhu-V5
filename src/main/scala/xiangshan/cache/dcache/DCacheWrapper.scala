@@ -711,7 +711,7 @@ class MissEntryForwardIO(implicit p: Parameters) extends DCacheBundle {
     RegNext(req_valid && inflight && req_paddr(PAddrBits - 1, blockOffBits) === paddr(PAddrBits - 1, blockOffBits)) // TODO: clock gate(1-bit)
   }
 
-  def forward(req_valid : Bool, req_paddr : UInt) = {
+  def forward(req_valid : Bool, req_paddr : UInt, mshr_raw_data: Vec[UInt]) = {
     val all_match = (req_paddr(log2Up(refillBytes)) === 0.U && firstbeat_valid) ||
                     (req_paddr(log2Up(refillBytes)) === 1.U && lastbeat_valid)
 
@@ -719,7 +719,7 @@ class MissEntryForwardIO(implicit p: Parameters) extends DCacheBundle {
     val forwardData = RegInit(VecInit(List.fill(VLEN/8)(0.U(8.W))))
 
     val block_idx = req_paddr(log2Up(refillBytes), 3)
-    val block_data = raw_data
+    val block_data = mshr_raw_data
 
     val selected_data = Wire(UInt(128.W))
     selected_data := Mux(req_paddr(3), Fill(2, block_data(block_idx)), Cat(block_data(block_idx + 1.U), block_data(block_idx)))

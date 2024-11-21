@@ -806,12 +806,12 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.access_flag_write.bits.flag :=Mux(s3_req.miss, s3_req.access, true.B)
 
   // io.tag_write.valid := s3_fire_dup_for_tag_w_valid && s3_req_miss_dup_for_tag_w_valid
-  io.tag_write.valid := s3_fire && (update_meta || RegNext(io.refill_info.valid))
+  io.tag_write.valid := s3_fire && update_meta
   io.tag_write.bits.idx := s3_idx
   io.tag_write.bits.way_en := s3_way_en
   io.tag_write.bits.tag := Cat(new_coh.asUInt, get_tag(s3_req.addr))
   io.tag_write.bits.vaddr := s3_req.vaddr
-  io.tag_write_intend := (RegNext(io.refill_info.valid) || update_meta) && s3_valid
+  io.tag_write_intend := update_meta && s3_valid
 
   XSPerfAccumulate("fake_tag_write_intend", io.tag_write_intend && !io.tag_write.valid)
   XSPerfAccumulate("mainpipe_tag_write", io.tag_write.valid)

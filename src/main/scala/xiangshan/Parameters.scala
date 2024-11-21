@@ -151,7 +151,7 @@ case class XSCoreParameters
   RabCommitWidth: Int = 6,
   MaxUopSize: Int = 65,
   EnableRenameSnapshot: Boolean = true,
-  RenameSnapshotNum: Int = 2,
+  RenameSnapshotNum: Int = 4,
   FtqSize: Int = 64,
   EnableLoadFastWakeUp: Boolean = true, // NOTE: not supported now, make it false
   IntLogicRegs: Int = 32,
@@ -545,7 +545,7 @@ case class XSCoreParameters
   val traceParams: TraceParams = new TraceParams(
     HasEncoder     = true,
     TraceEnable    = true,
-    TraceGroupNum  = 2,
+    TraceGroupNum  = 4,
     IaddrWidth     = GPAddrBitsSv48x4,
     PrivWidth      = 3,
     ItypeWidth     = 4,

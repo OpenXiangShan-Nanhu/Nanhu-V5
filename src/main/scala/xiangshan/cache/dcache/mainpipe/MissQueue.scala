@@ -1217,14 +1217,16 @@ class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   val freeAddr = WireInit(0.U(log2Up(numEntries).W))
   val forwardOh =VecInit(Seq.fill(LoadPipelineWidth)(VecInit(Seq.fill(numEntries)(false.B))))
   val forwardAddr = VecInit(Seq.fill(LoadPipelineWidth)(0.U(log2Up(numEntries).W)))
-  val infilght = RegInit(0.U(log2Up(numEntries).W))
+  val infilghtAddr = RegInit(0.U(log2Up(numEntries).W))
+  val infilght = RegInit(false.B)
+  val infilghtId = Reg(UInt(log2Up(cfg.nMissEntries).W))
   dontTouch(raddrOh)
 
   id.zipWithIndex.foreach({ case(id, i) =>
     raddrOh(i) := Mux(id === io.read.bits.rid, 1.B, 0.B) && valid(i)
     freeOh(i) := Mux(id === io.free.bits, 1.B, 0.B) && valid(i)
     (0 until LoadPipelineWidth).map{ j =>
-      forwardOh(j)(i) := Mux(RegNext(io.write.valid) && RegNext(io.write.bits.wid) === io.forward(j).bits.rid && infilght === i.U, true.B,
+      forwardOh(j)(i) := Mux(infilght && infilghtId === io.forward(j).bits.rid && infilghtAddr === i.U, true.B,
       Mux(id === io.forward(j).bits.rid && valid(i), true.B, false.B))
     }
     
@@ -1265,12 +1267,15 @@ class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   when(io.write.valid){
     assert(!io.full)
     when(io.write.bits.refill_count === 0.U){
-      infilght := waddr
-      data(waddr)(io.write.bits.wbeat) := io.write.bits.wdata
+      infilghtAddr := waddr
+      infilght := true.B
+      infilghtId := io.write.bits.wid
+      data(waddr)(io.write.bits.wbeat) := io.write.bits.wdata 
     }.otherwise{
-      id(infilght) := io.write.bits.wid
-      valid(infilght) := true.B
-      data(infilght)(io.write.bits.wbeat) := io.write.bits.wdata
+      id(infilghtAddr) := io.write.bits.wid
+      valid(infilghtAddr) := true.B
+      data(infilghtAddr)(io.write.bits.wbeat) := io.write.bits.wdata
+      infilght := false.B
     }
   }
 }

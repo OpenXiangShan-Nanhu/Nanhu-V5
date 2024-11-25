@@ -245,7 +245,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   val enqIndexVec = Wire(Vec(LoadPipelineWidth, UInt(log2Up(VirtualLoadQueueSize).W)))
   for ((enq, w) <- io.query.map(_.req).zipWithIndex) {
     paddrModule.io.wen(w) := false.B
-    enq.ready := Mux(queryRAR_needEnqueue(w), !io.lqFull, true.B)  
+    enq.ready := true.B
     acceptedVec(w) := false.B
 
     // lqidx is pointer, so need to add .value
@@ -304,13 +304,12 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     paddrModule.io.releaseViolationMdata(w) := query.req.bits.paddr
     query.resp.valid := RegNext(query.req.valid)
 
-    val robIdxMask = VecInit(uop.map(_.robIdx).map(isAfter(_, query.req.bits.uop.robIdx)))
-    val matchMask = (0 until LoadQueueRARSize).map(i => {
+    // val robIdxMask = VecInit(uop.map(_.robIdx).map(isAfter(_, query.req.bits.uop.robIdx)))
+    val matchMask = (0 until VirtualLoadQueueSize).map(i => {
       RegNext(
         isFromDCache(i) &
         (allocated(i) & 
       paddrModule.io.releaseViolationMmask(w)(i) &
-      robIdxMask(i) &
       released(i)))
     })
     val ldLdViolationMask = VecInit(matchMask)

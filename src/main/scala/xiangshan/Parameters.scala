@@ -151,7 +151,7 @@ case class XSCoreParameters
   RabCommitWidth: Int = 6,
   MaxUopSize: Int = 65,
   EnableRenameSnapshot: Boolean = true,
-  RenameSnapshotNum: Int = 2,
+  RenameSnapshotNum: Int = 4,
   FtqSize: Int = 64,
   EnableLoadFastWakeUp: Boolean = true, // NOTE: not supported now, make it false
   IntLogicRegs: Int = 32,

@@ -14,6 +14,9 @@ import xiangshan.backend.fu.FuType
 import xiangshan.backend.fu.vector.Bundles.NumLsElem
 import xiangshan.backend.rob.RobPtr
 import xiangshan.mem.{LqPtr, MemWaitUpdateReq, SqPtr}
+import utils.OptionWrapper
+import xiangshan.frontend.PreDecodeInfo
+import xiangshan.frontend.FtqPtr
 
 object EntryBundles extends HasCircularQueuePtrHelper {
 
@@ -90,10 +93,93 @@ object EntryBundles extends HasCircularQueuePtrHelper {
     val success = "b11".U
   }
 
+  class EntryPayloadBundle(implicit p: Parameters) extends XSBundle {
+    // passed from StaticInst
+    // val instr           = UInt(32.W)
+    // val pc              = UInt(VAddrBits.W)
+    // val foldpc          = UInt(MemPredPCWidth.W)
+    // val exceptionVec    = ExceptionVec()
+    val isFetchMalAddr  = Bool()
+    // val hasException    = Bool()
+    val trigger         = TriggerAction()
+    val preDecodeInfo   = new PreDecodeInfo
+    val pred_taken      = Bool()
+    val crossPageIPFFix = Bool()
+    val ftqPtr          = new FtqPtr
+    val ftqOffset       = UInt(log2Up(PredictWidth).W)
+    // passed from DecodedInst
+    val srcType         = Vec(backendParams.numSrc, SrcType())
+    val ldest           = UInt(LogicRegsWidth.W)
+    val fuType          = FuType()
+    val fuOpType        = FuOpType()
+    val rfWen           = Bool()
+    val fpWen           = Bool()
+    val vecWen          = Bool()
+    val v0Wen           = Bool()
+    val vlWen           = Bool()
+    val isXSTrap        = Bool()
+    val waitForward     = Bool() // no speculate execution
+    val blockBackward   = Bool()
+    val flushPipe       = Bool() // This inst will flush all the pipe when commit, like exception but can commit
+    val canRobCompress  = Bool()
+    val selImm          = SelImm()
+    val imm             = UInt(32.W)
+    val fpu             = new FPUCtrlSignals
+    val vpu             = new SimpleVPUCtrlSignals
+    val vlsInstr        = Bool()
+    val wfflags         = Bool()
+    val isMove          = Bool()
+    val uopIdx          = UopIdx()
+    val isVset          = Bool()
+    val firstUop        = Bool()
+    val lastUop         = Bool()
+    val numUops         = UInt(log2Up(MaxUopSize).W) // rob need this
+    val numWB           = UInt(log2Up(MaxUopSize).W) // rob need this
+    val commitType      = CommitType()
+    // rename
+    val srcState        = Vec(backendParams.numSrc, SrcState())
+    val srcLoadDependency  = Vec(backendParams.numSrc, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W)))
+    val psrc            = Vec(backendParams.numSrc, UInt(PhyRegIdxWidth.W))
+    val pdest           = UInt(PhyRegIdxWidth.W)
+    // reg cache
+    val useRegCache     = Vec(backendParams.numIntRegSrc, Bool())
+    val regCacheIdx     = Vec(backendParams.numIntRegSrc, UInt(RegCacheIdxWidth.W))
+    val robIdx          = new RobPtr
+    val instrSize       = UInt(log2Ceil(RenameWidth + 1).W)
+    val dirtyFs         = Bool()
+    val dirtyVs         = Bool()
+    // val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2 + 1))
+
+    // val eliminatedMove  = Bool()
+    // Take snapshot at this CFI inst
+    // val snapshot        = Bool()
+    val debugInfo       = new PerfDebugInfo
+    val storeSetHit     = Bool() // inst has been allocated an store set
+    val waitForRobIdx   = new RobPtr // store set predicted previous store robIdx
+    // Load wait is needed
+    // load inst will not be executed until former store (predicted by mdp) addr calcuated
+    val loadWaitBit     = Bool()
+    // If (loadWaitBit && loadWaitStrict), strict load wait is needed
+    // load inst will not be executed until ALL former store addr calcuated
+    val loadWaitStrict  = Bool()
+    val ssid            = UInt(SSIDWidth.W)
+    // Todo
+    val lqIdx = new LqPtr
+    val sqIdx = new SqPtr
+    // debug module
+    val singleStep      = Bool()
+    // schedule
+    val replayInst      = Bool()
+
+    val debug_fuType    = OptionWrapper(backendParams.debugEn, FuType())
+
+    val numLsElem       = NumLsElem()
+  }
+
   class EntryBundle(implicit p: Parameters, params: IssueBlockParams) extends XSBundle {
     val status                = new Status()
     val imm                   = Option.when(params.needImm)(UInt((params.deqImmTypesMaxLen).W))
-    val payload               = new DynInst()
+    val payload               = new EntryPayloadBundle()
   }
 
   class CommonInBundle(implicit p: Parameters, params: IssueBlockParams) extends XSBundle {

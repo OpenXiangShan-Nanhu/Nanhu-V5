@@ -482,6 +482,97 @@ object Bundles {
       this.vsew  := source.vsew
       this.vlmul := source.vlmul
     }
+
+    def connectSimple(source: SimpleVPUCtrlSignals): Unit = {
+      (this: Data).waiveAll :<= (source: Data).waiveAll
+      this.vmask := DontCare
+    }
+  }
+
+  class SimpleVPUCtrlSignals(implicit p: Parameters) extends XSBundle {
+    // vtype
+    val vill      = Bool()
+    val vma       = Bool()    // 1: agnostic, 0: undisturbed
+    val vta       = Bool()    // 1: agnostic, 0: undisturbed
+    val vsew      = VSew()
+    val vlmul     = VLmul()   // 1/8~8      --> -3~3
+
+    // spec vtype
+    val specVill  = Bool()
+    val specVma   = Bool()    // 1: agnostic, 0: undisturbed
+    val specVta   = Bool()    // 1: agnostic, 0: undisturbed
+    val specVsew  = VSew()
+    val specVlmul = VLmul()   // 1/8~8      --> -3~3
+
+    val vm        = Bool()    // 0: need v0.t
+    val vstart    = Vl()
+
+    // float rounding mode
+    val frm       = Frm()
+    // scalar float instr and vector float reduction
+    val fpu       = Fpu()
+    // vector fix int rounding mode
+    val vxrm      = Vxrm()
+    // vector uop index, exclude other non-vector uop
+    val vuopIdx   = UopIdx()
+    val lastUop   = Bool()
+    val vl        = Vl()
+
+    // vector load/store
+    val nf        = Nf()
+    val veew      = VEew()
+
+    val isReverse = Bool() // vrsub, vrdiv
+    val isExt     = Bool()
+    val isNarrow  = Bool()
+    val isDstMask = Bool() // vvm, vvvm, mmm
+    val isOpMask  = Bool() // vmand, vmnand
+    val isMove    = Bool() // vmv.s.x, vmv.v.v, vmv.v.x, vmv.v.i
+
+    val isDependOldvd = Bool() // some instruction's computation depends on oldvd
+    val isWritePartVd = Bool() // some instruction's computation writes part of vd, such as vredsum
+
+    val isVleff = Bool() // vleff
+
+    def vtype: VType = {
+      val res = Wire(VType())
+      res.illegal := this.vill
+      res.vma     := this.vma
+      res.vta     := this.vta
+      res.vsew    := this.vsew
+      res.vlmul   := this.vlmul
+      res
+    }
+
+    def specVType: VType = {
+      val res = Wire(VType())
+      res.illegal := this.specVill
+      res.vma     := this.specVma
+      res.vta     := this.specVta
+      res.vsew    := this.specVsew
+      res.vlmul   := this.specVlmul
+      res
+    }
+
+    def vconfig: VConfig = {
+      val res = Wire(VConfig())
+      res.vtype := this.vtype
+      res.vl    := this.vl
+      res
+    }
+
+    def connectVType(source: VType): Unit = {
+      this.vill  := source.illegal
+      this.vma   := source.vma
+      this.vta   := source.vta
+      this.vsew  := source.vsew
+      this.vlmul := source.vlmul
+    }
+
+    def connectComplex(source: VPUCtrlSignals): Unit = {
+      (this: Data).waiveAll :<= (source: Data).waiveAll
+
+    }
   }
 
   class NeedFrmBundle(implicit p: Parameters) extends XSBundle {

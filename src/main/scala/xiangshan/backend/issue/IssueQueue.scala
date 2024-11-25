@@ -317,7 +317,8 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
       enq.bits.status.issueTimer                                := "b11".U
       enq.bits.status.deqPortIdx                                := 0.U
       enq.bits.imm.foreach(_                                    := s0_enqBits(enqIdx).imm)
-      enq.bits.payload                                          := s0_enqBits(enqIdx)
+      (enq.bits.payload: Data).waiveAll                                          :<= (s0_enqBits(enqIdx): Data).waiveAll
+      enq.bits.payload.vpu.connectComplex(s0_enqBits(enqIdx).vpu)
     }
     entriesIO.og0Resp.zipWithIndex.foreach { case (og0Resp, i) =>
       og0Resp                                                   := io.og0Resp(i)
@@ -1033,7 +1034,7 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
 {
   deqBeforeDly.zipWithIndex.foreach{ case (deq, i) => {
     deq.bits.common.fpu.foreach(_ := deqEntryVec(i).bits.payload.fpu)
-    deq.bits.common.vpu.foreach(_ := deqEntryVec(i).bits.payload.vpu)
+    deq.bits.common.vpu.foreach(_.connectSimple(deqEntryVec(i).bits.payload.vpu))
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
   }}
@@ -1044,7 +1045,7 @@ class IssueQueueFpImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
 {
   deqBeforeDly.zipWithIndex.foreach{ case (deq, i) => {
     deq.bits.common.fpu.foreach(_ := deqEntryVec(i).bits.payload.fpu)
-    deq.bits.common.vpu.foreach(_ := deqEntryVec(i).bits.payload.vpu)
+    deq.bits.common.vpu.foreach(_.connectSimple(deqEntryVec(i).bits.payload.vpu))
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
   }}
@@ -1203,7 +1204,7 @@ class IssueQueueVecMemImp(override val wrapper: IssueQueue)(implicit p: Paramete
       deq.bits.common.ftqOffset.get := deqEntryVec(i).bits.payload.ftqOffset
     }
     deq.bits.common.fpu.foreach(_ := deqEntryVec(i).bits.payload.fpu)
-    deq.bits.common.vpu.foreach(_ := deqEntryVec(i).bits.payload.vpu)
+    deq.bits.common.vpu.foreach(_.connectSimple(deqEntryVec(i).bits.payload.vpu))
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
   }

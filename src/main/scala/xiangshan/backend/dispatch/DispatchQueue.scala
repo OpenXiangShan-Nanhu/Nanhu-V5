@@ -24,8 +24,95 @@ import xs.utils._
 import xs.utils.perf._
 import xiangshan._
 import xiangshan.backend.rob.RobPtr
-import xiangshan.backend.Bundles.DynInst
+import xiangshan.backend.Bundles.{DynInst, SimpleVPUCtrlSignals, UopIdx}
 import xiangshan.backend.fu.FuType
+import xiangshan.frontend.{FtqPtr, PreDecodeInfo}
+import xiangshan.mem.{LqPtr, SqPtr}
+import xiangshan.backend.fu.vector.Bundles.NumLsElem
+
+// for dq datamodule
+  class DqBundle(implicit p: Parameters) extends XSBundle {
+    // passed from StaticInst
+    // val instr           = UInt(32.W)
+    // val pc              = UInt(VAddrBits.W)
+    // val foldpc          = UInt(MemPredPCWidth.W)
+    // val exceptionVec    = ExceptionVec()
+    val isFetchMalAddr  = Bool()
+    // val hasException    = Bool()
+    val trigger         = TriggerAction()
+    val preDecodeInfo   = new PreDecodeInfo
+    val pred_taken      = Bool()
+    val crossPageIPFFix = Bool()
+    val ftqPtr          = new FtqPtr
+    val ftqOffset       = UInt(log2Up(PredictWidth).W)
+    // passed from DecodedInst
+    val srcType         = Vec(backendParams.numSrc, SrcType())
+    // val ldest           = UInt(LogicRegsWidth.W)
+    val fuType          = FuType()
+    val fuOpType        = FuOpType()
+    val rfWen           = Bool()
+    val fpWen           = Bool()
+    val vecWen          = Bool()
+    val v0Wen           = Bool()
+    val vlWen           = Bool()
+    // val isXSTrap        = Bool()
+    // val waitForward     = Bool() // no speculate execution
+    // val blockBackward   = Bool()
+    val flushPipe       = Bool() // This inst will flush all the pipe when commit, like exception but can commit
+    // val canRobCompress  = Bool()
+    val selImm          = SelImm()
+    val imm             = UInt(32.W)
+    val fpu             = new FPUCtrlSignals
+    val vpu             = new SimpleVPUCtrlSignals
+    val vlsInstr        = Bool()
+    val wfflags         = Bool()
+    // val isMove          = Bool()
+    val uopIdx          = UopIdx()
+    val isVset          = Bool()
+    val firstUop        = Bool()
+    val lastUop         = Bool()
+    // val numUops         = UInt(log2Up(MaxUopSize).W) // rob need this
+    // val numWB           = UInt(log2Up(MaxUopSize).W) // rob need this
+    // val commitType      = CommitType()
+    // rename
+    val srcState        = Vec(backendParams.numSrc, SrcState())
+    val srcLoadDependency  = Vec(backendParams.numSrc, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W)))
+    val psrc            = Vec(backendParams.numSrc, UInt(PhyRegIdxWidth.W))
+    val pdest           = UInt(PhyRegIdxWidth.W)
+    // reg cache
+    // val useRegCache     = Vec(backendParams.numIntRegSrc, Bool())
+    // val regCacheIdx     = Vec(backendParams.numIntRegSrc, UInt(RegCacheIdxWidth.W))
+    val robIdx          = new RobPtr
+    // val instrSize       = UInt(log2Ceil(RenameWidth + 1).W)
+    // val dirtyFs         = Bool()
+    // val dirtyVs         = Bool()
+    // val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2 + 1))
+
+    // val eliminatedMove  = Bool()
+    // Take snapshot at this CFI inst
+    // val snapshot        = Bool()
+    val debugInfo       = new PerfDebugInfo
+    val storeSetHit     = Bool() // inst has been allocated an store set
+    val waitForRobIdx   = new RobPtr // store set predicted previous store robIdx
+    // Load wait is needed
+    // load inst will not be executed until former store (predicted by mdp) addr calcuated
+    val loadWaitBit     = Bool()
+    // If (loadWaitBit && loadWaitStrict), strict load wait is needed
+    // load inst will not be executed until ALL former store addr calcuated
+    val loadWaitStrict  = Bool()
+    val ssid            = UInt(SSIDWidth.W)
+    // Todo
+    val lqIdx = new LqPtr
+    val sqIdx = new SqPtr
+    // debug module
+    val singleStep      = Bool()
+    // schedule
+    val replayInst      = Bool()
+
+    val debug_fuType    = OptionWrapper(backendParams.debugEn, FuType())
+
+    val numLsElem       = NumLsElem()
+  }
 
 class DispatchQueueIO(enqnum: Int, deqnum: Int, size: Int)(implicit p: Parameters) extends XSBundle {
   val enq = new Bundle {
@@ -55,7 +142,7 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
 
   // queue data array
   private def hasRen: Boolean = true
-  val dataModule = Module(new SyncDataModuleTemplate(new DynInst, size, 2 * deqnum, enqnum, hasRen = hasRen))
+  val dataModule = Module(new SyncDataModuleTemplate(new DqBundle, size, 2 * deqnum, enqnum, hasRen = hasRen))
   val robIdxEntries = Reg(Vec(size, new RobPtr))
   val stateEntries = RegInit(VecInit(Seq.fill(size)(s_invalid)))
   val validDeq0 = RegInit(VecInit(Seq.fill(size)(false.B)))
@@ -119,7 +206,7 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
   for (i <- 0 until enqnum) {
     dataModule.io.wen(i) := canEnqueue && io.enq.req(i).valid
     dataModule.io.waddr(i) := tailPtr(enqOffset(i)).value
-    dataModule.io.wdata(i) := io.enq.req(i).bits
+    (dataModule.io.wdata(i): Data).waiveAll :<= (io.enq.req(i).bits: Data).waiveAll
   }
 
   // dequeue: from s_valid to s_dispatched
@@ -240,13 +327,16 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
   // For data(i): (1) current output (deqnum - i); (2) next-step data (i + 1)
   // For the next-step data(i): (1) enqueue data (enqnum); (2) data from storage (1)
   val nextStepData = Wire(Vec(2 * deqnum, new DynInst))
+  val currentData = Wire(Vec(2 * deqnum, new DynInst))
   val ptrMatch = new QPtrMatchMatrix(headPtr, tailPtr)
   for (i <- 0 until 2 * deqnum) {
     val enqMatchVec = VecInit(ptrMatch(i))
     val enqBypassEnVec = io.enq.needAlloc.zip(enqOffset).map{ case (v, o) => v && enqMatchVec(o) }
     val enqBypassEn = io.enq.canAccept && VecInit(enqBypassEnVec).asUInt.orR
     val enqBypassData = Mux1H(enqBypassEnVec, io.enq.req.map(_.bits))
-    val readData = if (i < deqnum) deqData(i) else dataModule.io.rdata(i)
+    currentData(i) := DontCare
+    (currentData(i): Data).waiveAll :<= (dataModule.io.rdata(i): Data).waiveAll
+    val readData = if (i < deqnum) deqData(i) else currentData(i)
     nextStepData(i) := Mux(enqBypassEn, enqBypassData, readData)
   }
   for (i <- 0 until deqnum) {

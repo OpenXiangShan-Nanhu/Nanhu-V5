@@ -62,6 +62,7 @@ class ProbeEntry(implicit p: Parameters) extends DCacheModule {
   val s_invalid :: s_pipe_req :: s_wait_resp :: Nil = Enum(3)
 
   val state = RegInit(s_invalid)
+  val replay_counter = RegInit(0.U(ProbeqReplayCountBits.W))
 
   val req = Reg(new ProbeReq)
 
@@ -86,6 +87,7 @@ class ProbeEntry(implicit p: Parameters) extends DCacheModule {
     when (io.req.fire) {
       req := io.req.bits
       state := s_pipe_req
+      replay_counter := 0.U
     }
   }
 
@@ -98,21 +100,25 @@ class ProbeEntry(implicit p: Parameters) extends DCacheModule {
   when (state === s_pipe_req) {
     // Note that probe req will be blocked in the next cycle if a lr updates lrsc_locked_block addr
     // in this way, we can RegNext(lrsc_blocked) for better timing
-    io.pipe_req.valid := !RegNext(lrsc_blocked)
+    when(replay_counter === 0.U){
+      io.pipe_req.valid := !RegNext(lrsc_blocked)
 
-    val pipe_req = io.pipe_req.bits
-    pipe_req := DontCare
-    pipe_req.miss := false.B
-    pipe_req.probe := true.B
-    pipe_req.probe_param := req.param
-    pipe_req.addr   := req.addr
-    pipe_req.vaddr  := req.vaddr
-    pipe_req.probe_need_data := req.needData
-    pipe_req.error := false.B
-    pipe_req.id := io.id
+      val pipe_req = io.pipe_req.bits
+      pipe_req := DontCare
+      pipe_req.miss := false.B
+      pipe_req.probe := true.B
+      pipe_req.probe_param := req.param
+      pipe_req.addr   := req.addr
+      pipe_req.vaddr  := req.vaddr
+      pipe_req.probe_need_data := req.needData
+      pipe_req.error := false.B
+      pipe_req.id := io.id
 
-    when (io.pipe_req.fire) {
-      state := s_wait_resp
+      when (io.pipe_req.fire) {
+        state := s_wait_resp
+      }
+    }.otherwise{
+      replay_counter := replay_counter - 1.U
     }
   }
 
@@ -120,6 +126,7 @@ class ProbeEntry(implicit p: Parameters) extends DCacheModule {
     when(io.pipe_resp.valid && io.id === io.pipe_resp.bits.id){
       when (io.pipe_resp.bits.replay) {
         state := s_pipe_req
+        replay_counter := ProbeReplayDelayCycles.U
       }.otherwise{
         state := s_invalid
       }

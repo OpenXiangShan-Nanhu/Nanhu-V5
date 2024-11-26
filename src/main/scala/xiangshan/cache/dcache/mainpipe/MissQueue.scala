@@ -851,7 +851,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   // 128KBL1: FIXME: provide vaddr for l2
 
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
-  val dataBuffer = Module(new dataBuffer(4))
+  val dataBuffer = Module(new dataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
 
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))

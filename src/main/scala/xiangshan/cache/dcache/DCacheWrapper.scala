@@ -33,6 +33,7 @@ import xiangshan._
 import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.rob.RobDebugRollingIO
 import xiangshan.cache.wpu._
+import xiangshan.cache.sram._
 import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
 import xiangshan.mem.prefetch._
 import xiangshan.mem.LqPtr
@@ -193,6 +194,11 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   val tagWritePort = metaWritePort + 1
   val errWritePort = tagWritePort + 1
   val wbPort = errWritePort + 1
+
+  val ProbeReplayDelayCycles = 8
+  val ProbeqReplayCountBits = log2Up(ProbeReplayDelayCycles)
+
+  val MissqDataBufferDepth = 2 
 
   def set_to_dcache_div(set: UInt) = {
     require(set.getWidth >= DCacheSetBits)
@@ -1237,11 +1243,32 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
 
     ldu(i).io.bank_conflict_slow := bankedDataArray.io.bank_conflict_slow(i)
   })
- val isKeyword = bus.d.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
+
+  // connect bus d
+  missQueue.io.mem_grant.valid := false.B
+  missQueue.io.mem_grant.bits := DontCare
+  wb.io.mem_grant.valid := false.B
+  wb.io.mem_grant.bits := DontCare
+  val grantDataQueue = Module(new SRAMQueue(bus.d.bits.cloneType, entries = 28, flow = true, pipe = false, singlePort = true,
+    hasMbist = hasMbist))
+  grantDataQueue.io.enq.valid := false.B
+  grantDataQueue.io.enq.bits := DontCare
+  // in L1DCache, we ony expect Grant[Data] and ReleaseAck
+  bus.d.ready := false.B
+  when(bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData) {
+    // missQueue.io.mem_grant <> bus.d
+    grantDataQueue.io.enq <> bus.d
+  }.elsewhen(bus.d.bits.opcode === TLMessages.ReleaseAck) {
+    wb.io.mem_grant <> bus.d
+  }.otherwise {
+    assert(!bus.d.fire)
+  }
+  missQueue.io.mem_grant <> grantDataQueue.io.deq
+ val isKeyword = grantDataQueue.io.deq.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
   (0 until LoadPipelineWidth).map(i => {
-    val (_, _, done, _) = edge.count(bus.d)
-    when(bus.d.bits.opcode === TLMessages.GrantData) {
-      io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source, isKeyword ^ done)
+    val (_, _, done, _) = edge.count(grantDataQueue.io.deq)
+    when(grantDataQueue.io.deq.bits.opcode === TLMessages.GrantData) {
+      io.lsu.forward_D(i).apply(grantDataQueue.io.deq.valid, grantDataQueue.io.deq.bits.data, grantDataQueue.io.deq.bits.source, isKeyword ^ done)
    //   io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source,done)
     }.otherwise {
       io.lsu.forward_D(i).dontCare()
@@ -1249,8 +1276,8 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   })
   // tl D channel wakeup
   val (_, _, done, _) = edge.count(bus.d)
-  when (bus.d.bits.opcode === TLMessages.GrantData || bus.d.bits.opcode === TLMessages.Grant) {
-    io.lsu.tl_d_channel.apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source, done)
+  when (grantDataQueue.io.deq.bits.opcode === TLMessages.GrantData || grantDataQueue.io.deq.bits.opcode === TLMessages.Grant) {
+    io.lsu.tl_d_channel.apply(grantDataQueue.io.deq.valid, grantDataQueue.io.deq.bits.data, grantDataQueue.io.deq.bits.source, done)
   } .otherwise {
     io.lsu.tl_d_channel.dontCare()
   }
@@ -1530,22 +1557,6 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // * and timing requirements
   // CHANGE IT WITH CARE
 
-  // connect bus d
-  missQueue.io.mem_grant.valid := false.B
-  missQueue.io.mem_grant.bits  := DontCare
-
-  wb.io.mem_grant.valid := false.B
-  wb.io.mem_grant.bits  := DontCare
-
-  // in L1DCache, we ony expect Grant[Data] and ReleaseAck
-  bus.d.ready := false.B
-  when (bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData) {
-    missQueue.io.mem_grant <> bus.d
-  } .elsewhen (bus.d.bits.opcode === TLMessages.ReleaseAck) {
-    wb.io.mem_grant <> bus.d
-  } .otherwise {
-    assert (!bus.d.fire)
-  }
 
   //----------------------------------------
   // Feedback Direct Prefetch Monitor

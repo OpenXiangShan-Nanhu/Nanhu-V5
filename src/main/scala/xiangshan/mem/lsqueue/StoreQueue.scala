@@ -212,22 +212,33 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     numForward = LoadPipelineWidth
   ))
   dataModule.io := DontCare
-  val paddrModule = Module(new SQAddrModule(
-    dataWidth = PAddrBits,
+
+  val addrModule = Module(new SQVPAddrModule(
+    PAddrWidth = PAddrBits,
+    VAddrWidth = VAddrBits,
     numEntries = StoreQueueSize,
-    numRead = EnsbufferWidth,
-    numWrite = StorePipelineWidth,
+    CommonNumRead = EnsbufferWidth,
+    CommonNumWrite = StorePipelineWidth,
     numForward = LoadPipelineWidth
   ))
-  paddrModule.io := DontCare
-  val vaddrModule = Module(new SQAddrModule(
-    dataWidth = VAddrBits,
-    numEntries = StoreQueueSize,
-    numRead = EnsbufferWidth, // sbuffer; badvaddr will be sent from exceptionBuffer
-    numWrite = StorePipelineWidth,
-    numForward = LoadPipelineWidth
-  ))
-  vaddrModule.io := DontCare
+  addrModule.io := DontCare
+
+  // val paddrModule = Module(new SQAddrModule(
+  //   dataWidth = PAddrBits,
+  //   numEntries = StoreQueueSize,
+  //   numRead = EnsbufferWidth,
+  //   numWrite = StorePipelineWidth,
+  //   numForward = LoadPipelineWidth
+  // ))
+  // paddrModule.io := DontCare
+  // val vaddrModule = Module(new SQAddrModule(
+  //   dataWidth = VAddrBits,
+  //   numEntries = StoreQueueSize,
+  //   numRead = EnsbufferWidth, // sbuffer; badvaddr will be sent from exceptionBuffer
+  //   numWrite = StorePipelineWidth,
+  //   numForward = LoadPipelineWidth
+  // ))
+  // vaddrModule.io := DontCare
   val dataBuffer = Module(new DatamoduleResultBuffer(new DataBufferEntry))
   val difftestBuffer = if (env.EnableDifftest) Some(Module(new DatamoduleResultBuffer(new DynInst))) else None
   val exceptionBuffer = Module(new StoreExceptionBuffer)
@@ -345,8 +356,9 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   for (i <- 0 until EnsbufferWidth) {
     dataModule.io.raddr(i) := rdataPtrExtNext(i).value
-    paddrModule.io.raddr(i) := rdataPtrExtNext(i).value
-    vaddrModule.io.raddr(i) := rdataPtrExtNext(i).value
+    addrModule.io.raddr(i) := rdataPtrExtNext(i).value
+    // paddrModule.io.raddr(i) := rdataPtrExtNext(i).value
+    // vaddrModule.io.raddr(i) := rdataPtrExtNext(i).value
   }
 
   /**
@@ -470,8 +482,9 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   // Write addr to sq
   for (i <- 0 until StorePipelineWidth) {
-    paddrModule.io.wen(i) := false.B
-    vaddrModule.io.wen(i) := false.B
+    // paddrModule.io.wen(i) := false.B
+    // vaddrModule.io.wen(i) := false.B
+    addrModule.io.wen(i) := false.B
     dataModule.io.mask.wen(i) := false.B
     val stWbIndex = io.storeAddrIn(i).bits.uop.sqIdx.value
     exceptionBuffer.io.storeAddrIn(i).valid := io.storeAddrIn(i).fire && !io.storeAddrIn(i).bits.miss && !io.storeAddrIn(i).bits.isvec
@@ -486,19 +499,15 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       // pending(stWbIndex) := io.storeAddrIn(i).bits.mmio
       unaligned(stWbIndex) := io.storeAddrIn(i).bits.uop.exceptionVec(storeAddrMisaligned)
 
-      paddrModule.io.waddr(i) := stWbIndex
-      paddrModule.io.wdata(i) := io.storeAddrIn(i).bits.paddr
-      paddrModule.io.wmask(i) := io.storeAddrIn(i).bits.mask
-      paddrModule.io.wlineflag(i) := io.storeAddrIn(i).bits.wlineflag
-      paddrModule.io.wen(i) := true.B
+      addrModule.io.waddr(i) := stWbIndex
+      addrModule.io.wdata_p(i) := io.storeAddrIn(i).bits.paddr
+      addrModule.io.wdata_v(i) := io.storeAddrIn(i).bits.vaddr
+      addrModule.io.wmask(i) := io.storeAddrIn(i).bits.mask
+      addrModule.io.wlineflag(i) := io.storeAddrIn(i).bits.wlineflag
+      addrModule.io.wen(i) := true.B
 
-      vaddrModule.io.waddr(i) := stWbIndex
-      vaddrModule.io.wdata(i) := io.storeAddrIn(i).bits.vaddr
-      vaddrModule.io.wmask(i) := io.storeAddrIn(i).bits.mask
-      vaddrModule.io.wlineflag(i) := io.storeAddrIn(i).bits.wlineflag
-      vaddrModule.io.wen(i) := true.B
-
-      debug_paddr(paddrModule.io.waddr(i)) := paddrModule.io.wdata(i)
+      // debug_paddr(paddrModule.io.waddr(i)) := paddrModule.io.wdata(i)
+      debug_paddr(addrModule.io.waddr(i)) := addrModule.io.wdata_p(i)
 
       // mmio(stWbIndex) := io.storeAddrIn(i).bits.mmio
 
@@ -542,9 +551,12 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       exceptionBuffer.io.storeAddrIn(StorePipelineWidth + i).bits.uop.exceptionVec(storeAccessFault) := io.storeAddrInRe(i).af
     }
 
-    when(vaddrModule.io.wen(i)){
-      debug_vaddr(vaddrModule.io.waddr(i)) := vaddrModule.io.wdata(i)
+    when(addrModule.io.wen(i)){
+      debug_vaddr(addrModule.io.waddr(i)) := addrModule.io.wdata_v(i)
     }
+    // when(vaddrModule.io.wen(i)){
+    //   debug_vaddr(vaddrModule.io.waddr(i)) := vaddrModule.io.wdata(i)
+    // }
   }
 
   // Write data to sq
@@ -636,20 +648,23 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     )
 
     // do real fwd query (cam lookup in load_s1)
-    dataModule.io.needForward(i)(0) := canForward1 & vaddrModule.io.forwardMmask(i).asUInt
-    dataModule.io.needForward(i)(1) := canForward2 & vaddrModule.io.forwardMmask(i).asUInt
+    dataModule.io.needForward(i)(0) := canForward1 & addrModule.io.forwardMmask_v(i).asUInt
+    dataModule.io.needForward(i)(1) := canForward2 & addrModule.io.forwardMmask_v(i).asUInt
 
-    vaddrModule.io.forwardMdata(i) := io.forward(i).vaddr
-    vaddrModule.io.forwardDataMask(i) := io.forward(i).mask
-    paddrModule.io.forwardMdata(i) := io.forward(i).paddr
-    paddrModule.io.forwardDataMask(i) := io.forward(i).mask
+    addrModule.io.forwardMdata_v(i) := io.forward(i).vaddr
+    addrModule.io.forwardMdata_p(i) := io.forward(i).paddr
+    addrModule.io.forwardDataMask(i) := io.forward(i).mask
+    // vaddrModule.io.forwardMdata(i) := io.forward(i).vaddr
+    // vaddrModule.io.forwardDataMask(i) := io.forward(i).mask
+    // paddrModule.io.forwardMdata(i) := io.forward(i).paddr
+    // paddrModule.io.forwardDataMask(i) := io.forward(i).mask
 
     // vaddr cam result does not equal to paddr cam result
     // replay needed
     // val vpmaskNotEqual = ((paddrModule.io.forwardMmask(i).asUInt ^ vaddrModule.io.forwardMmask(i).asUInt) & needForward) =/= 0.U
     // val vaddrMatchFailed = vpmaskNotEqual && io.forward(i).valid
     val vpmaskNotEqual = (
-      (RegEnable(paddrModule.io.forwardMmask(i).asUInt, io.forward(i).valid) ^ RegEnable(vaddrModule.io.forwardMmask(i).asUInt, io.forward(i).valid)) &
+      (RegEnable(addrModule.io.forwardMmask_p(i).asUInt, io.forward(i).valid) ^ RegEnable(addrModule.io.forwardMmask_v(i).asUInt, io.forward(i).valid)) &
       RegNext(needForward) &
       GatedRegNext(addrRealValidVec.asUInt)
     ) =/= 0.U
@@ -657,8 +672,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     when (vaddrMatchFailed) {
       XSInfo("vaddrMatchFailed: pc %x pmask %x vmask %x\n",
         RegEnable(io.forward(i).uop.pc, io.forward(i).valid),
-        RegEnable(needForward & paddrModule.io.forwardMmask(i).asUInt, io.forward(i).valid),
-        RegEnable(needForward & vaddrModule.io.forwardMmask(i).asUInt, io.forward(i).valid)
+        RegEnable(needForward & addrModule.io.forwardMmask_p(i).asUInt, io.forward(i).valid),
+        RegEnable(needForward & addrModule.io.forwardMmask_v(i).asUInt, io.forward(i).valid)
       );
     }
     XSPerfAccumulate("vaddr_match_failed", vpmaskNotEqual)
@@ -672,8 +687,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     io.forward(i).forwardData := dataModule.io.forwardData(i)
     // If addr match, data not ready, mark it as dataInvalid
     // load_s1: generate dataInvalid in load_s1 to set fastUop
-    val dataInvalidMask1 = (addrValidVec.asUInt & ~dataValidVec.asUInt & vaddrModule.io.forwardMmask(i).asUInt & forwardMask1.asUInt)
-    val dataInvalidMask2 = (addrValidVec.asUInt & ~dataValidVec.asUInt & vaddrModule.io.forwardMmask(i).asUInt & forwardMask2.asUInt)
+    val dataInvalidMask1 = (addrValidVec.asUInt & ~dataValidVec.asUInt & addrModule.io.forwardMmask_v(i).asUInt & forwardMask1.asUInt)
+    val dataInvalidMask2 = (addrValidVec.asUInt & ~dataValidVec.asUInt & addrModule.io.forwardMmask_v(i).asUInt & forwardMask2.asUInt)
     val dataInvalidMask = dataInvalidMask1 | dataInvalidMask2
     io.forward(i).dataInvalidFast := dataInvalidMask.orR
 
@@ -835,13 +850,13 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   io.uncache.req.bits := DontCare
   io.uncache.req.bits.cmd  := MemoryOpConstants.M_XWR
-  io.uncache.req.bits.addr := paddrModule.io.rdata(0) // data(deqPtr) -> rdata(0)
-  io.uncache.req.bits.data := shiftDataToLow(paddrModule.io.rdata(0), dataModule.io.rdata(0).data)
-  io.uncache.req.bits.mask := shiftMaskToLow(paddrModule.io.rdata(0), dataModule.io.rdata(0).mask)
+  io.uncache.req.bits.addr := addrModule.io.rdata_p(0) // data(deqPtr) -> rdata(0)
+  io.uncache.req.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)
+  io.uncache.req.bits.mask := shiftMaskToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).mask)
 
   // CBO op type check can be delayed for 1 cycle,
   // as uncache op will not start in s_idle
-  val cboMmioAddr = get_block_addr(paddrModule.io.rdata(0))
+  val cboMmioAddr = get_block_addr(addrModule.io.rdata_p(0))
   val deqCanDoCbo = GatedRegNext(LSUOpType.isCbo(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr))
   when (deqCanDoCbo) {
     // disable uncache channel
@@ -893,7 +908,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.mmioStout.bits.uop := uncacheUop
   io.mmioStout.bits.uop.sqIdx := deqPtrExt(0)
   io.mmioStout.bits.uop.flushPipe := deqCanDoCbo // flush Pipeline to keep order in CMO
-  io.mmioStout.bits.data := shiftDataToLow(paddrModule.io.rdata(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
+  io.mmioStout.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
   io.mmioStout.bits.isFromLoadUnit := DontCare
   io.mmioStout.bits.debug.isMMIO := true.B
   io.mmioStout.bits.debug.paddr := DontCare
@@ -907,7 +922,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   exceptionBuffer.io.storeAddrIn.last.valid := io.mmioStout.fire
   exceptionBuffer.io.storeAddrIn.last.bits := DontCare
-  exceptionBuffer.io.storeAddrIn.last.bits.fullva := vaddrModule.io.rdata.head
+  exceptionBuffer.io.storeAddrIn.last.bits.fullva := addrModule.io.rdata_v.head
   exceptionBuffer.io.storeAddrIn.last.bits.vaNeedExt := true.B
   exceptionBuffer.io.storeAddrIn.last.bits.uop := uncacheUop
 
@@ -917,7 +932,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.vecmmioStout.valid := false.B //uncacheState === s_wb && isVec(deqPtr)
   io.vecmmioStout.bits.uop := uop(deqPtr)
   io.vecmmioStout.bits.uop.sqIdx := deqPtrExt(0)
-  io.vecmmioStout.bits.data := shiftDataToLow(paddrModule.io.rdata(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
+  io.vecmmioStout.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
   io.vecmmioStout.bits.debug.isMMIO := true.B
   io.vecmmioStout.bits.debug.paddr := DontCare
   io.vecmmioStout.bits.debug.isPerfCnt := false.B
@@ -995,11 +1010,11 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     }
     // Note that store data/addr should both be valid after store's commit
     assert(!dataBuffer.io.enq(i).valid || allvalid(ptr) || doMisalignSt || hasException(ptr) || (allocated(ptr) && vecMbCommit(ptr)))
-    dataBuffer.io.enq(i).bits.addr     := Mux(doMisalignSt, io.maControl.control.paddr, paddrModule.io.rdata(i))
-    dataBuffer.io.enq(i).bits.vaddr    := Mux(doMisalignSt, io.maControl.control.vaddr, vaddrModule.io.rdata(i))
+    dataBuffer.io.enq(i).bits.addr     := Mux(doMisalignSt, io.maControl.control.paddr, addrModule.io.rdata_p(i))
+    dataBuffer.io.enq(i).bits.vaddr    := Mux(doMisalignSt, io.maControl.control.vaddr, addrModule.io.rdata_v(i))
     dataBuffer.io.enq(i).bits.data     := Mux(doMisalignSt, io.maControl.control.wdata, dataModule.io.rdata(i).data)
     dataBuffer.io.enq(i).bits.mask     := Mux(doMisalignSt, io.maControl.control.wmask, dataModule.io.rdata(i).mask)
-    dataBuffer.io.enq(i).bits.wline    := Mux(doMisalignSt, false.B, paddrModule.io.rlineflag(i))
+    dataBuffer.io.enq(i).bits.wline    := Mux(doMisalignSt, false.B, addrModule.io.rlineflag(i))
     dataBuffer.io.enq(i).bits.sqPtr    := rdataPtrExt(i)
     dataBuffer.io.enq(i).bits.prefetch := Mux(doMisalignSt, false.B, prefetch(ptr))
     // when scalar has exception, will also not write into sbuffer
@@ -1119,9 +1134,9 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       val ptr = deqPtrExt(i).value
       val ram = DifftestMem(64L * 1024 * 1024 * 1024, 8)
       val wen = allocated(ptr) && committed(ptr) && !mmio(ptr)
-      val waddr = ((paddrModule.io.rdata(i) - "h80000000".U) >> 3).asUInt
-      val wdata = Mux(paddrModule.io.rdata(i)(3), dataModule.io.rdata(i).data(127, 64), dataModule.io.rdata(i).data(63, 0))
-      val wmask = Mux(paddrModule.io.rdata(i)(3), dataModule.io.rdata(i).mask(15, 8), dataModule.io.rdata(i).mask(7, 0))
+      val waddr = ((addrModule.io.rdata_p(i) - "h80000000".U) >> 3).asUInt
+      val wdata = Mux(addrModule.io.rdata_p(i)(3), dataModule.io.rdata(i).data(127, 64), dataModule.io.rdata(i).data(63, 0))
+      val wmask = Mux(addrModule.io.rdata_p(i)(3), dataModule.io.rdata(i).mask(15, 8), dataModule.io.rdata(i).mask(7, 0))
       when (wen) {
         ram.write(waddr, wdata.asTypeOf(Vec(8, UInt(8.W))), wmask.asBools)
       }

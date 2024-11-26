@@ -33,6 +33,7 @@ import xiangshan._
 import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.rob.RobDebugRollingIO
 import xiangshan.cache.wpu._
+import xiangshan.cache.sram._
 import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
 import xiangshan.mem.prefetch._
 import xiangshan.mem.LqPtr
@@ -193,6 +194,11 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   val tagWritePort = metaWritePort + 1
   val errWritePort = tagWritePort + 1
   val wbPort = errWritePort + 1
+
+  val ProbeReplayDelayCycles = 8
+  val ProbeqReplayCountBits = log2Up(ProbeReplayDelayCycles)
+
+  val MissqDataBufferDepth = 2 
 
   def set_to_dcache_div(set: UInt) = {
     require(set.getWidth >= DCacheSetBits)
@@ -619,17 +625,29 @@ class DCacheLineIO(implicit p: Parameters) extends DCacheBundle
   val resp = Flipped(DecoupledIO(new DCacheLineResp))
 }
 
+class RefillToSbuffer(implicit p: Parameters) extends  DCacheBundle{
+  val data = Output(UInt(l1BusDataWidth.W))
+  val id = Output(UInt(reqIdWidth.W))
+  val refill_count = Output(UInt((blockBytes/beatBytes).W))
+  val isKeyword = Output(Bool())
+}
+
 class DCacheToSbufferIO(implicit p: Parameters) extends DCacheBundle {
   // sbuffer will directly send request to dcache main pipe
   val req = Flipped(Decoupled(new DCacheLineReq))
 
   val main_pipe_hit_resp = ValidIO(new DCacheLineResp)
+  val amo_hit_resp = ValidIO(new DCacheLineResp)
   //val refill_hit_resp = ValidIO(new DCacheLineResp)
 
   val replay_resp = ValidIO(new DCacheLineResp)
 
+  val refill_row_data = ValidIO(new RefillToSbuffer)
+  val refill_to_mp_req = new MainPipeInfoToSbuffer
+  val refill_to_mp_resp = Flipped(ValidIO(new DCacheLineReq))
+
   //def hit_resps: Seq[ValidIO[DCacheLineResp]] = Seq(main_pipe_hit_resp, refill_hit_resp)
-  def hit_resps: Seq[ValidIO[DCacheLineResp]] = Seq(main_pipe_hit_resp)
+  def hit_resps: Seq[ValidIO[DCacheLineResp]] = Seq(main_pipe_hit_resp, amo_hit_resp)
 }
 
 // forward tilelink channel D's data to ldu
@@ -699,7 +717,7 @@ class MissEntryForwardIO(implicit p: Parameters) extends DCacheBundle {
     RegNext(req_valid && inflight && req_paddr(PAddrBits - 1, blockOffBits) === paddr(PAddrBits - 1, blockOffBits)) // TODO: clock gate(1-bit)
   }
 
-  def forward(req_valid : Bool, req_paddr : UInt) = {
+  def forward(req_valid : Bool, req_paddr : UInt, mshr_raw_data: Vec[UInt]) = {
     val all_match = (req_paddr(log2Up(refillBytes)) === 0.U && firstbeat_valid) ||
                     (req_paddr(log2Up(refillBytes)) === 1.U && lastbeat_valid)
 
@@ -707,7 +725,7 @@ class MissEntryForwardIO(implicit p: Parameters) extends DCacheBundle {
     val forwardData = RegInit(VecInit(List.fill(VLEN/8)(0.U(8.W))))
 
     val block_idx = req_paddr(log2Up(refillBytes), 3)
-    val block_data = raw_data
+    val block_data = mshr_raw_data
 
     val selected_data = Wire(UInt(128.W))
     selected_data := Mux(req_paddr(3), Fill(2, block_data(block_idx)), Cat(block_data(block_idx + 1.U), block_data(block_idx)))
@@ -1182,11 +1200,32 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
 
     ldu(i).io.bank_conflict_slow := bankedDataArray.io.bank_conflict_slow(i)
   })
- val isKeyword = bus.d.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
+
+  // connect bus d
+  missQueue.io.mem_grant.valid := false.B
+  missQueue.io.mem_grant.bits := DontCare
+  wb.io.mem_grant.valid := false.B
+  wb.io.mem_grant.bits := DontCare
+  val grantDataQueue = Module(new SRAMQueue(bus.d.bits.cloneType, entries = 28, flow = true, pipe = false, singlePort = true,
+    hasMbist = hasMbist))
+  grantDataQueue.io.enq.valid := false.B
+  grantDataQueue.io.enq.bits := DontCare
+  // in L1DCache, we ony expect Grant[Data] and ReleaseAck
+  bus.d.ready := false.B
+  when(bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData) {
+    // missQueue.io.mem_grant <> bus.d
+    grantDataQueue.io.enq <> bus.d
+  }.elsewhen(bus.d.bits.opcode === TLMessages.ReleaseAck) {
+    wb.io.mem_grant <> bus.d
+  }.otherwise {
+    assert(!bus.d.fire)
+  }
+  missQueue.io.mem_grant <> grantDataQueue.io.deq
+ val isKeyword = grantDataQueue.io.deq.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
   (0 until LoadPipelineWidth).map(i => {
-    val (_, _, done, _) = edge.count(bus.d)
-    when(bus.d.bits.opcode === TLMessages.GrantData) {
-      io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source, isKeyword ^ done)
+    val (_, _, done, _) = edge.count(grantDataQueue.io.deq)
+    when(grantDataQueue.io.deq.bits.opcode === TLMessages.GrantData) {
+      io.lsu.forward_D(i).apply(grantDataQueue.io.deq.valid, grantDataQueue.io.deq.bits.data, grantDataQueue.io.deq.bits.source, isKeyword ^ done)
    //   io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source,done)
     }.otherwise {
       io.lsu.forward_D(i).dontCare()
@@ -1194,8 +1233,8 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   })
   // tl D channel wakeup
   val (_, _, done, _) = edge.count(bus.d)
-  when (bus.d.bits.opcode === TLMessages.GrantData || bus.d.bits.opcode === TLMessages.Grant) {
-    io.lsu.tl_d_channel.apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source, done)
+  when (grantDataQueue.io.deq.bits.opcode === TLMessages.GrantData || grantDataQueue.io.deq.bits.opcode === TLMessages.Grant) {
+    io.lsu.tl_d_channel.apply(grantDataQueue.io.deq.valid, grantDataQueue.io.deq.bits.data, grantDataQueue.io.deq.bits.source, done)
   } .otherwise {
     io.lsu.tl_d_channel.dontCare()
   }
@@ -1392,16 +1431,31 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   probeQueue.io.update_resv_set <> mainPipe.io.update_resv_set
 
   val refill_req = RegNext(missQueue.io.main_pipe_req.valid && ((missQueue.io.main_pipe_req.bits.isLoad) | (missQueue.io.main_pipe_req.bits.isStore)))
+  val refill_req_data_from_sb = missQueue.io.main_pipe_req.bits.isStore | missQueue.io.main_pipe_req.bits.isAMO
+  val refill_req_data_from_sb_s1 = RegEnable(refill_req_data_from_sb, missQueue.io.main_pipe_req.fire)
+  val refill_req_data_from_sb_s2 = RegNext(refill_req_data_from_sb_s1)
   //----------------------------------------
   // mainPipe
   // when a req enters main pipe, if it is set-conflict with replace pipe or refill pipe,
   // block the req in main pipe
   probeQueue.io.pipe_req <> mainPipe.io.probe_req
+  probeQueue.io.pipe_resp <> mainPipe.io.probe_resp
   io.lsu.store.req <> mainPipe.io.store_req
+
+
+  //sbuffer
+  io.lsu.store.refill_row_data <> missQueue.io.refill_to_sbuffer
+  io.lsu.store.refill_to_mp_req <> mainPipe.io.sbuffer_info
+  when(io.lsu.store.refill_to_mp_resp.valid){
+    mainPipe.io.refill_info.bits.store_data := io.lsu.store.refill_to_mp_resp.bits.data
+    mainPipe.io.refill_info.bits.store_mask := io.lsu.store.refill_to_mp_resp.bits.mask
+  }
+
 
   io.lsu.store.replay_resp.valid := RegNext(mainPipe.io.store_replay_resp.valid)
   io.lsu.store.replay_resp.bits := RegEnable(mainPipe.io.store_replay_resp.bits, mainPipe.io.store_replay_resp.valid)
   io.lsu.store.main_pipe_hit_resp := mainPipe.io.store_hit_resp
+  io.lsu.store.amo_hit_resp := mainPipe.io.amo_hit_resp
 
   mainPipe.io.atomic_req <> io.lsu.atomics.req
 
@@ -1439,22 +1493,6 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // * and timing requirements
   // CHANGE IT WITH CARE
 
-  // connect bus d
-  missQueue.io.mem_grant.valid := false.B
-  missQueue.io.mem_grant.bits  := DontCare
-
-  wb.io.mem_grant.valid := false.B
-  wb.io.mem_grant.bits  := DontCare
-
-  // in L1DCache, we ony expect Grant[Data] and ReleaseAck
-  bus.d.ready := false.B
-  when (bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData) {
-    missQueue.io.mem_grant <> bus.d
-  } .elsewhen (bus.d.bits.opcode === TLMessages.ReleaseAck) {
-    wb.io.mem_grant <> bus.d
-  } .otherwise {
-    assert (!bus.d.fire)
-  }
 
   //----------------------------------------
   // Feedback Direct Prefetch Monitor

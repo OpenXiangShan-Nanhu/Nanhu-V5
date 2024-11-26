@@ -110,10 +110,16 @@ class MainPipeInfoToMQ(implicit p:Parameters) extends DCacheBundle {
   val s3_refill_resp = Bool()
 }
 
+class MainPipeInfoToSbuffer(implicit p:Parameters) extends DCacheBundle{
+  val s2_valid = Bool()
+  val sbuffer_id = UInt(reqIdWidth.W)
+}
+
 class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents with HasL1PrefetchSourceParameter {
   val io = IO(new Bundle() {
     // probe queue
     val probe_req = Flipped(DecoupledIO(new MainPipeReq))
+    val probe_resp = ValidIO(new ProbeResp)
     // store miss go to miss queue
     val miss_req = DecoupledIO(new MissReq)
     val miss_resp = Input(new MissResp) // miss resp is used to support plru update
@@ -129,8 +135,11 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     // atmoics
     val atomic_req = Flipped(DecoupledIO(new MainPipeReq))
     val atomic_resp = ValidIO(new MainPipeResp)
+    val amo_hit_resp = ValidIO(new DCacheLineResp)
     // find matched refill data in missentry
     val mainpipe_info = Output(new MainPipeInfoToMQ)
+    // find matched refill data in sbuffer
+    val sbuffer_info = Output(new MainPipeInfoToSbuffer)
     // missqueue refill data
     val refill_info = Flipped(ValidIO(new MissQueueRefillInfo))
     // write-back queue
@@ -620,7 +629,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     s3_tag_match && s3_req.probe && s3_req.probe_need_data || s3_coh === ClientStates.Dirty
   }
 
-  val s3_probe_can_go = s3_req.probe && io.wb.ready && (io.tag_write.ready || !probe_update_meta)
+  val s3_probe_can_go = s3_req.probe && (io.tag_write.ready || !probe_update_meta)
   val s3_store_can_go = s3_req.source === STORE_SOURCE.U && !s3_req.probe && (io.tag_write.ready || !store_update_meta) && (io.data_write.ready || !update_data) && !s3_req.miss
   val s3_amo_can_go = s3_amo_hit && (io.tag_write.ready || !amo_update_meta) && (io.data_write.ready || !update_data) && (s3_s_amoalu || !amo_wait_amoalu)
   val s3_miss_can_go = s3_req.miss &&
@@ -666,7 +675,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
       )
     )
   )
-  assert(!(s3_valid && banked_wmask.orR && !update_data)) 
+  assert(!(s3_valid && banked_wmask.orR && !update_data))
   // -------------------------------------------------------------------------------------
 
   val s3_fire = s3_valid && s3_can_go
@@ -742,6 +751,12 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
       s3_store_data_merged
     )
   ).asUInt
+
+  io.amo_hit_resp.valid := s3_valid_dup(8) && s3_miss_can_go && s3_req.isAMO
+  io.amo_hit_resp.bits.data := DontCare
+  io.amo_hit_resp.bits.miss := false.B
+  io.amo_hit_resp.bits.replay := false.B
+  io.amo_hit_resp.bits.id := 0.U
 
   val atomic_hit_resp = Wire(new MainPipeResp)
   atomic_hit_resp.source := s3_req.source
@@ -859,6 +874,10 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.wb.bits.delay_release := s3_req.replace
   io.wb.bits.miss_id := s3_req.miss_id
 
+  io.probe_resp.valid := s3_fire && s3_req.probe
+  io.probe_resp.bits.id := s3_req.id
+  io.probe_resp.bits.replay := io.wb.valid && !io.wb.ready
+
   // update plru in main pipe s3
   io.replace_access.valid := GatedValidRegNext(s2_fire_to_s3) && !s3_req.probe && (s3_req.miss || ((s3_req.isAMO || s3_req.isStore) && s3_hit))
   io.replace_access.bits.set := s3_idx
@@ -893,6 +912,9 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.mainpipe_info.s3_valid := s3_valid
   io.mainpipe_info.s3_miss_id := s3_req.miss_id
   io.mainpipe_info.s3_refill_resp := RegNext(s2_valid && s2_req.miss && s2_fire_to_s3)
+
+  io.sbuffer_info.s2_valid := s2_valid && s2_req.miss && (s2_req.isStore || s2_req.isAMO)
+  io.sbuffer_info.sbuffer_id := Mux(s2_req.isStore, s2_req.id, 0.U)
 
   // report error to beu and csr, 1 cycle after read data resp
   io.error := 0.U.asTypeOf(ValidIO(new L1CacheErrorInfo))

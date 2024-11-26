@@ -1011,7 +1011,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     }
   }
 
-  io.forward_mshr.valid  := s1_valid && s1_out.forward_tlDchannel
+  io.forward_mshr.valid  := s1_valid & s1_out.forward_tlDchannel
   io.forward_mshr.mshrid := s1_out.mshrid
   io.forward_mshr.paddr  := s1_out.paddr
 

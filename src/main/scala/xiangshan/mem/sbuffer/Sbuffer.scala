@@ -45,7 +45,8 @@ trait HasSbufferConst extends HasXSParameter {
   // dcache write hit resp has 2 sources
   // refill pipe resp and main pipe resp (fixed:only main pipe resp)
   // val NumDcacheWriteResp = 2 // hardcoded
-  val NumDcacheWriteResp = 1 // hardcoded
+  val NumDcacheWriteResp = 2 // hardcoded
+  val NumDcacheRefillWritePort = l1BusDataWidth/VLEN
 
   val SbufferIndexWidth: Int = log2Up(StoreBufferSize)
   // paddr = ptag + offset
@@ -93,10 +94,10 @@ class MaskFlushReq(implicit p: Parameters) extends SbufferBundle {
   val wvec = UInt(StoreBufferSize.W)
 }
 
-class SbufferData(implicit p: Parameters) extends XSModule with HasSbufferConst {
+class SbufferData(implicit p: Parameters) extends DCacheModule with HasSbufferConst {
   val io = IO(new Bundle(){
     // update data and mask when alloc or merge
-    val writeReq = Vec(EnsbufferWidth, Flipped(ValidIO(new DataWriteReq)))
+    val writeReq = Vec(EnsbufferWidth + NumDcacheRefillWritePort, Flipped(ValidIO(new DataWriteReq)))
     // clean mask when deq
     val maskFlushReq = Vec(NumDcacheWriteResp, Flipped(ValidIO(new MaskFlushReq)))
     val dataOut = Output(Vec(StoreBufferSize, Vec(CacheLineVWords, Vec(VDataBytes, UInt(8.W)))))
@@ -129,7 +130,7 @@ class SbufferData(implicit p: Parameters) extends XSModule with HasSbufferConst 
   }
 
   // 2 cycle data / mask update
-  for(i <- 0 until EnsbufferWidth) {
+  for(i <- 0 until EnsbufferWidth +  NumDcacheRefillWritePort) {
     val req = io.writeReq(i)
     for(line <- 0 until StoreBufferSize){
       val sbuffer_in_s1_line_wen = req.valid && req.bits.wvec(line)
@@ -159,29 +160,6 @@ class SbufferData(implicit p: Parameters) extends XSModule with HasSbufferConst 
     }
   }
 
-  // 1 cycle line mask clean
-  // for(i <- 0 until EnsbufferWidth) {
-  //   val req = io.writeReq(i)
-  //   when(req.valid){
-  //     for(line <- 0 until StoreBufferSize){
-  //       when(
-  //         req.bits.wvec(line) &&
-  //         req.bits.cleanMask
-  //       ){
-  //         for(word <- 0 until CacheLineWords){
-  //           for(byte <- 0 until DataBytes){
-  //             mask(line)(word)(byte) := false.B
-  //             val debug_last_cycle_write_byte = RegNext(req.valid && req.bits.wvec(line) && (
-  //               req.bits.mask(byte) && (req.bits.wordOffset(WordsWidth-1, 0) === word.U) ||
-  //               req.bits.wline
-  //             ))
-  //             assert(!debug_last_cycle_write_byte)
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
 
   io.dataOut := data
   io.maskOut := mask
@@ -710,7 +688,7 @@ class Sbuffer(implicit p: Parameters)
       stateVec(dcache_resp_id).state_valid := false.B
       assert(!resp.bits.replay)
       assert(!resp.bits.miss) // not need to resp if miss, to be opted
-      assert(stateVec(dcache_resp_id).state_inflight === true.B)
+      assert(stateVec(dcache_resp_id).state_inflight === true.B || stateVec(dcache_resp_id).isInvalid())
     }
 
     // Update w_sameblock_inflight flag is delayed for 1 cycle
@@ -745,6 +723,40 @@ class Sbuffer(implicit p: Parameters)
     assert(stateVec(replay_resp_id).state_inflight === true.B)
   }
 
+  //L2 refill row data
+  val refill_data = io.dcache.refill_row_data.bits.data
+  val refill_id = UIntToOH(io.dcache.refill_row_data.bits.id)
+  val store_mask = Mux1H(refill_id, mask)
+  (EnsbufferWidth until EnsbufferWidth +  NumDcacheRefillWritePort) map { i =>
+    writeReq(i).valid := false.B
+    writeReq(i).bits := DontCare
+  }
+
+
+  when(io.dcache.refill_row_data.valid) {
+    for (i <- 0 until  NumDcacheRefillWritePort) {
+      val wordOffsetFake = ((io.dcache.refill_row_data.bits.refill_count << log2Floor(NumDcacheRefillWritePort)).asUInt + i.U)
+      val wordOffset = Mux(io.dcache.refill_row_data.bits.isKeyword, wordOffsetFake ^ NumDcacheRefillWritePort.U, wordOffsetFake)
+      val mask = Mux1H(UIntToOH(wordOffset), store_mask).asUInt
+      writeReq(EnsbufferWidth + i).valid := !(mask.andR)
+      writeReq(EnsbufferWidth + i).bits.wvec := refill_id
+      writeReq(EnsbufferWidth + i).bits.mask := ~mask
+      writeReq(EnsbufferWidth + i).bits.data := refill_data(VLEN * (i + 1) - 1, VLEN * i)
+      writeReq(EnsbufferWidth + i).bits.vwordOffset := wordOffset
+      writeReq(EnsbufferWidth + i).bits.wline := false.B
+    }
+    assert(stateVec(io.dcache.refill_row_data.bits.id).state_inflight === true.B || stateVec(io.dcache.refill_row_data.bits.id).isInvalid())
+  }
+
+  // refill data to dcache
+  val refill_to_mp_req = io.dcache.refill_to_mp_req.s2_valid
+  val refill_to_mp_id = io.dcache.refill_to_mp_req.sbuffer_id
+
+  io.dcache.refill_to_mp_resp.valid := refill_to_mp_req
+  io.dcache.refill_to_mp_resp.bits := DontCare
+  io.dcache.refill_to_mp_resp.bits.data := data(refill_to_mp_id).asUInt
+  io.dcache.refill_to_mp_resp.bits.mask := mask(refill_to_mp_id).asUInt
+
   // TODO: reuse cohCount
   (0 until StoreBufferSize).map(i => {
     when(stateVec(i).w_timeout && stateVec(i).state_inflight && !missqReplayCount(i)(MissqReplayCountBits-1)) {
@@ -762,7 +774,7 @@ class Sbuffer(implicit p: Parameters)
       val dcache_resp_id = resp.bits.id
       difftest.coreid := io.hartId
       difftest.index  := index.U
-      difftest.valid  := resp.fire
+      difftest.valid  := resp.fire && stateVec(dcache_resp_id).isValid()
       difftest.addr   := getAddr(ptag(dcache_resp_id))
       difftest.data   := data(dcache_resp_id).asTypeOf(Vec(CacheLineBytes, UInt(8.W)))
       difftest.mask   := mask(dcache_resp_id).asUInt
@@ -795,7 +807,9 @@ class Sbuffer(implicit p: Parameters)
     val line_offset_mask = UIntToOH(getVWordOffset(forward.paddr))
 
     val valid_tag_match_reg = valid_tag_matches.map(RegEnable(_, forward.valid))
-    val inflight_tag_match_reg = inflight_tag_matches.map(RegEnable(_, forward.valid))
+    val inflight_tag_match_reg = (0 until StoreBufferSize).map { i =>
+      RegEnable(inflight_tag_matches(i),forward.valid) && Mux(RegNext(io.dcache.refill_row_data.valid), !RegNext(refill_id(i)), true.B)
+    }
     val forward_mask_candidate_reg = RegEnable(
       VecInit(mask.map(entry => entry(getVWordOffset(forward.paddr)))),
       forward.valid

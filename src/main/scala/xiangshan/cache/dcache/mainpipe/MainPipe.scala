@@ -752,7 +752,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     )
   ).asUInt
 
-  io.amo_hit_resp.valid := s3_valid_dup(8) && s3_miss_can_go && s3_req.isAMO
+  io.amo_hit_resp.valid := s3_valid && s3_miss_can_go && s3_req.isAMO
   io.amo_hit_resp.bits.data := DontCare
   io.amo_hit_resp.bits.miss := false.B
   io.amo_hit_resp.bits.replay := false.B

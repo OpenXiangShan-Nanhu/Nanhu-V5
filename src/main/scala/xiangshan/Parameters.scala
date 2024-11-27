@@ -460,7 +460,7 @@ case class XSCoreParameters
     SchdBlockParams(Seq(
       IssueBlockParams(Seq(
         ExeUnitParams("STA0", Seq(StaCfg, MouCfg), Seq(FakeIntWB()), Seq(Seq(IntRD(10, 0)))),
-      ), numEntries = 16, numEnq = 2, numComp = 14),
+      ), numEntries = 20, numEnq = 2, numComp = 18),
 //      IssueBlockParams(Seq(
 //        ExeUnitParams("STA1", Seq(StaCfg, MouCfg), Seq(FakeIntWB()), Seq(Seq(IntRD(6, 2)))),
 //      ), numEntries = 16, numEnq = 1, numComp = 15),

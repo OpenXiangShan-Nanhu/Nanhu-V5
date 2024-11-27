@@ -301,6 +301,7 @@ object FuConfig {
     latency = UncertainLatency(),
     exceptionOut = Seq(illegalInstr, virtualInstr, breakPoint, ecallU, ecallS, ecallVS, ecallM),
     flushPipe = true,
+    immType = Set(SelImm.IMM_Z),
   )
 
   val AluCfg: FuConfig = FuConfig (

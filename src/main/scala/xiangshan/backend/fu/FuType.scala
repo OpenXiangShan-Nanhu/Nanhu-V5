@@ -103,19 +103,19 @@ object FuType extends OHEnumeration {
     dq1OHTypeSeq.flatten.distinct
   }
   def intDq1Deq0(implicit p: Parameters): Seq[OHType] = {
-    val fuTypes = dq1OHTypeSeq(p)(0) ++ dq1OHTypeSeq(p)(2)
+    val fuTypes = dq1OHTypeSeq(p)(0) ++ dq1OHTypeSeq(p)(1)
     fuTypes.distinct
   }
   def intDq1Deq1(implicit p: Parameters): Seq[OHType] = {
-    val fuTypes = dq1OHTypeSeq(p)(1) ++ dq1OHTypeSeq(p)(3)
+    val fuTypes = Seq()
     fuTypes.distinct
   }
   def intBothDeq0(implicit p: Parameters): Seq[OHType] = {
-    val fuTypes = dq0OHTypeSeq(p)(0).intersect(dq0OHTypeSeq(p)(2)).intersect(dq1OHTypeSeq(p)(0)).intersect(dq1OHTypeSeq(p)(2))
+    val fuTypes = dq0OHTypeSeq(p)(0).intersect(dq0OHTypeSeq(p)(2)).intersect(dq1OHTypeSeq(p)(0))
     fuTypes.distinct
   }
   def intBothDeq1(implicit p: Parameters): Seq[OHType] = {
-    val fuTypes = dq0OHTypeSeq(p)(1).intersect(dq0OHTypeSeq(p)(3)).intersect(dq1OHTypeSeq(p)(1)).intersect(dq1OHTypeSeq(p)(3))
+    val fuTypes = dq0OHTypeSeq(p)(1).intersect(dq0OHTypeSeq(p)(3)).intersect(dq1OHTypeSeq(p)(1))
     fuTypes.distinct
   }
   def is0latency(fuType: UInt): Bool = {

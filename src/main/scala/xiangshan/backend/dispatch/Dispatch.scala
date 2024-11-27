@@ -131,54 +131,54 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   val IQ0Deq1Num = io.intIQValidNumVec(0)(1)
   val IQ1Deq0Num = io.intIQValidNumVec(1)(0)
   val IQ1Deq1Num = io.intIQValidNumVec(1)(1)
-  val IQ2Deq0Num = io.intIQValidNumVec(2)(0)
-  val IQ2Deq1Num = io.intIQValidNumVec(2)(1)
-  val IQ3Deq0Num = io.intIQValidNumVec(3)(0)
-  val IQ3Deq1Num = io.intIQValidNumVec(3)(1)
+  // val IQ2Deq0Num = io.intIQValidNumVec(2)(0)
+  // val IQ2Deq1Num = io.intIQValidNumVec(2)(1)
+  // val IQ3Deq0Num = io.intIQValidNumVec(3)(0)
+  // val IQ3Deq1Num = io.intIQValidNumVec(3)(1)
   val DQ0Deq0 = io.fromIntDQ.intDQ0ValidDeq0Num
   val DQ0Deq1 = io.fromIntDQ.intDQ0ValidDeq1Num
   val DQ1Deq0 = io.fromIntDQ.intDQ1ValidDeq0Num
   val DQ1Deq1 = io.fromIntDQ.intDQ1ValidDeq1Num
   val IQ01Deq0 = IQ0Deq0Num +& IQ1Deq0Num
   val IQ01Deq1 = IQ0Deq1Num +& IQ1Deq1Num
-  val IQ23Deq0 = IQ2Deq0Num +& IQ3Deq0Num
-  val IQ23Deq1 = IQ2Deq1Num +& IQ3Deq1Num
+  // val IQ23Deq0 = IQ2Deq0Num +& IQ3Deq0Num
+  // val IQ23Deq1 = IQ2Deq1Num +& IQ3Deq1Num
   val Dq0EnqDeq0 = PopCount(isOnlyDq0)
   val Dq1EnqDeq1 = PopCount(isOnlyDq1)
   val Dq0SumDeq0 = DQ0Deq0 +& IQ01Deq0 +& Dq0EnqDeq0
   val Dq0SumDeq1 = DQ0Deq1 +& IQ01Deq1
-  val Dq1SumDeq0 = DQ1Deq0 +& IQ23Deq0
-  val Dq1SumDeq1 = DQ1Deq1 +& IQ23Deq1 +& Dq1EnqDeq1
+  val Dq1SumDeq0 = DQ1Deq0 +& io.intIQValidNumVec(2)(0)
+  // val Dq1SumDeq1 = DQ1Deq1 +& Dq1EnqDeq1
   val lessDeq0IsDq0 = Dq1SumDeq0 > Dq0SumDeq0
-  val lessDeq1IsDq0 = (Dq1SumDeq1 << 1).asUInt > Dq0SumDeq1
+  // val lessDeq1IsDq0 = (Dq1SumDeq1 << 1).asUInt > Dq0SumDeq1
   val equalDeq0IsDq0 = Dq1SumDeq0 === Dq0SumDeq0
-  val equalDeq1IsDq0 = (Dq1SumDeq1 << 1).asUInt  === Dq0SumDeq1
+  // val equalDeq1IsDq0 = (Dq1SumDeq1 << 1).asUInt  === Dq0SumDeq1
   // val diffDeq0 = Mux(lessDeq0IsDq0, Dq1SumDeq0 - Dq0SumDeq0, Dq0SumDeq0 - Dq1SumDeq0)
   // val diffDeq1 = Mux(lessDeq1IsDq0, Dq1SumDeq1 - Dq0SumDeq1, Dq0SumDeq1 - Dq1SumDeq1)
   // val popAluIsMore = popAlu.map(_ > diffDeq0)
   // val popBrhIsMore = popBrh.map(_ > diffDeq1)
   val lastLastAluSelectDq0 = RegInit(false.B)
-  val lastLastBrhSelectDq0 = RegInit(false.B)
+  // val lastLastBrhSelectDq0 = RegInit(false.B)
   // val aluSelectLessDq = isAlu.zip(popAluIsMore).zip(popAlu).map { case ((i, pm), p) => i && (!pm || (pm && p(0).asBool) ^ lastLastAluSelectDq0) }
   // val brhSelectLessDq = isBrh.zip(popBrhIsMore).zip(popBrh).map { case ((i, pm), p) => i && (!pm || (pm && p(0).asBool) ^ lastLastBrhSelectDq0) }
   val aluSelectDq0 = isAlu.zip(popAlu).map { case (i, p) => i && (p(0).asBool ^ lastLastAluSelectDq0) }
   //val brhSelectDq0 = isBrh.zip(popBrh).map { case (i, p) => i && (p(0).asBool ^ lastLastBrhSelectDq0) }
-  val brhSelectDq0 = isBrh.zip(popBrh).map { case (i, p) => i && !(lastLastBrhSelectDq0 && (p === 1.U || p === 4.U) || !lastLastBrhSelectDq0 && (p === 3.U || p === 6.U))}
+  // val brhSelectDq0 = true.B // isBrh.zip(popBrh).map { case (i, p) => i && !(lastLastBrhSelectDq0 && (p === 1.U || p === 4.U) || !lastLastBrhSelectDq0 && (p === 3.U || p === 6.U))}
   val lastAluSelectDq0 = PriorityMuxDefault(isAlu.reverse.zip(aluSelectDq0.reverse), lastLastAluSelectDq0)
-  val lastBrhSelectDq0 = PriorityMuxDefault(isBrh.reverse.zip(brhSelectDq0.reverse), lastLastBrhSelectDq0)
+  // val lastBrhSelectDq0 = true.B // PriorityMuxDefault(isBrh.reverse.zip(brhSelectDq0.reverse), lastLastBrhSelectDq0)
   when(isAlu.asUInt.orR && io.toIntDq0.canAccept && io.toIntDq1.canAccept){
     lastLastAluSelectDq0 := Mux(equalDeq0IsDq0, lastAluSelectDq0, !lessDeq0IsDq0)
   }
-  when(isBrh.asUInt.orR && io.toIntDq0.canAccept && io.toIntDq1.canAccept){
-    lastLastBrhSelectDq0 := Mux(equalDeq1IsDq0, lastBrhSelectDq0, !lessDeq1IsDq0)
-  }
+  // when(isBrh.asUInt.orR && io.toIntDq0.canAccept && io.toIntDq1.canAccept){
+  //   lastLastBrhSelectDq0 := Mux(equalDeq1IsDq0, lastBrhSelectDq0, !lessDeq1IsDq0)
+  // }
   val toIntDq0Valid = Wire(Vec(RenameWidth, Bool()))
   val toIntDq1Valid = Wire(Vec(RenameWidth, Bool()))
   toIntDq0Valid.indices.map { case i =>
-    toIntDq0Valid(i) := Mux(!io.toIntDq0.canAccept, false.B, Mux(!io.toIntDq1.canAccept, isOnlyDq0(i) || isBothDq01(i), isOnlyDq0(i) || aluSelectDq0(i) || brhSelectDq0(i)))
+    toIntDq0Valid(i) := Mux(!io.toIntDq0.canAccept, false.B, Mux(!io.toIntDq1.canAccept, isOnlyDq0(i) || isBothDq01(i), isOnlyDq0(i) || aluSelectDq0(i)))
   }
   toIntDq1Valid.indices.map { case i =>
-    toIntDq1Valid(i) := Mux(!io.toIntDq1.canAccept, false.B, Mux(!io.toIntDq0.canAccept, isOnlyDq1(i) || isBothDq01(i), isOnlyDq1(i) || (isAlu(i) ^ aluSelectDq0(i)) || (isBrh(i) && !brhSelectDq0(i))))
+    toIntDq1Valid(i) := Mux(!io.toIntDq1.canAccept, false.B, Mux(!io.toIntDq0.canAccept, isOnlyDq1(i) || isBothDq01(i), isOnlyDq1(i) || (isAlu(i) ^ aluSelectDq0(i))))
   }
   val isBranch = VecInit(io.fromRename.map(req =>
     // cover auipc (a fake branch)
@@ -372,12 +372,12 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
 
     io.toVecDq.needAlloc(i)  := io.fromRename(i).valid && isVec(i)
     io.toVecDq.req(i).valid  := io.fromRename(i).valid && isVec(i) &&
-                               canEnterDpq && dqCanAccept
+                                canEnterDpq && dqCanAccept
     io.toVecDq.req(i).bits   := updatedUop(i)
 
     io.toLsDq.needAlloc(i)  := io.fromRename(i).valid && isMem(i)
     io.toLsDq.req(i).valid  := io.fromRename(i).valid && isMem(i) &&
-                               canEnterDpq && dqCanAccept
+                                canEnterDpq && dqCanAccept
     io.toLsDq.req(i).bits   := updatedUop(i)
 
     //delete trigger message from frontend

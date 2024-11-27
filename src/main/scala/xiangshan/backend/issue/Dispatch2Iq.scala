@@ -79,7 +79,7 @@ class Dispatch2Iq(val schdBlockParams : SchdBlockParams)(implicit p: Parameters)
   val isMem = schdBlockParams.schdType == MemScheduler()
 
   lazy val module: Dispatch2IqImp = schdBlockParams.schdType match {
-    case IntScheduler() => new Dispatch2IqIntImp(this)(p, schdBlockParams)
+    case IntScheduler() => new Dispatch2IqInt2Imp(this)(p, schdBlockParams)
     case FpScheduler()  => new Dispatch2IqFpImp(this)(p, schdBlockParams)
     case MemScheduler() => new Dispatch2IqMemImp(this)(p, schdBlockParams)
     case VfScheduler() => new Dispatch2IqArithImp(this)(p, schdBlockParams)
@@ -349,11 +349,10 @@ abstract class Dispatch2IqImp(override val wrapper: Dispatch2Iq)(implicit p: Par
   }
 }
 
-class Dispatch2IqIntImp(override val wrapper: Dispatch2Iq)(implicit p: Parameters, params: SchdBlockParams)
+class Dispatch2IqInt2Imp(override val wrapper: Dispatch2Iq)(implicit p: Parameters, params: SchdBlockParams)
   extends Dispatch2IqImp(wrapper)
     with HasXSParameter {
-
-  require(outs.size == uopsIn.size, "Dispatch2IqInt outs.size =/= uopsIn.size")
+      // require(outs.size == uopsIn.size, "Dispatch2IqInt outs.size =/= uopsIn.size")
 
   val intIQValidNumVec = io.intIQValidNumVec.get
   val uopsInDq0Num = uopsIn.size / 2
@@ -366,10 +365,10 @@ class Dispatch2IqIntImp(override val wrapper: Dispatch2Iq)(implicit p: Parameter
   val IQ0Deq1Num = intIQValidNumVec(0)(1)
   val IQ1Deq0Num = intIQValidNumVec(1)(0)
   val IQ1Deq1Num = intIQValidNumVec(1)(1)
-  val IQ2Deq0Num = intIQValidNumVec(2)(0)
-  val IQ2Deq1Num = intIQValidNumVec(2)(1)
-  val IQ3Deq0Num = intIQValidNumVec(3)(0)
-  val IQ3Deq1Num = intIQValidNumVec(3)(1)
+  // val IQ2Deq0Num = intIQValidNumVec(2)(0)
+  // val IQ2Deq1Num = intIQValidNumVec(2)(1)
+  // val IQ3Deq0Num = intIQValidNumVec(3)(0)
+  // val IQ3Deq1Num = intIQValidNumVec(3)(1)
 
   val IQ0Deq0IsLess = IQ1Deq0Num > IQ0Deq0Num
   val IQ0Deq1IsLess = IQ1Deq1Num > IQ0Deq1Num
@@ -506,149 +505,400 @@ class Dispatch2IqIntImp(override val wrapper: Dispatch2Iq)(implicit p: Parameter
   uopsOutDq0(3).valid := Mux1H(IQ1Enq1Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
 
 
-  val IQ2Deq0IsLess = IQ3Deq0Num > IQ2Deq0Num
-  val IQ2Deq1IsLess = IQ3Deq1Num > IQ2Deq1Num
-  val diffIQ23Deq0 = Mux(IQ2Deq0IsLess, IQ3Deq0Num - IQ2Deq0Num, IQ2Deq0Num - IQ3Deq0Num)
-  val diffIQ23Deq1 = Mux(IQ2Deq1IsLess, IQ3Deq1Num - IQ2Deq1Num, IQ2Deq1Num - IQ3Deq1Num)
-  val IQ2Deq0IsLess2 = IQ2Deq0IsLess && (diffIQ23Deq0 >= 2.U)
-  val IQ2Deq1IsLess2 = IQ2Deq1IsLess && (diffIQ23Deq1 >= 2.U)
-  val IQ3Deq0IsLess2 = !IQ2Deq0IsLess && (diffIQ23Deq0 >= 2.U)
-  val IQ3Deq1IsLess2 = !IQ2Deq1IsLess && (diffIQ23Deq1 >= 2.U)
-  val IQ2Deq0IsEqual = IQ3Deq0Num === IQ2Deq0Num
-  val IQ2Deq1IsEqual = IQ3Deq1Num === IQ2Deq1Num
-  val isDq1Deq0 = VecInit(uopsInDq1.map { case in => in.valid && FuType.isIntDq1Deq0(in.bits.fuType) })
-  val isDq1Deq1 = VecInit(uopsInDq1.map { case in => in.valid && FuType.isIntDq1Deq1(in.bits.fuType) })
-  val popDq1Deq0 = isDq1Deq0.zipWithIndex.map { case (_, i) => PopCount(isDq1Deq0.take(i + 1)) }
-  val popDq1Deq1 = isDq1Deq1.zipWithIndex.map { case (_, i) => PopCount(isDq1Deq1.take(i + 1)) }
-  val isDq1Deq0Num = popDq1Deq0.last
-  val isDq1Deq1Num = popDq1Deq1.last
-  val IQ2Deq0IsLessSeq = VecInit(popDq1Deq0.map(p => (p <= diffIQ23Deq0) && IQ2Deq0IsLess))
-  val IQ2Deq1IsLessSeq = VecInit(popDq1Deq1.map(p => (p <= diffIQ23Deq1) && IQ2Deq1IsLess))
-  val lastAlu0SelectIQ2Enq0 = RegInit(false.B)
-  val lastBrh0SelectIQ2Enq0 = RegInit(false.B)
-  when(uopsOutDq1.head.ready && uopsOutDq1.last.ready && IQ2Deq0IsEqual && (popDq1Deq0(3)(0) === 1.U)) {
-    lastAlu0SelectIQ2Enq0 := !lastAlu0SelectIQ2Enq0
-  }
-  when(uopsOutDq1.head.ready && uopsOutDq1.last.ready && IQ2Deq1IsEqual && (popDq1Deq1(3)(0) === 1.U)) {
-    lastBrh0SelectIQ2Enq0 := !lastBrh0SelectIQ2Enq0
-  }
-  val IQ2FuCfgs = params.issueBlockParams(2).getFuCfgs
-  val IQ3FuCfgs = params.issueBlockParams(3).getFuCfgs
-  val IQ23BothfuCfgs = IQ2FuCfgs.intersect(IQ3FuCfgs)
-  val IQ2FuTypes = IQ2FuCfgs.map(_.fuType)
-  val IQ3FuTypes = IQ3FuCfgs.map(_.fuType)
-  val IQ2OnlyFuTypes = IQ2FuCfgs.diff(IQ3FuCfgs).map(_.fuType)
-  val IQ3OnlyFuTypes = IQ3FuCfgs.diff(IQ2FuCfgs).map(_.fuType)
-  val isOnlyIQ2 = uopsInDq1.map(x => x.valid && FuTypeOrR(x.bits.fuType, IQ2OnlyFuTypes))
-  val isOnlyIQ3 = uopsInDq1.map(x => x.valid && FuTypeOrR(x.bits.fuType, IQ3OnlyFuTypes))
-  val isBothIQ23_0 = uopsInDq1(0).valid && FuTypeOrR(uopsInDq1(0).bits.fuType, IQ23BothfuCfgs.map(_.fuType))
-  val isBothIQ23_1 = uopsInDq1(1).valid && FuTypeOrR(uopsInDq1(1).bits.fuType, IQ23BothfuCfgs.map(_.fuType))
-  val alu0SelectIQ2Enq0 = Mux(IQ2Deq0IsEqual, !lastAlu0SelectIQ2Enq0, IQ2Deq0IsLess)
-  val brh0SelectIQ2Enq0 = Mux(IQ2Deq1IsEqual, !lastBrh0SelectIQ2Enq0, IQ2Deq1IsLess)
-  val uop0SelectIQ2Enq0 = Mux(isDq1Deq0(0), alu0SelectIQ2Enq0, brh0SelectIQ2Enq0) || isOnlyIQ2(0)
-  val alu1SelectIQ2Enq0 = !uop0SelectIQ2Enq0 && (IQ2Deq0IsLess2 || Mux(IQ2Deq0IsEqual, Mux(popDq1Deq0(1) === 1.U, !lastAlu0SelectIQ2Enq0, lastAlu0SelectIQ2Enq0), isDq1Deq0(0) || IQ2Deq0IsLess))
-  val brh1SelectIQ2Enq0 = !uop0SelectIQ2Enq0 && (IQ2Deq1IsLess2 || Mux(IQ2Deq1IsEqual, Mux(popDq1Deq1(1) === 1.U, !lastBrh0SelectIQ2Enq0, lastBrh0SelectIQ2Enq0), isDq1Deq1(0) || IQ2Deq1IsLess))
-  val uop1SelectIQ2Enq0 = Mux(isDq1Deq0(1), alu1SelectIQ2Enq0, brh1SelectIQ2Enq0)
-  val alu1SelectIQ2Enq1 = isDq1Deq0(0) && IQ2Deq0IsLess2 || isDq1Deq1(0) && IQ2Deq0IsLess
-  val brh1SelectIQ2Enq1 = isDq1Deq1(0) && IQ2Deq1IsLess2 || isDq1Deq0(0) && IQ2Deq1IsLess
-  val uop1SelectIQ2Enq1 = uop0SelectIQ2Enq0 && Mux(isDq1Deq0(1), alu1SelectIQ2Enq1, brh1SelectIQ2Enq1)
-  val alu1SelectIQ3Enq0 = uop0SelectIQ2Enq0 && (IQ3Deq0IsLess2 || Mux(IQ2Deq0IsEqual, Mux(popDq1Deq0(1) === 1.U, lastAlu0SelectIQ2Enq0, !lastAlu0SelectIQ2Enq0), isDq1Deq0(0) || !IQ2Deq0IsLess))
-  val brh1SelectIQ3Enq0 = uop0SelectIQ2Enq0 && (IQ3Deq1IsLess2 || Mux(IQ2Deq1IsEqual, Mux(popDq1Deq1(1) === 1.U, lastBrh0SelectIQ2Enq0, !lastBrh0SelectIQ2Enq0), isDq1Deq1(0) || !IQ2Deq1IsLess))
-  val uop1SelectIQ3Enq0 = !uop1SelectIQ2Enq0 && !uop1SelectIQ2Enq1 && Mux(isDq1Deq0(1), alu1SelectIQ3Enq0, brh1SelectIQ3Enq0)
-  val uop1SelectIQ3Enq1 = !uop1SelectIQ2Enq0 && !uop1SelectIQ2Enq1 && !uop1SelectIQ3Enq0
-  val alu2SelectIQ2Enq1 = Mux(popDq1Deq0(2) === 2.U, Mux(IQ2Deq0IsLess2, true.B, isDq1Deq0(0) && !alu0SelectIQ2Enq0 || isDq1Deq1(0) && brh0SelectIQ2Enq0), alu0SelectIQ2Enq0)
-  val brh2SelectIQ2Enq1 = Mux(popDq1Deq1(2) === 2.U, Mux(IQ2Deq1IsLess2, true.B, isDq1Deq1(0) && !brh0SelectIQ2Enq0 || isDq1Deq0(0) && alu0SelectIQ2Enq0), brh0SelectIQ2Enq0)
-  val uop2SelectIQ2Enq1 = Mux(isDq1Deq0(2), alu2SelectIQ2Enq1, brh2SelectIQ2Enq1) || isOnlyIQ2(2)
-  val IQ2Enq0Select = Wire(Vec(4, Bool()))
-  val IQ2Enq1Select = Wire(Vec(4, Bool()))
-  val IQ3Enq0Select = Wire(Vec(4, Bool()))
-  val IQ3Enq1Select = Wire(Vec(4, Bool()))
-  val IQ2Enq0Select0 = isOnlyIQ2(0) || isBothIQ23_0 && uop0SelectIQ2Enq0
-  val IQ3Enq0Select0 = !IQ2Enq0Select0 && (isOnlyIQ3(0) || isBothIQ23_0 && uopsInDq1(0).valid)
-  val IQ2Enq0Select1 = !IQ2Enq0Select0 && (isOnlyIQ2(1) || isBothIQ23_1 && (uop1SelectIQ2Enq0 || isOnlyIQ3(0)))
-  val IQ2Enq1Select1 = !IQ2Enq0Select1 && (isOnlyIQ2(1) || isBothIQ23_1 && uop1SelectIQ2Enq1)
-  val IQ3Enq0Select1 = !IQ2Enq0Select1 && !IQ2Enq1Select1 && !IQ3Enq0Select0 && (isOnlyIQ3(1) || isBothIQ23_1 && (uop1SelectIQ3Enq0 || isOnlyIQ3(0)))
-  val IQ3Enq1Select1 = !IQ2Enq0Select1 && !IQ2Enq1Select1 && !IQ3Enq0Select1 && (isOnlyIQ3(1) || isBothIQ23_1 && uop1SelectIQ3Enq1)
-  val IQ2Enq0Select2 = !IQ2Enq0Select0 && !IQ2Enq0Select1 && uopsInDq1(2).valid
-  val IQ2Enq1Select2 = !IQ2Enq1Select1 && !IQ2Enq0Select2 && uopsInDq1(2).valid && uop2SelectIQ2Enq1
-  val IQ3Enq0Select2 = !IQ3Enq0Select0 && !IQ3Enq0Select1 && !IQ2Enq0Select2 && !IQ2Enq1Select2 && uopsInDq1(2).valid
-  val IQ3Enq1Select2 = !IQ2Enq0Select2 && !IQ2Enq1Select2 && !IQ3Enq0Select2 && uopsInDq1(2).valid
-  val IQ2Enq1Select3 = !IQ2Enq1Select1 && !IQ2Enq1Select2 && uopsInDq1(3).valid
-  val IQ3Enq1Select3 = !IQ3Enq1Select1 && !IQ3Enq1Select2 && uopsInDq1(3).valid
-  when(uopsOutDq1.head.ready && uopsOutDq1.last.ready) {
-    IQ2Enq0Select := Cat(false.B, IQ2Enq0Select2, IQ2Enq0Select1, IQ2Enq0Select0).asBools
-    IQ2Enq1Select := Cat(IQ2Enq1Select3, IQ2Enq1Select2, IQ2Enq1Select1, false.B).asBools
-    IQ3Enq0Select := Cat(false.B, IQ3Enq0Select2, IQ3Enq0Select1, IQ3Enq0Select0).asBools
-    IQ3Enq1Select := Cat(IQ3Enq1Select3, IQ3Enq1Select2, IQ3Enq1Select1, false.B).asBools
-  }.elsewhen(uopsOutDq1.head.ready) {
-    IQ2Enq0Select := Cat(false.B, false.B, false.B, true.B).asBools
-    IQ2Enq1Select := Cat(false.B, false.B, true.B, false.B).asBools
-    IQ3Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
-    IQ3Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
-  }.elsewhen(uopsOutDq1.last.ready) {
-    IQ2Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
-    IQ2Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
-    IQ3Enq0Select := Cat(false.B, false.B, false.B, true.B).asBools
-    IQ3Enq1Select := Cat(false.B, false.B, true.B, false.B).asBools
-  }.otherwise {
-    IQ2Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
-    IQ2Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
-    IQ3Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
-    IQ3Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
-  }
-  assert(PopCount(IQ2Enq0Select) < 2.U, "IQ2Enq0Select is not one hot")
-  assert(PopCount(IQ2Enq1Select) < 2.U, "IQ2Enq1Select is not one hot")
-  assert(PopCount(IQ3Enq0Select) < 2.U, "IQ3Enq0Select is not one hot")
-  assert(PopCount(IQ3Enq1Select) < 2.U, "IQ3Enq1Select is not one hot")
-  assert(PopCount(IQ2Enq0Select) < 2.U, "IQ2Enq0Select is not one hot")
-  assert(PopCount(IQ2Enq1Select) < 2.U, "IQ2Enq1Select is not one hot")
-  assert(PopCount(IQ3Enq0Select) < 2.U, "IQ3Enq0Select is not one hot")
-  assert(PopCount(IQ3Enq1Select) < 2.U, "IQ3Enq1Select is not one hot")
-  assert(PopCount(VecInit(IQ2Enq0Select(0), IQ2Enq1Select(0), IQ3Enq0Select(0), IQ3Enq1Select(0))) < 2.U, "Dq1Uop0Select is not one hot")
-  assert(PopCount(VecInit(IQ2Enq0Select(1), IQ2Enq1Select(1), IQ3Enq0Select(1), IQ3Enq1Select(1))) < 2.U, "Dq1Uop1Select is not one hot")
-  assert(PopCount(VecInit(IQ2Enq0Select(2), IQ2Enq1Select(2), IQ3Enq0Select(2), IQ3Enq1Select(2))) < 2.U, "Dq1Uop2Select is not one hot")
-  assert(PopCount(VecInit(IQ2Enq0Select(3), IQ2Enq1Select(3), IQ3Enq0Select(3), IQ3Enq1Select(3))) < 2.U, "Dq1Uop3Select is not one hot")
-  val dq1Block = Wire(Vec(uopsInDq1Num, Bool()))
-  if (IQ2FuCfgs.size == IQ3FuCfgs.size && IQ2FuCfgs.size == IQ23BothfuCfgs.size) {
-    dq1Block := Cat(false.B, false.B, false.B, false.B).asBools
-  }
-  else {
-    val fuTypes = uopsInDq1.map(_.bits.fuType)
-    val iqNotReady0 = (FuTypeOrR(fuTypes(0), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(0), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
-    val iqNotReady1 = (FuTypeOrR(fuTypes(1), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(1), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
-    val iqNotReady2 = (FuTypeOrR(fuTypes(2), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(2), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
-    val iqNotReady3 = (FuTypeOrR(fuTypes(3), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(3), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
-    val conflict2 = ( (IQ2Enq0Select(2) || IQ2Enq1Select(2)) && FuTypeOrR(fuTypes(2), IQ3OnlyFuTypes)) || ( (IQ3Enq0Select(2) || IQ3Enq1Select(2)) && FuTypeOrR(fuTypes(2), IQ2OnlyFuTypes))
-    val conflict3 = ( (IQ2Enq0Select(3) || IQ2Enq1Select(3)) && FuTypeOrR(fuTypes(3), IQ3OnlyFuTypes)) || ( (IQ3Enq0Select(3) || IQ3Enq1Select(3)) && FuTypeOrR(fuTypes(3), IQ2OnlyFuTypes))
-    dq1Block(0) := iqNotReady0
-    dq1Block(1) := dq1Block(0) || iqNotReady1
-    dq1Block(2) := dq1Block(0) || dq1Block(1) || conflict2
-    dq1Block(3) := dq1Block(0) || dq1Block(1) || dq1Block(2) || conflict3
-  }
-  uopsInDq1.zipWithIndex.map { case (u, i) =>
-    u.ready := (IQ2Enq0Select(i) || IQ2Enq1Select(i) || IQ3Enq0Select(i) || IQ3Enq1Select(i)) && !dq1Block(i)
-  }
-  uopsOutDq1(0).bits :=  Mux1H(IQ2Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
-  uopsOutDq1(1).bits :=  Mux1H(IQ2Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
-  uopsOutDq1(2).bits :=  Mux1H(IQ3Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
-  uopsOutDq1(3).bits :=  Mux1H(IQ3Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
-  uopsOutDq1(0).valid := Mux1H(IQ2Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
-  uopsOutDq1(1).valid := Mux1H(IQ2Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
-  uopsOutDq1(2).valid := Mux1H(IQ3Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
-  uopsOutDq1(3).valid := Mux1H(IQ3Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
 
+  //int dq1
+  private val numIQ = 2
+  val dq1IQParams = params.issueBlockParams.drop(2)
+  val exeUnitParms = dq1IQParams.map(_.exuBlockParams)
+  val exeFuConfigs = dq1IQParams.map(_.exuBlockParams.map(_.fuConfigs)).flatten
+  val IQFuConfigs = dq1IQParams.map(_.exuBlockParams.map(_.fuConfigs).flatten)
+  val allFuConfigs = dq1IQParams.map(_.exuBlockParams.map(_.fuConfigs)).flatten.flatten.distinct
+  val fuConfigMapIQ = allFuConfigs.map{ case x =>
+    x -> IQFuConfigs.map(_.contains(x))
+  }
+  val fuConfigsDq1 = fuConfigMapIQ.filter(x => x._2.count(_ == true) == 1).map(_._1)
+  println(s"[Dispatch2IqIntImp] IQFuConfigs: ${IQFuConfigs.map(_.map(_.name))}")
+  println(s"[Dispatch2IqIntImp] allFuConfigs: ${allFuConfigs.map(_.name)}")
+  println(s"[Dispatch2IqIntImp] fuConfigMapIQ: ${fuConfigMapIQ.map(x => (x._1.name, x._2))}")
+  println(s"[Dispatch2IqIntImp] fuConfigsDq1: ${fuConfigsDq1.map(_.name)}")
+  val uopsInFuType = VecInit(uopsInDq1.map(x => Mux(x.valid, x.bits.fuType, 0.U.asTypeOf(x.bits.fuType))))
+  val inFuTypeIsOnlyOneIQ  = VecInit(uopsInFuType.map { case x =>
+    VecInit(fuConfigsDq1.map { case y => x(y.fuType.id) })
+  })
 
-  XSPerfAccumulate("not_ready_iq0", PopCount(!uopsOutDq0(0).ready))
-  XSPerfAccumulate("not_ready_iq1", PopCount(!uopsOutDq0(2).ready))
-  XSPerfAccumulate("not_ready_iq2", PopCount(!uopsOutDq1(0).ready))
-  XSPerfAccumulate("not_ready_iq3", PopCount(!uopsOutDq1(2).ready))
-  XSPerfAccumulate("not_ready_iq01", PopCount(!uopsOutDq0(0).ready && !uopsOutDq0(2).ready))
-  XSPerfAccumulate("not_ready_iq23", PopCount(!uopsOutDq1(0).ready && !uopsOutDq1(2).ready))
-  XSPerfAccumulate("in_valid", PopCount(io.in.map(_.valid)))
-  XSPerfAccumulate("in_fire", PopCount(io.in.map(_.fire)))
-  XSPerfAccumulate("out_valid", PopCount(io.out.flatMap(_.map(_.valid))))
-  XSPerfAccumulate("out_fire", PopCount(io.out.flatMap(_.map(_.fire))))
+  // sort the UInt, result[0] is minimum OH, result[1] is second minimum OH...
+  def sortUInt(input: Vec[UInt]): Vec[Vec[Bool]] = {
+    val inputSize = input.size
+    val inputWithIndex = input.zipWithIndex
+    val compareResult = inputWithIndex.map{ case (input, i) =>
+      inputWithIndex.filter(_._2 != i).map{ case (input2, i2) =>
+        if (i < i2) input <= input2 else input < input2
+      }
+    }
+    VecInit((0 until inputSize).map{ i =>
+      VecInit(compareResult.map{ c =>
+        PopCount(c) === (inputSize - 1 - i).U
+      })
+    })
+  }
+  def shiftLeftVecBool(input: Vec[Vec[Bool]], shiftNum: UInt): Vec[Vec[Bool]] = {
+    VecInit(input.zipWithIndex.map{ case (in, i) =>
+      Mux(i.U < shiftNum, input((i+input.size).U - shiftNum), input(i.U - shiftNum))
+    })
+  }
+  val onlyOneIQSel = Wire(Vec(fuConfigsDq1.size, Vec(numIQ, Bool())))
+  onlyOneIQSel := VecInit(fuConfigsDq1.map{ case fu =>
+    val index = fuConfigMapIQ.map(_._1).indexOf(fu)
+    VecInit(fuConfigMapIQ(index)._2.map(_.B))
+  })
+  val onlyOneSelIQOH = Wire(Vec(uopsInDq1Num, Vec(numIQ, Bool())))
+  onlyOneSelIQOH.zip(inFuTypeIsOnlyOneIQ).map { case (sel, fu) =>
+    sel := Mux1H(fu, onlyOneIQSel)
+  }
+  val finalSelIQOH = onlyOneSelIQOH
+  // popSelIQOH width is numEnq.U.getWidth.W because of all uopsIn can select same IQ
+  val popSelIQOH = Wire(Vec(uopsInDq1Num, Vec(numIQ, UInt(uopsInDq1Num.U.getWidth.W))))
+  popSelIQOH.zipWithIndex.map { case (p, i) =>
+    p.zipWithIndex.map { case (pp, j) =>
+      pp := PopCount(finalSelIQOH.take(i + 1).map(_(j)))
+    }
+  }
+  val IQIsReadyMapEnqNum = io.out.drop(2).map(x => x.size -> x.head.ready)
+  val uopsInReady = popSelIQOH.zipWithIndex.map{ case (p, uopinIndex) =>
+    p.zip(IQIsReadyMapEnqNum).zipWithIndex.map{ case ((pp, mapEnqNum), iqIndex) =>
+      mapEnqNum._2 && (pp < (mapEnqNum._1 + 1).U) && finalSelIQOH(uopinIndex)(iqIndex) || !finalSelIQOH(uopinIndex)(iqIndex)
+    }.reduce(_ && _)
+  }
+  uopsInDq1.zip(uopsInReady).map{ case (u, r) =>
+    u.ready := r
+  }
+  val popSelIQOHIsOne = VecInit(popSelIQOH.map { case p =>
+    VecInit(p.zip(IQIsReadyMapEnqNum).map { case (pp, i) =>
+      i._2 && pp === 1.U
+    })
+  })
+  val popSelIQOHIsTwo = VecInit(popSelIQOH.map { case p =>
+    VecInit(p.zip(IQIsReadyMapEnqNum).map { case (pp, i) =>
+      i._2 && pp === 2.U
+    })
+  })
+  io.out.drop(2).zipWithIndex.map{ case (iq, iqIndex) =>
+    iq.zipWithIndex.map{ case (enq, i) =>
+      if (i == 0) {
+        enq.valid := PriorityMuxDefault(popSelIQOHIsOne.map(_(iqIndex)).zip(uopsInDq1.map(_.valid)), false.B)
+        enq.bits := PriorityMuxDefault(popSelIQOHIsOne.map(_(iqIndex)).zip(uopsInDq1.map(_.bits)), 0.U.asTypeOf(enq.bits))
+      }
+      else if (i == 1) {
+        enq.valid := PriorityMuxDefault(popSelIQOHIsTwo.map(_(iqIndex)).zip(uopsInDq1.map(_.valid)), false.B)
+        enq.bits := PriorityMuxDefault(popSelIQOHIsTwo.map(_(iqIndex)).zip(uopsInDq1.map(_.bits)), 0.U.asTypeOf(enq.bits))
+      }
+      else {
+        assert(false, "IQ enqNum must <= 2")
+      }
+    }
+  }
 }
+
+// class Dispatch2IqIntImp(override val wrapper: Dispatch2Iq)(implicit p: Parameters, params: SchdBlockParams)
+//   extends Dispatch2IqImp(wrapper)
+//     with HasXSParameter {
+
+//   require(outs.size == uopsIn.size, "Dispatch2IqInt outs.size =/= uopsIn.size")
+
+//   val intIQValidNumVec = io.intIQValidNumVec.get
+//   val uopsInDq0Num = uopsIn.size / 2
+//   val uopsInDq1Num = uopsIn.size / 2
+//   val uopsInDq0 = uopsIn.take(uopsInDq0Num)
+//   val uopsInDq1 = uopsIn.drop(uopsInDq0Num).take(uopsInDq1Num)
+//   val uopsOutDq0 = outs.take(uopsInDq0Num)
+//   val uopsOutDq1 = outs.drop(uopsInDq0Num).take(uopsInDq1Num)
+//   val IQ0Deq0Num = intIQValidNumVec(0)(0)
+//   val IQ0Deq1Num = intIQValidNumVec(0)(1)
+//   val IQ1Deq0Num = intIQValidNumVec(1)(0)
+//   val IQ1Deq1Num = intIQValidNumVec(1)(1)
+//   val IQ2Deq0Num = intIQValidNumVec(2)(0)
+//   val IQ2Deq1Num = intIQValidNumVec(2)(1)
+//   val IQ3Deq0Num = intIQValidNumVec(3)(0)
+//   val IQ3Deq1Num = intIQValidNumVec(3)(1)
+
+//   val IQ0Deq0IsLess = IQ1Deq0Num > IQ0Deq0Num
+//   val IQ0Deq1IsLess = IQ1Deq1Num > IQ0Deq1Num
+//   val diffIQ01Deq0 = Mux(IQ0Deq0IsLess, IQ1Deq0Num - IQ0Deq0Num, IQ0Deq0Num - IQ1Deq0Num)
+//   val diffIQ01Deq1 = Mux(IQ0Deq1IsLess, IQ1Deq1Num - IQ0Deq1Num, IQ0Deq1Num - IQ1Deq1Num)
+//   val IQ0Deq0IsLess2 = IQ0Deq0IsLess && (diffIQ01Deq0 >= 2.U)
+//   val IQ0Deq1IsLess2 = IQ0Deq1IsLess && (diffIQ01Deq1 >= 2.U)
+//   val IQ1Deq0IsLess2 = !IQ0Deq0IsLess && (diffIQ01Deq0 >= 2.U)
+//   val IQ1Deq1IsLess2 = !IQ0Deq1IsLess && (diffIQ01Deq1 >= 2.U)
+//   val IQ0Deq0IsEqual = IQ1Deq0Num === IQ0Deq0Num
+//   val IQ0Deq1IsEqual = IQ1Deq1Num === IQ0Deq1Num
+//   val isDq0Deq0 = VecInit(uopsInDq0.map{case in => in.valid && FuType.isIntDq0Deq0(in.bits.fuType)})
+//   val isDq0Deq1 = VecInit(uopsInDq0.map{case in => in.valid && FuType.isIntDq0Deq1(in.bits.fuType)})
+//   val popDq0Deq0 = isDq0Deq0.zipWithIndex.map { case (_, i) => PopCount(isDq0Deq0.take(i + 1)) }
+//   val popDq0Deq1 = isDq0Deq1.zipWithIndex.map { case (_, i) => PopCount(isDq0Deq1.take(i + 1)) }
+//   val isDq0Deq0Num = popDq0Deq0.last
+//   val isDq0Deq1Num = popDq0Deq1.last
+//   val IQ0Deq0IsLessSeq = VecInit(popDq0Deq0.map(p => (p <= diffIQ01Deq0) && IQ0Deq0IsLess))
+//   val IQ0Deq1IsLessSeq = VecInit(popDq0Deq1.map(p => (p <= diffIQ01Deq1) && IQ0Deq1IsLess))
+//   val lastAlu0SelectIQ0Enq0 = RegInit(false.B)
+//   val lastBrh0SelectIQ0Enq0 = RegInit(false.B)
+//   when(uopsOutDq0.head.ready && uopsOutDq0.last.ready && IQ0Deq0IsEqual && (popDq0Deq0(3)(0) === 1.U)) {
+//     lastAlu0SelectIQ0Enq0 := !lastAlu0SelectIQ0Enq0
+//   }
+//   when(uopsOutDq0.head.ready && uopsOutDq0.last.ready && IQ0Deq1IsEqual && (popDq0Deq1(3)(0) === 1.U)) {
+//     lastBrh0SelectIQ0Enq0 := !lastBrh0SelectIQ0Enq0
+//   }
+//   val IQ0FuCfgs = params.issueBlockParams(0).getFuCfgs
+//   val IQ1FuCfgs = params.issueBlockParams(1).getFuCfgs
+//   val IQ01BothfuCfgs = IQ0FuCfgs.intersect(IQ1FuCfgs)
+//   val IQ0FuTypes = IQ0FuCfgs.map(_.fuType)
+//   val IQ1FuTypes = IQ1FuCfgs.map(_.fuType)
+//   val IQ0OnlyFuTypes = IQ0FuCfgs.diff(IQ1FuCfgs).map(_.fuType)
+//   val IQ1OnlyFuTypes = IQ1FuCfgs.diff(IQ0FuCfgs).map(_.fuType)
+//   val isOnlyIQ0 = uopsInDq0.map(x => x.valid && FuTypeOrR(x.bits.fuType, IQ0OnlyFuTypes))
+//   val isOnlyIQ1 = uopsInDq0.map(x => x.valid && FuTypeOrR(x.bits.fuType, IQ1OnlyFuTypes))
+//   val isBothIQ01_0 = uopsInDq0(0).valid && FuTypeOrR(uopsInDq0(0).bits.fuType, IQ01BothfuCfgs.map(_.fuType))
+//   val isBothIQ01_1 = uopsInDq0(1).valid && FuTypeOrR(uopsInDq0(1).bits.fuType, IQ01BothfuCfgs.map(_.fuType))
+//   val alu0SelectIQ0Enq0 = Mux(IQ0Deq0IsEqual, !lastAlu0SelectIQ0Enq0, IQ0Deq0IsLess)
+//   val brh0SelectIQ0Enq0 = Mux(IQ0Deq1IsEqual, !lastBrh0SelectIQ0Enq0, IQ0Deq1IsLess)
+//   val uop0SelectIQ0Enq0 = Mux(isDq0Deq0(0), alu0SelectIQ0Enq0, brh0SelectIQ0Enq0) || isOnlyIQ0(0)
+//   val alu1SelectIQ0Enq0 = !uop0SelectIQ0Enq0 && (IQ0Deq0IsLess2 || Mux(IQ0Deq0IsEqual, Mux(popDq0Deq0(1) === 1.U, !lastAlu0SelectIQ0Enq0, lastAlu0SelectIQ0Enq0), isDq0Deq0(0) || IQ0Deq0IsLess))
+//   val brh1SelectIQ0Enq0 = !uop0SelectIQ0Enq0 && (IQ0Deq1IsLess2 || Mux(IQ0Deq1IsEqual, Mux(popDq0Deq1(1) === 1.U, !lastBrh0SelectIQ0Enq0, lastBrh0SelectIQ0Enq0), isDq0Deq1(0) || IQ0Deq1IsLess))
+//   val uop1SelectIQ0Enq0 = Mux(isDq0Deq0(1), alu1SelectIQ0Enq0, brh1SelectIQ0Enq0)
+//   val alu1SelectIQ0Enq1 = isDq0Deq0(0) && IQ0Deq0IsLess2 || isDq0Deq1(0) && IQ0Deq0IsLess
+//   val brh1SelectIQ0Enq1 = isDq0Deq1(0) && IQ0Deq1IsLess2 || isDq0Deq0(0) && IQ0Deq1IsLess
+//   val uop1SelectIQ0Enq1 = uop0SelectIQ0Enq0 && Mux(isDq0Deq0(1), alu1SelectIQ0Enq1, brh1SelectIQ0Enq1)
+//   val alu1SelectIQ1Enq0 = uop0SelectIQ0Enq0 && (IQ1Deq0IsLess2 || Mux(IQ0Deq0IsEqual, Mux(popDq0Deq0(1) === 1.U, lastAlu0SelectIQ0Enq0, !lastAlu0SelectIQ0Enq0), isDq0Deq0(0) || !IQ0Deq0IsLess))
+//   val brh1SelectIQ1Enq0 = uop0SelectIQ0Enq0 && (IQ1Deq1IsLess2 || Mux(IQ0Deq1IsEqual, Mux(popDq0Deq1(1) === 1.U, lastBrh0SelectIQ0Enq0, !lastBrh0SelectIQ0Enq0), isDq0Deq1(0) || !IQ0Deq1IsLess))
+//   val uop1SelectIQ1Enq0 = !uop1SelectIQ0Enq0 && !uop1SelectIQ0Enq1 && Mux(isDq0Deq0(1), alu1SelectIQ1Enq0, brh1SelectIQ1Enq0)
+//   val uop1SelectIQ1Enq1 = !uop1SelectIQ0Enq0 && !uop1SelectIQ0Enq1 && !uop1SelectIQ1Enq0
+//   val alu2SelectIQ0Enq1 = Mux(popDq0Deq0(2) === 2.U, Mux(IQ0Deq0IsLess2, true.B, isDq0Deq0(0) && !alu0SelectIQ0Enq0 || isDq0Deq1(0) && brh0SelectIQ0Enq0), alu0SelectIQ0Enq0)
+//   val brh2SelectIQ0Enq1 = Mux(popDq0Deq1(2) === 2.U, Mux(IQ0Deq1IsLess2, true.B, isDq0Deq1(0) && !brh0SelectIQ0Enq0 || isDq0Deq0(0) && alu0SelectIQ0Enq0), brh0SelectIQ0Enq0)
+//   val uop2SelectIQ0Enq1 = Mux(isDq0Deq0(2), alu2SelectIQ0Enq1, brh2SelectIQ0Enq1) || isOnlyIQ0(2)
+//   val IQ0Enq0Select = Wire(Vec(4, Bool()))
+//   val IQ0Enq1Select = Wire(Vec(4, Bool()))
+//   val IQ1Enq0Select = Wire(Vec(4, Bool()))
+//   val IQ1Enq1Select = Wire(Vec(4, Bool()))
+//   val uopsInDq0Valid = VecInit(uopsInDq0.map(_.valid))
+//   val IQ0DeqIsLess = VecInit(isDq0Deq0.map(x => Mux(x, Mux(IQ0Deq0IsEqual, IQ0Deq1IsLess, IQ0Deq0IsLess),  Mux(IQ0Deq1IsEqual, IQ0Deq0IsLess, IQ0Deq1IsLess))))
+//   val IQ0DeqIsEqual = IQ0Deq0IsEqual && IQ0Deq1IsEqual
+//   val IQ0Enq0Select0 = isOnlyIQ0(0) || isBothIQ01_0 && uop0SelectIQ0Enq0
+//   val IQ1Enq0Select0 = !IQ0Enq0Select0 && (isOnlyIQ1(0) || isBothIQ01_0 && uopsInDq0(0).valid)
+//   val IQ0Enq0Select1 = !IQ0Enq0Select0 && (isOnlyIQ0(1) || isBothIQ01_1 && (uop1SelectIQ0Enq0 || isOnlyIQ1(0)))
+//   val IQ0Enq1Select1 = !IQ0Enq0Select1 && (isOnlyIQ0(1) || isBothIQ01_1 && uop1SelectIQ0Enq1)
+//   val IQ1Enq0Select1 = !IQ0Enq0Select1 && !IQ0Enq1Select1 && !IQ1Enq0Select0 && (isOnlyIQ1(1) || isBothIQ01_1 && (uop1SelectIQ1Enq0 || isOnlyIQ0(0)))
+//   val IQ1Enq1Select1 = !IQ0Enq0Select1 && !IQ0Enq1Select1 && !IQ1Enq0Select1 && (isOnlyIQ1(1) || isBothIQ01_1 && uop1SelectIQ1Enq1)
+//   val IQ0Enq0Select2 = !IQ0Enq0Select0 && !IQ0Enq0Select1 && uopsInDq0(2).valid
+//   val IQ0Enq1Select2 = !IQ0Enq1Select1 && !IQ0Enq0Select2 && uopsInDq0(2).valid && uop2SelectIQ0Enq1
+//   val IQ1Enq0Select2 = !IQ1Enq0Select0 && !IQ1Enq0Select1 && !IQ0Enq0Select2 && !IQ0Enq1Select2 && uopsInDq0(2).valid
+//   val IQ1Enq1Select2 = !IQ0Enq0Select2 && !IQ0Enq1Select2 && !IQ1Enq0Select2 && uopsInDq0(2).valid
+//   val IQ0Enq1Select3 = !IQ0Enq1Select1 && !IQ0Enq1Select2 && uopsInDq0(3).valid
+//   val IQ1Enq1Select3 = !IQ1Enq1Select1 && !IQ1Enq1Select2 && uopsInDq0(3).valid
+//   when(uopsOutDq0.head.ready && uopsOutDq0.last.ready){
+//     IQ0Enq0Select := Cat(false.B, IQ0Enq0Select2, IQ0Enq0Select1, IQ0Enq0Select0).asBools
+//     IQ0Enq1Select := Cat(IQ0Enq1Select3, IQ0Enq1Select2, IQ0Enq1Select1, false.B).asBools
+//     IQ1Enq0Select := Cat(false.B, IQ1Enq0Select2, IQ1Enq0Select1, IQ1Enq0Select0).asBools
+//     IQ1Enq1Select := Cat(IQ1Enq1Select3, IQ1Enq1Select2, IQ1Enq1Select1, false.B).asBools
+//   }.elsewhen(uopsOutDq0.head.ready){
+//     IQ0Enq0Select := Cat(false.B, false.B, false.B, true.B).asBools
+//     IQ0Enq1Select := Cat(false.B, false.B, true.B, false.B).asBools
+//     IQ1Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ1Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//   }.elsewhen(uopsOutDq0.last.ready){
+//     IQ0Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ0Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ1Enq0Select := Cat(false.B, false.B, false.B, true.B).asBools
+//     IQ1Enq1Select := Cat(false.B, false.B, true.B, false.B).asBools
+//   }.otherwise{
+//     IQ0Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ0Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ1Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ1Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//   }
+//   assert(PopCount(IQ0Enq0Select) < 2.U, "IQ0Enq0Select is not one hot")
+//   assert(PopCount(IQ0Enq1Select) < 2.U, "IQ0Enq1Select is not one hot")
+//   assert(PopCount(IQ1Enq0Select) < 2.U, "IQ1Enq0Select is not one hot")
+//   assert(PopCount(IQ1Enq1Select) < 2.U, "IQ1Enq1Select is not one hot")
+//   assert(PopCount(IQ0Enq0Select) < 2.U, "IQ0Enq0Select is not one hot")
+//   assert(PopCount(IQ0Enq1Select) < 2.U, "IQ0Enq1Select is not one hot")
+//   assert(PopCount(IQ1Enq0Select) < 2.U, "IQ1Enq0Select is not one hot")
+//   assert(PopCount(IQ1Enq1Select) < 2.U, "IQ1Enq1Select is not one hot")
+//   assert(PopCount(VecInit(IQ0Enq0Select(0), IQ0Enq1Select(0), IQ1Enq0Select(0), IQ1Enq1Select(0))) < 2.U, "Dq1Uop0Select is not one hot")
+//   assert(PopCount(VecInit(IQ0Enq0Select(1), IQ0Enq1Select(1), IQ1Enq0Select(1), IQ1Enq1Select(1))) < 2.U, "Dq1Uop1Select is not one hot")
+//   assert(PopCount(VecInit(IQ0Enq0Select(2), IQ0Enq1Select(2), IQ1Enq0Select(2), IQ1Enq1Select(2))) < 2.U, "Dq1Uop2Select is not one hot")
+//   assert(PopCount(VecInit(IQ0Enq0Select(3), IQ0Enq1Select(3), IQ1Enq0Select(3), IQ1Enq1Select(3))) < 2.U, "Dq1Uop3Select is not one hot")
+//   val dq0Block = Wire(Vec(uopsInDq0Num, Bool()))
+//   if (IQ0FuCfgs.size == IQ1FuCfgs.size && IQ0FuCfgs.size == IQ01BothfuCfgs.size) {
+//     dq0Block := Cat(false.B, false.B, false.B, false.B).asBools
+//   }
+//   else {
+//     val fuTypes = uopsInDq0.map(_.bits.fuType)
+//     val iqNotReady0 = (FuTypeOrR(fuTypes(0),IQ0OnlyFuTypes) && !uopsOutDq0.head.ready) || (FuTypeOrR(fuTypes(0),IQ1OnlyFuTypes) && !uopsOutDq0.last.ready)
+//     val iqNotReady1 = (FuTypeOrR(fuTypes(1),IQ0OnlyFuTypes) && !uopsOutDq0.head.ready) || (FuTypeOrR(fuTypes(1),IQ1OnlyFuTypes) && !uopsOutDq0.last.ready)
+//     val iqNotReady2 = (FuTypeOrR(fuTypes(2),IQ0OnlyFuTypes) && !uopsOutDq0.head.ready) || (FuTypeOrR(fuTypes(2),IQ1OnlyFuTypes) && !uopsOutDq0.last.ready)
+//     val iqNotReady3 = (FuTypeOrR(fuTypes(3),IQ0OnlyFuTypes) && !uopsOutDq0.head.ready) || (FuTypeOrR(fuTypes(3),IQ1OnlyFuTypes) && !uopsOutDq0.last.ready)
+//     val conflict2 = ( (IQ0Enq0Select(2) || IQ0Enq1Select(2)) && FuTypeOrR(fuTypes(2),IQ1OnlyFuTypes)) || ( (IQ1Enq0Select(2) || IQ1Enq1Select(2)) && FuTypeOrR(fuTypes(2),IQ0OnlyFuTypes))
+//     val conflict3 = ( (IQ0Enq0Select(3) || IQ0Enq1Select(3)) && FuTypeOrR(fuTypes(3),IQ1OnlyFuTypes)) || ( (IQ1Enq0Select(3) || IQ1Enq1Select(3)) && FuTypeOrR(fuTypes(3),IQ0OnlyFuTypes))
+//     dq0Block(0) := iqNotReady0
+//     dq0Block(1) := dq0Block(0) || iqNotReady1
+//     dq0Block(2) := dq0Block(0) || dq0Block(1) || conflict2
+//     dq0Block(3) := dq0Block(0) || dq0Block(1) || dq0Block(2) || conflict3
+//   }
+//   uopsInDq0.zipWithIndex.map { case (u, i) =>
+//     u.ready := (IQ0Enq0Select(i) || IQ0Enq1Select(i) || IQ1Enq0Select(i) || IQ1Enq1Select(i)) && !dq0Block(i)
+//   }
+//   uopsOutDq0(0).bits :=  Mux1H(IQ0Enq0Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.bits))
+//   uopsOutDq0(1).bits :=  Mux1H(IQ0Enq1Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.bits))
+//   uopsOutDq0(2).bits :=  Mux1H(IQ1Enq0Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.bits))
+//   uopsOutDq0(3).bits :=  Mux1H(IQ1Enq1Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.bits))
+//   uopsOutDq0(0).valid := Mux1H(IQ0Enq0Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
+//   uopsOutDq0(1).valid := Mux1H(IQ0Enq1Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
+//   uopsOutDq0(2).valid := Mux1H(IQ1Enq0Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
+//   uopsOutDq0(3).valid := Mux1H(IQ1Enq1Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
+
+
+//   val IQ2Deq0IsLess = IQ3Deq0Num > IQ2Deq0Num
+//   val IQ2Deq1IsLess = IQ3Deq1Num > IQ2Deq1Num
+//   val diffIQ23Deq0 = Mux(IQ2Deq0IsLess, IQ3Deq0Num - IQ2Deq0Num, IQ2Deq0Num - IQ3Deq0Num)
+//   val diffIQ23Deq1 = Mux(IQ2Deq1IsLess, IQ3Deq1Num - IQ2Deq1Num, IQ2Deq1Num - IQ3Deq1Num)
+//   val IQ2Deq0IsLess2 = IQ2Deq0IsLess && (diffIQ23Deq0 >= 2.U)
+//   val IQ2Deq1IsLess2 = IQ2Deq1IsLess && (diffIQ23Deq1 >= 2.U)
+//   val IQ3Deq0IsLess2 = !IQ2Deq0IsLess && (diffIQ23Deq0 >= 2.U)
+//   val IQ3Deq1IsLess2 = !IQ2Deq1IsLess && (diffIQ23Deq1 >= 2.U)
+//   val IQ2Deq0IsEqual = IQ3Deq0Num === IQ2Deq0Num
+//   val IQ2Deq1IsEqual = IQ3Deq1Num === IQ2Deq1Num
+//   val isDq1Deq0 = VecInit(uopsInDq1.map { case in => in.valid && FuType.isIntDq1Deq0(in.bits.fuType) })
+//   val isDq1Deq1 = VecInit(uopsInDq1.map { case in => in.valid && FuType.isIntDq1Deq1(in.bits.fuType) })
+//   val popDq1Deq0 = isDq1Deq0.zipWithIndex.map { case (_, i) => PopCount(isDq1Deq0.take(i + 1)) }
+//   val popDq1Deq1 = isDq1Deq1.zipWithIndex.map { case (_, i) => PopCount(isDq1Deq1.take(i + 1)) }
+//   val isDq1Deq0Num = popDq1Deq0.last
+//   val isDq1Deq1Num = popDq1Deq1.last
+//   val IQ2Deq0IsLessSeq = VecInit(popDq1Deq0.map(p => (p <= diffIQ23Deq0) && IQ2Deq0IsLess))
+//   val IQ2Deq1IsLessSeq = VecInit(popDq1Deq1.map(p => (p <= diffIQ23Deq1) && IQ2Deq1IsLess))
+//   val lastAlu0SelectIQ2Enq0 = RegInit(false.B)
+//   val lastBrh0SelectIQ2Enq0 = RegInit(false.B)
+//   when(uopsOutDq1.head.ready && uopsOutDq1.last.ready && IQ2Deq0IsEqual && (popDq1Deq0(3)(0) === 1.U)) {
+//     lastAlu0SelectIQ2Enq0 := !lastAlu0SelectIQ2Enq0
+//   }
+//   when(uopsOutDq1.head.ready && uopsOutDq1.last.ready && IQ2Deq1IsEqual && (popDq1Deq1(3)(0) === 1.U)) {
+//     lastBrh0SelectIQ2Enq0 := !lastBrh0SelectIQ2Enq0
+//   }
+//   val IQ2FuCfgs = params.issueBlockParams(2).getFuCfgs
+//   val IQ3FuCfgs = params.issueBlockParams(3).getFuCfgs
+//   val IQ23BothfuCfgs = IQ2FuCfgs.intersect(IQ3FuCfgs)
+//   val IQ2FuTypes = IQ2FuCfgs.map(_.fuType)
+//   val IQ3FuTypes = IQ3FuCfgs.map(_.fuType)
+//   val IQ2OnlyFuTypes = IQ2FuCfgs.diff(IQ3FuCfgs).map(_.fuType)
+//   val IQ3OnlyFuTypes = IQ3FuCfgs.diff(IQ2FuCfgs).map(_.fuType)
+//   val isOnlyIQ2 = uopsInDq1.map(x => x.valid && FuTypeOrR(x.bits.fuType, IQ2OnlyFuTypes))
+//   val isOnlyIQ3 = uopsInDq1.map(x => x.valid && FuTypeOrR(x.bits.fuType, IQ3OnlyFuTypes))
+//   val isBothIQ23_0 = uopsInDq1(0).valid && FuTypeOrR(uopsInDq1(0).bits.fuType, IQ23BothfuCfgs.map(_.fuType))
+//   val isBothIQ23_1 = uopsInDq1(1).valid && FuTypeOrR(uopsInDq1(1).bits.fuType, IQ23BothfuCfgs.map(_.fuType))
+//   val alu0SelectIQ2Enq0 = Mux(IQ2Deq0IsEqual, !lastAlu0SelectIQ2Enq0, IQ2Deq0IsLess)
+//   val brh0SelectIQ2Enq0 = Mux(IQ2Deq1IsEqual, !lastBrh0SelectIQ2Enq0, IQ2Deq1IsLess)
+//   val uop0SelectIQ2Enq0 = Mux(isDq1Deq0(0), alu0SelectIQ2Enq0, brh0SelectIQ2Enq0) || isOnlyIQ2(0)
+//   val alu1SelectIQ2Enq0 = !uop0SelectIQ2Enq0 && (IQ2Deq0IsLess2 || Mux(IQ2Deq0IsEqual, Mux(popDq1Deq0(1) === 1.U, !lastAlu0SelectIQ2Enq0, lastAlu0SelectIQ2Enq0), isDq1Deq0(0) || IQ2Deq0IsLess))
+//   val brh1SelectIQ2Enq0 = !uop0SelectIQ2Enq0 && (IQ2Deq1IsLess2 || Mux(IQ2Deq1IsEqual, Mux(popDq1Deq1(1) === 1.U, !lastBrh0SelectIQ2Enq0, lastBrh0SelectIQ2Enq0), isDq1Deq1(0) || IQ2Deq1IsLess))
+//   val uop1SelectIQ2Enq0 = Mux(isDq1Deq0(1), alu1SelectIQ2Enq0, brh1SelectIQ2Enq0)
+//   val alu1SelectIQ2Enq1 = isDq1Deq0(0) && IQ2Deq0IsLess2 || isDq1Deq1(0) && IQ2Deq0IsLess
+//   val brh1SelectIQ2Enq1 = isDq1Deq1(0) && IQ2Deq1IsLess2 || isDq1Deq0(0) && IQ2Deq1IsLess
+//   val uop1SelectIQ2Enq1 = uop0SelectIQ2Enq0 && Mux(isDq1Deq0(1), alu1SelectIQ2Enq1, brh1SelectIQ2Enq1)
+//   val alu1SelectIQ3Enq0 = uop0SelectIQ2Enq0 && (IQ3Deq0IsLess2 || Mux(IQ2Deq0IsEqual, Mux(popDq1Deq0(1) === 1.U, lastAlu0SelectIQ2Enq0, !lastAlu0SelectIQ2Enq0), isDq1Deq0(0) || !IQ2Deq0IsLess))
+//   val brh1SelectIQ3Enq0 = uop0SelectIQ2Enq0 && (IQ3Deq1IsLess2 || Mux(IQ2Deq1IsEqual, Mux(popDq1Deq1(1) === 1.U, lastBrh0SelectIQ2Enq0, !lastBrh0SelectIQ2Enq0), isDq1Deq1(0) || !IQ2Deq1IsLess))
+//   val uop1SelectIQ3Enq0 = !uop1SelectIQ2Enq0 && !uop1SelectIQ2Enq1 && Mux(isDq1Deq0(1), alu1SelectIQ3Enq0, brh1SelectIQ3Enq0)
+//   val uop1SelectIQ3Enq1 = !uop1SelectIQ2Enq0 && !uop1SelectIQ2Enq1 && !uop1SelectIQ3Enq0
+//   val alu2SelectIQ2Enq1 = Mux(popDq1Deq0(2) === 2.U, Mux(IQ2Deq0IsLess2, true.B, isDq1Deq0(0) && !alu0SelectIQ2Enq0 || isDq1Deq1(0) && brh0SelectIQ2Enq0), alu0SelectIQ2Enq0)
+//   val brh2SelectIQ2Enq1 = Mux(popDq1Deq1(2) === 2.U, Mux(IQ2Deq1IsLess2, true.B, isDq1Deq1(0) && !brh0SelectIQ2Enq0 || isDq1Deq0(0) && alu0SelectIQ2Enq0), brh0SelectIQ2Enq0)
+//   val uop2SelectIQ2Enq1 = Mux(isDq1Deq0(2), alu2SelectIQ2Enq1, brh2SelectIQ2Enq1) || isOnlyIQ2(2)
+//   val IQ2Enq0Select = Wire(Vec(4, Bool()))
+//   val IQ2Enq1Select = Wire(Vec(4, Bool()))
+//   val IQ3Enq0Select = Wire(Vec(4, Bool()))
+//   val IQ3Enq1Select = Wire(Vec(4, Bool()))
+//   val IQ2Enq0Select0 = isOnlyIQ2(0) || isBothIQ23_0 && uop0SelectIQ2Enq0
+//   val IQ3Enq0Select0 = !IQ2Enq0Select0 && (isOnlyIQ3(0) || isBothIQ23_0 && uopsInDq1(0).valid)
+//   val IQ2Enq0Select1 = !IQ2Enq0Select0 && (isOnlyIQ2(1) || isBothIQ23_1 && (uop1SelectIQ2Enq0 || isOnlyIQ3(0)))
+//   val IQ2Enq1Select1 = !IQ2Enq0Select1 && (isOnlyIQ2(1) || isBothIQ23_1 && uop1SelectIQ2Enq1)
+//   val IQ3Enq0Select1 = !IQ2Enq0Select1 && !IQ2Enq1Select1 && !IQ3Enq0Select0 && (isOnlyIQ3(1) || isBothIQ23_1 && (uop1SelectIQ3Enq0 || isOnlyIQ3(0)))
+//   val IQ3Enq1Select1 = !IQ2Enq0Select1 && !IQ2Enq1Select1 && !IQ3Enq0Select1 && (isOnlyIQ3(1) || isBothIQ23_1 && uop1SelectIQ3Enq1)
+//   val IQ2Enq0Select2 = !IQ2Enq0Select0 && !IQ2Enq0Select1 && uopsInDq1(2).valid
+//   val IQ2Enq1Select2 = !IQ2Enq1Select1 && !IQ2Enq0Select2 && uopsInDq1(2).valid && uop2SelectIQ2Enq1
+//   val IQ3Enq0Select2 = !IQ3Enq0Select0 && !IQ3Enq0Select1 && !IQ2Enq0Select2 && !IQ2Enq1Select2 && uopsInDq1(2).valid
+//   val IQ3Enq1Select2 = !IQ2Enq0Select2 && !IQ2Enq1Select2 && !IQ3Enq0Select2 && uopsInDq1(2).valid
+//   val IQ2Enq1Select3 = !IQ2Enq1Select1 && !IQ2Enq1Select2 && uopsInDq1(3).valid
+//   val IQ3Enq1Select3 = !IQ3Enq1Select1 && !IQ3Enq1Select2 && uopsInDq1(3).valid
+//   when(uopsOutDq1.head.ready && uopsOutDq1.last.ready) {
+//     IQ2Enq0Select := Cat(false.B, IQ2Enq0Select2, IQ2Enq0Select1, IQ2Enq0Select0).asBools
+//     IQ2Enq1Select := Cat(IQ2Enq1Select3, IQ2Enq1Select2, IQ2Enq1Select1, false.B).asBools
+//     IQ3Enq0Select := Cat(false.B, IQ3Enq0Select2, IQ3Enq0Select1, IQ3Enq0Select0).asBools
+//     IQ3Enq1Select := Cat(IQ3Enq1Select3, IQ3Enq1Select2, IQ3Enq1Select1, false.B).asBools
+//   }.elsewhen(uopsOutDq1.head.ready) {
+//     IQ2Enq0Select := Cat(false.B, false.B, false.B, true.B).asBools
+//     IQ2Enq1Select := Cat(false.B, false.B, true.B, false.B).asBools
+//     IQ3Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ3Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//   }.elsewhen(uopsOutDq1.last.ready) {
+//     IQ2Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ2Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ3Enq0Select := Cat(false.B, false.B, false.B, true.B).asBools
+//     IQ3Enq1Select := Cat(false.B, false.B, true.B, false.B).asBools
+//   }.otherwise {
+//     IQ2Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ2Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ3Enq0Select := Cat(false.B, false.B, false.B, false.B).asBools
+//     IQ3Enq1Select := Cat(false.B, false.B, false.B, false.B).asBools
+//   }
+//   assert(PopCount(IQ2Enq0Select) < 2.U, "IQ2Enq0Select is not one hot")
+//   assert(PopCount(IQ2Enq1Select) < 2.U, "IQ2Enq1Select is not one hot")
+//   assert(PopCount(IQ3Enq0Select) < 2.U, "IQ3Enq0Select is not one hot")
+//   assert(PopCount(IQ3Enq1Select) < 2.U, "IQ3Enq1Select is not one hot")
+//   assert(PopCount(IQ2Enq0Select) < 2.U, "IQ2Enq0Select is not one hot")
+//   assert(PopCount(IQ2Enq1Select) < 2.U, "IQ2Enq1Select is not one hot")
+//   assert(PopCount(IQ3Enq0Select) < 2.U, "IQ3Enq0Select is not one hot")
+//   assert(PopCount(IQ3Enq1Select) < 2.U, "IQ3Enq1Select is not one hot")
+//   assert(PopCount(VecInit(IQ2Enq0Select(0), IQ2Enq1Select(0), IQ3Enq0Select(0), IQ3Enq1Select(0))) < 2.U, "Dq1Uop0Select is not one hot")
+//   assert(PopCount(VecInit(IQ2Enq0Select(1), IQ2Enq1Select(1), IQ3Enq0Select(1), IQ3Enq1Select(1))) < 2.U, "Dq1Uop1Select is not one hot")
+//   assert(PopCount(VecInit(IQ2Enq0Select(2), IQ2Enq1Select(2), IQ3Enq0Select(2), IQ3Enq1Select(2))) < 2.U, "Dq1Uop2Select is not one hot")
+//   assert(PopCount(VecInit(IQ2Enq0Select(3), IQ2Enq1Select(3), IQ3Enq0Select(3), IQ3Enq1Select(3))) < 2.U, "Dq1Uop3Select is not one hot")
+//   val dq1Block = Wire(Vec(uopsInDq1Num, Bool()))
+//   if (IQ2FuCfgs.size == IQ3FuCfgs.size && IQ2FuCfgs.size == IQ23BothfuCfgs.size) {
+//     dq1Block := Cat(false.B, false.B, false.B, false.B).asBools
+//   }
+//   else {
+//     val fuTypes = uopsInDq1.map(_.bits.fuType)
+//     val iqNotReady0 = (FuTypeOrR(fuTypes(0), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(0), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
+//     val iqNotReady1 = (FuTypeOrR(fuTypes(1), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(1), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
+//     val iqNotReady2 = (FuTypeOrR(fuTypes(2), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(2), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
+//     val iqNotReady3 = (FuTypeOrR(fuTypes(3), IQ2OnlyFuTypes) && !uopsOutDq1.head.ready) || (FuTypeOrR(fuTypes(3), IQ3OnlyFuTypes) && !uopsOutDq1.last.ready)
+//     val conflict2 = ( (IQ2Enq0Select(2) || IQ2Enq1Select(2)) && FuTypeOrR(fuTypes(2), IQ3OnlyFuTypes)) || ( (IQ3Enq0Select(2) || IQ3Enq1Select(2)) && FuTypeOrR(fuTypes(2), IQ2OnlyFuTypes))
+//     val conflict3 = ( (IQ2Enq0Select(3) || IQ2Enq1Select(3)) && FuTypeOrR(fuTypes(3), IQ3OnlyFuTypes)) || ( (IQ3Enq0Select(3) || IQ3Enq1Select(3)) && FuTypeOrR(fuTypes(3), IQ2OnlyFuTypes))
+//     dq1Block(0) := iqNotReady0
+//     dq1Block(1) := dq1Block(0) || iqNotReady1
+//     dq1Block(2) := dq1Block(0) || dq1Block(1) || conflict2
+//     dq1Block(3) := dq1Block(0) || dq1Block(1) || dq1Block(2) || conflict3
+//   }
+//   uopsInDq1.zipWithIndex.map { case (u, i) =>
+//     u.ready := (IQ2Enq0Select(i) || IQ2Enq1Select(i) || IQ3Enq0Select(i) || IQ3Enq1Select(i)) && !dq1Block(i)
+//   }
+//   uopsOutDq1(0).bits :=  Mux1H(IQ2Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
+//   uopsOutDq1(1).bits :=  Mux1H(IQ2Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
+//   uopsOutDq1(2).bits :=  Mux1H(IQ3Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
+//   uopsOutDq1(3).bits :=  Mux1H(IQ3Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.bits))
+//   uopsOutDq1(0).valid := Mux1H(IQ2Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
+//   uopsOutDq1(1).valid := Mux1H(IQ2Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
+//   uopsOutDq1(2).valid := Mux1H(IQ3Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
+//   uopsOutDq1(3).valid := Mux1H(IQ3Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
+
+
+//   XSPerfAccumulate("not_ready_iq0", PopCount(!uopsOutDq0(0).ready))
+//   XSPerfAccumulate("not_ready_iq1", PopCount(!uopsOutDq0(2).ready))
+//   XSPerfAccumulate("not_ready_iq2", PopCount(!uopsOutDq1(0).ready))
+//   XSPerfAccumulate("not_ready_iq3", PopCount(!uopsOutDq1(2).ready))
+//   XSPerfAccumulate("not_ready_iq01", PopCount(!uopsOutDq0(0).ready && !uopsOutDq0(2).ready))
+//   XSPerfAccumulate("not_ready_iq23", PopCount(!uopsOutDq1(0).ready && !uopsOutDq1(2).ready))
+//   XSPerfAccumulate("in_valid", PopCount(io.in.map(_.valid)))
+//   XSPerfAccumulate("in_fire", PopCount(io.in.map(_.fire)))
+//   XSPerfAccumulate("out_valid", PopCount(io.out.flatMap(_.map(_.valid))))
+//   XSPerfAccumulate("out_fire", PopCount(io.out.flatMap(_.map(_.fire))))
+// }
 
 class Dispatch2IqArithImp(override val wrapper: Dispatch2Iq)(implicit p: Parameters, params: SchdBlockParams)
   extends Dispatch2IqImp(wrapper)

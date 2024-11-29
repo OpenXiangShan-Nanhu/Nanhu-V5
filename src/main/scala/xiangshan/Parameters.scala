@@ -420,7 +420,7 @@ case class XSCoreParameters
       IssueBlockParams(Seq(
         ExeUnitParams("FEX3", Seq(FdivCfg), Seq(FpWB(port = 3, 1)), Seq(Seq(FpRD(2, 1)), Seq(FpRD(5, 1)))),
         ExeUnitParams("FEX4", Seq(FdivCfg), Seq(FpWB(port = 4, 1)), Seq(Seq(FpRD(8, 1)), Seq(FpRD(9, 1)))),
-      ), numEntries = 10, numEnq = 2, numComp = 16),
+      ), numEntries = 10, numEnq = 2, numComp = 8),
     ),
       numPregs = fpPreg.numEntries,
       numDeqOutside = 0,

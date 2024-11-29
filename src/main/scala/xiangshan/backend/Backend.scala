@@ -732,11 +732,12 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     pcTargetMem.io.toMem.memStPcRead(i).offset := io.mem.issueSta(i).bits.uop.ftqOffset
   }
 
+  // Todo
   io.mem.hyuPcRead.zipWithIndex.foreach( { case (hyuPcRead, i) =>
-    hyuPcRead := pcTargetMem.io.toMem.memHyPcRead(i).data
-    pcTargetMem.io.toMem.memHyPcRead(i).valid := io.mem.issueHylda(i).valid
-    pcTargetMem.io.toMem.memHyPcRead(i).ptr := io.mem.issueHylda(i).bits.uop.ftqPtr
-    pcTargetMem.io.toMem.memHyPcRead(i).offset := io.mem.issueHylda(i).bits.uop.ftqOffset
+    hyuPcRead := 0.U
+    // pcTargetMem.io.toMem.memHyPcRead(i).valid := io.mem.issueHylda(i).valid
+    // pcTargetMem.io.toMem.memHyPcRead(i).ptr := io.mem.issueHylda(i).bits.uop.ftqPtr
+    // pcTargetMem.io.toMem.memHyPcRead(i).offset := io.mem.issueHylda(i).bits.uop.ftqOffset
   })
 
   ctrlBlock.io.robio.robHeadLsIssue := io.mem.issueUops.map(deq => deq.fire && deq.bits.uop.robIdx === ctrlBlock.io.robio.robDeqPtr).reduce(_ || _)

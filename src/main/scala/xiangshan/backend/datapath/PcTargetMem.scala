@@ -27,7 +27,7 @@ class PcTargetMemImp(override val wrapper: PcTargetMem)(implicit p: Parameters, 
     "redirect"  -> 1,
     "memPred"   -> 1,
     "load"      -> params.LduCnt,
-    "hybrid"    -> params.HyuCnt,
+    // "hybrid"    -> params.HyuCnt,
     "store"     -> (if(EnableStorePrefetchSMS) params.StaCnt else 0),
     "exception"     -> 1,
     "trace"      -> TraceGroupNum
@@ -94,11 +94,11 @@ class PcTargetMemImp(override val wrapper: PcTargetMem)(implicit p: Parameters, 
     io.toMem.memLdPcRead(i).data := targetMem.io.rdata(pcMemIdx).getPc(RegEnable(io.toMem.memLdPcRead(i).offset, io.toMem.memLdPcRead(i).valid))
   }
 
-  for ((pcMemIdx, i) <- pcMemRdIndexes("hybrid").zipWithIndex) {
-    targetMem.io.ren.get(pcMemIdx) := io.toMem.memHyPcRead(i).valid
-    targetMem.io.raddr(pcMemIdx) := io.toMem.memHyPcRead(i).ptr.value
-    io.toMem.memHyPcRead(i).data := targetMem.io.rdata(pcMemIdx).getPc(RegEnable(io.toMem.memHyPcRead(i).offset, io.toMem.memHyPcRead(i).valid))
-  }
+  // for ((pcMemIdx, i) <- pcMemRdIndexes("hybrid").zipWithIndex) {
+  //   targetMem.io.ren.get(pcMemIdx) := io.toMem.memHyPcRead(i).valid
+  //   targetMem.io.raddr(pcMemIdx) := io.toMem.memHyPcRead(i).ptr.value
+  //   io.toMem.memHyPcRead(i).data := targetMem.io.rdata(pcMemIdx).getPc(RegEnable(io.toMem.memHyPcRead(i).offset, io.toMem.memHyPcRead(i).valid))
+  // }
 
   if (EnableStorePrefetchSMS) {
     for ((pcMemIdx, i) <- pcMemRdIndexes("store").zipWithIndex) {
@@ -141,7 +141,7 @@ class PcToCtrlIO(params: BackendParams)(implicit p: Parameters) extends XSBundle
 class PcToMemIO(params: BackendParams)(implicit p: Parameters) extends XSBundle {
   val memLdPcRead = Vec(params.LduCnt, Flipped(new FtqRead(UInt(VAddrBits.W))))
   val memStPcRead = Vec(params.StaCnt, Flipped(new FtqRead(UInt(VAddrBits.W))))
-  val memHyPcRead = Vec(params.HyuCnt, Flipped(new FtqRead(UInt(VAddrBits.W))))
+  // val memHyPcRead = Vec(params.HyuCnt, Flipped(new FtqRead(UInt(VAddrBits.W))))
 }
 
 class PcTargetMemIO()(implicit p: Parameters, params: BackendParams) extends XSBundle {

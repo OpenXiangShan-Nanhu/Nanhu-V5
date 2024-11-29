@@ -545,7 +545,7 @@ case class XSCoreParameters
   val traceParams: TraceParams = new TraceParams(
     HasEncoder     = true,
     TraceEnable    = true,
-    TraceGroupNum  = 4,
+    TraceGroupNum  = 2,
     IaddrWidth     = GPAddrBitsSv48x4,
     PrivWidth      = 3,
     ItypeWidth     = 4,

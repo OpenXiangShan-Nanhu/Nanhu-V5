@@ -507,11 +507,11 @@ case class XSCoreParameters
       ),
       // TODO: add load -> fp slow wakeup
       WakeUpConfig(
-        Seq("FEX0", "FEX1", "FEX2", "FEX3") ->
-        Seq("FEX0", "FEX1", "FEX2", "FEX3", "FEX4", "FEX5")
+        Seq("FEX0", "FEX1", "FEX2") ->
+        Seq("FEX0", "FEX1", "FEX2", "FEX3", "FEX4")
       ),
       WakeUpConfig(
-        Seq("FEX0", "FEX1", "FEX2", "FEX3") ->
+        Seq("FEX0", "FEX1", "FEX2") ->
         Seq("STD0", "STD1")
       ),
 //      WakeUpConfig(

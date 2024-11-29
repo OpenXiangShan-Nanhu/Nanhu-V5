@@ -1006,6 +1006,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   mainPipe.io.replace_block := missQueue.io.replace_block
   mainPipe.io.sms_agt_evict_req <> io.sms_agt_evict_req
   io.memSetPattenDetected := missQueue.io.memSetPattenDetected
+  io.csr := DontCare
 
   val errors = ldu.map(_.io.error) ++ // load error
     Seq(mainPipe.io.error) // store / misc error
@@ -1586,63 +1587,12 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     sink.bits    := source.bits
   }
 
-
-  //----------------------------------------
-  // Customized csr cache op support
-  val cacheOpDecoder = Module(new CSRCacheOpDecoder("dcache", CacheInstrucion.COP_ID_DCACHE))
-  cacheOpDecoder.io.csr <> io.csr
-  bankedDataArray.io.cacheOp.req := cacheOpDecoder.io.cache.req
-  // dup cacheOp_req_valid
-  bankedDataArray.io.cacheOp_req_dup.zipWithIndex.map{ case(dup, i) => dup := cacheOpDecoder.io.cache_req_dup(i) }
-  // dup cacheOp_req_bits_opCode
-  bankedDataArray.io.cacheOp_req_bits_opCode_dup.zipWithIndex.map{ case (dup, i) => dup := cacheOpDecoder.io.cacheOp_req_bits_opCode_dup(i) }
-
-  tagArray.io.cacheOp.req := cacheOpDecoder.io.cache.req
-  // dup cacheOp_req_valid
-  tagArray.io.cacheOp_req_dup.zipWithIndex.map{ case(dup, i) => dup := cacheOpDecoder.io.cache_req_dup(i) }
-  // dup cacheOp_req_bits_opCode
-  tagArray.io.cacheOp_req_bits_opCode_dup.zipWithIndex.map{ case (dup, i) => dup := cacheOpDecoder.io.cacheOp_req_bits_opCode_dup(i) }
-
-  cacheOpDecoder.io.cache.resp.valid := bankedDataArray.io.cacheOp.resp.valid ||
-    tagArray.io.cacheOp.resp.valid
-  cacheOpDecoder.io.cache.resp.bits := Mux1H(List(
-    bankedDataArray.io.cacheOp.resp.valid -> bankedDataArray.io.cacheOp.resp.bits,
-    tagArray.io.cacheOp.resp.valid -> tagArray.io.cacheOp.resp.bits,
-  ))
-  cacheOpDecoder.io.error := io.error
-  assert(!((bankedDataArray.io.cacheOp.resp.valid +& tagArray.io.cacheOp.resp.valid) > 1.U))
-
   //----------------------------------------
   // performance counters
   val num_loads = PopCount(ldu.map(e => e.io.lsu.req.fire))
   XSPerfAccumulate("num_loads", num_loads)
 
   io.mshrFull := missQueue.io.full
-
-  // performance counter
-  // val ld_access = Wire(Vec(LoadPipelineWidth, missQueue.io.debug_early_replace.last.cloneType))
-  // val st_access = Wire(ld_access.last.cloneType)
-  // ld_access.zip(ldu).foreach {
-  //   case (a, u) =>
-  //     a.valid := RegNext(u.io.lsu.req.fire) && !u.io.lsu.s1_kill
-  //     a.bits.idx := RegEnable(get_idx(u.io.lsu.req.bits.vaddr), u.io.lsu.req.fire)
-  //     a.bits.tag := get_tag(u.io.lsu.s1_paddr_dup_dcache)
-  // }
-  // st_access.valid := RegNext(mainPipe.io.store_req.fire)
-  // st_access.bits.idx := RegEnable(get_idx(mainPipe.io.store_req.bits.vaddr), mainPipe.io.store_req.fire)
-  // st_access.bits.tag := RegEnable(get_tag(mainPipe.io.store_req.bits.addr), mainPipe.io.store_req.fire)
-  // val access_info = ld_access.toSeq ++ Seq(st_access)
-  // val early_replace = RegNext(missQueue.io.debug_early_replace) // TODO: clock gate
-  // val access_early_replace = access_info.map {
-  //   case acc =>
-  //     Cat(early_replace.map {
-  //       case r =>
-  //         acc.valid && r.valid &&
-  //           acc.bits.tag === r.bits.tag &&
-  //           acc.bits.idx === r.bits.idx
-  //     })
-  // }
-  // XSPerfAccumulate("access_early_replace", PopCount(Cat(access_early_replace)))
 
   val perfEvents = (Seq(wb, mainPipe, missQueue, probeQueue) ++ ldu).flatMap(_.getPerfEvents)
   generatePerfEvent()

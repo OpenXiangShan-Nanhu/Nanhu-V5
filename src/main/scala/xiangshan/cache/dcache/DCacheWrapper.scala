@@ -195,10 +195,11 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   val errWritePort = tagWritePort + 1
   val wbPort = errWritePort + 1
 
-  val ProbeReplayDelayCycles = 8
+  val ProbeReplayDelayCycles = 2
   val ProbeqReplayCountBits = log2Up(ProbeReplayDelayCycles)
 
   val MissqDataBufferDepth = 2 
+  val nGrantDataEntries = (cfg.nMissEntries - MissqDataBufferDepth) * beatNum
 
   def set_to_dcache_div(set: UInt) = {
     require(set.getWidth >= DCacheSetBits)
@@ -1206,7 +1207,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   missQueue.io.mem_grant.bits := DontCare
   wb.io.mem_grant.valid := false.B
   wb.io.mem_grant.bits := DontCare
-  val grantDataQueue = Module(new SRAMQueue(bus.d.bits.cloneType, entries = 28, flow = true, pipe = false, singlePort = true,
+  val grantDataQueue = Module(new SRAMQueue(bus.d.bits.cloneType, entries = nGrantDataEntries, flow = true, pipe = false, singlePort = true,
     hasMbist = hasMbist))
   grantDataQueue.io.enq.valid := false.B
   grantDataQueue.io.enq.bits := DontCare

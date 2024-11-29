@@ -643,6 +643,9 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val s3_can_go = s3_probe_can_go || s3_store_can_go || s3_amo_can_go || s3_miss_can_go || s3_replace_can_go
   val s3_update_data_cango = s3_store_can_go || s3_amo_can_go || s3_miss_can_go // used to speed up data_write gen
 
+  val s3_probe_can_go_for_tag_w_valid = s3_req.probe && io.wb.ready && (io.tag_write.ready || !probe_update_meta)
+  val s3_can_go_for_tag_w_valid = s3_probe_can_go_for_tag_w_valid || s3_store_can_go || s3_amo_can_go || s3_miss_can_go || s3_replace_can_go
+
   // -------------------------------------------------------------------------------------
 
   val s3_probe_new_coh = probe_new_coh
@@ -679,6 +682,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   // -------------------------------------------------------------------------------------
 
   val s3_fire = s3_valid && s3_can_go
+  val s3_fire_for_tag_w_valid = s3_valid && s3_can_go_for_tag_w_valid
   when (s2_fire_to_s3) {
     s3_valid := true.B
   }.elsewhen (s3_fire) {
@@ -821,7 +825,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.access_flag_write.bits.flag :=Mux(s3_req.miss, s3_req.access, true.B)
 
   // io.tag_write.valid := s3_fire_dup_for_tag_w_valid && s3_req_miss_dup_for_tag_w_valid
-  io.tag_write.valid := s3_fire && update_meta
+  io.tag_write.valid := s3_fire_for_tag_w_valid && update_meta 
   io.tag_write.bits.idx := s3_idx
   io.tag_write.bits.way_en := s3_way_en
   io.tag_write.bits.tag := Cat(new_coh.asUInt, get_tag(s3_req.addr))

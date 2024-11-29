@@ -69,7 +69,7 @@ class LoadToLsqReplayIO(implicit p: Parameters) extends XSBundle
   def dcache_miss   = cause(LoadReplayCauses.C_DM)
   def wpu_fail      = cause(LoadReplayCauses.C_WF)
   def bank_conflict = cause(LoadReplayCauses.C_BC)
-  def rar_nack      = cause(LoadReplayCauses.C_RAR)
+  // def rar_nack      = cause(LoadReplayCauses.C_RAR)
   def raw_nack      = cause(LoadReplayCauses.C_RAW)
   def nuke          = cause(LoadReplayCauses.C_NK)
   def need_rep      = cause.asUInt.orR
@@ -1130,8 +1130,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                         !s2_fwd_frm_d_chan_or_mshr &&
                         !s2_full_fwd
 
-  val s2_rar_nack      = io.lsq.ldld_nuke_query.req.valid &&
-                         !io.lsq.ldld_nuke_query.req.ready
+  // val s2_rar_nack      = io.lsq.ldld_nuke_query.req.valid &&
+  //                        !io.lsq.ldld_nuke_query.req.ready
 
   val s2_raw_nack      = io.lsq.stld_nuke_query.req.valid &&
                          !io.lsq.stld_nuke_query.req.ready
@@ -1171,7 +1171,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                            !s2_dcache_miss &&
                            !s2_bank_conflict &&
                            !s2_wpu_pred_fail &&
-                           !s2_rar_nack &&
+                          //  !s2_rar_nack &&
                            !s2_raw_nack &&
                            s2_nuke
 
@@ -1253,7 +1253,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s2_out.rep_info.dcache_miss     := s2_dcache_miss && s2_troublem
   s2_out.rep_info.bank_conflict   := s2_bank_conflict && s2_troublem
   s2_out.rep_info.wpu_fail        := s2_wpu_pred_fail && s2_troublem
-  s2_out.rep_info.rar_nack        := s2_rar_nack && s2_troublem
+  // s2_out.rep_info.rar_nack        := s2_rar_nack && s2_troublem
   s2_out.rep_info.raw_nack        := s2_raw_nack && s2_troublem
   s2_out.rep_info.nuke            := s2_nuke && s2_troublem
   s2_out.rep_info.full_fwd        := s2_data_fwded

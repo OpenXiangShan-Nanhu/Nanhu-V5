@@ -64,7 +64,7 @@ object LoadReplayCauses {
   // dcache bank conflict check
   val C_BC  = 6
   // RAR queue accept check
-  val C_RAR = 7
+  // val C_RAR = 7
   // RAW queue accept check
   val C_RAW = 8
   // st-ld violation
@@ -202,7 +202,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val sqEmpty = Input(Bool())
     val lqFull  = Output(Bool())
     val ldWbPtr = Input(new LqPtr)
-    val rarFull = Input(Bool())
+    // val rarFull = Input(Bool())
     val rawFull = Input(Bool())
     val l2_hint  = Input(Valid(new L2ToL1Hint()))
     val tlb_hint = Flipped(new TlbHintIO)
@@ -357,10 +357,10 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     when (cause(i)(LoadReplayCauses.C_DM)) {
       blocking(i) := Mux(io.tl_d_channel.valid && io.tl_d_channel.mshrid === missMSHRId(i), false.B, blocking(i))
     }
-    // case C_RAR
-    when (cause(i)(LoadReplayCauses.C_RAR)) {
-      blocking(i) := Mux((!io.rarFull || !isAfter(uop(i).lqIdx, io.ldWbPtr)), false.B, blocking(i))
-    }
+    // // case C_RAR
+    // when (cause(i)(LoadReplayCauses.C_RAR)) {
+    //   blocking(i) := Mux((!io.rarFull || !isAfter(uop(i).lqIdx, io.ldWbPtr)), false.B, blocking(i))
+    // }
     // case C_RAW
     when (cause(i)(LoadReplayCauses.C_RAW)) {
       blocking(i) := Mux((!io.rawFull || !isAfter(uop(i).sqIdx, io.stAddrReadySqPtr)), false.B, blocking(i))
@@ -791,9 +791,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val rob_head_forward_fail    = lq_match && cause(lq_match_idx)(LoadReplayCauses.C_FF)
   val rob_head_mshrfull_replay = lq_match && cause(lq_match_idx)(LoadReplayCauses.C_DR)
   val rob_head_dcache_miss     = lq_match && cause(lq_match_idx)(LoadReplayCauses.C_DM)
-  val rob_head_rar_nack        = lq_match && cause(lq_match_idx)(LoadReplayCauses.C_RAR)
+  // val rob_head_rar_nack        = lq_match && cause(lq_match_idx)(LoadReplayCauses.C_RAR)
   val rob_head_raw_nack        = lq_match && cause(lq_match_idx)(LoadReplayCauses.C_RAW)
-  val rob_head_other_replay    = lq_match && (rob_head_rar_nack || rob_head_raw_nack || rob_head_forward_fail)
+  val rob_head_other_replay    = lq_match && (rob_head_raw_nack || rob_head_forward_fail)
 
   val rob_head_vio_replay = rob_head_nuke || rob_head_mem_amb
 
@@ -812,7 +812,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val replayTlbMissCount      = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_TM)))
   val replayMemAmbCount       = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_MA)))
   val replayNukeCount         = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_NK)))
-  val replayRARRejectCount    = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_RAR)))
+  // val replayRARRejectCount    = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_RAR)))
   val replayRAWRejectCount    = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_RAW)))
   val replayBankConflictCount = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_BC)))
   val replayDCacheReplayCount = PopCount(io.enq.map(enq => enq.fire && !enq.bits.isLoadReplay && enq.bits.rep_info.cause(LoadReplayCauses.C_DR)))
@@ -822,7 +822,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   XSPerfAccumulate("deq", deqNumber)
   XSPerfAccumulate("deq_block", deqBlockCount)
   XSPerfAccumulate("replay_full", io.lqFull)
-  XSPerfAccumulate("replay_rar_nack", replayRARRejectCount)
+  // XSPerfAccumulate("replay_rar_nack", replayRARRejectCount)
   XSPerfAccumulate("replay_raw_nack", replayRAWRejectCount)
   XSPerfAccumulate("replay_nuke", replayNukeCount)
   XSPerfAccumulate("replay_mem_amb", replayMemAmbCount)
@@ -839,7 +839,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     ("deq", deqNumber),
     ("deq_block", deqBlockCount),
     ("replay_full", io.lqFull),
-    ("replay_rar_nack", replayRARRejectCount),
+    // ("replay_rar_nack", replayRARRejectCount),
     ("replay_raw_nack", replayRAWRejectCount),
     ("replay_nuke", replayNukeCount),
     ("replay_mem_amb", replayMemAmbCount),

@@ -157,17 +157,11 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
       arch_table_next(w.addr) := w.data
     }
     val arch_mask = VecInit.fill(PhyRegIdxWidth)(w.wen).asUInt
-    when (w.wen) {
-      old_pdest(i) :=
+    old_pdest(i) :=
         MuxCase(arch_table(w.addr) & arch_mask,
-              io.archWritePorts.take(i).reverse.map(x => (x.wen && x.addr === w.addr, x.data & arch_mask)))
-    }.otherwise {
-      old_pdest(i) := arch_table(w.addr) & arch_mask
-    }
-    // old_pdest(i) :=
-    //   MuxCase(arch_table(w.addr) & arch_mask,
-    //           io.archWritePorts.take(i).reverse.map(x => (x.wen && x.addr === w.addr, x.data & arch_mask)))
+            io.archWritePorts.take(i).reverse.map(x => (x.wen && x.addr === w.addr, x.data & arch_mask)))
   }
+
   arch_table := arch_table_next
 
   for (((old, free), i) <- (old_pdest zip need_free).zipWithIndex) {

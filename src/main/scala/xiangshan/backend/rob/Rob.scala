@@ -225,15 +225,12 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val commitInfo = VecInit((0 until CommitWidth).map(i => robDeqGroup(deqPtrVec(i).value(bankAddrWidth-1,0)))).toSeq
   val walkInfo = VecInit((0 until CommitWidth).map(i => robDeqGroup(walkPtrVec(i).value(bankAddrWidth-1, 0)))).toSeq
   for (i <- 0 until CommitWidth) {
-    when (robBanksRdataThisLineUpdate(i).valid || robBanksRdataNextLineUpdate(i).valid) {
+    when(!io.redirect.valid) {
       connectCommitEntry(robDeqGroup(i), robBanksRdataThisLineUpdate(i))
       when(allCommitted){
         connectCommitEntry(robDeqGroup(i), robBanksRdataNextLineUpdate(i))
       }
-    }.otherwise {
-      robDeqGroup(i) := 0.U.asTypeOf(new RobCommitEntryBundle)
     }
-    
   }
   
   // In each robentry, the ftqIdx and ftqOffset belong to the first instruction that was compressed,
@@ -795,15 +792,15 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   io.lsq.lcommit := RegNext(Mux(io.commits.isCommit, PopCount(ldCommitVec), 0.U))
   io.lsq.scommit := RegNext(Mux(io.commits.isCommit, PopCount(stCommitVec), 0.U))
   // indicate a pending load or store
-  io.lsq.pendingUncacheld := RegNext(io.commits.isCommit && io.commits.info(0).commitType === CommitType.LOAD && robEntries(deqPtr.value).valid && robEntries(deqPtr.value).mmio)
-  io.lsq.pendingld := RegNext(io.commits.isCommit && io.commits.info(0).commitType === CommitType.LOAD && robEntries(deqPtr.value).valid)
+  io.lsq.pendingUncacheld := RegNext((io.commits.isCommit && io.commits.info(0).commitType === CommitType.LOAD && robEntries(deqPtr.value).valid && robEntries(deqPtr.value).mmio))
+  io.lsq.pendingld := RegNext((io.commits.isCommit && io.commits.info(0).commitType === CommitType.LOAD && robEntries(deqPtr.value).valid))
   // TODO: Check if need deassert pendingst when it is vst
-  io.lsq.pendingst := RegNext(io.commits.isCommit && io.commits.info(0).commitType === CommitType.STORE && robEntries(deqPtr.value).valid)
+  io.lsq.pendingst := RegNext((io.commits.isCommit && io.commits.info(0).commitType === CommitType.STORE && robEntries(deqPtr.value).valid))
   // TODO: Check if set correctly when vector store is at the head of ROB
-  io.lsq.pendingVst := RegNext(io.commits.isCommit && io.commits.info(0).commitType === CommitType.STORE && robEntries(deqPtr.value).valid && robEntries(deqPtr.value).vls)
-  io.lsq.commit := RegNext(io.commits.isCommit && io.commits.commitValid(0))
-  io.lsq.pendingPtr := RegNext(deqPtr)
-  io.lsq.pendingPtrNext := RegNext(deqPtrVec_next.head)
+  io.lsq.pendingVst := RegNext((io.commits.isCommit && io.commits.info(0).commitType === CommitType.STORE && robEntries(deqPtr.value).valid && robEntries(deqPtr.value).vls))
+  io.lsq.commit := RegNext((io.commits.isCommit && io.commits.commitValid(0)))
+  io.lsq.pendingPtr := RegNext((deqPtr))
+  io.lsq.pendingPtrNext := RegNext((deqPtrVec_next.head))
 
   /**
    * state changes

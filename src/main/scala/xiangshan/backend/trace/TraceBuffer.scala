@@ -28,8 +28,6 @@ class TraceBuffer(implicit val p: Parameters) extends Module
   when (io.in.fromRob.trap.valid){
     traceTrap.valid := io.in.fromRob.trap.valid
     traceTrap.bits := io.in.fromRob.trap.bits
-  }.otherwise{
-    traceTrap := 0.U.asTypeOf(io.in.fromRob.trap)
   }
   
 

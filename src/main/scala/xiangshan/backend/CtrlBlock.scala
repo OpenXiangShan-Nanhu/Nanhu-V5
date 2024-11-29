@@ -327,13 +327,26 @@ class CtrlBlockImp(
     trace.io.fromPcMem(i) := io.tracePcRead(i).data
   }
 
-  io.traceCoreInterface.toEncoder.cause     :=  trace.io.toEncoder.trap.bits.cause.asUInt
-  io.traceCoreInterface.toEncoder.tval      :=  trace.io.toEncoder.trap.bits.tval.asUInt
-  io.traceCoreInterface.toEncoder.priv      :=  trace.io.toEncoder.trap.bits.priv.asUInt
-  io.traceCoreInterface.toEncoder.iaddr     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.iaddr.get)).asUInt
-  io.traceCoreInterface.toEncoder.itype     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.itype)).asUInt
-  io.traceCoreInterface.toEncoder.iretire   :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.iretire)).asUInt
-  io.traceCoreInterface.toEncoder.ilastsize :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.ilastsize)).asUInt
+  when (trace.io.toEncoder.trap.valid){
+    io.traceCoreInterface.toEncoder.cause     :=  trace.io.toEncoder.trap.bits.cause.asUInt
+    io.traceCoreInterface.toEncoder.tval      :=  trace.io.toEncoder.trap.bits.tval.asUInt
+    io.traceCoreInterface.toEncoder.priv      :=  trace.io.toEncoder.trap.bits.priv.asUInt
+  }.otherwise{
+    io.traceCoreInterface.toEncoder.cause     :=  0.U
+    io.traceCoreInterface.toEncoder.tval      :=  0.U
+    io.traceCoreInterface.toEncoder.priv      :=  0.U
+  }
+  when (trace.io.toEncoder.blocks.map(_.valid).reduce(_ || _)){
+    io.traceCoreInterface.toEncoder.iaddr     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.iaddr.get)).asUInt
+    io.traceCoreInterface.toEncoder.itype     :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.itype)).asUInt
+    io.traceCoreInterface.toEncoder.iretire   :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.iretire)).asUInt
+    io.traceCoreInterface.toEncoder.ilastsize :=  VecInit(trace.io.toEncoder.blocks.map(_.bits.tracePipe.ilastsize)).asUInt
+  }.otherwise{
+    io.traceCoreInterface.toEncoder.iaddr     :=  0.U
+    io.traceCoreInterface.toEncoder.itype     :=  0.U
+    io.traceCoreInterface.toEncoder.iretire   :=  0.U
+    io.traceCoreInterface.toEncoder.ilastsize :=  0.U
+  }
 
   /**
    * trace end

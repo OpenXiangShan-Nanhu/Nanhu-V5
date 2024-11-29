@@ -415,7 +415,7 @@ case class XSCoreParameters
         ExeUnitParams("FEX1", Seq(FaluCfg, FmacCfg), Seq(FpWB(port = 1, 0), IntWB(port = 1, 2)), Seq(Seq(FpRD(3, 0)), Seq(FpRD(4, 0)), Seq(FpRD(5, 0)))),
       ), numEntries = 18, numEnq = 2, numComp = 16),
       IssueBlockParams(Seq(
-        ExeUnitParams("FEX2", Seq(FaluCfg, FmacCfg), Seq(FpWB(port = 2, 0), IntWB(port = 2, 2)), Seq(Seq(FpRD(6, 0)), Seq(FpRD(7, 0)))),
+        ExeUnitParams("FEX2", Seq(FaluCfg, FmacCfg), Seq(FpWB(port = 2, 0), IntWB(port = 2, 1)), Seq(Seq(FpRD(6, 0)), Seq(FpRD(7, 0)))),
       ), numEntries = 18, numEnq = 2, numComp = 16),
       // IssueBlockParams(Seq(
       //   ExeUnitParams("FEX3", Seq(FaluCfg, FmacCfg), Seq(FpWB(port = 3, 0), IntWB(port = 3, 2)), Seq(Seq(FpRD(9, 0)), Seq(FpRD(10, 0)), Seq(FpRD(11, 0)))),

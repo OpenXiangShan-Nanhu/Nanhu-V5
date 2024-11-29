@@ -128,7 +128,8 @@ class TLBFA(
 
     resp.valid := GatedValidRegNext(req.valid)
     resp.bits.hit := Cat(hitVecReg).orR
-    val ppnWire     = VecInit(entries.map(_.genPPN(saveLevel, req.valid)(vpn)))
+    val reqVpn = RegEnable(vpn, 0.U, req.fire)
+//    val ppnWire     = VecInit(entries.map(_.genPPN(saveLevel, req.valid)(vpn)))
     val pbmtWire    = VecInit(entries.map(_.pbmt))
     val gpbmtWire   = VecInit(entries.map(_.g_pbmt))
     val permWire    = VecInit(entries.map(_.perm))
@@ -136,21 +137,21 @@ class TLBFA(
     val s2xLateWire = VecInit(entries.map(_.s2xlate))
     if (nWays == 1) {
       for (d <- 0 until nDups) {
-        resp.bits.ppn(d)     := RegEnable(ppnWire(0), req.fire)
-        resp.bits.pbmt(d)    := RegEnable(pbmtWire(0), req.fire)
-        resp.bits.g_pbmt(d)  := RegEnable(gpbmtWire(0), req.fire)
-        resp.bits.perm(d)    := RegEnable(permWire(0), req.fire)
-        resp.bits.g_perm(d)  := RegEnable(gPermWire(0), req.fire)
-        resp.bits.s2xlate(d) := RegEnable(s2xLateWire(0), req.fire)
+        resp.bits.ppn(d)     := entries(0).genPPN(saveLevel, resp.valid)(reqVpn)
+        resp.bits.pbmt(d)    := pbmtWire(0)
+        resp.bits.g_pbmt(d)  := gpbmtWire(0)
+        resp.bits.perm(d)    := permWire(0)
+        resp.bits.g_perm(d)  := gPermWire(0)
+        resp.bits.s2xlate(d) := s2xLateWire(0)
       }
     } else {
       for (d <- 0 until nDups) {
-        resp.bits.ppn(d)     := RegEnable(Mux1H(hitVec zip ppnWire), req.fire)
-        resp.bits.pbmt(d)    := RegEnable(Mux1H(hitVec zip pbmtWire), req.fire)
-        resp.bits.g_pbmt(d)  := RegEnable(Mux1H(hitVec zip gpbmtWire), req.fire)
-        resp.bits.perm(d)    := RegEnable(Mux1H(hitVec zip permWire), req.fire)
-        resp.bits.g_perm(d)  := RegEnable(Mux1H(hitVec zip gPermWire), req.fire)
-        resp.bits.s2xlate(d) := RegEnable(Mux1H(hitVec zip s2xLateWire), req.fire)
+        resp.bits.ppn(d)     := Mux1H(hitVecReg zip entries.map(_.genPPN(saveLevel, resp.valid)(reqVpn)))
+        resp.bits.pbmt(d)    := Mux1H(hitVecReg zip pbmtWire)
+        resp.bits.g_pbmt(d)  := Mux1H(hitVecReg zip gpbmtWire)
+        resp.bits.perm(d)    := Mux1H(hitVecReg zip permWire)
+        resp.bits.g_perm(d)  := Mux1H(hitVecReg zip gPermWire)
+        resp.bits.s2xlate(d) := Mux1H(hitVecReg zip s2xLateWire)
       }
     }
 

@@ -320,8 +320,6 @@ class WritebackQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
     val block_miss_req = Vec(LoadPipelineWidth + 2, Output(Bool()))
   })
 
-  require(cfg.nReleaseEntries > cfg.nMissEntries)
-
   val primary_ready_vec = Wire(Vec(cfg.nReleaseEntries, Bool()))
   val alloc = Cat(primary_ready_vec).orR
 

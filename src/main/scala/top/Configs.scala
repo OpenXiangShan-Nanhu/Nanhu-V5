@@ -276,8 +276,8 @@ class WithNKBL1D(n: Int, ways: Int = 8) extends Config((site, here, up) => {
         dataECC = Some("secded"),
         replacer = Some("setplru"),
         nMissEntries = 16,
-        nProbeEntries = 8,
-        nReleaseEntries = 18,
+        nProbeEntries = 4,
+        nReleaseEntries = 4,
         nMaxPrefetchEntry = 6,
       ))
     ))

@@ -23,7 +23,7 @@ import coupledL2.VaddrField
 import coupledL2.IsKeywordField
 import coupledL2.IsKeywordKey
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
-import freechips.rocketchip.tilelink._
+import freechips.rocketchip.tilelink.{TLBundleD, _}
 import freechips.rocketchip.util.BundleFieldBase
 import huancun.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
@@ -127,8 +127,6 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   def reqIdWidth = log2Up(nEntries) max log2Up(StoreBufferSize)
 
   require(isPow2(cfg.nMissEntries)) // TODO
-  // require(isPow2(cfg.nReleaseEntries))
-  require(cfg.nMissEntries < cfg.nReleaseEntries)
   val nEntries = cfg.nMissEntries + cfg.nReleaseEntries
   val releaseIdBase = cfg.nMissEntries
   val EnableDataEcc = cacheParams.enableDataEcc
@@ -199,7 +197,7 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   val ProbeqReplayCountBits = log2Up(ProbeReplayDelayCycles)
 
   val MissqDataBufferDepth = 2 
-  val nGrantDataEntries = (cfg.nMissEntries - MissqDataBufferDepth) * beatNum
+  val nGrantDataEntries = (cfg.nMissEntries - MissqDataBufferDepth) * refillCycles
 
   def set_to_dcache_div(set: UInt) = {
     require(set.getWidth >= DCacheSetBits)
@@ -1208,26 +1206,50 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   missQueue.io.mem_grant.bits := DontCare
   wb.io.mem_grant.valid := false.B
   wb.io.mem_grant.bits := DontCare
-  val grantDataQueue = Module(new SRAMQueue(bus.d.bits.cloneType, entries = nGrantDataEntries, flow = true, pipe = false, singlePort = true,
+
+
+  // for grantDataQueue
+  class GrantDataQueueEntry extends Bundle {
+    val dWidth = bus.d.bits.getWidth
+
+    val tlDBundle = new TLBundleD(edge.bundle)
+    val tmp = Option.when(isPrime(dWidth) & (dWidth > 256)) (Bool()) //useless, due to mbist
+
+    private def isPrime(n: Int): Boolean = {
+      if (n <= 1) false
+      else if (n == 2) true
+      else !(2 to (math.sqrt(n).toInt + 1)).exists(x => n % x == 0)
+    }
+  }
+
+
+  val grantDataQueue = Module(new SRAMQueue(new GrantDataQueueEntry, entries = nGrantDataEntries, flow = true, pipe = false, singlePort = true,
     hasMbist = hasMbist))
   grantDataQueue.io.enq.valid := false.B
   grantDataQueue.io.enq.bits := DontCare
+
+  val gDQDeqBitsWire = Wire(DecoupledIO(new TLBundleD(edge.bundle)))
+  gDQDeqBitsWire.valid := grantDataQueue.io.deq.valid
+  gDQDeqBitsWire.bits := grantDataQueue.io.deq.bits.tlDBundle
+  grantDataQueue.io.deq.ready := gDQDeqBitsWire.ready
+
   // in L1DCache, we ony expect Grant[Data] and ReleaseAck
   bus.d.ready := false.B
   when(bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData) {
-    // missQueue.io.mem_grant <> bus.d
-    grantDataQueue.io.enq <> bus.d
+    grantDataQueue.io.enq.valid := bus.d.valid
+    grantDataQueue.io.enq.bits.tlDBundle := bus.d.bits
+    bus.d.ready := grantDataQueue.io.enq.ready
   }.elsewhen(bus.d.bits.opcode === TLMessages.ReleaseAck) {
     wb.io.mem_grant <> bus.d
   }.otherwise {
     assert(!bus.d.fire)
   }
-  missQueue.io.mem_grant <> grantDataQueue.io.deq
- val isKeyword = grantDataQueue.io.deq.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
+  missQueue.io.mem_grant <> gDQDeqBitsWire
+ val isKeyword = gDQDeqBitsWire.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
   (0 until LoadPipelineWidth).map(i => {
-    val (_, _, done, _) = edge.count(grantDataQueue.io.deq)
-    when(grantDataQueue.io.deq.bits.opcode === TLMessages.GrantData) {
-      io.lsu.forward_D(i).apply(grantDataQueue.io.deq.valid, grantDataQueue.io.deq.bits.data, grantDataQueue.io.deq.bits.source, isKeyword ^ done)
+    val (_, _, done, _) = edge.count(gDQDeqBitsWire)
+    when(gDQDeqBitsWire.bits.opcode === TLMessages.GrantData) {
+      io.lsu.forward_D(i).apply(gDQDeqBitsWire.valid, gDQDeqBitsWire.bits.data, gDQDeqBitsWire.bits.source, isKeyword ^ done)
    //   io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source,done)
     }.otherwise {
       io.lsu.forward_D(i).dontCare()
@@ -1235,8 +1257,8 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   })
   // tl D channel wakeup
   val (_, _, done, _) = edge.count(bus.d)
-  when (grantDataQueue.io.deq.bits.opcode === TLMessages.GrantData || grantDataQueue.io.deq.bits.opcode === TLMessages.Grant) {
-    io.lsu.tl_d_channel.apply(grantDataQueue.io.deq.valid, grantDataQueue.io.deq.bits.data, grantDataQueue.io.deq.bits.source, done)
+  when (gDQDeqBitsWire.bits.opcode === TLMessages.GrantData || gDQDeqBitsWire.bits.opcode === TLMessages.Grant) {
+    io.lsu.tl_d_channel.apply(gDQDeqBitsWire.valid, gDQDeqBitsWire.bits.data, gDQDeqBitsWire.bits.source, done)
   } .otherwise {
     io.lsu.tl_d_channel.dontCare()
   }

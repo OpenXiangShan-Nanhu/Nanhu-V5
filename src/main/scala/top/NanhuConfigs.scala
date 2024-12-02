@@ -153,15 +153,15 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
     l2tlbParameters = L2TLBParameters(
       name = "l2tlb",
       // l3
-      l3Size = 16,
+      l3Size = 4,
       l3Associative = "fa",
       l3Replacer = Some("plru"),
-      l2Size = 16,
+      l2Size = 8,
       l2Associative = "fa",
       l2Replacer = Some("plru"),
       // l1
       l1nSets = 8,
-      l1nWays = 4,
+      l1nWays = 2,
       l1ReservedBits = 10,
       l1Replacer = Some("setplru"),
       // l0

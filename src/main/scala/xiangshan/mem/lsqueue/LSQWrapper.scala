@@ -85,15 +85,15 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val std = new Bundle() {
       val storeDataIn = Vec(StorePipelineWidth, Flipped(Valid(new MemExuOutput(isVector = true)))) // from store_s0, store data, send to sq from rs
     }
-    val ldout = Vec(LoadPipelineWidth, DecoupledIO(new MemExuOutput))
-    val ld_raw_data = Vec(LoadPipelineWidth, Output(new LoadDataFromLQBundle))
+    val ldout = DecoupledIO(new MemExuOutput)
+    val ld_raw_data = Output(new LoadDataFromLQBundle)
     val replay = Vec(LoadPipelineWidth, Decoupled(new LsPipelineBundle))
     val sbuffer = Vec(EnsbufferWidth, Decoupled(new DCacheWordReqWithVaddrAndPfFlag))
     val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DynInst)) // The vector store difftest needs is
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
     val rob = Flipped(new RobLsqIO)
     val nuke_rollback = Vec(StorePipelineWidth, Output(Valid(new Redirect)))
-    val nack_rollback = Output(Valid(new Redirect))
+    // val nack_rollback = Output(Valid(new Redirect))
     val release = Flipped(Valid(new Release))
    // val refill = Flipped(Valid(new Refill))
     val tl_d_channel  = Input(new DcacheToLduForwardIO)
@@ -203,7 +203,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   loadQueue.io.ld_raw_data         <> io.ld_raw_data
   loadQueue.io.rob                 <> io.rob
   loadQueue.io.nuke_rollback       <> io.nuke_rollback
-  loadQueue.io.nack_rollback       <> io.nack_rollback
+  // loadQueue.io.nack_rollback       <> io.nack_rollback
   loadQueue.io.replay              <> io.replay
  // loadQueue.io.refill              <> io.refill
   loadQueue.io.tl_d_channel        <> io.tl_d_channel

@@ -792,7 +792,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   (0 until LoadQueueReplaySize).map(i => {
     robheadMMIOOH(i) := allocated(i) && isMMIO(i) && !scheduled(i) && io.rob.pendingUncacheld && (io.rob.pendingPtr === uop(i).robIdx)
   }) 
-  assert(PopCount(robheadMMIOOH) <= 1.U)
+  when(robheadMMIOOH.reduce(_|_)){
+    assert(PopCount(robheadMMIOOH) <= 1.U)
+  }
 
   MMIOEntryinReplayQ.valid := robheadMMIOOH.reduce(_|_)
   MMIOEntryinReplayQ.bits := OHToUInt(robheadMMIOOH)
@@ -811,10 +813,12 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val mmioEnqUncacheBufferValid = mmioFromLdu_s0_canissue ++ Seq(MMIOReqinReplayQ.valid) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmioEnqUncacheBufferBits = VecInit(io.enq.map(_.bits)) ++ Seq(MMIOReqinReplayQ.bits) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmiovalidMaskOH = PriorityEncoderOH(mmioEnqUncacheBufferValid)
-  assert(PopCount(mmiovalidMaskOH) <= 1.U)
+  when (mmiovalidMaskOH.reduce(_|_)) {
+    assert(PopCount(mmiovalidMaskOH) <= 1.U)
+  }
   val needEnqUncacheBuffer = mmiovalidMaskOH.reduce(_|_)
 
-  val uncacheBuffer = Module(new UncacheBufferEntry(0))   // only has one uncachebuffer entry
+  val uncacheBuffer = Module(new UncacheBufferEntrySimple)  
   // set enqueue default
   uncacheBuffer.io.req.valid := false.B
   uncacheBuffer.io.req.bits := DontCare
@@ -831,23 +835,23 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   io.ldout.bits := DontCare
   io.ld_raw_data := DontCare
 
-  // enq uncachebuffer        if needEnqUncacheBuffer and the current mmiold instr has wb(ldout.fire) or is flushed, then can enq
-  val canEnqUncacheBuffer = needEnqUncacheBuffer && uncacheBufferIsFree 
-  val uncacheBufferIsFree = WireInit(true.B)
-  // TODO: 
-  when ( (uncacheBuffer.io.select && uncacheBuffer.io.ldout.fire) || uncacheBuffer.io.flush ) {
-    uncacheBufferIsFree := true.B     
+  when(needEnqUncacheBuffer && uncacheBuffer.io.req.ready) { 
+    uncacheBuffer.io.req.valid := true.B
+    uncacheBuffer.io.req.bits := Mux1H(mmiovalidMaskOH, mmioEnqUncacheBufferBits)
   }
-  uncacheBuffer.io.req.valid := canEnqUncacheBuffer
-  uncacheBuffer.io.req.bits := Mux1H(mmiovalidMaskOH, mmioEnqUncacheBufferBits)
 
+  when( uncacheBuffer.io.req.fire ) {
+    when ( MMIOEntryinReplayQ.valid ) {
+      scheduled(MMIOEntryinReplayQ.bits) := true.B
+    }
+  }
 
   uncacheBuffer.io.uncache.req.ready := io.uncache.req.ready
   uncacheBuffer.io.ldout.ready := io.ldout.ready
   // for uncache commit  
   uncacheBuffer.io.rob <> io.rob
 
-  when(uncacheBuffer.io.select) {
+  when(!uncacheBuffer.io.req.ready) {
     io.uncache.req.valid := uncacheBuffer.io.uncache.req.valid
     io.uncache.req.bits := uncacheBuffer.io.uncache.req.bits
     io.ldout.valid := uncacheBuffer.io.ldout.valid
@@ -862,8 +866,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     io.rob.uop(i) := RegNext(io.enq(i).bits.uop)
   }
   
-  uncacheBuffer.io.redirect <> io.redirect
-  uncacheBuffer.io.id := 0.U    // only has 1 entry
   // uncache exception
   io.exception.valid := uncacheBuffer.io.exception.valid
   io.exception.bits := uncacheBuffer.io.exception.bits

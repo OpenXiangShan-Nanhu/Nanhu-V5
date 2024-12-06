@@ -256,10 +256,15 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   /**
    * used for re-select control
    */
+  val cntWidth = 3
+  val tlbHintCnt = 2
+
   val blockSqIdx = Reg(Vec(LoadQueueReplaySize, new SqPtr))
   // DCache miss block
   val missMSHRId = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U((log2Up(cfg.nMissEntries+1).W)))))
   val tlbHintId = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U((log2Up(loadfiltersize+1).W)))))
+  val tlbCounterReg = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U(cntWidth.W))))
+
   // Has this load already updated dcache replacement?
   val replacementUpdated = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val missDbUpdated = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
@@ -344,9 +349,12 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     }
     // case C_TM
     when (cause(i)(LoadReplayCauses.C_TM)) {
-      blocking(i) := Mux(io.tlb_hint.resp.valid &&
-                     (io.tlb_hint.resp.bits.replay_all ||
-                     io.tlb_hint.resp.bits.id === tlbHintId(i)), false.B, blocking(i))
+      when(tlbCounterReg(i) === 0.U){
+        blocking(i) := false.B
+      }
+//      blocking(i) := Mux(io.tlb_hint.resp.valid &&
+//                     (io.tlb_hint.resp.bits.replay_all ||
+//                     io.tlb_hint.resp.bits.id === tlbHintId(i)), false.B, blocking(i))
     }
     // case C_FF
     when (cause(i)(LoadReplayCauses.C_FF)) {
@@ -365,6 +373,14 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       blocking(i) := Mux((!io.rawFull || !isAfter(uop(i).sqIdx, io.stAddrReadySqPtr)), false.B, blocking(i))
     }
   })
+
+  allocated.zipWithIndex.foreach({ case (valid, idx) =>
+    when(valid && (tlbCounterReg(idx) =/= 0.U)) {
+      tlbCounterReg(idx) := tlbCounterReg(idx) - 1.U
+    }
+  })
+
+
 
   //  Replay is splitted into 3 stages
   require((LoadQueueReplaySize % LoadPipelineWidth) == 0)
@@ -685,7 +701,8 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       when (replayInfo.cause(LoadReplayCauses.C_TM)) {
         blocking(enqIndex) := !replayInfo.tlb_full &&
           !(io.tlb_hint.resp.valid && (io.tlb_hint.resp.bits.id === replayInfo.tlb_id || io.tlb_hint.resp.bits.replay_all))
-        tlbHintId(enqIndex) := replayInfo.tlb_id
+//        tlbHintId(enqIndex) := replayInfo.tlb_id
+        tlbCounterReg(enqIndex) := tlbHintCnt.U
       }
 
       // special case: dcache miss

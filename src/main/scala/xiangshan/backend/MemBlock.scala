@@ -903,9 +903,10 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     dcache.io.l2_hint <> l2_hint
 
     loadUnits(i).io.l2_hint <> l2_hint
-    loadUnits(i).io.tlb_hint.id := dtlbRepeater.io.hint.get.req(i).id
-    loadUnits(i).io.tlb_hint.full := dtlbRepeater.io.hint.get.req(i).full ||
-      tlbreplay_reg(i) || dtlb_ld0_tlbreplay_reg(i)
+    loadUnits(i).io.tlb_hint := DontCare
+//    loadUnits(i).io.tlb_hint.id := dtlbRepeater.io.hint.get.req(i).id
+//    loadUnits(i).io.tlb_hint.full := dtlbRepeater.io.hint.get.req(i).full ||
+//      tlbreplay_reg(i) || dtlb_ld0_tlbreplay_reg(i)
 
     // passdown to lsq (load s2)
     lsq.io.ldu.ldin(i) <> loadUnits(i).io.lsq.ldin
@@ -915,7 +916,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     lsq.io.l2_hint.bits.sourceId := l2_hint.bits.sourceId
     lsq.io.l2_hint.bits.isKeyword := l2_hint.bits.isKeyword
 
-    lsq.io.tlb_hint <> dtlbRepeater.io.hint.get
+    lsq.io.tlb_hint <> DontCare
 
     // connect misalignBuffer
     loadMisalignBuffer.io.req(i) <> loadUnits(i).io.misalign_buf

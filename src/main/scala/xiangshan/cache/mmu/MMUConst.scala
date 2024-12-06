@@ -122,6 +122,7 @@ trait HasTlbConst extends HasXSParameter {
   val loadfiltersize = 16 // 4*3(LduCnt:2 + HyuCnt:1) + 4(prefetch:1)
   val storefiltersize = if (StorePipelineWidth >= 3) 16 else 8
   val prefetchfiltersize = 8
+  val repeaterFilterSize = 32
 
   val sramSinglePort = true
 

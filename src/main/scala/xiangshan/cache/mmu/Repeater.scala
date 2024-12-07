@@ -557,7 +557,7 @@ class PTWNewFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameter
   io.ptw.req(0).valid := filter(0).ptw.req(0).valid
   io.ptw.req(0).bits.vpn := filter(0).ptw.req(0).bits.vpn
   io.ptw.req(0).bits.s2xlate := filter(0).ptw.req(0).bits.s2xlate
-  filter(0).ptw.req(0).ready := true.B
+  filter(0).ptw.req(0).ready := io.ptw.req(0).ready
   io.ptw.resp.ready := true.B
 
   io.rob_head_miss_in_tlb := Cat(filter.map(_.rob_head_miss_in_tlb)).orR

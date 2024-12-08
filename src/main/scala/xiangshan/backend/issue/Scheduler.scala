@@ -169,23 +169,23 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
 
   // BusyTable Modules
   val intBusyTable = schdType match {
-    case IntScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numIntStateRead, wrapper.numIntStateWrite, IntPhyRegs, IntWB())))
+    case IntScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numIntStateRead, wrapper.numIntStateWrite, IntPhyRegs, IntWB(), false)))
     case _ => None
   }
   val fpBusyTable = schdType match {
-    case FpScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numFpStateRead, wrapper.numFpStateWrite, FpPhyRegs, FpWB())))
+    case FpScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numFpStateRead, wrapper.numFpStateWrite, FpPhyRegs, FpWB(), false)))
     case _ => None
   }
   val vfBusyTable = schdType match {
-    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numVfStateRead, wrapper.numVfStateWrite, VfPhyRegs, VfWB())))
+    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numVfStateRead, wrapper.numVfStateWrite, VfPhyRegs, VfWB(), true)))
     case _ => None
   }
   val v0BusyTable = schdType match {
-    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numV0StateRead, wrapper.numV0StateWrite, V0PhyRegs, V0WB())))
+    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numV0StateRead, wrapper.numV0StateWrite, V0PhyRegs, V0WB(), false)))
     case _ => None
   }
   val vlBusyTable = schdType match {
-    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numVlStateRead, wrapper.numVlStateWrite, VlPhyRegs, VlWB())))
+    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numVlStateRead, wrapper.numVlStateWrite, VlPhyRegs, VlWB(), false)))
     case _ => None
   }
 

@@ -34,7 +34,7 @@ class BusyTableReadIO(implicit p: Parameters) extends XSBundle {
   val loadDependency = Vec(LoadPipelineWidth, Output(UInt(LoadDependencyWidth.W)))
 }
 
-class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB: PregWB)(implicit p: Parameters, params: SchdBlockParams) extends XSModule with HasPerfEvents {
+class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB: PregWB, canHoldMultiState: Boolean)(implicit p: Parameters, params: SchdBlockParams) extends XSModule with HasPerfEvents {
   val io = IO(new Bundle() {
     // set preg state to busy
     val allocPregs = Vec(RenameWidth, Flipped(ValidIO(UInt(PhyRegIdxWidth.W))))

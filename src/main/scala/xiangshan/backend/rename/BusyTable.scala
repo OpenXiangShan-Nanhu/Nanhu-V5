@@ -86,7 +86,8 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   }
   val loadDependency = RegInit(0.U.asTypeOf(Vec(numPhyPregs, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W)))))
   val shiftLoadDependency = Wire(Vec(wakeUpIn.size, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W))))
-  val tableUpdate = Wire(Vec(numPhyPregs, Bool()))
+  val btStateWidth:Int = if (canHoldMultiState) 2 else 1 // todo: add param to ctrl table statue bits
+  val tableUpdate = Wire(Vec(numPhyPregs, UInt(btStateWidth.W)))
   val wakeupOHVec = Wire(Vec(numPhyPregs, UInt(wakeUpIn.size.W)))
 
   def reqVecToMask(rVec: Vec[Valid[UInt]]): UInt = {
@@ -142,34 +143,37 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
     rename alloc => wbMask  //TODO we still need wbMask because wakeUp signal is partial now
   the bypass state lasts for a maximum of one cycle, cancel(=> busy) or else(=> regFile)
    */
-  val table = VecInit((0 until numPhyPregs).zip(tableUpdate).map{ case (idx, update) =>
+  val regStateTab = VecInit((0 until numPhyPregs).zip(tableUpdate).map{ case (idx, update) =>
     RegEnable(update, 0.U(1.W), allocMask(idx) || ldCancelMask(idx) || wakeUpMask(idx) || wbMask(idx))
-  }).asUInt
+  })
 
   tableUpdate.zipWithIndex.foreach{ case (update, idx) =>
     when(allocMask(idx) || ldCancelMask(idx)) {
-      update := true.B                                    //busy
+      update := 1.U(btStateWidth.W)                                    //busy
       if (idx == 0 && pregWB.isInstanceOf[IntWB]) {
           // Int RegFile 0 is always ready
-          update := false.B
+          update := 0.U(btStateWidth.W)
       }
     }.elsewhen(wakeUpMask(idx) || wbMask(idx)) {
-      update := false.B                                   //ready
+      update := 0.U(btStateWidth.W)                                  //ready
     }.otherwise {
-      update := table(idx)
+      update := regStateTab(idx)
+    }
+    when(regStateTab(idx) === ((1 << btStateWidth) - 1).U(btStateWidth.W)){
+      XSError(!(allocMask(idx)), "preg can't be allocated when it's busy state")
     }
   }
 
   io.read.foreach{ case res =>
-    res.resp := !table(res.req)
+    res.resp := !regStateTab(res.req)
     res.loadDependency := loadDependency(res.req)
   }
 
-  val oddTable = table.asBools.zipWithIndex.filter(_._2 % 2 == 1).map(_._1)
-  val evenTable = table.asBools.zipWithIndex.filter(_._2 % 2 == 0).map(_._1)
-  val busyCount = RegNext(RegNext(PopCount(oddTable)) + RegNext(PopCount(evenTable)))
+  val oddTable = regStateTab.zipWithIndex.filter(_._2 % 2 == 1).map(_._1)
+  val evenTable = regStateTab.zipWithIndex.filter(_._2 % 2 == 0).map(_._1)
+  val busyCount = RegNext(RegNext(PopCount(oddTable.map(x => x =/= 0.U))) + RegNext(PopCount(evenTable.map(x => x =/= 0.U))))
 
-  XSPerfAccumulate("busy_count", PopCount(table))
+  XSPerfAccumulate("busy_count", PopCount(regStateTab.map(x => x =/= 0.U)))
 
   val perfEvents = Seq(
     ("bt_std_freelist_1_4_valid", busyCount < (numPhyPregs / 4).U                                      ),

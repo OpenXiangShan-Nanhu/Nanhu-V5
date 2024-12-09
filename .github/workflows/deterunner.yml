@@ -9,6 +9,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: build emu
       run: |
+        if [[ -d /ccache ]]; then echo use ccache; ln -s /ccache .ccache; fi
         export NIXPKGS_ALLOW_UNFREE=1
         nix-shell --run "make init"
         nix-shell --run "make emu -j`nproc`"

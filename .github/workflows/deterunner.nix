@@ -21,6 +21,7 @@
       > "Administration" repository permissions (write)
   ''
 }: let
+  ccache-dir = "/tmp/${repo}/ccache";
   deterunner = import (pkgs.fetchFromGitHub {
     owner = "xieby1";
     repo = "Deterunner";
@@ -28,10 +29,14 @@
     hash = "sha256-/0ITNS2cPbBMsqECqE723vA02ksMj38mCTCZg0zZMD0=";
   }) {
     inherit pkgs;
-    extraPodmanOpts = ["-v ${spec2006-src}:/${builtins.baseNameOf spec2006-src}:ro"];
+    extraPodmanOpts = [
+      "-v ${spec2006-src}:/${builtins.baseNameOf spec2006-src}:ro"
+      "-v ${ccache-dir}:/ccache"
+    ];
     extraPkgsInPATH = [pkgs.git];
   };
   run-ephemeral = pkgs.writeShellScriptBin "deterunner-${repo}" ''
+    mkdir -p ${ccache-dir}
     resp=$(curl -L \
       -X POST \
       -H "Accept: application/vnd.github+json" \
@@ -43,7 +48,7 @@
     runner_token=$(echo $resp | grep -oP '"token":\s*"\K[^"]*')
     echo runner_token=$runner_token
     ${deterunner} \
-      --labels 'self-hosted,Linux,X64,nix,spec2006' \
+      --labels 'self-hosted,Linux,X64,nix,spec2006,ccache' \
       --ephemeral \
       --url https://github.com/${owner}/${repo} \
       --token $runner_token

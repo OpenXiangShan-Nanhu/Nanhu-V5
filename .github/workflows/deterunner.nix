@@ -1,4 +1,8 @@
-{ pkgs ? import <nixpkgs> {}
+# pin nixpkgs to latest 24.11
+{ pkgs ? import (builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/4dc2fc4e62dbf62b84132fe526356fbac7b03541.tar.gz";
+    sha256 = "10sm236ix9v0qaih2pvfdzw8vjg1w4z11fjkkrzknn4x98gnaa8n";
+  }) {}
 , owner ? "OpenXiangShan-Nanhu"
 , repo ? "Nanhu-V5"
 , spec2006-src ? throw ''

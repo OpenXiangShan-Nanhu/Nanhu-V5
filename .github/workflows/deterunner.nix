@@ -1,6 +1,10 @@
 { pkgs ? import <nixpkgs> {}
 , owner ? "OpenXiangShan-Nanhu"
 , repo ? "Nanhu-V5"
+, spec2006-src ? throw ''
+    Please specify the <spec2006-src>:
+      nix-build deterunner.nix --arg spec2006-src <spec2006-src>
+  ''
 , github_token ? throw ''
     Please specify the <github_token> that accessing ${repo} repo,
     <github_token> beginning with github_pat_..., the command like below:
@@ -20,6 +24,7 @@
     hash = "sha256-m/IzUZuktg3f8UmaeazBQvBBwT7WJA+RkRPcsmsE8rQ=";
   }) {
     inherit pkgs;
+    extraPodmanOpts = ["-v ${spec2006-src}:/${builtins.baseNameOf spec2006-src}:ro"];
     extraPkgsInPATH = [pkgs.git];
   };
   run-ephemeral = pkgs.writeShellScriptBin "deterunner-${repo}" ''
@@ -34,7 +39,7 @@
     runner_token=$(echo $resp | grep -oP '"token":\s*"\K[^"]*')
     echo runner_token=$runner_token
     ${deterunner} \
-      --labels 'self-hosted,Linux,X64,nix' \
+      --labels 'self-hosted,Linux,X64,nix,spec2006' \
       --ephemeral \
       --url https://github.com/${owner}/${repo} \
       --token $runner_token

@@ -63,14 +63,12 @@ object LoadReplayCauses {
   val C_WF  = 5
   // dcache bank conflict check
   val C_BC  = 6
-  // RAR queue accept check
-  // val C_RAR = 7
   // RAW queue accept check
-  val C_RAW = 8
+  val C_RAW = 7
   // st-ld violation
-  val C_NK  = 9
+  val C_NK  = 8
   // total causes
-  val allCauses = 10
+  val allCauses = 9
 }
 
 class VecReplayInfo(implicit p: Parameters) extends XSBundle with HasVLSUParameters {

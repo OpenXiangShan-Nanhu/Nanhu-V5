@@ -300,7 +300,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   // mmioFromLdu_s0_canissue=1 infers that can directly enq uncacheBuffer and starts fsm(namely the mmiold is at robhead)
   val mmioFromLdu_s0_canissue = Wire(Vec(LoadPipelineWidth, Bool()))
   (0 until LoadPipelineWidth).map ( i => {
-    mmioFromLdu_s0_canissue(i) := mmioFromLdu_s0_valid(i) && io.rob.pendingUncacheld && (io.rob.pendingPtr === io.enq(i).bits.uop.robIdx) && !hasExceptions(i) && !cancelEnq(i) && !needReplay(i) 
+    mmioFromLdu_s0_canissue(i) := mmioFromLdu_s0_valid(i) && (io.rob.pendingPtr === io.enq(i).bits.uop.robIdx) && !hasExceptions(i) && !cancelEnq(i) && !needReplay(i) 
   })
   val needEnqueue = VecInit((0 until LoadPipelineWidth).map(w => {
     canEnqueue(w) && !cancelEnq(w) && (needReplay(w) || loadMMIO(w)) && !hasExceptions(w) && !mmioFromLdu_s0_canissue(w)
@@ -787,7 +787,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   // s0: select head mmio
   // robhead is MMIO instr
-  val MMIOEntryinReplayQ = Wire(Valid(UInt(log2Up(LoadQueueReplaySize).W)))  // idx to lookup paddr in addrmodule
+  val MMIOEntryinReplayQ_s0 = Wire(Valid(UInt(log2Up(LoadQueueReplaySize).W)))  // idx to lookup paddr in addrmodule
   val robheadMMIOOH = Wire(Vec(LoadQueueReplaySize, Bool()))
   (0 until LoadQueueReplaySize).map(i => {
     robheadMMIOOH(i) := allocated(i) && isMMIO(i) && !scheduled(i) && io.rob.pendingUncacheld && (io.rob.pendingPtr === uop(i).robIdx)
@@ -796,19 +796,19 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     assert(PopCount(robheadMMIOOH) <= 1.U)
   }
 
-  MMIOEntryinReplayQ.valid := robheadMMIOOH.reduce(_|_)
-  MMIOEntryinReplayQ.bits := OHToUInt(robheadMMIOOH)
-  addrModule.io.ren.last := MMIOEntryinReplayQ.valid   // last port is for mmio
-  addrModule.io.raddr.last := MMIOEntryinReplayQ.bits  // next cycle can get paddr
+  MMIOEntryinReplayQ_s0.valid := robheadMMIOOH.reduce(_|_)
+  MMIOEntryinReplayQ_s0.bits := OHToUInt(robheadMMIOOH)
+  addrModule.io.ren.last := MMIOEntryinReplayQ_s0.valid   // last port is for mmio
+  addrModule.io.raddr.last := MMIOEntryinReplayQ_s0.bits  // next cycle can get paddr
   
   // s1: enq uncacheBuffer
   val MMIOReqinReplayQ = Wire(Valid(new LqWriteBundle))
-  MMIOReqinReplayQ.valid := RegNext(MMIOEntryinReplayQ.valid)
+  MMIOReqinReplayQ.valid := RegNext(MMIOEntryinReplayQ_s0.valid)
   MMIOReqinReplayQ.bits := DontCare
   MMIOReqinReplayQ.bits.paddr := addrModule.io.rdata.last
-  MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ.bits,MMIOEntryinReplayQ.valid))
+  MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ_s0.bits,MMIOEntryinReplayQ_s0.valid))
   // TODO:
-  MMIOReqinReplayQ.bits.mask := genVWmask(addrModule.io.rdata.last, uop(RegEnable(MMIOEntryinReplayQ.bits,MMIOEntryinReplayQ.valid)).fuOpType(1,0))
+  MMIOReqinReplayQ.bits.mask := genVWmask(addrModule.io.rdata.last, uop(RegEnable(MMIOEntryinReplayQ_s0.bits,MMIOEntryinReplayQ_s0.valid)).fuOpType(1,0))
 
   val mmioEnqUncacheBufferValid = mmioFromLdu_s0_canissue ++ Seq(MMIOReqinReplayQ.valid) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmioEnqUncacheBufferBits = VecInit(io.enq.map(_.bits)) ++ Seq(MMIOReqinReplayQ.bits) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
@@ -840,9 +840,13 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     uncacheBuffer.io.req.bits := Mux1H(mmiovalidMaskOH, mmioEnqUncacheBufferBits)
   }
 
+  val needFreeIdx = RegInit(0.U(MMIOEntryinReplayQ_s0.bits.getWidth.W))
+  val needFree = RegInit(false.B)
   when( uncacheBuffer.io.req.fire ) {
-    when ( MMIOEntryinReplayQ.valid ) {
-      scheduled(MMIOEntryinReplayQ.bits) := true.B
+    when ( MMIOEntryinReplayQ_s0.valid ) {
+      scheduled(MMIOEntryinReplayQ_s0.bits) := true.B
+      needFree := true.B
+      needFreeIdx := MMIOEntryinReplayQ_s0.bits
     }
   }
 
@@ -863,12 +867,20 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   // when enq , wb to rob whether this is mmio instr // must send mmio to rob ahead , because pendingUncacheld signal needs know if it's mmio
   for (i <- 0 until LoadPipelineWidth) {
     io.rob.mmio(i) := RegNext(io.enq(i).valid && io.enq(i).bits.mmio)
-    io.rob.uop(i) := RegNext(io.enq(i).bits.uop)
+    io.rob.uop(i) := RegEnable(io.enq(i).bits.uop, io.enq(i).valid)
   }
   
   // uncache exception
   io.exception.valid := uncacheBuffer.io.exception.valid
   io.exception.bits := uncacheBuffer.io.exception.bits
+  
+  // deallocate
+  when ( uncacheBuffer.io.ldout.fire && needFree) {
+    allocated(needFreeIdx) := false.B
+    freeMaskVec(needFreeIdx) := true.B
+    isMMIO(needFreeIdx) := false.B
+    needFree := false.B
+  }
   
   // Topdown
   val robHeadVaddr = io.debugTopDown.robHeadVaddr

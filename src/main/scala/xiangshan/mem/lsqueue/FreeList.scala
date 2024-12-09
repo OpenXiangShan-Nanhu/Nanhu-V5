@@ -128,6 +128,7 @@ class FreeList(size: Int, allocWidth: Int, freeWidth: Int, enablePreAlloc: Boole
   headPtrNext := headPtr + numAllocate
   headPtr := Mux(doAllocate, headPtrNext, headPtr)
   freeSlotCnt := distanceBetween(tailPtrNext, headPtrNext)
+  assert(freeSlotCnt <= 36.U, "free slot count can not exceed 36")
 
   io.empty := freeSlotCnt === 0.U
   io.validCount := size.U - freeSlotCnt

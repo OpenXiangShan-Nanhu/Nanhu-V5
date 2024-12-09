@@ -31,6 +31,7 @@ in pkgs.mkShell {
     mill_0_11_8
     pkgs.espresso
     pkgs.verilator
+    pkgs.python3
     # libs
     pkgs.sqlite
     pkgs.zlib

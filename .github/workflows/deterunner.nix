@@ -20,8 +20,8 @@
   deterunner = import (pkgs.fetchFromGitHub {
     owner = "xieby1";
     repo = "Deterunner";
-    rev = "346cec0cbade8f00de49c5b41806872ea7070249";
-    hash = "sha256-m/IzUZuktg3f8UmaeazBQvBBwT7WJA+RkRPcsmsE8rQ=";
+    rev = "d3683a8d905814c9249dc0d2657ba8c8bdc5b221";
+    hash = "sha256-/0ITNS2cPbBMsqECqE723vA02ksMj38mCTCZg0zZMD0=";
   }) {
     inherit pkgs;
     extraPodmanOpts = ["-v ${spec2006-src}:/${builtins.baseNameOf spec2006-src}:ro"];

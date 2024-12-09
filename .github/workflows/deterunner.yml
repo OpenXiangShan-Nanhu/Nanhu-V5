@@ -1,0 +1,22 @@
+name: Test Nanhu-V5
+on:
+  push:
+    branches: [ nix ]
+jobs:
+  run-cpts:
+    runs-on: [self-hosted, Linux, X64, nix, spec2006]
+    steps:
+    - uses: actions/checkout@v4
+    - name: build emu
+      run: |
+        export NIXPKGS_ALLOW_UNFREE=1
+        nix-shell --run "make init"
+        nix-shell --run "make emu -j`nproc`"
+    - name: build cpts
+      run: |
+        nix-build workloads/cpt.nix -A spec2006.cpt -o workloads/result-spec2006.cpt --arg spec2006-src $(ls -d /spec2006* | head -n1)
+        nix-build workloads/cpt.nix -A openblas.cpt -o workloads/result-openblas.cpt
+    - name: run emu with cpts
+      run: |
+        build/emu --diff ready-to-run/riscv64-nemu-interpreter-so -i $(ls workloads/result-spec2006.cpt/*/*/*/*.gz | head -n1) -W 100 -I 100
+        build/emu --diff ready-to-run/riscv64-nemu-interpreter-so -i $(ls workloads/result-openblas.cpt/*/*/*.gz   | head -n1) -W 100 -I 100

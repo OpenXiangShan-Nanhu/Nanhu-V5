@@ -370,4 +370,4 @@ sim/
 
 # nix
 .direnv
-result
+result*

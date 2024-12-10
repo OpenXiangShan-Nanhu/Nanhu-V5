@@ -21,7 +21,7 @@ import xiangshan.backend.regcache.RegCacheTagTable
 sealed trait SchedulerType
 
 case class IntScheduler() extends SchedulerType
-case class FpScheduler() extends SchedulerType
+// case class FpScheduler() extends SchedulerType
 case class MemScheduler() extends SchedulerType
 case class VfScheduler() extends SchedulerType
 case class NoScheduler() extends SchedulerType
@@ -40,7 +40,7 @@ class Scheduler(val params: SchdBlockParams)(implicit p: Parameters) extends Laz
 
   lazy val module: SchedulerImpBase = params.schdType match {
     case IntScheduler() => new SchedulerArithImp(this)(params, p)
-    case FpScheduler()  => new SchedulerArithImp(this)(params, p)
+    // case FpScheduler()  => new SchedulerArithImp(this)(params, p)
     case MemScheduler() => new SchedulerMemImp(this)(params, p)
     case VfScheduler() => new SchedulerArithImp(this)(params, p)
     case _ => null
@@ -59,7 +59,7 @@ class SchedulerIO()(implicit params: SchdBlockParams, p: Parameters) extends XSB
   }
   val wbFuBusyTable = MixedVec(params.issueBlockParams.map(x => Output(x.genWbFuBusyTableWriteBundle)))
   val intIQValidNumVec = Output(MixedVec(backendParams.genIntIQValidNumBundle))
-  val fpIQValidNumVec = Output(MixedVec(backendParams.genFpIQValidNumBundle))
+  // val fpIQValidNumVec = Output(MixedVec(backendParams.genFpIQValidNumBundle))
 
   val fromCtrlBlock = new Bundle {
     val flush = Flipped(ValidIO(new Redirect))
@@ -154,15 +154,15 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
   val dispatch2Iq: Dispatch2IqImp = wrapper.dispatch2Iq.module
   val issueQueues: Seq[IssueQueueImp] = wrapper.issueQueue.map(_.module)
   io.intIQValidNumVec := 0.U.asTypeOf(io.intIQValidNumVec)
-  io.fpIQValidNumVec := 0.U.asTypeOf(io.fpIQValidNumVec)
+  // io.fpIQValidNumVec := 0.U.asTypeOf(io.fpIQValidNumVec)
   if (params.isIntSchd) {
     dispatch2Iq.io.intIQValidNumVec.get := io.intIQValidNumVec
     io.intIQValidNumVec := MixedVecInit(issueQueues.map(_.io.validCntDeqVec))
   }
-  else if (params.isFpSchd) {
-    dispatch2Iq.io.fpIQValidNumVec.get := io.fpIQValidNumVec
-    io.fpIQValidNumVec := MixedVecInit(issueQueues.map(_.io.validCntDeqVec))
-  }
+  // else if (params.isFpSchd) {
+  //   dispatch2Iq.io.fpIQValidNumVec.get := io.fpIQValidNumVec
+  //   io.fpIQValidNumVec := MixedVecInit(issueQueues.map(_.io.validCntDeqVec))
+  // }
 
   // valid count
   dispatch2Iq.io.iqValidCnt := issueQueues.filter(_.params.StdCnt == 0).map(_.io.status.validCnt)
@@ -177,7 +177,7 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
   //   case _ => None
   // }
   val vfBusyTable = schdType match {
-    case VfScheduler() | MemScheduler() | FpScheduler() => Some(Module(new BusyTable(dispatch2Iq.numVfStateRead, wrapper.numVfStateWrite, VfPhyRegs, VfWB())))
+    case VfScheduler() | MemScheduler() => Some(Module(new BusyTable(dispatch2Iq.numVfStateRead, wrapper.numVfStateWrite, VfPhyRegs, VfWB())))
     case _ => None
   }
   val v0BusyTable = schdType match {
@@ -497,7 +497,7 @@ class SchedulerArithImp(override val wrapper: Scheduler)(implicit params: SchdBl
     }
     val intWBIQ = params.schdType match {
       case IntScheduler() => wakeupFromIntWBVec.zipWithIndex.filter(x => iq.params.needWakeupFromIntWBPort.keys.toSeq.contains(x._2)).map(_._1)
-      case FpScheduler() => (wakeupFromVfWBVec.zipWithIndex.filter(x => iq.params.needWakeupFromVfWBPort.keys.toSeq.contains(x._2)).map(_._1))
+      // case FpScheduler() => (wakeupFromVfWBVec.zipWithIndex.filter(x => iq.params.needWakeupFromVfWBPort.keys.toSeq.contains(x._2)).map(_._1))
       case VfScheduler() => (wakeupFromVfWBVec.zipWithIndex.filter(x => iq.params.needWakeupFromVfWBPort.keys.toSeq.contains(x._2)).map(_._1) ++
                              wakeupFromV0WBVec.zipWithIndex.filter(x => iq.params.needWakeupFromV0WBPort.keys.toSeq.contains(x._2)).map(_._1) ++
                              wakeupFromVlWBVec.zipWithIndex.filter(x => iq.params.needWakeupFromVlWBPort.keys.toSeq.contains(x._2)).map(_._1))

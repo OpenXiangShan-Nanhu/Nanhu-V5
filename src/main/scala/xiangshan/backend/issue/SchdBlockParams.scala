@@ -22,13 +22,13 @@ case class SchdBlockParams(
 
   def isIntSchd: Boolean = schdType == IntScheduler()
 
-  def isFpSchd: Boolean = schdType == FpScheduler()
+  // def isFpSchd: Boolean = schdType == FpScheduler()
 
   def isVfSchd: Boolean = schdType == VfScheduler()
 
   def getExuBlockName: String = schdType match {
     case IntScheduler() => "IntBlock"
-    case FpScheduler() => "FpBlock"
+    // case FpScheduler() => "FpBlock"
     case VfScheduler() => "VecBlock"
     case MemScheduler() => "MemBlock"
     case _ => ""
@@ -192,10 +192,10 @@ case class SchdBlockParams(
       case IntScheduler() | MemScheduler() => backendParam.getIntWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val fpBundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
-      case FpScheduler() | MemScheduler() => backendParam.getIntWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
-      case _ => Seq()
-    }
+    // val fpBundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
+    //   case FpScheduler() | MemScheduler() => backendParam.getIntWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
+    //   case _ => Seq()
+    // }
     val vfBundle = schdType match {
       case VfScheduler() | MemScheduler() => backendParam.getVfWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
@@ -208,7 +208,7 @@ case class SchdBlockParams(
       case VfScheduler() | MemScheduler() => backendParam.getVlWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    MixedVec(intBundle ++ fpBundle ++ vfBundle ++ v0Bundle ++ vlBundle)
+    MixedVec(intBundle ++ vfBundle ++ v0Bundle ++ vlBundle)
   }
 
   def genIntWBWakeUpSinkValidBundle(implicit p: Parameters): MixedVec[ValidIO[IssueQueueWBWakeUpBundle]] = {

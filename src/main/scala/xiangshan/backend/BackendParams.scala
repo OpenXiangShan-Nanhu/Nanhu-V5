@@ -64,11 +64,11 @@ case class BackendParams(
     copyPdestInfo(exuIdx)._2 / copyPdestInfo(exuIdx)._1
   }
   def intSchdParams = schdParams.get(IntScheduler())
-  def fpSchdParams = schdParams.get(FpScheduler())
+  // def fpSchdParams = schdParams.get(FpScheduler())
   def vfSchdParams = schdParams.get(VfScheduler())
   def memSchdParams = schdParams.get(MemScheduler())
   def allSchdParams: Seq[SchdBlockParams] =
-    (Seq(intSchdParams) :+ fpSchdParams :+ vfSchdParams :+ memSchdParams)
+    (Seq(intSchdParams) :+ vfSchdParams :+ memSchdParams)
     .filter(_.nonEmpty)
     .map(_.get)
   def allIssueParams: Seq[IssueBlockParams] =
@@ -134,9 +134,9 @@ case class BackendParams(
     this.intSchdParams.get.issueBlockParams.map(x => Vec(x.numDeq, UInt((x.numEntries).U.getWidth.W)))
   }
 
-  def genFpIQValidNumBundle(implicit p: Parameters) = {
-    this.fpSchdParams.get.issueBlockParams.map(x => Vec(x.numDeq, UInt((x.numEntries).U.getWidth.W)))
-  }
+  // def genFpIQValidNumBundle(implicit p: Parameters) = {
+  //   this.fpSchdParams.get.issueBlockParams.map(x => Vec(x.numDeq, UInt((x.numEntries).U.getWidth.W)))
+  // }
 
   def genIntWriteBackBundle(implicit p: Parameters) = {
     Seq.fill(this.getIntRfWriteSize)(new RfWritePortWithConfig(IntData(), intPregParams.addrWidth))

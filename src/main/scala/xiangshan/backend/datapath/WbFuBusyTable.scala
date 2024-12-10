@@ -24,11 +24,11 @@ class WbFuBusyTableImp(override val wrapper: WbFuBusyTable)(implicit  p: Paramet
   val io = IO(new WbFuBusyTableIO)
 
   private val intSchdBusyTable = io.in.intSchdBusyTable
-  private val fpSchdBusyTable = io.in.fpSchdBusyTable
+  // private val fpSchdBusyTable = io.in.fpSchdBusyTable
   private val vfSchdBusyTable = io.in.vfSchdBusyTable
   private val memSchdBusyTable = io.in.memSchdBusyTable
   private val intRespRead = io.out.intRespRead
-  private val fpRespRead = io.out.fpRespRead
+  // private val fpRespRead = io.out.fpRespRead
   private val vfRespRead = io.out.vfRespRead
   private val memRespRead = io.out.memRespRead
   private val intAllWbConflictFlag = io.out.wbConflictRead.flatten.flatten.map(_.intConflict)
@@ -37,23 +37,23 @@ class WbFuBusyTableImp(override val wrapper: WbFuBusyTable)(implicit  p: Paramet
   private val v0AllWbConflictFlag = io.out.wbConflictRead.flatten.flatten.map(_.v0Conflict)
   private val vlAllWbConflictFlag = io.out.wbConflictRead.flatten.flatten.map(_.vlConflict)
 
-  private val intAllBusyTable = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.intWbBusyTable)
+  private val intAllBusyTable = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.intWbBusyTable)
   // private val fpAllBusyTable = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.fpWbBusyTable)
-  private val vfAllBusyTable = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vfWbBusyTable)
-  private val v0AllBusyTable = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.v0WbBusyTable)
-  private val vlAllBusyTable = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vlWbBusyTable)
+  private val vfAllBusyTable = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vfWbBusyTable)
+  private val v0AllBusyTable = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.v0WbBusyTable)
+  private val vlAllBusyTable = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vlWbBusyTable)
 
-  private val intAllDeqRespSet = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.intDeqRespSet)
+  private val intAllDeqRespSet = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.intDeqRespSet)
   // private val fpAllDeqRespSet = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.fpDeqRespSet)
-  private val vfAllDeqRespSet = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vfDeqRespSet)
-  private val v0AllDeqRespSet = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.v0DeqRespSet)
-  private val vlAllDeqRespSet = (intSchdBusyTable ++ fpSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vlDeqRespSet)
+  private val vfAllDeqRespSet = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vfDeqRespSet)
+  private val v0AllDeqRespSet = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.v0DeqRespSet)
+  private val vlAllDeqRespSet = (intSchdBusyTable ++ vfSchdBusyTable ++ memSchdBusyTable).flatten.map(_.vlDeqRespSet)
 
-  private val intAllRespRead = (intRespRead ++ fpRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.intWbBusyTable)
+  private val intAllRespRead = (intRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.intWbBusyTable)
   // private val fpAllRespRead = (intRespRead ++ fpRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.fpWbBusyTable)
-  private val vfAllRespRead = (intRespRead ++ fpRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.vfWbBusyTable)
-  private val v0AllRespRead = (intRespRead ++ fpRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.v0WbBusyTable)
-  private val vlAllRespRead = (intRespRead ++ fpRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.vlWbBusyTable)
+  private val vfAllRespRead = (intRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.vfWbBusyTable)
+  private val v0AllRespRead = (intRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.v0WbBusyTable)
+  private val vlAllRespRead = (intRespRead ++ vfRespRead ++ memRespRead).flatten.map(_.vlWbBusyTable)
 
   private val allExuParams = params.allExuParams
   private val intAllBusyTableWithParms = intAllBusyTable.zip(allExuParams).toSeq
@@ -165,13 +165,13 @@ class WbFuBusyTableImp(override val wrapper: WbFuBusyTable)(implicit  p: Paramet
 class WbFuBusyTableIO(implicit p: Parameters, params: BackendParams) extends XSBundle {
   val in = new Bundle {
     val intSchdBusyTable = MixedVec(params.intSchdParams.get.issueBlockParams.map(x => Input(x.genWbFuBusyTableWriteBundle)))
-    val fpSchdBusyTable = MixedVec(params.fpSchdParams.get.issueBlockParams.map(x => Input(x.genWbFuBusyTableWriteBundle)))
+    // val fpSchdBusyTable = MixedVec(params.fpSchdParams.get.issueBlockParams.map(x => Input(x.genWbFuBusyTableWriteBundle)))
     val vfSchdBusyTable = MixedVec(params.vfSchdParams.get.issueBlockParams.map(x => Input(x.genWbFuBusyTableWriteBundle)))
     val memSchdBusyTable = MixedVec(params.memSchdParams.get.issueBlockParams.map(x => Input(x.genWbFuBusyTableWriteBundle)))
   }
   val out = new Bundle {
     val intRespRead = MixedVec(params.intSchdParams.get.issueBlockParams.map(x => Output(x.genWbFuBusyTableReadBundle)))
-    val fpRespRead = MixedVec(params.fpSchdParams.get.issueBlockParams.map(x => Output(x.genWbFuBusyTableReadBundle)))
+    // val fpRespRead = MixedVec(params.fpSchdParams.get.issueBlockParams.map(x => Output(x.genWbFuBusyTableReadBundle)))
     val vfRespRead = MixedVec(params.vfSchdParams.get.issueBlockParams.map(x => Output(x.genWbFuBusyTableReadBundle)))
     val memRespRead = MixedVec(params.memSchdParams.get.issueBlockParams.map(x => Output(x.genWbFuBusyTableReadBundle)))
     val wbConflictRead = MixedVec(params.allSchdParams.map(x => MixedVec(x.issueBlockParams.map(x => Output(x.genWbConflictBundle())))))

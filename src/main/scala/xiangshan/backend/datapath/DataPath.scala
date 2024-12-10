@@ -15,7 +15,7 @@ import xiangshan.backend.Bundles._
 import xiangshan.backend.decode.ImmUnion
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.datapath.RdConfig._
-import xiangshan.backend.issue.{FpScheduler, ImmExtractor, IntScheduler, MemScheduler, VfScheduler}
+import xiangshan.backend.issue.{ImmExtractor, IntScheduler, MemScheduler, VfScheduler}
 import xiangshan.backend.issue.EntryBundles._
 import xiangshan.backend.regfile._
 import xiangshan.backend.regcache._
@@ -42,20 +42,20 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   val io = IO(new DataPathIO())
 
   private val (fromIntIQ, toIntIQ, toIntExu) = (io.fromIntIQ, io.toIntIQ, io.toIntExu)
-  private val (fromFpIQ,  toFpIQ,  toFpExu)  = (io.fromFpIQ,  io.toFpIQ,  io.toFpExu)
+  // private val (fromFpIQ,  toFpIQ,  toFpExu)  = (io.fromFpIQ,  io.toFpIQ,  io.toFpExu)
   private val (fromMemIQ, toMemIQ, toMemExu) = (io.fromMemIQ, io.toMemIQ, io.toMemExu)
   private val (fromVfIQ,  toVfIQ,  toVfExu ) = (io.fromVfIQ,  io.toVfIQ,  io.toVecExu)
   private val (fromVecExcp, toVecExcp)       = (io.fromVecExcpMod, io.toVecExcpMod)
 
-  println(s"[DataPath] IntIQ(${fromIntIQ.size}), FpIQ(${fromFpIQ.size}), VecIQ(${fromVfIQ.size}), MemIQ(${fromMemIQ.size})")
-  println(s"[DataPath] IntExu(${fromIntIQ.map(_.size).sum}), FpExu(${fromFpIQ.map(_.size).sum}), VecExu(${fromVfIQ.map(_.size).sum}), MemExu(${fromMemIQ.map(_.size).sum})")
+  println(s"[DataPath] IntIQ(${fromIntIQ.size}), VecIQ(${fromVfIQ.size}), MemIQ(${fromMemIQ.size})")
+  println(s"[DataPath] IntExu(${fromIntIQ.map(_.size).sum}), VecExu(${fromVfIQ.map(_.size).sum}), MemExu(${fromMemIQ.map(_.size).sum})")
 
   // just refences for convience
-  private val fromIQ: Seq[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] = (fromIntIQ ++ fromFpIQ ++ fromVfIQ ++ fromMemIQ).toSeq
+  private val fromIQ: Seq[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] = (fromIntIQ ++ fromVfIQ ++ fromMemIQ).toSeq
 
-  private val toIQs = toIntIQ ++ toFpIQ ++ toVfIQ ++ toMemIQ
+  private val toIQs = toIntIQ ++ toVfIQ ++ toMemIQ
 
-  private val toExu: Seq[MixedVec[DecoupledIO[ExuInput]]] = (toIntExu ++ toFpExu ++ toVfExu ++ toMemExu).toSeq
+  private val toExu: Seq[MixedVec[DecoupledIO[ExuInput]]] = (toIntExu ++ toVfExu ++ toMemExu).toSeq
 
   private val fromFlattenIQ: Seq[DecoupledIO[IssueQueueIssueBundle]] = fromIQ.flatten
 
@@ -215,7 +215,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   }
 
   private val intSchdParams = params.schdParams(IntScheduler())
-  private val fpSchdParams = params.schdParams(FpScheduler())
+  // private val fpSchdParams = params.schdParams(FpScheduler())
   private val vfSchdParams = params.schdParams(VfScheduler())
   private val memSchdParams = params.schdParams(MemScheduler())
 
@@ -240,7 +240,14 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
 
   private val vfRfSplitNum = VLEN / XLEN
   private val vfRfRaddr = Wire(Vec(params.numPregRd(VecData()), UInt(vfSchdParams.pregIdxWidth.W)))
+  private val vfRfRdata_h = Wire(Vec(params.numPregRd(VecData()), UInt((vfSchdParams.rfDataWidth / 2).W)))
+  private val vfRfRdata_l = Wire(Vec(params.numPregRd(VecData()), UInt((vfSchdParams.rfDataWidth / 2).W)))
   private val vfRfRdata = Wire(Vec(params.numPregRd(VecData()), UInt(vfSchdParams.rfDataWidth.W)))
+  vfRfRdata_h.zip(vfRfRdata_l).zipWithIndex.foreach {
+    case ((h, l), i) => {
+      vfRfRdata(i) := Cat(h, l)
+    }
+  }
   private val vfRfWen = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
   private val vfRfWaddr = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W)))
   private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
@@ -270,7 +277,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val intDiffRead: Option[(Vec[UInt], Vec[UInt])] =
     OptionWrapper(backendParams.basicDebugEn, (Wire(Vec(32, UInt(intSchdParams.pregIdxWidth.W))), Wire(Vec(32, UInt(XLEN.W)))))
   private val fpDiffRead: Option[(Vec[UInt], Vec[UInt])] =
-    OptionWrapper(backendParams.basicDebugEn, (Wire(Vec(32, UInt(fpSchdParams.pregIdxWidth.W))), Wire(Vec(32, UInt(XLEN.W)))))
+    OptionWrapper(backendParams.basicDebugEn, (Wire(Vec(32, UInt(vfSchdParams.pregIdxWidth.W))), Wire(Vec(32, UInt(XLEN.W)))))
   private val vfDiffRead: Option[(Vec[UInt], Vec[UInt])] =
     OptionWrapper(backendParams.basicDebugEn, (Wire(Vec(31, UInt(vfSchdParams.pregIdxWidth.W))), Wire(Vec(31, UInt(VLEN.W)))))
   private val v0DiffRead: Option[(Vec[UInt], Vec[UInt])] =
@@ -316,12 +323,19 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   //   debugReadAddr = fpDiffRead.map(_._1),
   //   debugReadData = fpDiffRead.map(_._2)
   // )
-  VfRegFile("VfRegFile", vfSchdParams.numPregs, vfRfSplitNum, vfRfRaddr, vfRfRdata, vfRfWen, vfRfWaddr, vfRfWdata,
+  // VfRegFile("VfRegFile", vfSchdParams.numPregs, vfRfSplitNum, vfRfRaddr, vfRfRdata, vfRfWen, vfRfWaddr, vfRfWdata,
+  //   vecdebugReadAddr = vfDiffRead.map(_._1),
+  //   vecdebugReadData = vfDiffRead.map(_._2),
+  //   fpdebugReadAddr = fpDiffRead.map(_._1),
+  //   fpdebugReadData = fpDiffRead.map(_._2)
+  // )
+  VfRegFile128("VfRegFile", vfSchdParams.numPregs, vfRfRaddr, vfRfRdata_h, vfRfRaddr, vfRfRdata_l, vfRfWen.head, vfRfWaddr, vfRfWdata, vfRfWen.last, vfRfWaddr, vfRfWdata,
     vecdebugReadAddr = vfDiffRead.map(_._1),
     vecdebugReadData = vfDiffRead.map(_._2),
     fpdebugReadAddr = fpDiffRead.map(_._1),
     fpdebugReadData = fpDiffRead.map(_._2)
   )
+
   VfRegFile("V0RegFile", V0PhyRegs, v0RfSplitNum, v0RfRaddr, v0RfRdata, v0RfWen, v0RfWaddr, v0RfWdata,
     vecdebugReadAddr = v0DiffRead.map(_._1),
     vecdebugReadData = v0DiffRead.map(_._2),
@@ -851,7 +865,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
 class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBundle {
   // params
   private val intSchdParams = params.schdParams(IntScheduler())
-  private val fpSchdParams = params.schdParams(FpScheduler())
+  // private val fpSchdParams = params.schdParams(FpScheduler())
   private val vfSchdParams = params.schdParams(VfScheduler())
   private val memSchdParams = params.schdParams(MemScheduler())
   // bundles
@@ -864,8 +878,8 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
   val fromIntIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
     Flipped(MixedVec(intSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
 
-  val fromFpIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
-    Flipped(MixedVec(fpSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
+  // val fromFpIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
+  //   Flipped(MixedVec(fpSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
 
   val fromMemIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
     Flipped(MixedVec(memSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
@@ -876,7 +890,7 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
 
   val toIntIQ = MixedVec(intSchdParams.issueBlockParams.map(_.genOGRespBundle))
 
-  val toFpIQ = MixedVec(fpSchdParams.issueBlockParams.map(_.genOGRespBundle))
+  // val toFpIQ = MixedVec(fpSchdParams.issueBlockParams.map(_.genOGRespBundle))
 
   val toMemIQ = MixedVec(memSchdParams.issueBlockParams.map(_.genOGRespBundle))
 
@@ -892,7 +906,7 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
 
   val toIntExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = intSchdParams.genExuInputBundle
 
-  val toFpExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = MixedVec(fpSchdParams.genExuInputBundle)
+  // val toFpExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = MixedVec(fpSchdParams.genExuInputBundle)
 
   val toVecExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = MixedVec(vfSchdParams.genExuInputBundle)
 
@@ -917,7 +931,7 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
   )
 
   val toBypassNetworkRCData: MixedVec[MixedVec[Vec[UInt]]] = MixedVec(
-    Seq(intSchdParams, fpSchdParams, vfSchdParams, memSchdParams).map(schd => schd.issueBlockParams.map(iq => 
+    Seq(intSchdParams, vfSchdParams, memSchdParams).map(schd => schd.issueBlockParams.map(iq => 
       MixedVec(iq.exuBlockParams.map(exu => Output(Vec(exu.numRegSrc, UInt(exu.srcDataBitsMax.W)))))
     )).flatten
   )
@@ -927,7 +941,7 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
   )
 
   val diffIntRat = if (params.basicDebugEn) Some(Input(Vec(32, UInt(intSchdParams.pregIdxWidth.W)))) else None
-  val diffFpRat  = if (params.basicDebugEn) Some(Input(Vec(32, UInt(fpSchdParams.pregIdxWidth.W)))) else None
+  val diffFpRat  = if (params.basicDebugEn) Some(Input(Vec(32, UInt(vfSchdParams.pregIdxWidth.W)))) else None
   val diffVecRat = if (params.basicDebugEn) Some(Input(Vec(31, UInt(vfSchdParams.pregIdxWidth.W)))) else None
   val diffV0Rat  = if (params.basicDebugEn) Some(Input(Vec(1, UInt(log2Up(V0PhyRegs).W)))) else None
   val diffVlRat  = if (params.basicDebugEn) Some(Input(Vec(1, UInt(log2Up(VlPhyRegs).W)))) else None

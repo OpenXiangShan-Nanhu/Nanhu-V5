@@ -364,7 +364,7 @@ case class IssueBlockParams(
     //   case _ => Seq()
     // }
     val vfBundle = schdType match {
-      case VfScheduler() | MemScheduler() | FpScheduler() => needWakeupFromVfWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
+      case VfScheduler() | MemScheduler() => needWakeupFromVfWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
     val v0Bundle = schdType match {

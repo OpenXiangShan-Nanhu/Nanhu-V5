@@ -14,7 +14,6 @@ import xiangshan.mem._
 import xiangshan.backend.Bundles.{DynInst, ExuOH}
 import xiangshan.backend.datapath.DataSource
 import xiangshan.backend.fu.FuType.FuTypeOrR
-import xiangshan.backend.dispatch.Dispatch2IqFpImp
 import xiangshan.backend.regcache.RCTagTableReadPort
 import scala.collection._
 
@@ -60,7 +59,7 @@ class Dispatch2Iq(val schdBlockParams : SchdBlockParams)(implicit p: Parameters)
   //   case _ => 0
   // }
   val numVfStateRead = schdBlockParams.schdType match {
-    case VfScheduler() | MemScheduler() | FpScheduler() => numRegSrcVf * numIn
+    case VfScheduler() | MemScheduler() => numRegSrcVf * numIn
     case _ => 0
   }
   val numV0StateRead = schdBlockParams.schdType match {
@@ -80,7 +79,7 @@ class Dispatch2Iq(val schdBlockParams : SchdBlockParams)(implicit p: Parameters)
 
   lazy val module: Dispatch2IqImp = schdBlockParams.schdType match {
     case IntScheduler() => new Dispatch2IqIntImp(this)(p, schdBlockParams)
-    case FpScheduler()  => new Dispatch2IqFpImp(this)(p, schdBlockParams)
+    // case FpScheduler()  => new Dispatch2IqFpImp(this)(p, schdBlockParams)
     case MemScheduler() => new Dispatch2IqMemImp(this)(p, schdBlockParams)
     case VfScheduler() => new Dispatch2IqArithImp(this)(p, schdBlockParams)
     case _ => null
@@ -118,7 +117,7 @@ abstract class Dispatch2IqImp(override val wrapper: Dispatch2Iq)(implicit p: Par
     val enqLsqIO = if (wrapper.isMem) Some(Flipped(new LsqEnqIO)) else None
     val iqValidCnt = MixedVec(params.issueBlockParams.filter(_.StdCnt == 0).map(x => Input(UInt(log2Ceil(x.numEntries).W))))
     val intIQValidNumVec = if (params.isIntSchd) Some(Input(MixedVec(backendParams.genIntIQValidNumBundle))) else None
-    val fpIQValidNumVec = if (params.isFpSchd) Some(Input(MixedVec(backendParams.genFpIQValidNumBundle))) else None
+    // val fpIQValidNumVec = if (params.isFpSchd) Some(Input(MixedVec(backendParams.genFpIQValidNumBundle))) else None
     val lqFreeCount = if (wrapper.isMem) Some(Input(UInt(log2Up(VirtualLoadQueueSize + 1).W))) else None
     val sqFreeCount = if (wrapper.isMem) Some(Input(UInt(log2Up(StoreQueueSize + 1).W))) else None
   })

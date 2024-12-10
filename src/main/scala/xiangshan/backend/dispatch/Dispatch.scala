@@ -71,18 +71,18 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       val req = Vec(RenameWidth, ValidIO(new DynInst))
     }
     val intIQValidNumVec = Input(MixedVec(backendParams.genIntIQValidNumBundle))
-    val fpIQValidNumVec = Input(MixedVec(backendParams.genFpIQValidNumBundle))
+    // val fpIQValidNumVec = Input(MixedVec(backendParams.genFpIQValidNumBundle))
     val fromIntDQ = new Bundle {
       val intDQ0ValidDeq0Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
       val intDQ0ValidDeq1Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
       val intDQ1ValidDeq0Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
       val intDQ1ValidDeq1Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
     }
-    val toFpDq = new Bundle {
-      val canAccept = Input(Bool())
-      val needAlloc = Vec(RenameWidth, Output(Bool()))
-      val req = Vec(RenameWidth, ValidIO(new DynInst))
-    }
+    // val toFpDq = new Bundle {
+    //   val canAccept = Input(Bool())
+    //   val needAlloc = Vec(RenameWidth, Output(Bool()))
+    //   val req = Vec(RenameWidth, ValidIO(new DynInst))
+    // }
     val toVecDq = new Bundle {
       val canAccept = Input(Bool())
       val needAlloc = Vec(RenameWidth, Output(Bool()))
@@ -110,7 +110,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       val fromCore = new CoreDispatchTopDownIO
     }
 
-    def toDq = Seq(toIntDq,toFpDq, toVecDq, toLsDq)
+    def toDq = Seq(toIntDq, toVecDq, toLsDq)
   })
 
   /**
@@ -287,7 +287,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     *   only set valid when all of them provides enough entries
     */
   val toIntDqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept
-  val allResourceReady = io.enqRob.canAccept && toIntDqCanAccept && io.toFpDq.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
+  val allResourceReady = io.enqRob.canAccept && toIntDqCanAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
 
   // Instructions should enter dispatch queues in order.
   // blockedByWaitForward: this instruction is blocked by itself (based on waitForward)
@@ -335,7 +335,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   //   (isFp.asUInt.orR && !io.toVecDq.canAccept) || (isLs.asUInt.orR && !io.toLsDq.canAccept))
 
   // Todo: use decode2dispatch bypass infos to loose `can accept` condition
-  val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toFpDq.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
+  val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
 
   // input for ROB, LSQ, Dispatch Queue
   for (i <- 0 until RenameWidth) {
@@ -363,19 +363,17 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       canEnterDpq && dqCanAccept
     io.toIntDq1.req(i).bits := updatedUop(i)
 
-    io.toFpDq.needAlloc(i) := io.fromRename(i).valid && isFp(i)
-    io.toFpDq.req(i).valid := io.fromRename(i).valid && isFp(i) &&
-      canEnterDpq && dqCanAccept
-    io.toFpDq.req(i).bits := updatedUop(i)
+    // io.toFpDq.needAlloc(i) := io.fromRename(i).valid && isFp(i) && !io.fromRename(i).bits.vpu.fpu.isFpToVecInst
+    // io.toFpDq.req(i).valid := io.fromRename(i).valid && isFp(i) && !io.fromRename(i).bits.vpu.fpu.isFpToVecInst && canEnterDpq && dqCanAccept
+    // io.toFpDq.req(i).bits := updatedUop(i)
 
-    io.toVecDq.needAlloc(i)  := io.fromRename(i).valid && isVec(i)
-    io.toVecDq.req(i).valid  := io.fromRename(i).valid && isVec(i) &&
-                               canEnterDpq && dqCanAccept
+    io.toVecDq.needAlloc(i)  := io.fromRename(i).valid && (isVec(i) || (isFp(i) && io.fromRename(i).bits.vpu.fpu.isFpToVecInst))
+    io.toVecDq.req(i).valid  := io.fromRename(i).valid && (isVec(i) || (isFp(i) && io.fromRename(i).bits.vpu.fpu.isFpToVecInst)) && canEnterDpq && dqCanAccept
     io.toVecDq.req(i).bits   := updatedUop(i)
 
     io.toLsDq.needAlloc(i)  := io.fromRename(i).valid && isMem(i)
     io.toLsDq.req(i).valid  := io.fromRename(i).valid && isMem(i) &&
-                               canEnterDpq && dqCanAccept
+                                canEnterDpq && dqCanAccept
     io.toLsDq.req(i).bits   := updatedUop(i)
 
     //delete trigger message from frontend
@@ -416,7 +414,6 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   }
   val renameFireCnt = PopCount(io.fromRename.map(_.fire))
   val enqFireCnt = PopCount(io.toIntDq.req.map(_.valid && io.toIntDq.canAccept)) +
-    PopCount(io.toFpDq.req.map(_.valid && io.toFpDq.canAccept)) +
     PopCount(io.toVecDq.req.map(_.valid && io.toVecDq.canAccept)) +
     PopCount(io.toLsDq.req.map(_.valid && io.toLsDq.canAccept))
   XSError(enqFireCnt > renameFireCnt, "enqFireCnt should not be greater than renameFireCnt\n")

@@ -246,6 +246,9 @@ simv-run:
 	$(MAKE) -C ./difftest simv-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) RUN_BIN=$(RUN_BIN) RUN_BIN_DIR=$(RUN_BIN_DIR) \
 	TRACE=1 CONSIDER_FSDB=1 REF_SO=$(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
 
+verdi:
+	cd sim/vcs/$(RUN_BIN) && verdi -sv -2001 +verilog2001ext+v +systemverilogext+v -dbdir simv.daidir -ssf simv.fsdb -f $(ABS_WORK_DIR)/build/rtl/filelist.f
+
 # palladium simulation
 pldm-build: sim-verilog
 	$(MAKE) -C ./difftest pldm-build SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)

@@ -274,9 +274,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   // When io.release.valid (release1cycle.valid), it uses the last ld-ld paddr cam port to
   // update release flag in 1 cycle
   val releaseVioMask = Reg(Vec(VirtualLoadQueueSize, Bool()))
-  when (release1Cycle.valid) {
-    paddrModule.io.releaseMdata.takeRight(1)(0) := release1Cycle.bits.paddr
-  }
+  paddrModule.io.releaseMdata.takeRight(1)(0) := Mux(release1Cycle.valid,release1Cycle.bits.paddr,0.U)
 
   val bypassPAddr2Cycle = RegNext(bypassPAddr)
   val lastCanAccept = RegNext(acceptedVec)

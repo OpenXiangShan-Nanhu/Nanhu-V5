@@ -247,7 +247,7 @@ simv-run:
 	TRACE=1 CONSIDER_FSDB=1 REF_SO=$(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
 
 verdi:
-	cd sim/vcs/$(RUN_BIN) && verdi -sv -2001 +verilog2001ext+v +systemverilogext+v -dbdir simv.daidir -ssf simv.fsdb -f $(ABS_WORK_DIR)/build/rtl filelist.f
+	cd sim/vcs/$(RUN_BIN) && verdi -sv -2001 +verilog2001ext+v +systemverilogext+v -dbdir simv.daidir -ssf simv.fsdb -f $(ABS_WORK_DIR)/build/rtl/filelist.f
 
 # palladium simulation
 pldm-build: sim-verilog

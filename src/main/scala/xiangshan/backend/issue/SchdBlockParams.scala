@@ -121,7 +121,7 @@ case class SchdBlockParams(
 
   def numIntRfReadByExu: Int = issueBlockParams.map(_.exuBlockParams.map(_.numIntSrc).sum).sum
 
-  def numFpRfReadByExu: Int = issueBlockParams.map(_.exuBlockParams.map(_.numFpSrc).sum).sum
+  // def numFpRfReadByExu: Int = issueBlockParams.map(_.exuBlockParams.map(_.numFpSrc).sum).sum
 
   def numVfRfReadByExu: Int = issueBlockParams.map(_.exuBlockParams.map(_.numVecSrc).sum).sum
 
@@ -215,9 +215,9 @@ case class SchdBlockParams(
     MixedVec(backendParam.getIntWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq)
   }
 
-  def genFpWBWakeUpSinkValidBundle(implicit p: Parameters): MixedVec[ValidIO[IssueQueueWBWakeUpBundle]] = {
-    MixedVec(backendParam.getFpWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq)
-  }
+  // def genFpWBWakeUpSinkValidBundle(implicit p: Parameters): MixedVec[ValidIO[IssueQueueWBWakeUpBundle]] = {
+  //   MixedVec(backendParam.getFpWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq)
+  // }
 
   def genVfWBWakeUpSinkValidBundle(implicit p: Parameters): MixedVec[ValidIO[IssueQueueWBWakeUpBundle]] = {
     MixedVec(backendParam.getVfWBExeGroup.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq)

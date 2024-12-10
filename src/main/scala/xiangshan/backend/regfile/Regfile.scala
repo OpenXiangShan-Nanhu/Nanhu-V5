@@ -39,7 +39,7 @@ class RfReadPortWithConfig(val rfReadDataCfg: DataConfig, addrWidth: Int) extend
   val srcType: UInt = Input(UInt(3.W))
 
   def readInt: Boolean = IntRegSrcDataSet.contains(rfReadDataCfg)
-  def readFp : Boolean = FpRegSrcDataSet .contains(rfReadDataCfg)
+  // def readFp : Boolean = FpRegSrcDataSet .contains(rfReadDataCfg)
   def readVec: Boolean = VecRegSrcDataSet.contains(rfReadDataCfg)
   def readVf : Boolean = VecRegSrcDataSet .contains(rfReadDataCfg)
 }
@@ -54,7 +54,7 @@ class RfWritePortWithConfig(val rfWriteDataCfg: DataConfig, addrWidth: Int) exte
   val v0Wen = Input(Bool())
   val vlWen = Input(Bool())
   def writeInt: Boolean = rfWriteDataCfg.isInstanceOf[IntData]
-  def writeFp : Boolean = rfWriteDataCfg.isInstanceOf[FpData]
+  // def writeFp : Boolean = rfWriteDataCfg.isInstanceOf[FpData]
   def writeVec: Boolean = rfWriteDataCfg.isInstanceOf[VecData]
   def writeV0 : Boolean = rfWriteDataCfg.isInstanceOf[V0Data]
   def writeVl : Boolean = rfWriteDataCfg.isInstanceOf[VlData]
@@ -75,7 +75,8 @@ class Regfile
   val io = IO(new Bundle() {
     val readPorts = Vec(numReadPorts, new RfReadPort(len, width))
     val writePorts = Vec(numWritePorts, new RfWritePort(len, width))
-    val debug_rports = Vec(65, new RfReadPort(len, width))
+    val debug_rports = Vec(33, new RfReadPort(len, width))
+    val extra_debug_rports = Vec(33, new RfReadPort(len, width))
   })
   override def desiredName = name
   println(name + ": size:" + numPregs + " read: " + numReadPorts + " write: " + numWritePorts)
@@ -131,6 +132,9 @@ class Regfile
   for (rport <- io.debug_rports) {
     rport.data := memForRead(rport.addr)
   }
+  for (rport <- io.extra_debug_rports) {
+    rport.data := memForRead(rport.addr)
+  }
 }
 
 object Regfile {
@@ -148,6 +152,8 @@ object Regfile {
     bankNum      : Int = 1,
     debugReadAddr: Option[Seq[UInt]],
     debugReadData: Option[Vec[UInt]],
+    extradebugReadAddr: Option[Seq[UInt]],
+    extradebugReadData: Option[Vec[UInt]],
     isVlRegfile  : Boolean = false,
   )(implicit p: Parameters): Unit = {
     val numReadPorts = raddr.length
@@ -192,9 +198,15 @@ object Regfile {
     }
 
     require(debugReadAddr.nonEmpty == debugReadData.nonEmpty, "Both debug addr and data bundles should be empty or not")
+    require(extradebugReadAddr.nonEmpty == extradebugReadData.nonEmpty, "Both debug addr and data bundles should be empty or not")
     regfile.io.debug_rports := DontCare
+    regfile.io.extra_debug_rports := DontCare
     if (debugReadAddr.nonEmpty && debugReadData.nonEmpty) {
       debugReadData.get := VecInit(regfile.io.debug_rports.zip(debugReadAddr.get).map { case (rport, addr) =>
+        rport.addr := addr
+        rport.data
+      })
+      extradebugReadData.get := VecInit(regfile.io.extra_debug_rports.zip(extradebugReadAddr.get).map { case (rport, addr) =>
         rport.addr := addr
         rport.data
       })
@@ -219,7 +231,7 @@ object IntRegFile {
   )(implicit p: Parameters): Unit = {
     Regfile(
       name, numEntries, raddr, rdata, wen, waddr, wdata,
-      hasZero = true, withReset, bankNum, debugReadAddr, debugReadData)
+      hasZero = true, withReset, bankNum, debugReadAddr, debugReadData, debugReadAddr, debugReadData)
   }
 }
 
@@ -241,7 +253,7 @@ object FpRegFile {
            )(implicit p: Parameters): Unit = {
     Regfile(
       name, numEntries, raddr, rdata, wen, waddr, wdata,
-      hasZero = false, withReset, bankNum, debugReadAddr, debugReadData, isVlRegfile)
+      hasZero = false, withReset, bankNum, debugReadAddr, debugReadData, debugReadAddr, debugReadData, isVlRegfile)
   }
 }
 
@@ -256,8 +268,10 @@ object VfRegFile {
     wen          : Seq[Seq[Bool]],
     waddr        : Seq[UInt],
     wdata        : Seq[UInt],
-    debugReadAddr: Option[Seq[UInt]],
-    debugReadData: Option[Vec[UInt]],
+    vecdebugReadAddr: Option[Seq[UInt]],
+    vecdebugReadData: Option[Vec[UInt]],
+    fpdebugReadAddr: Option[Seq[UInt]],
+    fpdebugReadData: Option[Vec[UInt]],
     withReset    : Boolean = false,
   )(implicit p: Parameters): Unit = {
     require(splitNum >= 1, "splitNum should be no less than 1")
@@ -265,27 +279,31 @@ object VfRegFile {
     if (splitNum == 1) {
       Regfile(
         name, numEntries, raddr, rdata, wen.head, waddr, wdata,
-        hasZero = false, withReset, bankNum = 1, debugReadAddr, debugReadData)
+        hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugReadData, fpdebugReadAddr, fpdebugReadData)
     } else {
       val dataWidth = 64
       val numReadPorts = raddr.length
       require(splitNum > 1 && wdata.head.getWidth == dataWidth * splitNum)
       val wdataVec = Wire(Vec(splitNum, Vec(wdata.length, UInt(dataWidth.W))))
       val rdataVec = Wire(Vec(splitNum, Vec(raddr.length, UInt(dataWidth.W))))
-      val debugRDataVec: Option[Vec[Vec[UInt]]] = debugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
+      val vecdebugRDataVec: Option[Vec[Vec[UInt]]] = vecdebugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
+      val fpdebugRDataVec: Option[Vec[Vec[UInt]]] = fpdebugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
       for (i <- 0 until splitNum) {
         wdataVec(i) := wdata.map(_ ((i + 1) * dataWidth - 1, i * dataWidth))
         Regfile(
           name + s"Part${i}", numEntries, raddr, rdataVec(i), wen(i), waddr, wdataVec(i),
-          hasZero = false, withReset, bankNum = 1, debugReadAddr, debugRDataVec.map(_(i))
+          hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
         )
       }
       for (i <- 0 until rdata.length) {
         rdata(i) := Cat(rdataVec.map(_ (i)).reverse)
       }
-      if (debugReadData.nonEmpty) {
-        for (i <- 0 until debugReadData.get.length) {
-          debugReadData.get(i) := Cat(debugRDataVec.get.map(_ (i)).reverse)
+      if (vecdebugReadData.nonEmpty) {
+        for (i <- 0 until vecdebugReadData.get.length) {
+          vecdebugReadData.get(i) := Cat(vecdebugRDataVec.get.map(_ (i)).reverse)
+        }
+        for (i <- 0 until fpdebugReadData.get.length) {
+          fpdebugReadData.get(i) := Cat(fpdebugRDataVec.get.map(_ (i)).reverse)
         }
       }
     }

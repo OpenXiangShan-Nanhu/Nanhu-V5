@@ -11,7 +11,7 @@ object WbConfig {
     def dataWidth: Int = dataCfg.dataWidth
 
     def writeInt = dataCfg == IntData()
-    def writeFp = dataCfg == FpData()
+    // def writeFp = dataCfg == FpData()
     def writeVec = dataCfg == VecData()
     def writeV0 = dataCfg == V0Data()
     def writeVl = dataCfg == VlData()
@@ -19,7 +19,7 @@ object WbConfig {
     override def toString: String = {
       var res = this match {
         case _: IntWB => "INT"
-        case _: FpWB => "FP"
+        // case _: FpWB => "FP"
         case _: VfWB => "VF"
         case _: V0WB => "V0"
         case _: VlWB => "VL"
@@ -51,15 +51,15 @@ object WbConfig {
     def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(IntData()).numEntries
   }
 
-  case class FpWB(
-    port: Int = -1,
-    priority: Int = Int.MaxValue,
-  ) extends PregWB {
+  // case class FpWB(
+  //   port: Int = -1,
+  //   priority: Int = Int.MaxValue,
+  // ) extends PregWB {
 
-    def dataCfg: DataConfig = FpData()
+  //   def dataCfg: DataConfig = FpData()
 
-    def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(FpData()).numEntries
-  }
+  //   def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(FpData()).numEntries
+  // }
 
   case class VfWB(
     port    : Int = -1,

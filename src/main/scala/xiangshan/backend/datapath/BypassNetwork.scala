@@ -155,6 +155,7 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
       val exuParm = exuInput.bits.params
       val isIntScheduler = exuParm.isIntExeUnit
       val isReadVfRf= exuParm.readVfRf
+      val isReadV0Rf= exuParm.readV0Rf
       val dataSource = exuInput.bits.dataSources(srcIdx)
       val isWakeUpSink = params.allIssueParams.filter(_.exuBlockParams.contains(exuParm)).head.exuBlockParams.map(_.isIQWakeUpSink).reduce(_ || _)
       val readForward = if (isWakeUpSink) dataSource.readForward else false.B
@@ -173,7 +174,7 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
           readBypass     -> Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassDataVec),
           readBypass2    -> (if (bypass2ExuIdx >= 0) Mux1H(bypass2ValidVec3(bypass2ExuIdx)(srcIdx), bypass2DataVec) else 0.U),
           readZero       -> 0.U,
-          readV0         -> (if (srcIdx < 3 && isReadVfRf) exuInput.bits.src(3) else 0.U),
+          readV0         -> (if (srcIdx < 3 && isReadVfRf && isReadV0Rf) exuInput.bits.src(3) else 0.U),
           readRegOH      -> fromDPs(exuIdx).bits.src(srcIdx),
           readRegCache   -> fromDPsRCData(exuIdx)(srcIdx),
           readImm        -> (if (exuParm.hasLoadExu && srcIdx == 0) immLoadSrc0 else imm)

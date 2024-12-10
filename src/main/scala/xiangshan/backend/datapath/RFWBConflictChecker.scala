@@ -189,13 +189,13 @@ class IntRFWBCollideChecker(
   override protected def portRange: Range = 0 to backendParams.getWbPortIndices(IntData()).max
 }
 
-class FpRFWBCollideChecker(
-  backendParams: BackendParams
-)(implicit
-  p:Parameters
-) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.fpPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(FpData()).max
-}
+// class FpRFWBCollideChecker(
+//   backendParams: BackendParams
+// )(implicit
+//   p:Parameters
+// ) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.vfPregParams)) {
+//   override protected def portRange: Range = 0 to backendParams.getWbPortIndices(FpData()).max
+// }
 
 class VfRFWBCollideChecker(
   backendParams: BackendParams

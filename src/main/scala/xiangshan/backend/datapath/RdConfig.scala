@@ -14,9 +14,9 @@ object RdConfig {
     override def getDataConfig = IntData()
   }
 
-  case class FpRD(port: Int = -1, priority: Int = Int.MaxValue) extends RdConfig() {
-    override def getDataConfig = FpData()
-  }
+  // case class FpRD(port: Int = -1, priority: Int = Int.MaxValue) extends RdConfig() {
+  //   override def getDataConfig = FpData()
+  // }
 
   case class VfRD(port: Int = -1, priority: Int = Int.MaxValue) extends RdConfig() {
     override def getDataConfig = VecData()

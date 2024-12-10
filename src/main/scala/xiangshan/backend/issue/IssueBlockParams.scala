@@ -70,7 +70,7 @@ case class IssueBlockParams(
 
   def numIntSrc: Int = exuBlockParams.map(_.numIntSrc).max
 
-  def numFpSrc: Int = exuBlockParams.map(_.numFpSrc).max
+  // def numFpSrc: Int = exuBlockParams.map(_.numFpSrc).max
 
   def numVecSrc: Int = exuBlockParams.map(_.numVecSrc).max
 
@@ -86,7 +86,7 @@ case class IssueBlockParams(
 
   def readIntRf: Boolean = numIntSrc > 0
 
-  def readFpRf: Boolean = numFpSrc > 0
+  // def readFpRf: Boolean = numFpSrc > 0
 
   def readVecRf: Boolean = numVecSrc > 0
 
@@ -279,7 +279,7 @@ case class IssueBlockParams(
 
   def needWakeupFromIntWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readIntRf).groupBy(x => x.getIntWBPort.getOrElse(IntWB(port = -1)).port).filter(_._1 != -1)
 
-  def needWakeupFromFpWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readFpRf).groupBy(x => x.getFpWBPort.getOrElse(FpWB(port = -1)).port).filter(_._1 != -1)
+  // def needWakeupFromFpWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readFpRf).groupBy(x => x.getFpWBPort.getOrElse(FpWB(port = -1)).port).filter(_._1 != -1)
 
   def needWakeupFromVfWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readVecRf).groupBy(x => x.getVfWBPort.getOrElse(VfWB(port = -1)).port).filter(_._1 != -1)
 
@@ -359,12 +359,12 @@ case class IssueBlockParams(
       case IntScheduler() | MemScheduler() => needWakeupFromIntWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val fpBundle = schdType match {
-      case FpScheduler() | MemScheduler() => needWakeupFromFpWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
-      case _ => Seq()
-    }
+    // val fpBundle = schdType match {
+    //   case FpScheduler() | MemScheduler() => needWakeupFromFpWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
+    //   case _ => Seq()
+    // }
     val vfBundle = schdType match {
-      case VfScheduler() | MemScheduler() => needWakeupFromVfWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
+      case VfScheduler() | MemScheduler() | FpScheduler() => needWakeupFromVfWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
     val v0Bundle = schdType match {
@@ -375,7 +375,7 @@ case class IssueBlockParams(
       case VfScheduler() | MemScheduler() => needWakeupFromVlWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    MixedVec(intBundle ++ fpBundle ++ vfBundle ++ v0Bundle ++ vlBundle)
+    MixedVec(intBundle ++ vfBundle ++ v0Bundle ++ vlBundle)
   }
 
   def genIQWakeUpSourceValidBundle(implicit p: Parameters): MixedVec[ValidIO[IssueQueueIQWakeUpBundle]] = {

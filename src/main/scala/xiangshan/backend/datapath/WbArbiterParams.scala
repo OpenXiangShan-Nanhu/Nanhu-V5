@@ -19,7 +19,7 @@ case class WbArbiterParams(
 
   def numOut = wbCfgs.head match {
     case _: WbConfig.IntWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(IntData()).size)
-    case _: WbConfig.FpWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(FpData()).size)
+    // case _: WbConfig.FpWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(FpData()).size)
     case _: WbConfig.VfWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(VecData()).size)
     case _: WbConfig.V0WB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(V0Data()).size)
     case _: WbConfig.VlWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(VlData()).size)
@@ -42,7 +42,7 @@ case class WbArbiterParams(
         ValidIO(new WriteBackBundle(
           wbCfgs.head.dataCfg match {
             case IntData() => IntWB(port = x)
-            case FpData()  => FpWB(port = x)
+            // case FpData()  => FpWB(port = x)
             case VecData() => VfWB(port = x)
             case V0Data()  => V0WB(port = x)
             case VlData()  => VlWB(port = x)

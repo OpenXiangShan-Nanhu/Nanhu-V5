@@ -121,13 +121,13 @@ class IntRFReadArbiter(
   override protected def portRange: Range = 0 to backendParams.getRdPortIndices(IntData()).max
 }
 
-class FpRFReadArbiter(
-  backendParams: BackendParams
-)(implicit
-  p: Parameters
-) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[FpRD], backendParams.fpPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(FpData()).max
-}
+// class FpRFReadArbiter(
+//   backendParams: BackendParams
+// )(implicit
+//   p: Parameters
+// ) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[FpRD], backendParams.fpPregParams)) {
+//   override protected def portRange: Range = 0 to backendParams.getRdPortIndices(FpData()).max
+// }
 
 class VfRFReadArbiter(
   backendParams: BackendParams

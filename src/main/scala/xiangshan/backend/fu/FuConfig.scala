@@ -94,7 +94,7 @@ case class FuConfig (
   require(!maskWakeUp || maskWakeUp && maskSrcIdx >= 0, "The index of mask src must be set when vlWakeUp is enable")
 
   def numIntSrc : Int = srcData.map(_.count(x => IntRegSrcDataSet.contains(x))).fold(0)(_ max _)
-  def numFpSrc  : Int = srcData.map(_.count(x => FpRegSrcDataSet.contains(x))).fold(0)(_ max _)
+  // def numFpSrc  : Int = srcData.map(_.count(x => FpRegSrcDataSet.contains(x))).fold(0)(_ max _)
   def numVecSrc : Int = srcData.map(_.count(x => VecRegSrcDataSet.contains(x))).fold(0)(_ max _)
   def numVfSrc  : Int = srcData.map(_.count(x => VecRegSrcDataSet.contains(x))).fold(0)(_ max _)
   def numV0Src  : Int = srcData.map(_.count(x => V0RegSrcDataSet.contains(x))).fold(0)(_ max _)
@@ -102,7 +102,7 @@ case class FuConfig (
   def numRegSrc : Int = srcData.map(_.count(x => RegSrcDataSet.contains(x))).fold(0)(_ max _)
   def numSrc    : Int = srcData.map(_.length).fold(0)(_ max _)
 
-  def readFp: Boolean = numFpSrc > 0
+  // def readFp: Boolean = numFpSrc > 0
 
   def fuSel(uop: ExuInput): Bool = {
     // Don't add more shit here!!!
@@ -249,7 +249,8 @@ object FuConfig {
       Seq(IntData()),
     ),
     piped = true,
-    writeFpRf = true,
+    // writeFpRf = true,
+    writeVecRf = true,
     writeFflags = true,
     latency = CertainLatency(2),
     needSrcFrm = true,
@@ -263,7 +264,7 @@ object FuConfig {
       Seq(IntData(), IntData()),
     ),
     piped = true,
-    writeFpRf = true,
+    // writeFpRf = true,
     writeVecRf = true,
     writeV0Rf = true,
     latency = CertainLatency(0),
@@ -277,11 +278,11 @@ object FuConfig {
     FuType.f2v,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new IntFPToVec(cfg)(p).suggestName("f2v")),
     srcData = Seq(
-      Seq(FpData(), FpData()),
-      Seq(FpData()),
+      Seq(VecData(), VecData()),
+      Seq(VecData()),
     ),
     piped = true,
-    writeFpRf = true,
+    // writeFpRf = true,
     writeVecRf = true,
     writeV0Rf = true,
     latency = CertainLatency(0),
@@ -417,7 +418,7 @@ object FuConfig {
     ),
     piped = false, // Todo: check it
     writeIntRf = true,
-    writeFpRf = true,
+    writeVecRf = true,
     latency = UncertainLatency(3),
     exceptionOut = Seq(loadAddrMisaligned, loadAccessFault, loadPageFault, loadGuestPageFault, breakPoint),
     flushPipe = true,
@@ -448,7 +449,7 @@ object FuConfig {
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new Std(cfg)(p).suggestName("Std")),
     srcData = Seq(
       Seq(IntData()),
-      Seq(FpData()),
+      Seq(VecData()),
     ),
     piped = true,
     latency = CertainLatency(0)
@@ -463,7 +464,7 @@ object FuConfig {
     ),
     piped = false, // Todo: check it
     writeIntRf = true,
-    writeFpRf = true,
+    writeVecRf = true,
     latency = UncertainLatency(3),
     exceptionOut = Seq(loadAddrMisaligned, loadAccessFault, loadPageFault, loadGuestPageFault),
     flushPipe = true,
@@ -621,7 +622,7 @@ object FuConfig {
     piped = true,
     writeVecRf = true,
     writeV0Rf = true,
-    writeFpRf = true,
+    // writeFpRf = true,
     writeFflags = true,
     latency = CertainLatency(1),
     vconfigWakeUp = true,
@@ -693,10 +694,10 @@ object FuConfig {
     fuType = FuType.falu,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FAlu(cfg)(p).suggestName("Falu")),
     srcData = Seq(
-      Seq(FpData(), FpData()),
+      Seq(VecData(), VecData()),
     ),
     piped = true,
-    writeFpRf = true,
+    writeVecRf = true,
     writeIntRf = true,
     writeFflags = true,
     latency = CertainLatency(1),
@@ -709,10 +710,10 @@ object FuConfig {
     fuType = FuType.fmac,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FMA(cfg)(p).suggestName("Fmac")),
     srcData = Seq(
-      Seq(FpData(), FpData(), FpData()),
+      Seq(VecData(), VecData(), VecData()),
     ),
     piped = true,
-    writeFpRf = true,
+    writeVecRf = true,
     writeFflags = true,
     latency = CertainLatency(3),
     destDataBits = 64,
@@ -724,10 +725,10 @@ object FuConfig {
     fuType = FuType.fDivSqrt,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FDivSqrt(cfg)(p).suggestName("Fdiv")),
     srcData = Seq(
-      Seq(FpData(), FpData()),
+      Seq(VecData(), VecData()),
     ),
     piped = false,
-    writeFpRf = true,
+    writeVecRf = true,
     writeFflags = true,
     latency = UncertainLatency(),
     destDataBits = 64,
@@ -739,10 +740,10 @@ object FuConfig {
     fuType = FuType.fcvt,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FCVT(cfg)(p).suggestName("Fcvt")),
     srcData = Seq(
-      Seq(FpData()),
+      Seq(VecData()),
     ),
     piped = true,
-    writeFpRf = true,
+    writeVecRf = true,
     writeIntRf = true,
     writeFflags = true,
     latency = CertainLatency(2),

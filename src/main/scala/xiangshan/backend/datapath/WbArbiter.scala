@@ -104,8 +104,8 @@ class WbDataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBu
   val toIntPreg = Flipped(MixedVec(Vec(params.numPregWb(IntData()),
     new RfWritePortWithConfig(params.intPregParams.dataCfg, params.intPregParams.addrWidth))))
 
-  val toFpPreg = Flipped(MixedVec(Vec(params.numPregWb(FpData()),
-    new RfWritePortWithConfig(params.fpPregParams.dataCfg, params.fpPregParams.addrWidth))))
+  // val toFpPreg = Flipped(MixedVec(Vec(params.numPregWb(FpData()),
+  //   new RfWritePortWithConfig(params.vfPregParams.dataCfg, params.vfPregParams.addrWidth))))
 
   val toVfPreg = Flipped(MixedVec(Vec(params.numPregWb(VecData()),
     new RfWritePortWithConfig(params.vfPregParams.dataCfg, params.vfPregParams.addrWidth))))
@@ -177,7 +177,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   def acceptCond(exuOutput: ExuOutput): (Seq[Bool], Bool) = {
     val intWen = exuOutput.intWen.getOrElse(false.B)
     val fpwen  = exuOutput.fpWen.getOrElse(false.B)
-    val vecWen = exuOutput.vecWen.getOrElse(false.B)
+    val vecWen = exuOutput.vecWen.getOrElse(false.B) && !exuOutput.fpWen.getOrElse(false.B)
     val v0Wen  = exuOutput.v0Wen.getOrElse(false.B)
     val vlWen  = exuOutput.vlWen.getOrElse(false.B)
     (Seq(intWen, fpwen, vecWen, v0Wen, vlWen), !intWen && !fpwen && !vecWen && !v0Wen && !vlWen)
@@ -287,12 +287,12 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
 
   // wb arbiter
   private val intWbArbiter = Module(new RealWBCollideChecker(params.getIntWbArbiterParams))
-  private val fpWbArbiter = Module(new RealWBCollideChecker(params.getFpWbArbiterParams))
+  // private val fpWbArbiter = Module(new RealWBCollideChecker(params.getFpWbArbiterParams))
   private val vfWbArbiter = Module(new RealWBCollideChecker(params.getVfWbArbiterParams))
   private val v0WbArbiter = Module(new RealWBCollideChecker(params.getV0WbArbiterParams))
   private val vlWbArbiter = Module(new RealWBCollideChecker(params.getVlWbArbiterParams))
   println(s"[WbDataPath] int preg write back port num: ${intWbArbiter.io.out.size}, active port: ${intWbArbiter.io.inGroup.keys.toSeq.sorted}")
-  println(s"[WbDataPath] fp preg write back port num: ${fpWbArbiter.io.out.size}, active port: ${fpWbArbiter.io.inGroup.keys.toSeq.sorted}")
+  // println(s"[WbDataPath] fp preg write back port num: ${fpWbArbiter.io.out.size}, active port: ${fpWbArbiter.io.inGroup.keys.toSeq.sorted}")
   println(s"[WbDataPath] vf preg write back port num: ${vfWbArbiter.io.out.size}, active port: ${vfWbArbiter.io.inGroup.keys.toSeq.sorted}")
   println(s"[WbDataPath] v0 preg write back port num: ${v0WbArbiter.io.out.size}, active port: ${v0WbArbiter.io.inGroup.keys.toSeq.sorted}")
   println(s"[WbDataPath] vl preg write back port num: ${vlWbArbiter.io.out.size}, active port: ${vlWbArbiter.io.inGroup.keys.toSeq.sorted}")
@@ -307,14 +307,14 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   }
   private val intWbArbiterOut = intWbArbiter.io.out
 
-  fpWbArbiter.io.flush <> io.flush
-  require(fpWbArbiter.io.in.size == fpArbiterInputsWireY.size, s"fpWbArbiter input size: ${fpWbArbiter.io.in.size}, all fp wb size: ${fpArbiterInputsWireY.size}")
-  fpWbArbiter.io.in.zip(fpArbiterInputsWireY).foreach { case (arbiterIn, in) =>
-    arbiterIn.valid := in.valid && (in.bits.fpWen.getOrElse(false.B))
-    in.ready := arbiterIn.ready
-    arbiterIn.bits.fromExuOutput(in.bits, "fp")
-  }
-  private val fpWbArbiterOut = fpWbArbiter.io.out
+  // fpWbArbiter.io.flush <> io.flush
+  // require(fpWbArbiter.io.in.size == fpArbiterInputsWireY.size, s"fpWbArbiter input size: ${fpWbArbiter.io.in.size}, all fp wb size: ${fpArbiterInputsWireY.size}")
+  // fpWbArbiter.io.in.zip(fpArbiterInputsWireY).foreach { case (arbiterIn, in) =>
+  //   arbiterIn.valid := in.valid && (in.bits.fpWen.getOrElse(false.B))
+  //   in.ready := arbiterIn.ready
+  //   arbiterIn.bits.fromExuOutput(in.bits, "fp")
+  // }
+  // private val fpWbArbiterOut = fpWbArbiter.io.out
 
   vfWbArbiter.io.flush <> io.flush
   require(vfWbArbiter.io.in.size == vfArbiterInputsWireY.size, s"vfWbArbiter input size: ${vfWbArbiter.io.in.size}, all vf wb size: ${vfArbiterInputsWireY.size}")
@@ -361,7 +361,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
 
   // io assign
   private val toIntPreg: MixedVec[RfWritePortWithConfig] = MixedVecInit(intWbArbiterOut.map(x => x.bits.asIntRfWriteBundle(x.fire)).toSeq)
-  private val toFpPreg: MixedVec[RfWritePortWithConfig] = MixedVecInit(fpWbArbiterOut.map(x => x.bits.asFpRfWriteBundle(x.fire)).toSeq)
+  // private val toFpPreg: MixedVec[RfWritePortWithConfig] = MixedVecInit(fpWbArbiterOut.map(x => x.bits.asFpRfWriteBundle(x.fire)).toSeq)
   private val toVfPreg: MixedVec[RfWritePortWithConfig] = MixedVecInit(vfWbArbiterOut.map(x => x.bits.asVfRfWriteBundle(x.fire)).toSeq)
   private val toV0Preg: MixedVec[RfWritePortWithConfig] = MixedVecInit(v0WbArbiterOut.map(x => x.bits.asV0RfWriteBundle(x.fire)).toSeq)
   private val toVlPreg: MixedVec[RfWritePortWithConfig] = MixedVecInit(vlWbArbiterOut.map(x => x.bits.asVlRfWriteBundle(x.fire)).toSeq)
@@ -369,7 +369,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   private val wb2Ctrl = intExuWBs ++ fpExuWBs ++ vfExuWBs ++ memExuWBs
 
   io.toIntPreg := toIntPreg
-  io.toFpPreg := toFpPreg
+  // io.toFpPreg := toFpPreg
   io.toVfPreg := toVfPreg
   io.toV0Preg := toV0Preg
   io.toVlPreg := toVlPreg
@@ -399,15 +399,15 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
     })
   }
 
-  if (env.EnableDifftest || env.AlwaysBasicDiff) {
-    fpWbArbiterOut.foreach(out => {
-      val difftest = DifftestModule(new DiffFpWriteback(FpPhyRegs))
-      difftest.coreid := io.fromTop.hartId
-      difftest.valid := out.fire // all fp instr will write fp rf
-      difftest.address := out.bits.pdest
-      difftest.data := out.bits.data
-    })
-  }
+  // if (env.EnableDifftest || env.AlwaysBasicDiff) {
+  //   fpWbArbiterOut.foreach(out => {
+  //     val difftest = DifftestModule(new DiffFpWriteback(FpPhyRegs))
+  //     difftest.coreid := io.fromTop.hartId
+  //     difftest.valid := out.fire // all fp instr will write fp rf
+  //     difftest.address := out.bits.pdest
+  //     difftest.data := out.bits.data
+  //   })
+  // }
 
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
     vfWbArbiterOut.foreach(out => {

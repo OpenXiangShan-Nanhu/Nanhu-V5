@@ -9,6 +9,11 @@ import xiangshan.backend.BackendParams
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.datapath.WbConfig.{NoWB, PregWB}
 import xiangshan.backend.regfile.PregParams
+import xiangshan.backend.datapath.RdConfig.IntRD
+import xiangshan.backend.datapath.WbConfig.IntWB
+import xiangshan.backend.datapath.WbConfig.VfWB
+import xiangshan.backend.datapath.WbConfig.V0WB
+import xiangshan.backend.datapath.WbConfig.VlWB
 
 case class RFWBCollideCheckerParams (
   inWbCfgs: Seq[Seq[Set[PregWB]]],
@@ -186,7 +191,7 @@ class IntRFWBCollideChecker(
 )(implicit
   p:Parameters
 ) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.intPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(IntData()).max
+  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(IntWB()).max
 }
 
 // class FpRFWBCollideChecker(
@@ -194,7 +199,7 @@ class IntRFWBCollideChecker(
 // )(implicit
 //   p:Parameters
 // ) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.vfPregParams)) {
-//   override protected def portRange: Range = 0 to backendParams.getWbPortIndices(FpData()).max
+//   override protected def portRange: Range = 0 to backendParams.getWbPortIndices(FpRD()).max
 // }
 
 class VfRFWBCollideChecker(
@@ -202,7 +207,7 @@ class VfRFWBCollideChecker(
 )(implicit
   p:Parameters
 ) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.vfPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(VecData()).max
+  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(VfWB()).max
 }
 
 class V0RFWBCollideChecker(
@@ -210,7 +215,7 @@ class V0RFWBCollideChecker(
 )(implicit
   p:Parameters
 ) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.v0PregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(V0Data()).max
+  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(V0WB()).max
 }
 
 class VlRFWBCollideChecker(
@@ -218,5 +223,5 @@ class VlRFWBCollideChecker(
 )(implicit
   p:Parameters
 ) extends RFWBCollideCheckerBase(RFWBCollideCheckerParams(backendParams.getAllWbCfgs, backendParams.vlPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(VlData()).max
+  override protected def portRange: Range = 0 to backendParams.getWbPortIndices(VlWB()).max
 }

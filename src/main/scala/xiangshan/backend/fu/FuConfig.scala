@@ -278,8 +278,8 @@ object FuConfig {
     FuType.f2v,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new IntFPToVec(cfg)(p).suggestName("f2v")),
     srcData = Seq(
-      Seq(VecData(), VecData()),
-      Seq(VecData()),
+      Seq(FpData(), FpData()),
+      Seq(FpData()),
     ),
     piped = true,
     // writeFpRf = true,
@@ -449,7 +449,7 @@ object FuConfig {
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new Std(cfg)(p).suggestName("Std")),
     srcData = Seq(
       Seq(IntData()),
-      Seq(VecData()),
+      Seq(FpData()),
     ),
     piped = true,
     latency = CertainLatency(0)
@@ -694,7 +694,7 @@ object FuConfig {
     fuType = FuType.falu,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FAlu(cfg)(p).suggestName("Falu")),
     srcData = Seq(
-      Seq(VecData(), VecData()),
+      Seq(FpData(), FpData()),
     ),
     piped = true,
     writeVecRf = true,
@@ -710,7 +710,7 @@ object FuConfig {
     fuType = FuType.fmac,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FMA(cfg)(p).suggestName("Fmac")),
     srcData = Seq(
-      Seq(VecData(), VecData(), VecData()),
+      Seq(FpData(), FpData(), FpData()),
     ),
     piped = true,
     writeVecRf = true,
@@ -725,7 +725,7 @@ object FuConfig {
     fuType = FuType.fDivSqrt,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FDivSqrt(cfg)(p).suggestName("Fdiv")),
     srcData = Seq(
-      Seq(VecData(), VecData()),
+      Seq(FpData(), FpData()),
     ),
     piped = false,
     writeVecRf = true,
@@ -740,7 +740,7 @@ object FuConfig {
     fuType = FuType.fcvt,
     fuGen = (p: Parameters, cfg: FuConfig) => Module(new FCVT(cfg)(p).suggestName("Fcvt")),
     srcData = Seq(
-      Seq(VecData()),
+      Seq(FpData()),
     ),
     piped = true,
     writeVecRf = true,

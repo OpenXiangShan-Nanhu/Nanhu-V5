@@ -12,6 +12,7 @@ import xiangshan.backend.regfile.RfWritePortWithConfig
 import xiangshan.{Redirect, XSBundle, XSModule}
 import xiangshan.SrcType.v0
 import xiangshan.backend.fu.vector.Bundles.Vstart
+import xiangshan.backend.datapath.WbConfig._
 
 class WbArbiterDispatcherIO[T <: Data](private val gen: T, n: Int) extends Bundle {
   val in = Flipped(DecoupledIO(gen))
@@ -101,20 +102,15 @@ class WbDataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBu
     val vstart = Vstart()
   })
 
-  val toIntPreg = Flipped(MixedVec(Vec(params.numPregWb(IntData()),
-    new RfWritePortWithConfig(params.intPregParams.dataCfg, params.intPregParams.addrWidth))))
+  val toIntPreg = Flipped(MixedVec(Vec(params.numPregWb(params.intPregParams), new RfWritePortWithConfig(params.intPregParams))))
 
-  // val toFpPreg = Flipped(MixedVec(Vec(params.numPregWb(FpData()),
-  //   new RfWritePortWithConfig(params.vfPregParams.dataCfg, params.vfPregParams.addrWidth))))
+  // val toFpPreg = Flipped(MixedVec(Vec(params.numPregWb(params.numPregWb(params.fpPregParams), new RfWritePortWithConfig(params.vfPregParams))))
 
-  val toVfPreg = Flipped(MixedVec(Vec(params.numPregWb(VecData()),
-    new RfWritePortWithConfig(params.vfPregParams.dataCfg, params.vfPregParams.addrWidth))))
+  val toVfPreg = Flipped(MixedVec(Vec(params.numPregWb(params.vfPregParams), new RfWritePortWithConfig(params.vfPregParams))))
 
-  val toV0Preg = Flipped(MixedVec(Vec(params.numPregWb(V0Data()),
-    new RfWritePortWithConfig(params.v0PregParams.dataCfg, params.v0PregParams.addrWidth))))
+  val toV0Preg = Flipped(MixedVec(Vec(params.numPregWb(params.v0PregParams), new RfWritePortWithConfig(params.v0PregParams))))
 
-  val toVlPreg = Flipped(MixedVec(Vec(params.numPregWb(VlData()),
-    new RfWritePortWithConfig(params.vlPregParams.dataCfg, params.vlPregParams.addrWidth))))
+  val toVlPreg = Flipped(MixedVec(Vec(params.numPregWb(params.vlPregParams), new RfWritePortWithConfig(params.vlPregParams))))
 
   val toCtrlBlock = new Bundle {
     val writeback: MixedVec[ValidIO[ExuOutput]] = params.genWrite2CtrlBundles

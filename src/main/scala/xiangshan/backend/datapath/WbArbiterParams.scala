@@ -7,7 +7,7 @@ import xiangshan.backend.BackendParams
 import xiangshan.backend.Bundles.WriteBackBundle
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.datapath.WbConfig._
-import xiangshan.backend.regfile.PregParams
+import xiangshan.backend.regfile._
 
 case class WbArbiterParams(
   wbCfgs    : Seq[PregWB],
@@ -17,18 +17,9 @@ case class WbArbiterParams(
 
   def numIn = wbCfgs.length
 
-  def numOut = wbCfgs.head match {
-    case _: WbConfig.IntWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(IntData()).size)
-    // case _: WbConfig.FpWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(FpData()).size)
-    case _: WbConfig.VfWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(VecData()).size)
-    case _: WbConfig.V0WB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(V0Data()).size)
-    case _: WbConfig.VlWB => pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(VlData()).size)
-    case x =>
-      assert(assertion = false, s"the WbConfig in WbArbiterParams should be either IntWB or FpWB or VfWB or V0WB or VlWB, found ${x.getClass}")
-      0
-  }
+  def numOut = pregParams.numWrite.getOrElse(backendParams.getWbPortIndices(pregParams.wbType).size)
 
-  def dataWidth = pregParams.dataCfg.dataWidth
+  def dataWidth = pregParams.dataCfg.map(_.dataWidth).max
 
   def addrWidth = log2Up(pregParams.numEntries)
 
@@ -40,19 +31,17 @@ case class WbArbiterParams(
     Output(MixedVec(Seq.tabulate(numOut) {
       x =>
         ValidIO(new WriteBackBundle(
-          wbCfgs.head.dataCfg match {
-            case IntData() => IntWB(port = x)
-            // case FpData()  => FpWB(port = x)
-            case VecData() => VfWB(port = x)
-            case V0Data()  => V0WB(port = x)
-            case VlData()  => VlWB(port = x)
-            case _ => ???
+          wbCfgs.head match {
+            case cfg: IntWB => IntWB(port = x)
+            case cfg: VfWB  => VfWB(port = x)
+            case cfg: V0WB  => V0WB(port = x)
+            case cfg: VlWB  => VlWB(port = x)
+            case _          => ???
           },
           backendParams
         )
         )
     }
-    )
-    )
+    ))
   }
 }

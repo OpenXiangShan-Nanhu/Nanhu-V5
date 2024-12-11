@@ -591,7 +591,7 @@ object Bundles {
 
     val rf: MixedVec[MixedVec[RfReadPortWithConfig]] = Flipped(MixedVec(
       rfReadDataCfgSet.map((set: Set[DataConfig]) =>
-        MixedVec(set.map((x: DataConfig) => new RfReadPortWithConfig(x, exuParams.rdPregIdxWidth)).toSeq)
+        MixedVec(set.map((x: DataConfig) => new RfReadPortWithConfig(exuParams.rdPregIdxWidth)).toSeq)
       )
     ))
 
@@ -866,7 +866,7 @@ object Bundles {
     }
 
     def asIntRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(IntData()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.intPregParams)))
       rfWrite.wen := this.rfWen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
@@ -879,7 +879,7 @@ object Bundles {
     }
 
     def asVfRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(VecData()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.vfPregParams)))
       rfWrite.wen := this.vecWen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
@@ -892,7 +892,7 @@ object Bundles {
     }
 
     def asV0RfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(V0Data()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.v0PregParams)))
       rfWrite.wen := this.v0Wen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
@@ -905,7 +905,7 @@ object Bundles {
     }
 
     def asVlRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(VlData()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.vlPregParams)))
       rfWrite.wen := this.vlWen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data

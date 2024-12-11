@@ -137,22 +137,22 @@ class BackendInlined(val params: BackendParams)(implicit p: Parameters) extends 
   }
 
   println(s"[Backend] Int RdConfigs: ExuName(Priority)")
-  for ((port, seq) <- params.getRdPortParams(IntData())) {
+  for ((port, seq) <- params.getRdPortParams(IntRD())) {
     println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
   }
 
   println(s"[Backend] Int WbConfigs: ExuName(Priority)")
-  for ((port, seq) <- params.getWbPortParams(IntData())) {
+  for ((port, seq) <- params.getWbPortParams(IntWB())) {
     println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
   }
 
   println(s"[Backend] Vf RdConfigs: ExuName(Priority)")
-  for ((port, seq) <- params.getRdPortParams(VecData())) {
+  for ((port, seq) <- params.getRdPortParams(VfRD())) {
     println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
   }
 
   println(s"[Backend] Vf WbConfigs: ExuName(Priority)")
-  for ((port, seq) <- params.getWbPortParams(VecData())) {
+  for ((port, seq) <- params.getWbPortParams(VfWB())) {
     println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
   }
 

@@ -397,7 +397,7 @@ case class XSCoreParameters
       numPregs = intPreg.numEntries,
       numDeqOutside = 0,
       schdType = schdType,
-      rfDataWidth = intPreg.dataCfg.dataWidth,
+      rfDataWidth = intPreg.dataCfg.map(_.dataWidth).max,
       numUopIn = dpParams.IntDqDeqWidth,
     )
   }
@@ -425,7 +425,7 @@ case class XSCoreParameters
       numPregs = vfPreg.numEntries,
       numDeqOutside = 0,
       schdType = schdType,
-      rfDataWidth = vfPreg.dataCfg.dataWidth,
+      rfDataWidth = vfPreg.dataCfg.map(_.dataWidth).max,
       numUopIn = dpParams.VecDqDeqWidth,
     )
   }
@@ -448,7 +448,7 @@ case class XSCoreParameters
       numPregs = vfPreg.numEntries,
       numDeqOutside = 0,
       schdType = schdType,
-      rfDataWidth = vfPreg.dataCfg.dataWidth,
+      rfDataWidth = vfPreg.dataCfg.map(_.dataWidth).max,
       numUopIn = dpParams.VecDqDeqWidth,
     )
   }

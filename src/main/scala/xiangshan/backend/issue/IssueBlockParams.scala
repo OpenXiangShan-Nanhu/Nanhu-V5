@@ -8,6 +8,7 @@ import xiangshan.backend.BackendParams
 import xiangshan.backend.Bundles._
 import xiangshan.backend.datapath.DataConfig.DataConfig
 import xiangshan.backend.datapath.WbConfig._
+import xiangshan.backend.datapath.RdConfig._
 import xiangshan.backend.datapath.{WakeUpConfig, WakeUpSource}
 import xiangshan.backend.exu.{ExeUnit, ExeUnitParams}
 import xiangshan.backend.fu.{FuConfig, FuType}
@@ -213,12 +214,12 @@ case class IssueBlockParams(
   /**
     * Get the regfile type that this issue queue need to read
     */
-  def pregReadSet: Set[DataConfig] = exuBlockParams.map(_.pregRdDataCfgSet).fold(Set())(_ union _)
+  def pregReadSet: Set[RdConfig] = exuBlockParams.map(_.pregRdCfgSet).fold(Set())(_ union _)
 
   /**
     * Get the regfile type that this issue queue need to read
     */
-  def pregWriteSet: Set[DataConfig] = exuBlockParams.map(_.pregWbDataCfgSet).fold(Set())(_ union _)
+  def pregWriteSet: Set[PregWB] = exuBlockParams.map(_.pregWbCfgSet).fold(Set())(_ union _)
 
   /**
     * Get the max width of psrc
@@ -272,7 +273,7 @@ case class IssueBlockParams(
 
   def numWakeupFromWB = {
     val pregSet = this.pregReadSet
-    pregSet.map(cfg => backendParam.getRfWriteSize(cfg)).sum
+    pregSet.map(cfg => backendParam.getRfWriteSize(backendParam.getPregParams(cfg))).sum
   }
 
   def hasIQWakeUp: Boolean = numWakeupFromIQ > 0 && numRegSrc > 0

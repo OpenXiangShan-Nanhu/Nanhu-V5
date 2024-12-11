@@ -29,10 +29,11 @@ class DataPath(params: BackendParams)(implicit p: Parameters) extends LazyModule
   lazy val module = new DataPathImp(this)
 
   println(s"[DataPath] Preg Params: ")
-  println(s"[DataPath]   Int R(${params.getRfReadSize(IntData())}), W(${params.getRfWriteSize(IntData())}) ")
-  println(s"[DataPath]   Vf R(${params.getRfReadSize(VecData())}), W(${params.getRfWriteSize(VecData())}) ")
-  println(s"[DataPath]   V0 R(${params.getRfReadSize(V0Data())}), W(${params.getRfWriteSize(V0Data())}) ")
-  println(s"[DataPath]   Vl R(${params.getRfReadSize(VlData())}), W(${params.getRfWriteSize(VlData())}) ")
+  println(s"[DataPath]   Int R(${params.getRfReadSize(params.intPregParams)}), W(${params.getRfWriteSize(params.intPregParams)}) ")
+  // println(s"[DataPath]   Fp R(${params.getRfReadSize(prarms.fpPregParams)}), W(${params.getRfWriteSize(params.fpPregParams)}) ")
+  println(s"[DataPath]   Vf R(${params.getRfReadSize(params.vfPregParams)}), W(${params.getRfWriteSize(params.vfPregParams)}) ")
+  println(s"[DataPath]   V0 R(${params.getRfReadSize(params.v0PregParams)}), W(${params.getRfWriteSize(params.v0PregParams)}) ")
+  println(s"[DataPath]   Vl R(${params.getRfReadSize(params.vlPregParams)}), W(${params.getRfWriteSize(params.vlPregParams)}) ")
 }
 
 class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params: BackendParams)
@@ -199,28 +200,28 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val pcReadFtqOffset = Wire(chiselTypeOf(io.fromPcTargetMem.fromDataPathFtqOffset))
   private val targetPCRdata = io.fromPcTargetMem.toDataPathTargetPC
   private val pcRdata = io.fromPcTargetMem.toDataPathPC
-  private val intRfRaddr = Wire(Vec(params.numPregRd(IntData()), UInt(intSchdParams.pregIdxWidth.W)))
-  private val intRfRdata = Wire(Vec(params.numPregRd(IntData()), UInt(intSchdParams.rfDataWidth.W)))
+  private val intRfRaddr = Wire(Vec(params.numPregRd(params.intPregParams), UInt(intSchdParams.pregIdxWidth.W)))
+  private val intRfRdata = Wire(Vec(params.numPregRd(params.intPregParams), UInt(intSchdParams.rfDataWidth.W)))
   private val intRfWen = Wire(Vec(io.fromIntWb.length, Bool()))
   private val intRfWaddr = Wire(Vec(io.fromIntWb.length, UInt(intSchdParams.pregIdxWidth.W)))
   private val intRfWdata = Wire(Vec(io.fromIntWb.length, UInt(intSchdParams.rfDataWidth.W)))
 
   private val vfRfSplitNum = VLEN / XLEN
-  private val vfRfRaddr = Wire(Vec(params.numPregRd(VecData()), UInt(vfSchdParams.pregIdxWidth.W)))
-  private val vfRfRdata = Wire(Vec(params.numPregRd(VecData()), UInt(vfSchdParams.rfDataWidth.W)))
+  private val vfRfRaddr = Wire(Vec(params.numPregRd(params.vfPregParams), UInt(vfSchdParams.pregIdxWidth.W)))
+  private val vfRfRdata = Wire(Vec(params.numPregRd(params.vfPregParams), UInt(vfSchdParams.rfDataWidth.W)))
   private val vfRfWen = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
   private val vfRfWaddr = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W)))
   private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
 
   private val v0RfSplitNum = VLEN / XLEN
-  private val v0RfRaddr = Wire(Vec(params.numPregRd(V0Data()), UInt(log2Up(V0PhyRegs).W)))
-  private val v0RfRdata = Wire(Vec(params.numPregRd(V0Data()), UInt(V0Data().dataWidth.W)))
+  private val v0RfRaddr = Wire(Vec(params.numPregRd(params.v0PregParams), UInt(log2Up(V0PhyRegs).W)))
+  private val v0RfRdata = Wire(Vec(params.numPregRd(params.v0PregParams), UInt(V0Data().dataWidth.W)))
   private val v0RfWen = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
   private val v0RfWaddr = Wire(Vec(io.fromV0Wb.length, UInt(log2Up(V0PhyRegs).W)))
   private val v0RfWdata = Wire(Vec(io.fromV0Wb.length, UInt(V0Data().dataWidth.W)))
 
-  private val vlRfRaddr = Wire(Vec(params.numPregRd(VlData()), UInt(log2Up(VlPhyRegs).W)))
-  private val vlRfRdata = Wire(Vec(params.numPregRd(VlData()), UInt(VlData().dataWidth.W)))
+  private val vlRfRaddr = Wire(Vec(params.numPregRd(params.vlPregParams), UInt(log2Up(VlPhyRegs).W)))
+  private val vlRfRdata = Wire(Vec(params.numPregRd(params.vlPregParams), UInt(VlData().dataWidth.W)))
   private val vlRfWen = Wire(Vec(io.fromVlWb.length, Bool()))
   private val vlRfWaddr = Wire(Vec(io.fromVlWb.length, UInt(log2Up(VlPhyRegs).W)))
   private val vlRfWdata = Wire(Vec(io.fromVlWb.length, UInt(VlData().dataWidth.W)))

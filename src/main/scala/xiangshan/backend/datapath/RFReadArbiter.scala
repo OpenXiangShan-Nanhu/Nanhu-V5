@@ -118,7 +118,7 @@ class IntRFReadArbiter(
 )(implicit
   p: Parameters
 ) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[IntRD], backendParams.intPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(IntData()).max
+  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(IntRD()).max
 }
 
 // class FpRFReadArbiter(
@@ -126,7 +126,7 @@ class IntRFReadArbiter(
 // )(implicit
 //   p: Parameters
 // ) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[FpRD], backendParams.fpPregParams)) {
-//   override protected def portRange: Range = 0 to backendParams.getRdPortIndices(FpData()).max
+//   override protected def portRange: Range = 0 to backendParams.getRdPortIndices(VfRD).max
 // }
 
 class VfRFReadArbiter(
@@ -134,7 +134,7 @@ class VfRFReadArbiter(
 )(implicit
   p: Parameters
 ) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[VfRD], backendParams.vfPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(VecData()).max
+  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(VfRD()).max
 }
 
 class V0RFReadArbiter(
@@ -142,7 +142,7 @@ class V0RFReadArbiter(
 )(implicit
   p: Parameters
 ) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[V0RD], backendParams.v0PregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(V0Data()).max
+  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(V0RD()).max
 }
 
 class VlRFReadArbiter(
@@ -150,5 +150,5 @@ class VlRFReadArbiter(
 )(implicit
   p: Parameters
 ) extends RFReadArbiterBase(RFRdArbParams(backendParams.getRdCfgs[VlRD], backendParams.vlPregParams)) {
-  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(VlData()).max
+  override protected def portRange: Range = 0 to backendParams.getRdPortIndices(VlRD()).max
 }

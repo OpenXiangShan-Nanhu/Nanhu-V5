@@ -84,8 +84,16 @@ case class BackendParams(
   def vfPregParams: VfPregParams = pregParams.collectFirst { case x: VfPregParams => x }.get
   def v0PregParams: V0PregParams = pregParams.collectFirst { case x: V0PregParams => x }.get
   def vlPregParams: VlPregParams = pregParams.collectFirst { case x: VlPregParams => x }.get
-  def getPregParams: Map[DataConfig, PregParams] = {
-    pregParams.map(x => (x.dataCfg, x)).toMap
+  def fakeIntPregParams: FakeIntPregParams = pregParams.collectFirst { case x: FakeIntPregParams => x }.get
+  def getPregParams[T <: regPort](cfg : T): PregParams = {
+    cfg match {
+      case _: IntRD | _: IntWB => intPregParams
+      // case _: FpRD | _: FpWB => fpPregParams
+      case _: VfRD | _: VfWB => vfPregParams
+      case _: V0RD | _: V0WB => v0PregParams
+      case _: VlRD | _: VlWB => vlPregParams
+      case _ => fakeIntPregParams
+    }
   }
 
   def pregIdxWidth = pregParams.map(_.addrWidth).max
@@ -115,8 +123,8 @@ case class BackendParams(
   def numPcMemReadPort = allExuParams.filter(_.needPc).size
   def numTargetReadPort = allRealExuParams.count(x => x.needTarget)
 
-  def numPregRd(dataCfg: DataConfig) = this.getRfReadSize(dataCfg)
-  def numPregWb(dataCfg: DataConfig) = this.getRfWriteSize(dataCfg)
+  def numPregRd(pregParams: PregParams) = this.getRfReadSize(pregParams)
+  def numPregWb(pregParams: PregParams) = this.getRfWriteSize(pregParams)
 
   def numNoDataWB = allSchdParams.map(_.numNoDataWB).sum
   def numExu = allSchdParams.map(_.numExu).sum
@@ -137,24 +145,14 @@ case class BackendParams(
     this.fpSchdParams.get.issueBlockParams.map(x => Vec(x.numDeq, UInt((x.numEntries).U.getWidth.W)))
   }
 
-  def genIntWriteBackBundle(implicit p: Parameters) = {
-    Seq.fill(this.getIntRfWriteSize)(new RfWritePortWithConfig(IntData(), intPregParams.addrWidth))
-  }
+  def genIntWriteBackBundle(implicit p: Parameters) = genWriteBackBundle(intPregParams)
+  // def genFpWriteBackBundle(implicit p: Parameters) = genWriteBackBundle(fpPregParams)
+  def genVfWriteBackBundle(implicit p: Parameters) = genWriteBackBundle(vfPregParams)
+  def genV0WriteBackBundle(implicit p: Parameters) =  genWriteBackBundle(v0PregParams)
+  def genVlWriteBackBundle(implicit p: Parameters) = genWriteBackBundle(vlPregParams)
 
-  def genVfWriteBackBundle(implicit p: Parameters) = {
-    Seq.fill(this.getVfRfWriteSize)(new RfWritePortWithConfig(VecData(), vfPregParams.addrWidth))
-  }
-
-  def genV0WriteBackBundle(implicit p: Parameters) = {
-    Seq.fill(this.getV0RfWriteSize)(new RfWritePortWithConfig(V0Data(), v0PregParams.addrWidth))
-  }
-
-  def genVlWriteBackBundle(implicit p: Parameters) = {
-    Seq.fill(this.getVlRfWriteSize)(new RfWritePortWithConfig(VlData(), vlPregParams.addrWidth))
-  }
-
-  def genWriteBackBundles(implicit p: Parameters): Seq[RfWritePortWithConfig] = {
-    genIntWriteBackBundle ++ genVfWriteBackBundle
+  def genWriteBackBundle(pregParams: PregParams)(implicit p: Parameters): Seq[RfWritePortWithConfig] = {
+    Seq.fill(this.getRfWriteSize(pregParams))(new RfWritePortWithConfig(pregParams))
   }
 
   def genWrite2CtrlBundles(implicit p: Parameters): MixedVec[ValidIO[ExuOutput]] = {
@@ -187,11 +185,11 @@ case class BackendParams(
     * @param dataCfg [[IntData]] or [[VecData]]
     * @return Seq[port->Seq[(exuIdx, priority)]
     */
-  def getRdPortParams(dataCfg: DataConfig) = {
+  def getRdPortParams(cfg: RdConfig) = {
     // port -> Seq[exuIdx, priority]
     val cfgs: Seq[(Int, Seq[(Int, Int)])] = allRealExuParams
       .flatMap(x => x.rfrPortConfigs.flatten.map(xx => (xx, x.exuIdx)))
-      .filter { x => x._1.getDataConfig == dataCfg }
+      .filter { x => x._1.getClass == cfg.getClass }
       .map(x => (x._1.port, (x._2, x._1.priority)))
       .groupBy(_._1)
       .map(x => (x._1, x._2.map(_._2).sortBy({ case (priority, _) => priority })))
@@ -206,10 +204,10 @@ case class BackendParams(
     * @param dataCfg [[IntData]] or [[VecData]]
     * @return Seq[port->Seq[(exuIdx, priority)]
     */
-  def getWbPortParams(dataCfg: DataConfig) = {
+  def getWbPortParams(cfg: PregWB) = {
     val cfgs: Seq[(Int, Seq[(Int, Int)])] = allRealExuParams
       .flatMap(x => x.wbPortConfigs.map(xx => (xx, x.exuIdx)))
-      .filter { x => x._1.dataCfg == dataCfg }
+      .filter { x => x._1.getClass == cfg.getClass }
       .map(x => (x._1.port, (x._2, x._1.priority)))
       .groupBy(_._1)
       .map(x => (x._1, x._2.map(_._2)))
@@ -218,12 +216,12 @@ case class BackendParams(
     cfgs
   }
 
-  def getRdPortIndices(dataCfg: DataConfig) = {
-    this.getRdPortParams(dataCfg).map(_._1)
+  def getRdPortIndices(cfg: RdConfig) = {
+    this.getRdPortParams(cfg).map(_._1)
   }
 
-  def getWbPortIndices(dataCfg: DataConfig) = {
-    this.getWbPortParams(dataCfg).map(_._1)
+  def getWbPortIndices(cfg: PregWB) = {
+    this.getWbPortParams(cfg).map(_._1)
   }
 
   def getRdCfgs[T <: RdConfig](implicit tag: ClassTag[T]): Seq[Seq[Seq[RdConfig]]] = {
@@ -247,64 +245,13 @@ case class BackendParams(
     wbCfgs
   }
 
-  /**
-    * Get size of read ports of int regfile
-    *
-    * @return if [[IntPregParams.numRead]] is [[None]], get size of ports in [[IntRD]]
-    */
-  def getIntRfReadSize = {
-    this.intPregParams.numRead.getOrElse(this.getRdPortIndices(IntData()).size)
+  def getRfReadSize(pregParams: PregParams) = {
+    pregParams.numRead.getOrElse(this.getRdPortIndices(pregParams.rdType).size)
   }
 
-  /**
-    * Get size of write ports of int regfile
-    *
-    * @return if [[IntPregParams.numWrite]] is [[None]], get size of ports in [[IntWB]]
-    */
-  def getIntRfWriteSize = {
-    this.intPregParams.numWrite.getOrElse(this.getWbPortIndices(IntData()).size)
+  def getRfWriteSize(pregParams: PregParams) = {
+    pregParams.numWrite.getOrElse(this.getWbPortIndices(pregParams.wbType).size)
   }
-
-  /**
-    * Get size of read ports of vec regfile
-    *
-    * @return if [[VfPregParams.numRead]] is [[None]], get size of ports in [[VfRD]]
-    */
-  def getVfRfReadSize = {
-    this.vfPregParams.numRead.getOrElse(this.getRdPortIndices(VecData()).size)
-  }
-
-  /**
-    * Get size of write ports of vec regfile
-    *
-    * @return if [[VfPregParams.numWrite]] is [[None]], get size of ports in [[VfWB]]
-    */
-  def getVfRfWriteSize = {
-    this.vfPregParams.numWrite.getOrElse(this.getWbPortIndices(VecData()).size)
-  }
-
-  def getV0RfWriteSize = {
-    this.v0PregParams.numWrite.getOrElse(this.getWbPortIndices(V0Data()).size)
-  }
-
-  def getVlRfWriteSize = {
-    this.vlPregParams.numWrite.getOrElse(this.getWbPortIndices(VlData()).size)
-  }
-
-  def getRfReadSize(dataCfg: DataConfig) = {
-    dataCfg match{
-      case IntData() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
-      case VecData() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
-      case V0Data() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
-      case VlData() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
-      case _ => throw new IllegalArgumentException(s"DataConfig ${dataCfg} can not get RfReadSize")
-    }
-  }
-
-  def getRfWriteSize(dataCfg: DataConfig) = {
-    this.getPregParams(dataCfg).numWrite.getOrElse(this.getWbPortIndices(dataCfg).size)
-  }
-
 
   /**
     * Get size of read ports of int regcache
@@ -372,7 +319,7 @@ case class BackendParams(
   def checkReadPortContinuous = {
     pregParams.filterNot(_.isFake).foreach { x =>
       if (x.numRead.isEmpty) {
-        val portIndices: Seq[Int] = getRdPortIndices(x.dataCfg)
+        val portIndices: Seq[Int] = getRdPortIndices(x.rdType)
         require(isContinuous(portIndices),
           s"The read ports of ${x.getClass.getSimpleName} should be continuous, " +
             s"when numRead of ${x.getClass.getSimpleName} is None. The read port indices are $portIndices")
@@ -383,7 +330,7 @@ case class BackendParams(
   def checkWritePortContinuous = {
     pregParams.filterNot(_.isFake).foreach { x =>
       if (x.numWrite.isEmpty) {
-        val portIndices: Seq[Int] = getWbPortIndices(x.dataCfg)
+        val portIndices: Seq[Int] = getWbPortIndices(x.wbType)
         require(
           isContinuous(portIndices),
           s"The write ports of ${x.getClass.getSimpleName} should be continuous, " +

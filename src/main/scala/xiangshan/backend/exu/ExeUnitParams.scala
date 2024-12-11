@@ -131,11 +131,11 @@ case class ExeUnitParams(
     1 + setIQ.size / copyDistance
   }
   def rdPregIdxWidth: Int = {
-    this.pregRdDataCfgSet.map(dataCfg => backendParam.getPregParams(dataCfg).addrWidth).fold(0)(_ max _)
+    this.pregRdCfgSet.map(rdCfg => backendParam.getPregParams(rdCfg).addrWidth).fold(0)(_ max _)
   }
 
   def wbPregIdxWidth: Int = {
-    this.pregWbDataCfgSet.map(dataCfg => backendParam.getPregParams(dataCfg).addrWidth).fold(0)(_ max _)
+    this.pregWbCfgSet.map(wbCfg => backendParam.getPregParams(wbCfg).addrWidth).fold(0)(_ max _)
   }
 
   val writeIntFuConfigs: Seq[FuConfig] = fuConfigs.filter(x => x.writeIntRf)
@@ -370,15 +370,15 @@ case class ExeUnitParams(
   /**
     * Get the [[DataConfig]] that this exu need to read
     */
-  def pregRdDataCfgSet: Set[DataConfig] = {
-    this.rfrPortConfigs.flatten.map(_.getDataConfig).toSet
+  def pregRdCfgSet: Set[RdConfig] = {
+    this.rfrPortConfigs.flatten.toSet
   }
 
   /**
     * Get the [[DataConfig]] that this exu need to write
     */
-  def pregWbDataCfgSet: Set[DataConfig] = {
-    this.wbPortConfigs.map(_.dataCfg).toSet
+  def pregWbCfgSet: Set[PregWB] = {
+    this.wbPortConfigs.toSet
   }
 
   def getRfReadDataCfgSet: Seq[Set[DataConfig]] = {

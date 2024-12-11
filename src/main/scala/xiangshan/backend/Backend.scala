@@ -124,11 +124,6 @@ class BackendInlined(val params: BackendParams)(implicit p: Parameters) extends 
         fuConfigs.map(_.writeIntRf).reduce(_ || _),
       s"${exuCfg.name} int wb port has no priority"
     )
-    // require(
-    //   wbPortConfigs.collectFirst { case x: FpWB => x }.nonEmpty ==
-    //     fuConfigs.map(x => x.writeFpRf).reduce(_ || _),
-    //   s"${exuCfg.name} fp wb port has no priority"
-    // )
     require(
       wbPortConfigs.collectFirst { case x: VfWB => x }.nonEmpty ==
         fuConfigs.map(x => x.writeVecRf).reduce(_ || _),
@@ -150,16 +145,6 @@ class BackendInlined(val params: BackendParams)(implicit p: Parameters) extends 
   for ((port, seq) <- params.getWbPortParams(IntData())) {
     println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
   }
-
-  // println(s"[Backend] Fp RdConfigs: ExuName(Priority)")
-  // for ((port, seq) <- params.getRdPortParams(VecData())) {
-  //   println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
-  // }
-
-  // println(s"[Backend] Fp WbConfigs: ExuName(Priority)")
-  // for ((port, seq) <- params.getWbPortParams(VecData())) {
-  //   println(s"[Backend]   port($port): ${seq.map(x => params.getExuName(x._1) + "(" + x._2.toString + ")").mkString(",")}")
-  // }
 
   println(s"[Backend] Vf RdConfigs: ExuName(Priority)")
   for ((port, seq) <- params.getRdPortParams(VecData())) {
@@ -277,7 +262,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   intScheduler.io.fromDispatch.allocPregs <> ctrlBlock.io.toIssueBlock.allocPregs
   intScheduler.io.fromDispatch.uops <> ctrlBlock.io.toIssueBlock.intUops
   intScheduler.io.intWriteBack := wbDataPath.io.toIntPreg
-  // intScheduler.io.fpWriteBack := 0.U.asTypeOf(intScheduler.io.fpWriteBack)
   intScheduler.io.vfWriteBack := 0.U.asTypeOf(intScheduler.io.vfWriteBack)
   intScheduler.io.v0WriteBack := 0.U.asTypeOf(intScheduler.io.v0WriteBack)
   intScheduler.io.vlWriteBack := 0.U.asTypeOf(intScheduler.io.vlWriteBack)
@@ -316,7 +300,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   memScheduler.io.fromDispatch.allocPregs <> ctrlBlock.io.toIssueBlock.allocPregs
   memScheduler.io.fromDispatch.uops <> ctrlBlock.io.toIssueBlock.memUops
   memScheduler.io.intWriteBack := wbDataPath.io.toIntPreg
-  // memScheduler.io.fpWriteBack := wbDataPath.io.toFpPreg
   memScheduler.io.vfWriteBack := wbDataPath.io.toVfPreg
   memScheduler.io.v0WriteBack := wbDataPath.io.toV0Preg
   memScheduler.io.vlWriteBack := wbDataPath.io.toVlPreg
@@ -356,7 +339,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   vfScheduler.io.fromDispatch.allocPregs <> ctrlBlock.io.toIssueBlock.allocPregs
   vfScheduler.io.fromDispatch.uops <> ctrlBlock.io.toIssueBlock.vfUops
   vfScheduler.io.intWriteBack := 0.U.asTypeOf(vfScheduler.io.intWriteBack)
-  // vfScheduler.io.fpWriteBack := 0.U.asTypeOf(vfScheduler.io.fpWriteBack)
   vfScheduler.io.vfWriteBack := wbDataPath.io.toVfPreg
   vfScheduler.io.v0WriteBack := wbDataPath.io.toV0Preg
   vfScheduler.io.vlWriteBack := wbDataPath.io.toVlPreg
@@ -384,7 +366,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   println(s"[Backend] wbDataPath.io.toIntPreg: ${wbDataPath.io.toIntPreg.size}, dataPath.io.fromIntWb: ${dataPath.io.fromIntWb.size}")
   println(s"[Backend] wbDataPath.io.toVfPreg: ${wbDataPath.io.toVfPreg.size}, dataPath.io.fromFpWb: ${dataPath.io.fromVfWb.size}")
   dataPath.io.fromIntWb := wbDataPath.io.toIntPreg
-  // dataPath.io.fromFpWb := wbDataPath.io.toFpPreg
   dataPath.io.fromVfWb := wbDataPath.io.toVfPreg
   dataPath.io.fromV0Wb := wbDataPath.io.toV0Preg
   dataPath.io.fromVlWb := wbDataPath.io.toVlPreg

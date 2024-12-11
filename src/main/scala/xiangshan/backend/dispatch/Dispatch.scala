@@ -254,6 +254,17 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       XSDebug(TriggerAction.isDmode(updatedUop(i).trigger) || updatedUop(i).exceptionVec(breakPoint), s"Debug Mode: inst ${i} has frontend trigger exception\n")
       XSDebug(updatedUop(i).singleStep, s"Debug Mode: inst ${i} has single step exception\n")
     }
+      // for fload vector read same regfile TD
+    when (io.fromRename(i).bits.srcType(0) === SrcType.fp) {
+      updatedUop(i).srcType(0) := SrcType.vp
+    }
+    when (io.fromRename(i).bits.srcType(1) === SrcType.fp) {
+      updatedUop(i).srcType(1) := SrcType.vp
+    }
+    when (io.fromRename(i).bits.srcType(2) === SrcType.fp) {
+      updatedUop(i).srcType(2) := SrcType.vp
+    }
+
     if (env.EnableDifftest) {
       // debug runahead hint
       val debug_runahead_checkpoint_id = Wire(checkpoint_id.cloneType)

@@ -54,9 +54,6 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   val intBusyTableNeedLoadCancel = allExuParams.map(x =>
     x.needLoadDependency && x.writeIntRf && x.iqWakeUpSourcePairs.map(y => y.sink.getExuParam(allExuParams).readIntRf).foldLeft(false)(_ || _)
   ).reduce(_ || _)
-  // val fpBusyTableNeedLoadCancel = allExuParams.map(x =>
-  //   x.needLoadDependency && x.writeFpRf && x.iqWakeUpSourcePairs.map(y => y.sink.getExuParam(allExuParams).readFpRf).foldLeft(false)(_ || _)
-  // ).reduce(_ || _)
   val vfBusyTableNeedLoadCancel = allExuParams.map(x =>
     x.needLoadDependency && x.writeVfRf && x.iqWakeUpSourcePairs.map(y => y.sink.getExuParam(allExuParams).readVecRf).foldLeft(false)(_ || _)
   ).reduce(_ || _)
@@ -68,7 +65,6 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   ).reduce(_ || _)
   val needLoadCancel = pregWB match {
     case IntWB(_, _) => intBusyTableNeedLoadCancel
-    // case FpWB(_, _) => fpBusyTableNeedLoadCancel
     case VfWB(_, _) => vfBusyTableNeedLoadCancel
     case V0WB(_, _) => v0BusyTableNeedLoadCancel
     case VlWB(_, _) => vlBusyTableNeedLoadCancel
@@ -78,7 +74,6 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   val loadCancel = if (needLoadCancel) io.ldCancel else 0.U.asTypeOf(io.ldCancel)
   val wakeUpIn = pregWB match {
     case IntWB(_, _) => io.wakeUp.filter(_.bits.params.writeIntRf)
-    // case FpWB(_, _) => io.wakeUp.filter(_.bits.params.writeFpRf)
     case VfWB(_, _) => io.wakeUp.filter(_.bits.params.writeVfRf)
     case V0WB(_, _) => io.wakeUp.filter(_.bits.params.writeV0Rf)
     case VlWB(_, _) => io.wakeUp.filter(_.bits.params.writeVlRf)
@@ -110,7 +105,6 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   wakeupOHVec.zipWithIndex.foreach{ case (wakeupOH, idx) =>
     val tmp = pregWB match {
       case IntWB(_, _) => wakeUpIn.map(x => x.valid && x.bits.rfWen  && UIntToOH(x.bits.pdest)(idx) && !LoadShouldCancel(Some(x.bits.loadDependency), loadCancel) && !(x.bits.is0Lat && io.og0Cancel(x.bits.params.exuIdx)))
-      // case FpWB(_, _)  => wakeUpIn.map(x => x.valid && x.bits.fpWen  && UIntToOH(x.bits.pdest)(idx) && !LoadShouldCancel(Some(x.bits.loadDependency), loadCancel) && !(x.bits.is0Lat && io.og0Cancel(x.bits.params.exuIdx)))
       case VfWB(_, _)  => wakeUpIn.map(x => x.valid && x.bits.vecWen && UIntToOH(x.bits.pdest)(idx) && !LoadShouldCancel(Some(x.bits.loadDependency), loadCancel) && !(x.bits.is0Lat && io.og0Cancel(x.bits.params.exuIdx)))
       case V0WB(_, _)  => wakeUpIn.map(x => x.valid && x.bits.v0Wen  && UIntToOH(x.bits.pdest)(idx) && !LoadShouldCancel(Some(x.bits.loadDependency), loadCancel) && !(x.bits.is0Lat && io.og0Cancel(x.bits.params.exuIdx)))
       case VlWB(_, _)  => wakeUpIn.map(x => x.valid && x.bits.vlWen  && UIntToOH(x.bits.pdest)(idx) && !LoadShouldCancel(Some(x.bits.loadDependency), loadCancel) && !(x.bits.is0Lat && io.og0Cancel(x.bits.params.exuIdx)))

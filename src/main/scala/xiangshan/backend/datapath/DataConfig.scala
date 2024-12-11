@@ -13,7 +13,6 @@ object DataConfig {
   }
 
   case class IntData() extends DataConfig("int", 64)
-  // case class FpData() extends DataConfig("fp", 64)
   case class VecData() extends DataConfig("vec", 128)
   case class ImmData(len: Int) extends DataConfig("int", len)
   case class VAddrData()(implicit p: Parameters) extends DataConfig("vaddr", 48 + 2) // Todo: associate it with the width of vaddr
@@ -24,7 +23,6 @@ object DataConfig {
 
   def RegSrcDataSet   : Set[DataConfig] = Set(IntData(), VecData(), V0Data(), VlData())
   def IntRegSrcDataSet: Set[DataConfig] = Set(IntData())
-  // def FpRegSrcDataSet : Set[DataConfig] = Set(FpData())
   def VecRegSrcDataSet : Set[DataConfig] = Set(VecData())
   def V0RegSrcDataSet : Set[DataConfig] = Set(V0Data())
   def VlRegSrcDataSet : Set[DataConfig] = Set(VlData())

@@ -196,11 +196,6 @@ case class XSCoreParameters
     numRead = None,
     numWrite = None,
   ),
-  // fpPreg: PregParams = FpPregParams(
-  //   numEntries = 192,
-  //   numRead = None,
-  //   numWrite = None,
-  // ),
   vfPreg: VfPregParams = VfPregParams(
     numEntries = 192,
     numRead = None,
@@ -506,7 +501,6 @@ case class XSCoreParameters
     ),
     Seq(
       intPreg,
-      // fpPreg,
       vfPreg,
       v0Preg,
       vlPreg,
@@ -707,13 +701,11 @@ trait HasXSParameter {
   def V0_IDX = coreParams.V0_IDX
   def Vl_IDX = coreParams.Vl_IDX
   def IntPhyRegs = coreParams.intPreg.numEntries
-  // def FpPhyRegs = coreParams.fpPreg.numEntries
   def VfPhyRegs = coreParams.vfPreg.numEntries
   def V0PhyRegs = coreParams.v0Preg.numEntries
   def VlPhyRegs = coreParams.vlPreg.numEntries
   def MaxPhyRegs = Seq(IntPhyRegs, VfPhyRegs, V0PhyRegs, VlPhyRegs).max
   def IntPhyRegIdxWidth = log2Up(IntPhyRegs)
-  // def FpPhyRegIdxWidth = log2Up(FpPhyRegs)
   def VfPhyRegIdxWidth = log2Up(VfPhyRegs)
   def V0PhyRegIdxWidth = log2Up(V0PhyRegs)
   def VlPhyRegIdxWidth = log2Up(VlPhyRegs)

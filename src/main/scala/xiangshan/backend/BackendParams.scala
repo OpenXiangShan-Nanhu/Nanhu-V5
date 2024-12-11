@@ -81,7 +81,6 @@ case class BackendParams(
     allExuParams.filterNot(_.fakeUnit)
 
   def intPregParams: IntPregParams = pregParams.collectFirst { case x: IntPregParams => x }.get
-  // def fpPregParams: FpPregParams = pregParams.collectFirst { case x: FpPregParams => x }.get
   def vfPregParams: VfPregParams = pregParams.collectFirst { case x: VfPregParams => x }.get
   def v0PregParams: V0PregParams = pregParams.collectFirst { case x: V0PregParams => x }.get
   def vlPregParams: VlPregParams = pregParams.collectFirst { case x: VlPregParams => x }.get
@@ -142,10 +141,6 @@ case class BackendParams(
     Seq.fill(this.getIntRfWriteSize)(new RfWritePortWithConfig(IntData(), intPregParams.addrWidth))
   }
 
-  // def genFpWriteBackBundle(implicit p: Parameters) = {
-  //   Seq.fill(this.getVfRfWriteSize)(new RfWritePortWithConfig(FpData(), vfPregParams.addrWidth))
-  // }
-
   def genVfWriteBackBundle(implicit p: Parameters) = {
     Seq.fill(this.getVfRfWriteSize)(new RfWritePortWithConfig(VecData(), vfPregParams.addrWidth))
   }
@@ -175,11 +170,6 @@ case class BackendParams(
     val vfWbCfgs: Seq[VfWB] = allSchdParams.flatMap(_.getWbCfgs.flatten.flatten.filter(x => x.writeVec)).map(_.asInstanceOf[VfWB])
     datapath.WbArbiterParams(vfWbCfgs, vfPregParams, this)
   }
-
-  // def getFpWbArbiterParams: WbArbiterParams = {
-  //   val fpWbCfgs: Seq[FpWB] = allSchdParams.flatMap(_.getWbCfgs.flatten.flatten.filter(x => x.writeFp)).map(_.asInstanceOf[FpWB])
-  //   datapath.WbArbiterParams(fpWbCfgs, vfPregParams, this)
-  // }
 
   def getV0WbArbiterParams: WbArbiterParams = {
     val v0WbCfgs: Seq[V0WB] = allSchdParams.flatMap(_.getWbCfgs.flatten.flatten.filter(x => x.writeV0)).map(_.asInstanceOf[V0WB])
@@ -276,15 +266,6 @@ case class BackendParams(
   }
 
   /**
-   * Get size of write ports of fp regfile
-   *
-   * @return if [[FpPregParams.numWrite]] is [[None]], get size of ports in [[FpWB]]
-   */
-  // def getFpRfWriteSize = {
-  //   this.fpPregParams.numWrite.getOrElse(this.getWbPortIndices(FpData()).size)
-  // }
-
-  /**
     * Get size of read ports of vec regfile
     *
     * @return if [[VfPregParams.numRead]] is [[None]], get size of ports in [[VfRD]]
@@ -313,7 +294,6 @@ case class BackendParams(
   def getRfReadSize(dataCfg: DataConfig) = {
     dataCfg match{
       case IntData() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
-      // case FpData()  => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
       case VecData() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
       case V0Data() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
       case VlData() => this.getPregParams(dataCfg).numRead.getOrElse(this.getRdPortIndices(dataCfg).size)
@@ -374,7 +354,6 @@ case class BackendParams(
   }
 
   def getIntWBExeGroup: Map[Int, Seq[ExeUnitParams]] = allRealExuParams.groupBy(x => x.getIntWBPort.getOrElse(IntWB(port = -1)).port).filter(_._1 != -1)
-  // def getFpWBExeGroup: Map[Int, Seq[ExeUnitParams]] = allRealExuParams.groupBy(x => x.getFpWBPort.getOrElse(FpWB(port = -1)).port).filter(_._1 != -1)
   def getVfWBExeGroup: Map[Int, Seq[ExeUnitParams]] = allRealExuParams.groupBy(x => x.getVfWBPort.getOrElse(VfWB(port = -1)).port).filter(_._1 != -1)
   def getV0WBExeGroup: Map[Int, Seq[ExeUnitParams]] = allRealExuParams.groupBy(x => x.getV0WBPort.getOrElse(V0WB(port = -1)).port).filter(_._1 != -1)
   def getVlWBExeGroup: Map[Int, Seq[ExeUnitParams]] = allRealExuParams.groupBy(x => x.getVlWBPort.getOrElse(VlWB(port = -1)).port).filter(_._1 != -1)
@@ -442,14 +421,12 @@ case class BackendParams(
             val wbPortConfigs = exuParam.wbPortConfigs
             val wbConfigs = wbType match{
               case _: IntWB => wbPortConfigs.collectFirst { case x: IntWB => x }
-              // case _: FpWB  => wbPortConfigs.collectFirst { case x: FpWB => x }
               case _: VfWB  => wbPortConfigs.collectFirst { case x: VfWB => x }
               case _        => None
             }
             val rfReadPortConfigs = exuParam.rfrPortConfigs
             val rdConfigs = rdType match{
               case _: IntRD => rfReadPortConfigs.flatten.filter(_.isInstanceOf[IntRD])
-              // case _: FpRD  => rfReadPortConfigs.flatten.filter(_.isInstanceOf[FpRD])
               case _: VfRD  => rfReadPortConfigs.flatten.filter(_.isInstanceOf[VfRD])
               case _        => Seq()
             }

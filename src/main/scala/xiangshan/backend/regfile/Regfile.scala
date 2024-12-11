@@ -39,7 +39,6 @@ class RfReadPortWithConfig(val rfReadDataCfg: DataConfig, addrWidth: Int) extend
   val srcType: UInt = Input(UInt(3.W))
 
   def readInt: Boolean = IntRegSrcDataSet.contains(rfReadDataCfg)
-  // def readFp : Boolean = FpRegSrcDataSet .contains(rfReadDataCfg)
   def readVec: Boolean = VecRegSrcDataSet.contains(rfReadDataCfg)
   def readVf : Boolean = VecRegSrcDataSet .contains(rfReadDataCfg)
 }
@@ -54,7 +53,6 @@ class RfWritePortWithConfig(val rfWriteDataCfg: DataConfig, addrWidth: Int) exte
   val v0Wen = Input(Bool())
   val vlWen = Input(Bool())
   def writeInt: Boolean = rfWriteDataCfg.isInstanceOf[IntData]
-  // def writeFp : Boolean = rfWriteDataCfg.isInstanceOf[FpData]
   def writeVec: Boolean = rfWriteDataCfg.isInstanceOf[VecData]
   def writeV0 : Boolean = rfWriteDataCfg.isInstanceOf[V0Data]
   def writeVl : Boolean = rfWriteDataCfg.isInstanceOf[VlData]

@@ -620,7 +620,6 @@ object Bundles {
 
   class WbFuBusyTableWriteBundle(val params: ExeUnitParams)(implicit p: Parameters) extends XSBundle {
     private val intCertainLat = params.intLatencyCertain
-    // private val fpCertainLat = params.fpLatencyCertain
     private val vfCertainLat = params.vfLatencyCertain
     private val v0CertainLat = params.v0LatencyCertain
     private val vlCertainLat = params.vlLatencyCertain
@@ -631,12 +630,10 @@ object Bundles {
     private val vlLat = params.vlLatencyValMax
 
     val intWbBusyTable = OptionWrapper(intCertainLat, UInt((intLat + 1).W))
-    // val fpWbBusyTable = OptionWrapper(fpCertainLat, UInt((fpLat + 1).W))
     val vfWbBusyTable = OptionWrapper(vfCertainLat, UInt((vfLat + 1).W))
     val v0WbBusyTable = OptionWrapper(v0CertainLat, UInt((v0Lat + 1).W))
     val vlWbBusyTable = OptionWrapper(vlCertainLat, UInt((vlLat + 1).W))
     val intDeqRespSet = OptionWrapper(intCertainLat, UInt((intLat + 1).W))
-    // val fpDeqRespSet = OptionWrapper(fpCertainLat, UInt((fpLat + 1).W))
     val vfDeqRespSet = OptionWrapper(vfCertainLat, UInt((vfLat + 1).W))
     val v0DeqRespSet = OptionWrapper(v0CertainLat, UInt((v0Lat + 1).W))
     val vlDeqRespSet = OptionWrapper(vlCertainLat, UInt((vlLat + 1).W))
@@ -644,7 +641,6 @@ object Bundles {
 
   class WbFuBusyTableReadBundle(val params: ExeUnitParams)(implicit p: Parameters) extends XSBundle {
     private val intCertainLat = params.intLatencyCertain
-    // private val fpCertainLat = params.fpLatencyCertain
     private val vfCertainLat = params.vfLatencyCertain
     private val v0CertainLat = params.v0LatencyCertain
     private val vlCertainLat = params.vlLatencyCertain
@@ -655,7 +651,6 @@ object Bundles {
     private val vlLat = params.vlLatencyValMax
 
     val intWbBusyTable = OptionWrapper(intCertainLat, UInt((intLat + 1).W))
-    // val fpWbBusyTable = OptionWrapper(fpCertainLat, UInt((fpLat + 1).W))
     val vfWbBusyTable = OptionWrapper(vfCertainLat, UInt((vfLat + 1).W))
     val v0WbBusyTable = OptionWrapper(v0CertainLat, UInt((v0Lat + 1).W))
     val vlWbBusyTable = OptionWrapper(vlCertainLat, UInt((vlLat + 1).W))
@@ -663,13 +658,11 @@ object Bundles {
 
   class WbConflictBundle(val params: ExeUnitParams)(implicit p: Parameters) extends XSBundle {
     private val intCertainLat = params.intLatencyCertain
-    // private val fpCertainLat = params.fpLatencyCertain
     private val vfCertainLat = params.vfLatencyCertain
     private val v0CertainLat = params.v0LatencyCertain
     private val vlCertainLat = params.vlLatencyCertain
 
     val intConflict = OptionWrapper(intCertainLat, Bool())
-    // val fpConflict = OptionWrapper(fpCertainLat, Bool())
     val vfConflict = OptionWrapper(vfCertainLat, Bool())
     val v0Conflict = OptionWrapper(v0CertainLat, Bool())
     val vlConflict = OptionWrapper(vlCertainLat, Bool())
@@ -884,19 +877,6 @@ object Bundles {
       rfWrite.vlWen := false.B
       rfWrite
     }
-
-    // def asFpRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-    //   val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(FpData()).addrWidth)))
-    //   rfWrite.wen := this.fpWen && fire
-    //   rfWrite.addr := this.pdest
-    //   rfWrite.data := this.data
-    //   rfWrite.intWen := false.B
-    //   rfWrite.fpWen := this.fpWen
-    //   rfWrite.vecWen := false.B
-    //   rfWrite.v0Wen := false.B
-    //   rfWrite.vlWen := false.B
-    //   rfWrite
-    // }
 
     def asVfRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
       val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(VecData()).addrWidth)))

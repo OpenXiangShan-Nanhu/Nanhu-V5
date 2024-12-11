@@ -79,7 +79,15 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     numWDelay = 2,
     numCamPort = StorePipelineWidth
   ))
-  paddrModule.io := DontCare
+  paddrModule.io.ren := List.fill(LoadPipelineWidth)(false.B)
+  paddrModule.io.raddr := List.fill(LoadPipelineWidth)(0.U(LoadQueueRAWSize.W))
+  paddrModule.io.waddr := List.fill(LoadPipelineWidth)(0.U(LoadQueueRAWSize.W))
+  paddrModule.io.wdata := List.fill(LoadPipelineWidth)(0.U(PAddrBits.W))
+  paddrModule.io.releaseMdataValid := List.fill(StorePipelineWidth)(false.B)    
+  paddrModule.io.releaseMdata := List.fill(StorePipelineWidth)(0.U(PAddrBits.W))
+  paddrModule.io.releaseViolationMdataValid := List.fill(StorePipelineWidth)(false.B)    
+  paddrModule.io.releaseViolationMdata := List.fill(StorePipelineWidth)(0.U(PAddrBits.W))
+
   val maskModule = Module(new LqMaskModule(
     gen = UInt((VLEN/8).W),
     numEntries = LoadQueueRAWSize,
@@ -89,7 +97,15 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     numWDelay = 2,
     numCamPort = StorePipelineWidth
   ))
-  maskModule.io := DontCare
+  maskModule.io.ren := List.fill(LoadPipelineWidth)(false.B)
+  maskModule.io.raddr := List.fill(LoadPipelineWidth)(0.U(LoadQueueRAWSize.W))
+  maskModule.io.waddr := List.fill(LoadPipelineWidth)(0.U(LoadQueueRAWSize.W))
+  maskModule.io.wdata := List.fill(LoadPipelineWidth)(0.U((VLEN/8).W))
+  maskModule.io.releaseMdataValid := List.fill(StorePipelineWidth)(false.B)    
+  maskModule.io.releaseMdata := List.fill(StorePipelineWidth)(0.U((VLEN/8).W))
+  maskModule.io.releaseViolationMdataValid := List.fill(StorePipelineWidth)(false.B)    
+  maskModule.io.releaseViolationMdata := List.fill(StorePipelineWidth)(0.U((VLEN/8).W))
+
   val datavalid = RegInit(VecInit(List.fill(LoadQueueRAWSize)(false.B)))
 
   // freeliset: store valid entries index.
@@ -290,7 +306,9 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
   val storeIn = io.storeIn
 
   def detectRollback(i: Int) = {
+    paddrModule.io.violationMdataValid(i) := RegNext(storeIn(i).valid)
     paddrModule.io.violationMdata(i) := RegEnable(storeIn(i).bits.paddr, storeIn(i).valid)
+    maskModule.io.violationMdataValid(i) := RegNext(storeIn(i).valid)
     maskModule.io.violationMdata(i) := RegEnable(storeIn(i).bits.mask, storeIn(i).valid)
 
     val addrMaskMatch = paddrModule.io.violationMmask(i).asUInt & maskModule.io.violationMmask(i).asUInt

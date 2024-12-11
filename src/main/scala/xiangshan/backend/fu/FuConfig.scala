@@ -689,6 +689,83 @@ object FuConfig {
     needSrcFrm = true,
   )
 
+  val Vfcvt64Cfg = FuConfig(
+    name = "vfcvt64",
+    fuType = FuType.vfcvt,
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VCVT(cfg)(p).suggestName("Vfcvt")),
+    srcData = Seq(
+      Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
+    ),
+    piped = true,
+    writeVecRf = true,
+    writeV0Rf = true,
+    writeFflags = true,
+    latency = CertainLatency(2),
+    vconfigWakeUp = true,
+    maskWakeUp = true,
+    destDataBits = 64,
+    exceptionOut = Seq(illegalInstr),
+    needSrcFrm = true,
+  )
+
+  val Vfalu64Cfg = FuConfig (
+    name = "vfalu64",
+    fuType = FuType.vfalu,
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFAlu(cfg)(p).suggestName("Vfalu")),
+    srcData = Seq(
+      Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
+    ),
+    piped = true,
+    writeVecRf = true,
+    writeV0Rf = true,
+    // writeFpRf = true,
+    writeFflags = true,
+    latency = CertainLatency(1),
+    vconfigWakeUp = true,
+    maskWakeUp = true,
+    destDataBits = 64,
+    exceptionOut = Seq(illegalInstr),
+    needSrcFrm = true,
+  )
+
+  val Vfma64Cfg = FuConfig (
+    name = "vfma64",
+    fuType = FuType.vfma,
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFMA(cfg)(p).suggestName("Vfma")),
+    srcData = Seq(
+      Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
+    ),
+    piped = true,
+    writeVecRf = true,
+    writeV0Rf = true,
+    writeFflags = true,
+    latency = CertainLatency(3),
+    vconfigWakeUp = true,
+    maskWakeUp = true,
+    destDataBits = 64,
+    exceptionOut = Seq(illegalInstr),
+    needSrcFrm = true,
+  )
+
+  val Vfdiv64Cfg = FuConfig(
+    name = "vfdiv64",
+    fuType = FuType.vfdiv,
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFDivSqrt(cfg)(p).suggestName("Vfdiv")),
+    srcData = Seq(
+      Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
+    ),
+    piped = false,
+    writeVecRf = true,
+    writeV0Rf = true,
+    writeFflags = true,
+    latency = UncertainLatency(),
+    vconfigWakeUp = true,
+    maskWakeUp = true,
+    destDataBits = 64,
+    exceptionOut = Seq(illegalInstr),
+    needSrcFrm = true,
+  )
+
   val FaluCfg = FuConfig(
     name = "falu",
     fuType = FuType.falu,

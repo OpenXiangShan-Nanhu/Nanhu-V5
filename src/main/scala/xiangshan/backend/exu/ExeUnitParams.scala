@@ -270,6 +270,14 @@ case class ExeUnitParams(
 
   def hasVecLsFu = fuConfigs.map(x => FuType.FuTypeOrR(x.fuType, Seq(FuType.vldu, FuType.vstu))).reduce(_ || _)
 
+  def hasVfalu64: Boolean = fuConfigs.map(_.name == "vfalu64").reduce(_ || _)
+
+  def hasVfma64: Boolean = fuConfigs.map(_.name == "vfma64").reduce(_ || _)
+
+  def hasVfdiv64: Boolean = fuConfigs.map(_.name == "vfdiv64").reduce(_ || _)
+
+  def hasVfcvt64 = fuConfigs.map(_.name == "vfcvt64").reduce(_ || _)
+
   def hasStoreAddrFu = fuConfigs.map(_.name == "sta").reduce(_ || _)
 
   def hasStdFu = fuConfigs.map(_.name == "std").reduce(_ || _)

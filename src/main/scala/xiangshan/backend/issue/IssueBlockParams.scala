@@ -26,15 +26,39 @@ case class IssueBlockParams(
   VLEN                 : Int = 128,
   // calculate in scheduler
   var idxInSchBlk      : Int = 0,
-)(
-  implicit
-  val schdType: SchedulerType,
-) {
+  val sharedVf         : Boolean = false
+)(implicit val schdType: SchedulerType) {
   var backendParam: BackendParams = null
 
   val exuBlockParams: Seq[ExeUnitParams] = exuParams.filterNot(_.fakeUnit)
 
   val allExuParams = exuParams
+
+  def vfalu64Cnt = exuBlockParams.count(exu => exu.hasVfalu64)
+
+  def vfma64Cnt = exuBlockParams.count(exu => exu.hasVfma64)
+
+  def vfdiv64Cnt = exuBlockParams.count(exu => exu.hasVfdiv64)
+
+  def vfcvt64Cnt = exuBlockParams.count(exu => exu.hasVfcvt64)
+
+  require(!sharedVf || (sharedVf && (vfalu64Cnt != 0 || vfma64Cnt != 0 || vfdiv64Cnt != 0 || vfcvt64Cnt != 0)))
+
+  /* 
+    sharedVf && needSplit:  vf and fp can issue but only one fu
+    sharedVf && !needSplit: 2 issue and two fu
+    !sharedVf: TODO
+  */
+
+  def vfaluNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfalu64) == 1
+
+  def vfmaNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfma64) == 1
+
+  def vfdivNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfma64) == 1
+  
+  def vfcvtNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfcvt64) == 1
+
+  def vfNeedSplit = vfaluNeedSplit || vfmaNeedSplit || vfdivNeedSplit || vfcvtNeedSplit
 
   def updateIdx(idx: Int): Unit = {
     this.idxInSchBlk = idx

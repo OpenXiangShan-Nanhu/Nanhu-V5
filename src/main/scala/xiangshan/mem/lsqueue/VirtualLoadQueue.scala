@@ -94,7 +94,16 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     numWDelay = 2,
     numCamPort = LoadPipelineWidth
   ))
-  paddrModule.io := DontCare
+  paddrModule.io.ren := List.fill(LoadPipelineWidth)(false.B)
+  paddrModule.io.raddr := List.fill(LoadPipelineWidth)(0.U(VirtualLoadQueueSize.W))
+  paddrModule.io.violationMdataValid := List.fill(LoadPipelineWidth)(false.B)     // is used in raw module
+  paddrModule.io.violationMdata := List.fill(LoadPipelineWidth)(0.U(PAddrBits.W)) // is used in raw module
+  paddrModule.io.waddr := List.fill(LoadPipelineWidth)(0.U(VirtualLoadQueueSize.W))
+  paddrModule.io.wdata := List.fill(LoadPipelineWidth)(0.U(PAddrBits.W))
+  for (i <- 0 until LoadPipelineWidth - 1) {
+    paddrModule.io.releaseMdataValid(i) := false.B
+    paddrModule.io.releaseMdata(i) := WireInit(0.U(PAddrBits.W)) // only use the last port to ld ld query
+  }
   val released = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B)))
   val bypassPAddr = Reg(Vec(LoadPipelineWidth, UInt(PAddrBits.W)))
   // pseudo-RAR: ld src flag 
@@ -248,11 +257,14 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     paddrModule.io.wen(w) := false.B
     enq.ready := true.B
     acceptedVec(w) := false.B
+    // initalize
+    enqIndexVec(w) := 0.U(log2Up(VirtualLoadQueueSize).W)
+    bypassPAddr(w) := 0.U(PAddrBits.W)
 
     // lqidx is pointer, so need to add .value
-    val index = enq.bits.uop.lqIdx.value
-    enqIndexVec(w) := index
     when(queryRAR_needEnqueue(w) && enq.ready) {
+      val index = enq.bits.uop.lqIdx.value
+      enqIndexVec(w) := index
       acceptedVec(w) := true.B
       paddrModule.io.wen(w) := true.B
       paddrModule.io.waddr(w) := index
@@ -273,7 +285,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   
   // When io.release.valid (release1cycle.valid), it uses the last ld-ld paddr cam port to
   // update release flag in 1 cycle
-  val releaseVioMask = Reg(Vec(VirtualLoadQueueSize, Bool()))
+  paddrModule.io.releaseMdataValid.takeRight(1)(0) := release1Cycle.valid
   paddrModule.io.releaseMdata.takeRight(1)(0) := Mux(release1Cycle.valid,release1Cycle.bits.paddr,0.U)
 
   val bypassPAddr2Cycle = RegNext(bypassPAddr)
@@ -286,8 +298,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
 
   (0 until VirtualLoadQueueSize).map(i => {
     val bypassMatch = VecInit((0 until LoadPipelineWidth).map(j => lastCanAccept(j) && lastAllocIndexOH(j)(i) && lastReleasePAddrMatch(j))).asUInt.orR
-    
-    when (RegNext((paddrModule.io.releaseMmask.takeRight(1)(0)(i) || bypassMatch) && allocated(i))) {
+    when (RegNext(( (paddrModule.io.releaseMmask.takeRight(1)(0)(i) && release2Cycle.valid) || bypassMatch) && allocated(i))) {
       released(i) := true.B
     }
   })
@@ -301,6 +312,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   val allocatedUInt = RegNext(allocated.asUInt)
   val deqMask = UIntToMask(deqPtr.value, VirtualLoadQueueSize)
   for ((query, w) <- io.query.zipWithIndex) {
+    paddrModule.io.releaseViolationMdataValid(w) := query.req.valid
     paddrModule.io.releaseViolationMdata(w) := query.req.bits.paddr
     query.resp.valid := RegNext(query.req.valid)
 

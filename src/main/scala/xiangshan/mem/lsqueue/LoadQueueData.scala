@@ -39,12 +39,15 @@ abstract class LqRawDataModule[T <: Data] (gen: T, numEntries: Int, numRead: Int
     val waddr = Input(Vec(numWrite, UInt(log2Up(numEntries).W)))
     val wdata = Input(Vec(numWrite, gen))
     // violation cam: hit if addr is in the same cacheline
+    val violationMdataValid = Input(Vec(numCamPort, Bool()))
     val violationMdata = Input(Vec(numCamPort, gen)) // addr
     val violationMmask = Output(Vec(numCamPort, Vec(numEntries, Bool()))) // cam result mask
     // refill cam: hit if addr is in the same cacheline
+    val releaseMdataValid = Input(Vec(numCamPort, Bool()))
     val releaseMdata = Input(Vec(numCamPort, gen))
     val releaseMmask = Output(Vec(numCamPort, Vec(numEntries, Bool())))  // cam result mask
     // release violation cam: hit if addr is in the same cacheline
+    val releaseViolationMdataValid = Input(Vec(numCamPort, Bool()))
     val releaseViolationMdata = Input(Vec(numCamPort, gen))
     val releaseViolationMmask = Output(Vec(numCamPort, Vec(numEntries, Bool()))) // cam result mask result
   })
@@ -134,9 +137,27 @@ class LqPAddrModule[T <: UInt](
 {
   // content addressed match
   // 128-bits aligned
+
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.violationMmask(i)(j) := io.violationMdata(i)(PAddrBits-1, DCacheVWordOffset) === data(j)(PAddrBits-1, DCacheVWordOffset)
+       when(io.violationMdataValid(i)) {
+        io.violationMmask(i)(j) := io.violationMdata(i)(PAddrBits-1, DCacheVWordOffset) === data(j)(PAddrBits-1, DCacheVWordOffset)
+      } .otherwise {
+        io.violationMmask(i)(j) := false.B
+      }
+    }
+  }
+
+
+  // content addressed match
+  // cacheline aligned
+  for (i <- 0 until numCamPort) {
+    for (j <- 0 until numEntries) {
+      when(io.releaseViolationMdataValid(i)) {
+        io.releaseViolationMmask(i)(j) := io.releaseViolationMdata(i)(PAddrBits-1, DCacheLineOffset) === data(j)(PAddrBits-1, DCacheLineOffset)
+      } .otherwise {
+        io.releaseViolationMmask(i)(j) := false.B
+      }
     }
   }
 
@@ -144,15 +165,11 @@ class LqPAddrModule[T <: UInt](
   // cacheline aligned
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.releaseViolationMmask(i)(j) := io.releaseViolationMdata(i)(PAddrBits-1, DCacheLineOffset) === data(j)(PAddrBits-1, DCacheLineOffset)
-    }
-  }
-
-  // content addressed match
-  // cacheline aligned
-  for (i <- 0 until numCamPort) {
-    for (j <- 0 until numEntries) {
-      io.releaseMmask(i)(j) := io.releaseMdata(i)(PAddrBits-1, DCacheLineOffset) === data(j)(PAddrBits-1, DCacheLineOffset)
+      when(io.releaseMdataValid(i)) {
+        io.releaseMmask(i)(j) := io.releaseMdata(i)(PAddrBits-1, DCacheLineOffset) === data(j)(PAddrBits-1, DCacheLineOffset)
+      } .otherwise {
+        io.releaseMmask(i)(j) := false.B
+      }
     }
   }
 }
@@ -171,14 +188,22 @@ class LqVAddrModule[T <: UInt](
   // content addressed match
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.violationMmask(i)(j) := io.violationMdata(i)(VAddrBits-1, DCacheVWordOffset) === data(j)(VAddrBits-1, DCacheVWordOffset)
+      when(io.violationMdataValid(i)) {
+        io.violationMmask(i)(j) := io.violationMdata(i)(VAddrBits-1, DCacheVWordOffset) === data(j)(VAddrBits-1, DCacheVWordOffset)
+      } .otherwise {
+        io.violationMmask(i)(j) := false.B
+      }
     }
   }
 
   // content addressed match
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.releaseMmask(i)(j) := io.releaseMdata(i)(VAddrBits-1, DCacheLineOffset) === data(j)(VAddrBits-1, DCacheLineOffset)
+      when(io.releaseMdataValid(i)) {
+        io.releaseMmask(i)(j) := io.releaseMdata(i)(VAddrBits-1, DCacheLineOffset) === data(j)(VAddrBits-1, DCacheLineOffset)
+      } .otherwise {
+        io.releaseMmask(i)(j) := false.B
+      }
     }
   }
 }
@@ -197,21 +222,33 @@ class LqMaskModule[T <: UInt](
   // content addressed match
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.violationMmask(i)(j) := (io.violationMdata(i) & data(j)).orR
+      when(io.violationMdataValid(i)) {
+        io.violationMmask(i)(j) := (io.violationMdata(i) & data(j)).orR
+      } .otherwise {
+        io.violationMmask(i)(j) := false.B
+      }
     }
   }
   // content addressed match
   // cacheline aligned
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.releaseViolationMmask(i)(j) := (io.releaseViolationMdata(i) & data(j)).orR
+      when(io.releaseViolationMdataValid(i)) {
+        io.releaseViolationMmask(i)(j) := (io.releaseViolationMdata(i) & data(j)).orR
+      } .otherwise {
+        io.releaseViolationMmask(i)(j) := false.B
+      }
     }
   }
 
   // content addressed match
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
-      io.releaseMmask(i)(j) := (io.releaseMdata(i) & data(j)).orR
+      when(io.releaseMdataValid(i)) {
+        io.releaseMmask(i)(j) := (io.releaseMdata(i) & data(j)).orR
+      } .otherwise {
+        io.releaseMmask(i)(j) := false.B
+      }
     }
   }
 }

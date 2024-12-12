@@ -173,7 +173,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   def acceptCond(exuOutput: ExuOutput): (Seq[Bool], Bool) = {
     val intWen = exuOutput.intWen.getOrElse(false.B)
     val fpwen  = exuOutput.fpWen.getOrElse(false.B)
-    val vecWen = exuOutput.vecWen.getOrElse(false.B) && !exuOutput.fpWen.getOrElse(false.B)
+    val vecWen = exuOutput.vecWen.getOrElse(false.B)
     val v0Wen  = exuOutput.v0Wen.getOrElse(false.B)
     val vlWen  = exuOutput.vlWen.getOrElse(false.B)
     (Seq(intWen, fpwen, vecWen, v0Wen, vlWen), !intWen && !fpwen && !vecWen && !v0Wen && !vlWen)

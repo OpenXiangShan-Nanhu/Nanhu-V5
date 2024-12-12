@@ -691,7 +691,7 @@ object Bundles {
     val loadDependencyCopy = OptionWrapper(copyWakeupOut && params.isIQWakeUpSink, Vec(copyNum, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W))))
     val pdest         = UInt(params.wbPregIdxWidth.W)
     val rfWen         = if (params.needIntWen)    Some(Bool())                        else None
-    val fpWen         = if (params.needFpWen)     Some(Bool())                        else None
+    val fpWen         = if (params.needVecWen)    Some(Bool())                        else None
     val vecWen        = if (params.needVecWen)    Some(Bool())                        else None
     val v0Wen         = if (params.needV0Wen)     Some(Bool())                        else None
     val vlWen         = if (params.needVlWen)     Some(Bool())                        else None
@@ -790,7 +790,7 @@ object Bundles {
     val pdest        = UInt(params.wbPregIdxWidth.W)
     val robIdx       = new RobPtr
     val intWen       = if (params.needIntWen)   Some(Bool())                  else None
-    val fpWen        = if (params.needFpWen)    Some(Bool())                  else None
+    val fpWen        = if (params.needVecWen)   Some(Bool())                  else None
     val vecWen       = if (params.needVecWen)   Some(Bool())                  else None
     val v0Wen        = if (params.needV0Wen)    Some(Bool())                  else None
     val vlWen        = if (params.needVlWen)    Some(Bool())                  else None

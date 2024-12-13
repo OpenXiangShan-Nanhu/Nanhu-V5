@@ -195,6 +195,7 @@ sim-verilog: $(SIM_TOP_V)
 clean:
 	$(MAKE) -C ./difftest clean
 	rm -rf $(BUILD_DIR)
+	rm -rf sim
 
 init:
 	git submodule update --init
@@ -226,13 +227,17 @@ EMU_RUN_OPTS = -i $(RUN_BIN_DIR)/$(RUN_BIN)
 EMU_RUN_OPTS += --diff $(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
 EMU_RUN_OPTS += --wave-path $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/tb_top.vcd
 EMU_RUN_OPTS += --enable-fork --fork-interval=15 -s $(RANDOM)
+
+ifeq ($(SPEC06), 1)
+EMU_RUN_OPTS += -r $(NOOP_HOME)/../gcpt.bin
+endif
+
 emu_rtl-run:
 	$(shell if [ ! -e $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN) ];then mkdir -p $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN); fi)
 	touch ./sim/emu/$(RUN_BIN)/sim.log
 	$(shell if [ -e $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/emu ];then rm -f $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/emu; fi)
 	ln -s $(ABS_WORK_DIR)/sim/emu/comp/emu $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/emu
 	cd sim/emu/$(RUN_BIN) && (./emu $(EMU_RUN_OPTS) 2> assert.log | tee sim.log)
-
 
 # vcs simulation
 vcs-rtl:
@@ -245,6 +250,9 @@ simv: vcs-rtl
 simv-run:
 	$(MAKE) -C ./difftest simv-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) RUN_BIN=$(RUN_BIN) RUN_BIN_DIR=$(RUN_BIN_DIR) \
 	TRACE=1 CONSIDER_FSDB=1 REF_SO=$(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
+
+verdi:
+	cd sim/vcs/$(RUN_BIN) && verdi -sv -2001 +verilog2001ext+v +systemverilogext+v -ssf tb_top.vf -dbdir simv.daidir -f sim_flist.f
 
 # palladium simulation
 pldm-build: sim-verilog

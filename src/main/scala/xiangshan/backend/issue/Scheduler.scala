@@ -210,11 +210,19 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     case Some(bt) =>
       bt.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
         btAllocPregs.valid := dpAllocPregs.isInt
-        btAllocPregs.bits := dpAllocPregs.preg
+        btAllocPregs.bits.preg := dpAllocPregs.preg
+        btAllocPregs.bits.needMultiState match{
+          case Some(ms) => ms := dpAllocPregs.isVec
+          case None =>
+        }
       }
       bt.io.wbPregs.zipWithIndex.foreach { case (wb, i) =>
         wb.valid := io.intWriteBack(i).wen && io.intWriteBack(i).intWen
-        wb.bits := io.intWriteBack(i).addr
+        wb.bits.preg := io.intWriteBack(i).addr
+        wb.bits.needMultiState match{
+          case Some(ms) => ms := false.B
+          case None =>
+        }
       }
       bt.io.wakeUp := io.fromSchedulers.wakeupVec
       bt.io.og0Cancel := io.fromDataPath.og0Cancel
@@ -226,11 +234,19 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     case Some(bt) =>
       bt.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
         btAllocPregs.valid := dpAllocPregs.isFp
-        btAllocPregs.bits := dpAllocPregs.preg
+        btAllocPregs.bits.preg := dpAllocPregs.preg
+        btAllocPregs.bits.needMultiState match{
+          case Some(ms) => ms := dpAllocPregs.isVec
+          case None =>
+        }
       }
       bt.io.wbPregs.zipWithIndex.foreach { case (wb, i) =>
         wb.valid := io.fpWriteBack(i).wen && io.fpWriteBack(i).fpWen
-        wb.bits := io.fpWriteBack(i).addr
+        wb.bits.preg := io.fpWriteBack(i).addr
+        wb.bits.needMultiState match{
+          case Some(ms) => ms := false.B
+          case None =>
+        }
       }
       bt.io.wakeUp := io.fromSchedulers.wakeupVec
       bt.io.og0Cancel := io.fromDataPath.og0Cancel
@@ -242,11 +258,19 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     case Some(bt) =>
       bt.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
         btAllocPregs.valid := dpAllocPregs.isVec
-        btAllocPregs.bits := dpAllocPregs.preg
+        btAllocPregs.bits.preg := dpAllocPregs.preg
+        btAllocPregs.bits.needMultiState match{
+          case Some(ms) => ms := dpAllocPregs.isVec
+          case None =>
+        }
       }
       bt.io.wbPregs.zipWithIndex.foreach { case (wb, i) =>
         wb.valid := io.vfWriteBack(i).wen && io.vfWriteBack(i).vecWen
-        wb.bits := io.vfWriteBack(i).addr
+        wb.bits.preg := io.vfWriteBack(i).addr
+        wb.bits.needMultiState match{
+          case Some(ms) => ms := true.B
+          case None =>
+        }
       }
       bt.io.wakeUp := io.fromSchedulers.wakeupVec
       bt.io.og0Cancel := io.fromDataPath.og0Cancel
@@ -258,11 +282,19 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     case Some(bt) =>
       bt.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
         btAllocPregs.valid := dpAllocPregs.isV0
-        btAllocPregs.bits := dpAllocPregs.preg
+        btAllocPregs.bits.preg := dpAllocPregs.preg
+        btAllocPregs.bits.needMultiState match{
+          case Some(ms) => ms := false.B
+          case None =>
+        }
       }
       bt.io.wbPregs.zipWithIndex.foreach { case (wb, i) =>
         wb.valid := io.v0WriteBack(i).wen && io.v0WriteBack(i).v0Wen
-        wb.bits := io.v0WriteBack(i).addr
+        wb.bits.preg := io.v0WriteBack(i).addr
+        wb.bits.needMultiState match{
+          case Some(ms) => ms := false.B
+          case None =>
+        }
       }
       bt.io.wakeUp := io.fromSchedulers.wakeupVec
       bt.io.og0Cancel := io.fromDataPath.og0Cancel
@@ -274,11 +306,19 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     case Some(bt) =>
       bt.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
         btAllocPregs.valid := dpAllocPregs.isVl
-        btAllocPregs.bits := dpAllocPregs.preg
+        btAllocPregs.bits.preg := dpAllocPregs.preg
+        btAllocPregs.bits.needMultiState match{
+          case Some(ms) => ms := false.B
+          case None =>
+        }
       }
       bt.io.wbPregs.zipWithIndex.foreach { case (wb, i) =>
         wb.valid := io.vlWriteBack(i).wen && io.vlWriteBack(i).vlWen
-        wb.bits := io.vlWriteBack(i).addr
+        wb.bits.preg := io.vlWriteBack(i).addr
+        wb.bits.needMultiState match{
+          case Some(ms) => ms := false.B
+          case None =>
+        }
       }
       bt.io.wakeUp := io.fromSchedulers.wakeupVec
       bt.io.og0Cancel := io.fromDataPath.og0Cancel

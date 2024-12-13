@@ -26,7 +26,8 @@ import xs.utils.perf._
 import xiangshan.backend.Bundles._
 import xiangshan.backend.datapath.WbConfig._
 import xiangshan.backend.issue.SchdBlockParams
-import xiangshan.backend.datapath.{DataSource}
+import xiangshan.backend.datapath.DataSource
+import xiangshan.backend.fu.FuType
 
 class BusyTableReadIO(implicit p: Parameters) extends XSBundle {
   val req = Input(UInt(PhyRegIdxWidth.W))
@@ -34,12 +35,16 @@ class BusyTableReadIO(implicit p: Parameters) extends XSBundle {
   val loadDependency = Vec(LoadPipelineWidth, Output(UInt(LoadDependencyWidth.W)))
 }
 
+class BusyTablePhyRegIO(canHoldMultiState: Boolean)(implicit p: Parameters) extends XSBundle {
+  val preg = UInt(PhyRegIdxWidth.W)
+  val needMultiState = if(canHoldMultiState) Some(Bool()) else None
+}
 class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB: PregWB, canHoldMultiState: Boolean)(implicit p: Parameters, params: SchdBlockParams) extends XSModule with HasPerfEvents {
   val io = IO(new Bundle() {
     // set preg state to busy
-    val allocPregs = Vec(RenameWidth, Flipped(ValidIO(UInt(PhyRegIdxWidth.W))))
+    val allocPregs = Vec(RenameWidth, Flipped(ValidIO(new BusyTablePhyRegIO(canHoldMultiState))))
     // set preg state to ready (write back regfile + rob walk)
-    val wbPregs = Vec(numWritePorts, Flipped(ValidIO(UInt(PhyRegIdxWidth.W))))
+    val wbPregs = Vec(numWritePorts, Flipped(ValidIO(new BusyTablePhyRegIO(canHoldMultiState))))
     // fast wakeup
     val wakeUp: MixedVec[ValidIO[IssueQueueIQWakeUpBundle]] = Flipped(params.genIQWakeUpInValidBundle)
     // cancelFromDatapath
@@ -90,8 +95,10 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   val tableUpdate = Wire(Vec(numPhyPregs, UInt(btStateWidth.W)))
   val wakeupOHVec = Wire(Vec(numPhyPregs, UInt(wakeUpIn.size.W)))
 
-  def reqVecToMask(rVec: Vec[Valid[UInt]]): UInt = {
-    ParallelOR(rVec.map(v => Mux(v.valid, UIntToOH(v.bits), 0.U)))
+  def reqVecToMask(rVec: Vec[Valid[BusyTablePhyRegIO]]): (UInt,UInt) = {
+    val pregOH = ParallelOR(rVec.map(v => Mux(v.valid, UIntToOH(v.bits.preg), 0.U)))
+    val needMultiStateOH = ParallelOR(rVec.map(v => Mux(v.valid && v.bits.needMultiState.getOrElse(false.B), UIntToOH(v.bits.preg), 0.U)))
+    (pregOH, needMultiStateOH)
   }
 
   shiftLoadDependency.zip(wakeUpIn).map{ case (deps, wakeup) =>
@@ -125,7 +132,7 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   val ldCancelMask = loadDependency.map(x => LoadShouldCancel(Some(x), loadCancel))
 
   loadDependency.zipWithIndex.foreach{ case (ldDp, idx) =>
-    when(allocMask(idx) || wbMask(idx) || ldCancelMask(idx)) {
+    when(allocMask._1(idx) || wbMask._1(idx) || ldCancelMask(idx)) {
       ldDp := 0.U.asTypeOf(ldDp)
     }.elsewhen(wakeUpMask(idx)) {
       ldDp := (if (wakeUpIn.nonEmpty) Mux1H(wakeupOHVec(idx), shiftLoadDependency) else 0.U.asTypeOf(ldDp))
@@ -144,24 +151,28 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
   the bypass state lasts for a maximum of one cycle, cancel(=> busy) or else(=> regFile)
    */
   val regStateTab = VecInit((0 until numPhyPregs).zip(tableUpdate).map{ case (idx, update) =>
-    RegEnable(update, 0.U(1.W), allocMask(idx) || ldCancelMask(idx) || wakeUpMask(idx) || wbMask(idx))
+    RegEnable(update, 0.U(1.W), allocMask._1(idx) || ldCancelMask(idx) || wakeUpMask(idx) || wbMask._1(idx))
   })
 
+
   tableUpdate.zipWithIndex.foreach{ case (update, idx) =>
-    when(allocMask(idx) || ldCancelMask(idx)) {
-      update := 1.U(btStateWidth.W)                                    //busy
+    when(allocMask._1(idx) || ldCancelMask(idx)) {
+      update := Mux(allocMask._2(idx), (1<<btStateWidth-1).U(btStateWidth.W), 1.U(btStateWidth.W))                                 //busy
       if (idx == 0 && pregWB.isInstanceOf[IntWB]) {
           // Int RegFile 0 is always ready
           update := 0.U(btStateWidth.W)
       }
-    }.elsewhen(wakeUpMask(idx) || wbMask(idx)) {
-      update := 0.U(btStateWidth.W)                                  //ready
+    }.elsewhen(wbMask._1(idx)) {
+      update := Mux(wbMask._2(idx), regStateTab(idx)-(1<<btStateWidth-1).U(btStateWidth.W), 0.U(btStateWidth.W))
+    }.elsewhen(wakeUpMask(idx)){
+      update := 0.U(btStateWidth.W)
     }.otherwise {
       update := regStateTab(idx)
     }
     when(regStateTab(idx) === ((1 << btStateWidth) - 1).U(btStateWidth.W)){
-      XSError(!(allocMask(idx)), "preg can't be allocated when it's busy state")
+      XSError(!(allocMask._1(idx)), "preg can't be allocated when it's busy state")
     }
+    XSError(!(wbMask._1(idx) && wakeUpMask(idx)), "writeback and wakeup can't happend same time")
   }
 
   io.read.foreach{ case res =>

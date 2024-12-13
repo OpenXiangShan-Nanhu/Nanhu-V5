@@ -29,7 +29,7 @@ class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUn
   private val vs2Split = Module(new VecDataSplitModule(dataWidth, dataWidthOfDataModule))
   private val vs1Split = Module(new VecDataSplitModule(dataWidth, dataWidthOfDataModule))
   private val oldVdSplit  = Module(new VecDataSplitModule(dataWidth, dataWidthOfDataModule))
-  private val mgu = Module(new Mgu(dataWidth))
+  private val mgu = Module(new Mgu(128))
 
   /**
     * In connection of [[vs2Split]], [[vs1Split]] and [[oldVdSplit]]

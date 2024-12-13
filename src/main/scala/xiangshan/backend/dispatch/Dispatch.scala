@@ -374,12 +374,8 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       canEnterDpq && dqCanAccept
     io.toIntDq1.req(i).bits := updatedUop(i)
 
-    // io.toFpDq.needAlloc(i) := io.fromRename(i).valid && isFp(i) && !io.fromRename(i).bits.vpu.fpu.isFpToVecInst
-    // io.toFpDq.req(i).valid := io.fromRename(i).valid && isFp(i) && !io.fromRename(i).bits.vpu.fpu.isFpToVecInst && canEnterDpq && dqCanAccept
-    // io.toFpDq.req(i).bits := updatedUop(i)
-
-    io.toVecDq.needAlloc(i)  := io.fromRename(i).valid && (isVec(i) || (isFp(i) && io.fromRename(i).bits.vpu.fpu.isFpToVecInst))
-    io.toVecDq.req(i).valid  := io.fromRename(i).valid && (isVec(i) || (isFp(i) && io.fromRename(i).bits.vpu.fpu.isFpToVecInst)) && canEnterDpq && dqCanAccept
+    io.toVecDq.needAlloc(i)  := io.fromRename(i).valid && (isVec(i) || isFp(i))
+    io.toVecDq.req(i).valid  := io.fromRename(i).valid && (isVec(i) || isFp(i)) && canEnterDpq && dqCanAccept
     io.toVecDq.req(i).bits   := updatedUop(i)
 
     io.toLsDq.needAlloc(i)  := io.fromRename(i).valid && isMem(i)
@@ -391,7 +387,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     io.toDq.map(dq => { dq.req(i).bits.trigger := TriggerAction.None })
 
     XSDebug(io.toIntDq.req(i).valid, p"pc 0x${Hexadecimal(io.toIntDq.req(i).bits.pc)} int index $i\n")
-    // XSDebug(io.toIntDq1.req(i).valid, p"pc 0x${Hexadecimal(io.toIntDq1.req(i).bits.pc)} int index $i\n")
+    XSDebug(io.toIntDq1.req(i).valid, p"pc 0x${Hexadecimal(io.toIntDq1.req(i).bits.pc)} int index $i\n")
     XSDebug(io.toVecDq.req(i).valid , p"pc 0x${Hexadecimal(io.toVecDq.req(i).bits.pc )} fp  index $i\n")
     XSDebug(io.toLsDq.req(i).valid , p"pc 0x${Hexadecimal(io.toLsDq.req(i).bits.pc )} ls  index $i\n")
   }

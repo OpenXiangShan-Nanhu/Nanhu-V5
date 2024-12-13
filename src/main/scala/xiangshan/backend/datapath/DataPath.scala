@@ -21,6 +21,7 @@ import xiangshan.backend.regfile._
 import xiangshan.backend.regcache._
 import xiangshan.backend.fu.FuType.is0latency
 import xiangshan.mem.{LqPtr, SqPtr}
+import freechips.rocketchip.util.SeqToAugmentedSeq
 
 class DataPath(params: BackendParams)(implicit p: Parameters) extends LazyModule {
   override def shouldBeInlined: Boolean = false
@@ -38,13 +39,23 @@ class DataPath(params: BackendParams)(implicit p: Parameters) extends LazyModule
 class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params: BackendParams)
   extends LazyModuleImp(wrapper) with HasXSParameter {
 
+  private val vfIssueBlockParams = params.schdParams(VfScheduler()).issueBlockParams
+
   val io = IO(new DataPathIO())
 
   private val (fromIntIQ, toIntIQ, toIntExu) = (io.fromIntIQ, io.toIntIQ, io.toIntExu)
-  // private val (fromFpIQ,  toFpIQ,  toFpExu)  = (io.fromFpIQ,  io.toFpIQ,  io.toFpExu)
   private val (fromMemIQ, toMemIQ, toMemExu) = (io.fromMemIQ, io.toMemIQ, io.toMemExu)
   private val (fromVfIQ,  toVfIQ,  toVfExu ) = (io.fromVfIQ,  io.toVfIQ,  io.toVecExu)
   private val (fromVecExcp, toVecExcp)       = (io.fromVecExcpMod, io.toVecExcpMod)
+
+  private val fromVfIQWithParams = fromVfIQ.zip(vfIssueBlockParams)
+
+  val sharedVfConflict: Seq[Bool] = fromVfIQWithParams.map(x => x._2.sharedVf.asBool && x._1.map(xx => xx.valid).reduce(_ && _) && 
+                                                                ~x._1.map(xx => xx.bits.common.vpu.get.fpu.isFpToVecInst).reduce(_ && _))
+
+  val sharedVfNeedCancel: Seq2[Bool] = fromVfIQWithParams.map(x => (Seq.fill(2)(x._1.head.bits.common.robIdx > x._1.last.bits.common.robIdx).asUInt ^ "b01".asUInt).asBools)
+
+  val sharedVfNeedReadRF: Seq2[Bool] = sharedVfConflict.zip(sharedVfNeedCancel).map(x => x._2.map(xx => !x._1 || (~xx && x._1)))
 
   println(s"[DataPath] IntIQ(${fromIntIQ.size}), VecIQ(${fromVfIQ.size}), MemIQ(${fromMemIQ.size})")
   println(s"[DataPath] IntExu(${fromIntIQ.map(_.size).sum}), VecExu(${fromVfIQ.map(_.size).sum}), MemExu(${fromMemIQ.map(_.size).sum})")
@@ -90,7 +101,9 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val vlRdNotBlock: Seq2[Bool] = vlRdArbWinner.map(_.map(_.asUInt.andR))
 
   private val intRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
-  private val vfRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
+  private val vfRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = (fromIntIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq) ++ 
+                                                                  fromVfIQ.zip(sharedVfNeedReadRF).map(x => x._1.zip(x._2).map(xx => xx._1.bits.getRfReadValidBundle(xx._1.valid && xx._2)).toSeq) ++
+                                                                  fromMemIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq)).toSeq
   private val v0RFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
   private val vlRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
 
@@ -531,6 +544,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   val og0_cancel_delay = RegNext(VecInit(og0_cancel_no_load.zip(is_0latency).map(x => x._1 && x._2)))
   val isVfScheduler = VecInit(exuParamsNoLoad.map(x => x._2.schdType.isInstanceOf[VfScheduler].B))
   val og0_cancel_delay_for_mem = VecInit(og0_cancel_delay.zip(isVfScheduler).map(x => x._1 && !x._2))
+
+  val fromIntIQCanReadRF:Seq2[Bool] = fromIntIQ.map(x => x.map(xx => true.B))
+  val fromMemIQCanReadRF:Seq2[Bool] = fromMemIQ.map(x => x.map(xx => true.B))
+
+  val fromIQCanReadRF:Seq2[Bool] = fromIntIQCanReadRF ++ sharedVfNeedReadRF ++ fromMemIQCanReadRF
+
   for (i <- fromIQ.indices) {
     for (j <- fromIQ(i).indices) {
       // IQ(s0) --[Ctrl]--> s1Reg ---------- begin
@@ -567,7 +586,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
         s1_data.fromIssueBundle(s0.bits) // no src data here
         s1_addrOH := s0.bits.addrOH
       }
-      s0.ready := notBlock && !s0_cancel
+      s0.ready := notBlock && !s0_cancel && fromIQCanReadRF(i)(j)
       // IQ(s0) --[Ctrl]--> s1Reg ---------- end
     }
   }

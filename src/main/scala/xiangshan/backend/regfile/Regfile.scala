@@ -34,28 +34,23 @@ class RfWritePort(dataWidth: Int, addrWidth: Int) extends Bundle {
   val data = Input(UInt(dataWidth.W))
 }
 
-class RfReadPortWithConfig(val rfReadDataCfg: DataConfig, addrWidth: Int) extends Bundle {
+class RfReadPortWithConfig(addrWidth: Int) extends Bundle {
   val addr: UInt = Input(UInt(addrWidth.W))
   val srcType: UInt = Input(UInt(3.W))
-
-  def readInt: Boolean = IntRegSrcDataSet.contains(rfReadDataCfg)
-  def readVec: Boolean = VecRegSrcDataSet.contains(rfReadDataCfg)
-  def readVf : Boolean = VecRegSrcDataSet .contains(rfReadDataCfg)
 }
 
-class RfWritePortWithConfig(val rfWriteDataCfg: DataConfig, addrWidth: Int) extends Bundle {
+class RfWritePortWithConfig(pregParams: PregParams) extends Bundle {
+  val addrWidth = pregParams.addrWidth
+  val dataWidth = pregParams.dataCfg.map(_.dataWidth).max
+
   val wen = Input(Bool())
   val addr = Input(UInt(addrWidth.W))
-  val data = Input(UInt(rfWriteDataCfg.dataWidth.W))
+  val data = Input(UInt(dataWidth.W))
   val intWen = Input(Bool())
   val fpWen = Input(Bool())
   val vecWen = Input(Bool())
   val v0Wen = Input(Bool())
   val vlWen = Input(Bool())
-  def writeInt: Boolean = rfWriteDataCfg.isInstanceOf[IntData]
-  def writeVec: Boolean = rfWriteDataCfg.isInstanceOf[VecData]
-  def writeV0 : Boolean = rfWriteDataCfg.isInstanceOf[V0Data]
-  def writeVl : Boolean = rfWriteDataCfg.isInstanceOf[VlData]
 }
 
 class Regfile

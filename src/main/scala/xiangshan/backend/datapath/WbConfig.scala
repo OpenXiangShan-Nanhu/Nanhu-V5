@@ -3,18 +3,19 @@ package xiangshan.backend.datapath
 import chisel3.util.log2Up
 import xiangshan.backend.BackendParams
 import xiangshan.backend.datapath.DataConfig._
+import xiangshan.backend.regfile.regPort
 
 object WbConfig {
   sealed abstract class WbConfig() {
     val port: Int
-    def dataCfg: DataConfig
-    def dataWidth: Int = dataCfg.dataWidth
+    def dataCfg: Set[DataConfig]
+    def dataWidth: Int = dataCfg.map(_.dataWidth).max
 
-    def writeInt = dataCfg == IntData()
+    def writeInt = dataCfg.contains(IntData())
     // def writeFp = dataCfg == FpData()
-    def writeVec = dataCfg == VecData()
-    def writeV0 = dataCfg == V0Data()
-    def writeVl = dataCfg == VlData()
+    def writeVec = dataCfg.contains(VecData()) || dataCfg.contains(FpData())
+    def writeV0 = dataCfg.contains(V0Data())
+    def writeVl = dataCfg.contains(VlData())
 
     override def toString: String = {
       var res = this match {
@@ -33,7 +34,7 @@ object WbConfig {
 
   sealed abstract class ExuWB extends WbConfig
 
-  sealed abstract class PregWB extends ExuWB {
+  sealed abstract class PregWB extends ExuWB with regPort {
     val priority: Int
 
     def numPreg(backendParams: BackendParams): Int
@@ -46,9 +47,9 @@ object WbConfig {
     priority: Int = Int.MaxValue,
   ) extends PregWB {
 
-    def dataCfg: DataConfig = IntData()
+    def dataCfg: Set[DataConfig] = Set(IntData())
 
-    def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(IntData()).numEntries
+    def numPreg(backendParams: BackendParams): Int = backendParams.intPregParams.numEntries
   }
 
   // case class FpWB(
@@ -58,7 +59,7 @@ object WbConfig {
 
   //   def dataCfg: DataConfig = FpData()
 
-  //   def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(FpData()).numEntries
+  //   def numPreg(backendParams: BackendParams): Int = backendParams.fpPregParams.numEntries
   // }
 
   case class VfWB(
@@ -66,9 +67,9 @@ object WbConfig {
     priority: Int = Int.MaxValue,
   ) extends PregWB {
 
-    def dataCfg: DataConfig = VecData()
+    def dataCfg: Set[DataConfig] = Set(FpData(), VecData())
 
-    def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(VecData()).numEntries
+    def numPreg(backendParams: BackendParams): Int = backendParams.vfPregParams.numEntries
   }
 
   case class V0WB(
@@ -76,9 +77,9 @@ object WbConfig {
     priority: Int = Int.MaxValue,
   ) extends PregWB {
 
-    def dataCfg: DataConfig = V0Data()
+    def dataCfg: Set[DataConfig] = Set(V0Data())
 
-    def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(V0Data()).numEntries
+    def numPreg(backendParams: BackendParams): Int = backendParams.v0PregParams.numEntries
   }
 
   case class VlWB(
@@ -86,9 +87,9 @@ object WbConfig {
     priority: Int = Int.MaxValue,
   ) extends PregWB {
 
-    def dataCfg: DataConfig = VlData()
+    def dataCfg: Set[DataConfig] = Set(VlData())
 
-    def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(VlData()).numEntries
+    def numPreg(backendParams: BackendParams): Int = backendParams.vlPregParams.numEntries
   }
 
   case class NoWB(
@@ -96,7 +97,7 @@ object WbConfig {
     priority: Int = Int.MaxValue,
   ) extends PregWB {
 
-    override def dataCfg: DataConfig = NoData()
+    override def dataCfg: Set[DataConfig] = Set()
 
     override def numPreg(backendParams: BackendParams): Int = 0
   }
@@ -105,7 +106,7 @@ object WbConfig {
     port: Int = -1,
   ) extends WbConfig {
     val priority: Int = Int.MaxValue
-    override def dataCfg: DataConfig = NoData()
+    override def dataCfg: Set[DataConfig] = Set()
   }
 
   case class FakeIntWB(
@@ -113,8 +114,8 @@ object WbConfig {
     priority: Int = Int.MaxValue,
   ) extends PregWB {
 
-    def dataCfg: DataConfig = FakeIntData()
+    def dataCfg: Set[DataConfig] = Set(FakeIntData())
 
-    def numPreg(backendParams: BackendParams): Int = backendParams.getPregParams(FakeIntData()).numEntries
+    def numPreg(backendParams: BackendParams): Int = 0
   }
 }

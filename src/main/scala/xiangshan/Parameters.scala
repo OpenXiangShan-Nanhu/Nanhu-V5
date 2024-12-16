@@ -564,7 +564,7 @@ case class DebugOptions
   EnableDifftest: Boolean = false,
   AlwaysBasicDiff: Boolean = false,
   EnableDebug: Boolean = false,
-  EnablePerfDebug: Boolean = true,
+  EnablePerfDebug: Boolean = false,
   UseDRAMSim: Boolean = false,
   EnableConstantin: Boolean = false,
   EnableChiselDB: Boolean = false,

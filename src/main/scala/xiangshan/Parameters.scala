@@ -563,7 +563,7 @@ case class DebugOptions
   ResetGen: Boolean = false,
   EnableDifftest: Boolean = false,
   AlwaysBasicDiff: Boolean = false,
-  EnableDebug: Boolean = false,
+  EnableDebug: Boolean = true,
   EnablePerfDebug: Boolean = false,
   UseDRAMSim: Boolean = false,
   EnableConstantin: Boolean = false,

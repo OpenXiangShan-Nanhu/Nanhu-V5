@@ -8,6 +8,7 @@ import utility.XORFold
 import xiangshan.backend.rob.RobPtr
 import xiangshan.mem.SqPtr
 import xiangshan.{CustomCSRCtrlIO, XSBundle, XSModule}
+import xs.utils.perf.XSPerfAccumulate
 
 trait HasMDPParameters {
   val mdpSize = 32
@@ -226,8 +227,10 @@ class NewMDP(implicit p: Parameters) extends XSModule with HasMDPParameters{
       tag(replaceIdx).fold_pc := s1_updateTagVec(i).fold_pc
       tag(replaceIdx).distance := s1_updateTagVec(i).distance
       tag(replaceIdx).writeConFull()
-
     }
   }
+
+  XSPerfAccumulate("MDP_allocate_num_greaterThan_16", PopCount(allocated) > 16.U)
+  XSPerfAccumulate("MDP_allocate_full", PopCount(allocated) === mdpSize.U)
 
 }

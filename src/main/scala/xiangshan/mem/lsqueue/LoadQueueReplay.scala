@@ -278,9 +278,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   // val missMSHRId = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U((log2Up(cfg.nMissEntries+1).W)))))
   // val tlbHintId = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U((log2Up(loadfiltersize+1).W)))))
   // merge blockSqIdx  missMSHRId   tlbHintId 
-  val maxWidth = log2Up(StoreQueueSize).max((log2Up(cfg.nMissEntries+1)).max(log2Up(loadfiltersize+1)))
+  val maxWidth = ((new SqPtr).getWidth).max((log2Up(cfg.nMissEntries+1)).max(log2Up(loadfiltersize+1)))
   val replayID = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U(maxWidth.W))))
-  val blockSqIdx = VecInit(replayID.map(_.asTypeOf(new SqPtr)))
+  val blockSqIdx = replayID
   val missMSHRId = replayID
   val tlbHintId = replayID
 
@@ -339,19 +339,19 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     // dequeue
     //  FIXME: store*Ptr is not accurate
     // dataNotBlockVec(i) := isAfter(io.stDataReadySqPtr, blockSqIdx(i)) || stDataReadyVec(blockSqIdx(i).value) || io.sqEmpty // for better timing
-    dataNotBlockVec(i) := isAfter(io.stDataReadySqPtr, blockSqIdx(i)) || stDataReadyVec(blockSqIdx(i).value) || io.sqEmpty // for better timing
-    addrNotBlockVec(i) := isAfter(io.stAddrReadySqPtr, blockSqIdx(i)) || !strict(i) && stAddrReadyVec(blockSqIdx(i).value) || io.sqEmpty // for better timing
+    dataNotBlockVec(i) := isAfter(io.stDataReadySqPtr, blockSqIdx(i).asTypeOf(new SqPtr)) || stDataReadyVec(blockSqIdx(i)((new SqPtr).getWidth-2,0)) || io.sqEmpty // for better timing
+    addrNotBlockVec(i) := isAfter(io.stAddrReadySqPtr, blockSqIdx(i).asTypeOf(new SqPtr)) || !strict(i) && stAddrReadyVec(blockSqIdx(i)((new SqPtr).getWidth-2,0)) || io.sqEmpty // for better timing
     // store address execute
     storeAddrInSameCycleVec(i) := VecInit((0 until StorePipelineWidth).map(w => {
       io.storeAddrIn(w).valid &&
       !io.storeAddrIn(w).bits.miss &&
-      blockSqIdx(i) === io.storeAddrIn(w).bits.uop.sqIdx
+      blockSqIdx(i) === io.storeAddrIn(w).bits.uop.sqIdx.asUInt
     })).asUInt.orR // for better timing
 
     // store data execute
     storeDataInSameCycleVec(i) := VecInit((0 until StorePipelineWidth).map(w => {
       io.storeDataIn(w).valid &&
-      blockSqIdx(i) === io.storeDataIn(w).bits.uop.sqIdx
+      blockSqIdx(i) === io.storeDataIn(w).bits.uop.sqIdx.asUInt
     })).asUInt.orR // for better timing
 
   }
@@ -734,13 +734,13 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
       // special case: st-ld violation
       when (replayInfo.cause(LoadReplayCauses.C_MA)) {
-        blockSqIdx(enqIndex) := replayInfo.addr_inv_sq_idx
+        blockSqIdx(enqIndex) := replayInfo.addr_inv_sq_idx.asUInt
         strict(enqIndex) := enq.bits.uop.loadWaitStrict
       }
 
       // special case: data forward fail
       when (replayInfo.cause(LoadReplayCauses.C_FF)) {
-        blockSqIdx(enqIndex) := replayInfo.data_inv_sq_idx
+        blockSqIdx(enqIndex) := replayInfo.data_inv_sq_idx.asUInt
       }
       // extra info
       replayCarryReg(enqIndex) := replayInfo.rep_carry

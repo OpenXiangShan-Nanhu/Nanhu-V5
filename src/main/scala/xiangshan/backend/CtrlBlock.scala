@@ -149,7 +149,7 @@ class CtrlBlockImp(
   val vfScheWbData = io_writeback.filter(_.bits.params.schdType.isInstanceOf[VfScheduler])
   val intCanCompress = intScheWbData.filter(_.bits.params.CanCompress)
   val i2vWbData = intScheWbData.filter(_.bits.params.writeVecRf)
-  // val f2vWbData = fpScheWbData.filter(_.bits.params.writeVecRf)
+  // val f2vWbData = vfScheWbData.filter(_.bits.params.hasF2v)
   val memVloadWbData = io_writeback.filter(x => x.bits.params.schdType.isInstanceOf[MemScheduler] && x.bits.params.hasVLoadFu)
   private val delayedNotFlushedWriteBackNums = wbDataNoStd.map(x => {
     val valid = x.valid
@@ -163,11 +163,11 @@ class CtrlBlockImp(
     val isi2v = i2vWbData.contains(x)
     // val isf2v = f2vWbData.contains(x)
     val canSameRobidxWbData = if(isVfSche) {
-      i2vWbData ++ vfScheWbData
+      intCanCompress ++ vfScheWbData
     } else if(isi2v) {
       intCanCompress ++ vfScheWbData
     } else if (isIntSche) {
-      intCanCompress
+      intCanCompress ++ vfScheWbData
     } else if (isMemVload) {
       memVloadWbData
     } else {

@@ -665,7 +665,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       XSError(allocated(enqIndex) && !enq.bits.isLoadReplay, p"LoadQueueReplay: can not accept more load, check: ldu $w, robIdx $debug_robIdx!")
       XSError(hasExceptions(w), p"LoadQueueReplay: The instruction has exception, it can not be replay, check: ldu $w, robIdx $debug_robIdx!")
 
-      freeList.io.doAllocate(w) := !enq.bits.isLoadReplay && !mmioFromLdu_s0_canissue.reduce(_ | _)
+      freeList.io.doAllocate(w) := !enq.bits.isLoadReplay
 
       //  Allocate new entry
       allocated(enqIndex) := true.B
@@ -719,37 +719,34 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
         blocking(enqIndex) := false.B
       }
 
+      // special case: dcache miss
+      when (replayInfo.cause(LoadReplayCauses.C_DM) && enq.bits.handledByMSHR) {
+        blocking(enqIndex) := !replayInfo.full_fwd && //  dcache miss
+        !(io.tl_d_channel.valid && io.tl_d_channel.mshrid === replayInfo.mshr_id) // no refill in this cycle
+      }
+      // update mshr_id only when the load has already been handled by mshr
+      when(enq.bits.handledByMSHR) {
+        missMSHRId(enqIndex) := replayInfo.mshr_id
+      }
+      // special case: data forward fail
+      when (replayInfo.cause(LoadReplayCauses.C_FF)) {
+        blockSqIdx(enqIndex) := replayInfo.data_inv_sq_idx.asUInt
+      }
       // special case: tlb miss
       when (replayInfo.cause(LoadReplayCauses.C_TM)) {
         blocking(enqIndex) := !replayInfo.tlb_full &&
           !(io.tlb_hint.resp.valid && (io.tlb_hint.resp.bits.id === replayInfo.tlb_id || io.tlb_hint.resp.bits.replay_all))
         tlbHintId(enqIndex) := replayInfo.tlb_id
       }
-
-      // special case: dcache miss
-      when (replayInfo.cause(LoadReplayCauses.C_DM) && enq.bits.handledByMSHR) {
-        blocking(enqIndex) := !replayInfo.full_fwd && //  dcache miss
-                              !(io.tl_d_channel.valid && io.tl_d_channel.mshrid === replayInfo.mshr_id) // no refill in this cycle
-      }
-
       // special case: st-ld violation
       when (replayInfo.cause(LoadReplayCauses.C_MA)) {
         blockSqIdx(enqIndex) := replayInfo.addr_inv_sq_idx.asUInt
         strict(enqIndex) := enq.bits.uop.loadWaitStrict
       }
-
-      // special case: data forward fail
-      when (replayInfo.cause(LoadReplayCauses.C_FF)) {
-        blockSqIdx(enqIndex) := replayInfo.data_inv_sq_idx.asUInt
-      }
       // extra info
       replayCarryReg(enqIndex) := replayInfo.rep_carry
       replacementUpdated(enqIndex) := enq.bits.replacementUpdated
       missDbUpdated(enqIndex) := enq.bits.missDbUpdated
-      // update mshr_id only when the load has already been handled by mshr
-      when(enq.bits.handledByMSHR) {
-        missMSHRId(enqIndex) := replayInfo.mshr_id
-      }
       dataInLastBeatReg(enqIndex) := dataInLastBeat
       //dataInLastBeatReg(enqIndex) := Mux(io.l2_hint.bits.isKeyword, !dataInLastBeat, dataInLastBeat)
     }

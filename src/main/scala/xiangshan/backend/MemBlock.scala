@@ -742,6 +742,13 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // LoadUnit
   val correctMissTrain = Constantin.createRecord(s"CorrectMissTrain$hartId", initValue = false)
 
+  val hasLoadUnitReq = RegInit(false.B)
+  when(loadUnits(0).io.dcache.req.valid) {
+    hasLoadUnitReq := true.B
+  }.elsewhen(loadUnits(0).io.dcache.resp.valid) {
+    hasLoadUnitReq := false.B
+  }
+
   for (i <- 0 until LduCnt) {
     loadUnits(i).io.redirect <> redirect
 
@@ -777,11 +784,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         vSegmentUnit.io.rdcache.req.valid -> vSegmentUnit.io.rdcache.req.bits,
         loadUnits(i).io.dcache.req.valid -> loadUnits(i).io.dcache.req.bits
       ))
-      vSegmentUnit.io.rdcache.req.ready := dcache.io.lsu.load(i).req.ready
+      vSegmentUnit.io.rdcache.req.ready := dcache.io.lsu.load(i).req.ready && !hasLoadUnitReq
     }
 
     // Dcache requests must also be preempted by the segment.
-    when(vSegmentFlag && vSegmentUnit.io.rdcacheReq){
+    when(vSegmentFlag && !hasLoadUnitReq){
       loadUnits(i).io.dcache.req.ready             := false.B // Dcache is preempted.
 
       dcache.io.lsu.load(0).pf_source              := vSegmentUnit.io.rdcache.pf_source

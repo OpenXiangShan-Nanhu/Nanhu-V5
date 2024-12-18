@@ -781,7 +781,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     }
 
     // Dcache requests must also be preempted by the segment.
-    when(vSegmentFlag){
+    when(vSegmentFlag && vSegmentUnit.io.rdcacheReq){
       loadUnits(i).io.dcache.req.ready             := false.B // Dcache is preempted.
 
       dcache.io.lsu.load(0).pf_source              := vSegmentUnit.io.rdcache.pf_source

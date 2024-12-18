@@ -246,6 +246,8 @@ class VSegmentUnit (implicit p: Parameters) extends VLSUModule
    */
   state  := stateNext
 
+  io.rdcacheReq := stateNext === s_cache_req || state === s_cache_req
+
   /**
    * state transfer
    */

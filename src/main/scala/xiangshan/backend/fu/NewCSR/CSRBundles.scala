@@ -42,6 +42,8 @@ object CSRBundles {
 
   class XtinstBundle extends FieldInitBundle
 
+  class Htimedelta extends FieldInitBundle
+
   abstract class EnvCfg extends CSRBundle {
     // Set all fields not supported as RO in base class
     val STCE  =      RO(    63)           .withReset(0.U) // Sstc Enable

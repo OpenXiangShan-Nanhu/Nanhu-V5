@@ -20,8 +20,8 @@ trait HasMDPParameters {
 }
 
 object MDPPCFold {
-  def apply(input: UInt, resWidth: Int): UInt = {
-    XORFold(input,resWidth)
+  def apply(input: UInt, resWidth: Int, reserveLowBit:Int = 5): UInt = {
+    Cat(XORFold(input(input.getWidth - 1, reserveLowBit),resWidth - reserveLowBit), input(reserveLowBit - 1, 0))
   }
 }
 

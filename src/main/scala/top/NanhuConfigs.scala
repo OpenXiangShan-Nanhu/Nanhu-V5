@@ -127,14 +127,14 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
       numWrite = None,              // Default:
     ),                              // Default:
     vfPreg = VfPregParams(
-      numEntries = 128,             // Default: 160
+      numEntries = 160,             // Default: 160
       numRead = None,
       numWrite = None,
     ),
     VirtualLoadQueueSize = 64,      // Default: 72
-    LoadQueueRARSize = 48,          // Default: 72
+    LoadQueueRARSize = 64,          // Default: 72
     LoadQueueRAWSize = 24,          // Default: 64
-    LoadQueueReplaySize = 36,       // Default: 72
+    LoadQueueReplaySize = 64,       // Default: 72
     LoadQueueNWriteBanks = 4,       // Default: 8
     LoadUncacheBufferSize = 8,      // Default: 20
     StoreQueueSize = 32,            // Default: 64

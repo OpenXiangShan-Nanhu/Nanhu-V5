@@ -127,7 +127,7 @@ case class ExeUnitParams(
         }
       }
     }
-    println(s"[Backend] exuIdx ${exuIdx} numWakeupIQ ${setIQ.size}")
+    println(s"[Backend] exuIdx ${exuIdx}:${name} numWakeupIQ ${setIQ.size}")
     1 + setIQ.size / copyDistance
   }
   def rdPregIdxWidth: Int = {

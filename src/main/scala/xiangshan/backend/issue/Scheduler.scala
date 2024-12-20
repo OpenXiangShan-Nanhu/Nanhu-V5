@@ -21,7 +21,6 @@ import xiangshan.backend.regcache.RegCacheTagTable
 sealed trait SchedulerType
 
 case class IntScheduler() extends SchedulerType
-// case class FpScheduler() extends SchedulerType
 case class MemScheduler() extends SchedulerType
 case class VfScheduler() extends SchedulerType
 case class NoScheduler() extends SchedulerType
@@ -29,20 +28,18 @@ case class NoScheduler() extends SchedulerType
 class Scheduler(val params: SchdBlockParams)(implicit p: Parameters) extends LazyModule with HasXSParameter {
   override def shouldBeInlined: Boolean = false
 
-  val numIntStateWrite = backendParams.numPregWb(backendParams.intPregParams)
-  // val numFpStateWrite = backendParams.numPregWb(backendParams.fpPregParams)
-  val numVfStateWrite = backendParams.numPregWb(backendParams.vfPregParams)
-  val numV0StateWrite = backendParams.numPregWb(backendParams.v0PregParams)
-  val numVlStateWrite = backendParams.numPregWb(backendParams.vlPregParams)
+  val numIntStateWrite  = backendParams.numPregWb(backendParams.intPregParams)
+  val numVfStateWrite   = backendParams.numPregWb(backendParams.vfPregParams)
+  val numV0StateWrite   = backendParams.numPregWb(backendParams.v0PregParams)
+  val numVlStateWrite   = backendParams.numPregWb(backendParams.vlPregParams)
 
   val dispatch2Iq = LazyModule(new Dispatch2Iq(params))
   val issueQueue = params.issueBlockParams.map(x => LazyModule(new IssueQueue(x).suggestName(x.getIQName)))
 
   lazy val module: SchedulerImpBase = params.schdType match {
     case IntScheduler() => new SchedulerArithImp(this)(params, p)
-    // case FpScheduler()  => new SchedulerArithImp(this)(params, p)
+    case VfScheduler()  => new SchedulerArithImp(this)(params, p)
     case MemScheduler() => new SchedulerMemImp(this)(params, p)
-    case VfScheduler() => new SchedulerArithImp(this)(params, p)
     case _ => null
   }
 }
@@ -69,10 +66,10 @@ class SchedulerIO()(implicit params: SchdBlockParams, p: Parameters) extends XSB
     val uops =  Vec(params.numUopIn, Flipped(DecoupledIO(new DynInst)))
   }
   val intWriteBack = MixedVec(Vec(backendParams.numPregWb(backendParams.intPregParams), new RfWritePortWithConfig(backendParams.intPregParams)))
-  // val fpWriteBack = MixedVec(Vec(backendParams.numPregWb(backendParams.fpPregParams),new RfWritePortWithConfig(backendParams.vfPregParams)))
   val vfWriteBack = MixedVec(Vec(backendParams.numPregWb(backendParams.vfPregParams),new RfWritePortWithConfig(backendParams.vfPregParams)))
   val v0WriteBack = MixedVec(Vec(backendParams.numPregWb(backendParams.v0PregParams),new RfWritePortWithConfig(backendParams.v0PregParams)))
   val vlWriteBack = MixedVec(Vec(backendParams.numPregWb(backendParams.vlPregParams),new RfWritePortWithConfig(backendParams.vlPregParams)))
+  
   val toDataPathAfterDelay: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] = MixedVec(params.issueBlockParams.map(_.genIssueDecoupledBundle))
 
   val vlWriteBackInfo = new Bundle {

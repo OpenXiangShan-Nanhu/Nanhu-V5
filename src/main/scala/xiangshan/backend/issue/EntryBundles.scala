@@ -256,11 +256,19 @@ object EntryBundles extends HasCircularQueuePtrHelper {
     val srcLoadDependencyNext = Vec(params.numRegSrc, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W)))
   }
 
-  def CommonWireConnect(common: CommonWireBundle, hasIQWakeup: Option[CommonIQWakeupBundle], validReg: Bool, status: Status, commonIn: CommonInBundle, isEnq: Boolean)(implicit p: Parameters, params: IssueBlockParams) = {
+  def CommonWireConnect(
+    common      : CommonWireBundle,
+    hasIQWakeup : Option[CommonIQWakeupBundle],
+    validReg    : Bool,
+    status      : Status,
+    commonIn    : CommonInBundle,
+    isEnq       : Boolean)(implicit p: Parameters, params: IssueBlockParams) = {
+    
     val hasIQWakeupGet        = hasIQWakeup.getOrElse(0.U.asTypeOf(new CommonIQWakeupBundle))
     common.flushed            := status.robIdx.needFlush(commonIn.flush)
     common.deqSuccess         := (if (params.isVecMemIQ) status.issued else true.B) &&
-      commonIn.issueResp.valid && RespType.succeed(commonIn.issueResp.bits.resp) && !common.srcLoadCancelVec.asUInt.orR
+                                  commonIn.issueResp.valid &&
+                                  RespType.succeed(commonIn.issueResp.bits.resp) && !common.srcLoadCancelVec.asUInt.orR
     common.srcWakeup          := common.srcWakeupByWB.zip(hasIQWakeupGet.srcWakeupByIQ).map { case (x, y) => x || y.asUInt.orR }
     common.srcWakeupByWB      := commonIn.wakeUpFromWB.map{ bundle => 
                                     val psrcSrcTypeVec = status.srcStatus.map(_.psrc) zip status.srcStatus.map(_.srcType)
@@ -269,33 +277,40 @@ object EntryBundles extends HasCircularQueuePtrHelper {
                                       bundle.bits.wakeUpV0(psrcSrcTypeVec(3), bundle.valid) :+ 
                                       bundle.bits.wakeUpVl(psrcSrcTypeVec(4), bundle.valid)
                                     }
-                                    else
+                                    else {
                                       bundle.bits.wakeUp(psrcSrcTypeVec, bundle.valid)
-                                 }.transpose.map(x => VecInit(x.toSeq).asUInt.orR).toSeq
+                                    }
+                                  }.transpose.map(x => VecInit(x.toSeq).asUInt.orR).toSeq
     common.canIssue           := validReg && status.canIssue
     common.enqReady           := !validReg || commonIn.transSel
     common.clear              := common.flushed || common.deqSuccess || commonIn.transSel
-    common.srcCancelVec.zip(common.srcLoadCancelVec).zip(hasIQWakeupGet.srcWakeupByIQWithoutCancel).zipWithIndex.foreach { case (((srcCancel, srcLoadCancel), wakeUpByIQVec), srcIdx) =>
-      val ldTransCancel = if(params.hasIQWakeUp) Mux1H(wakeUpByIQVec, hasIQWakeupGet.wakeupLoadDependencyByIQVec.map(dep => LoadShouldCancel(Some(dep), commonIn.ldCancel))) else false.B
-      srcLoadCancel := LoadShouldCancel(Some(status.srcStatus(srcIdx).srcLoadDependency), commonIn.ldCancel)
-      srcCancel := srcLoadCancel || ldTransCancel
+    common.srcCancelVec.zip(common.srcLoadCancelVec).zip(hasIQWakeupGet.srcWakeupByIQWithoutCancel).zipWithIndex.foreach {
+      case (((srcCancel, srcLoadCancel), wakeUpByIQVec), srcIdx) => {
+        val ldTransCancel = if(params.hasIQWakeUp) Mux1H(wakeUpByIQVec, hasIQWakeupGet.wakeupLoadDependencyByIQVec.map(dep => LoadShouldCancel(Some(dep), commonIn.ldCancel)))
+                            else false.B
+        srcLoadCancel := LoadShouldCancel(Some(status.srcStatus(srcIdx).srcLoadDependency), commonIn.ldCancel)
+        srcCancel := srcLoadCancel || ldTransCancel
+      }
     }
-    common.srcLoadDependencyNext.zip(status.srcStatus.map(_.srcLoadDependency)).foreach { case (ldsNext, lds) =>
-      ldsNext.zip(lds).foreach{ case (ldNext, ld) => ldNext := ld << 1 }
+    common.srcLoadDependencyNext.zip(status.srcStatus.map(_.srcLoadDependency)).foreach {
+      case (ldsNext, lds) =>
+        ldsNext.zip(lds).foreach{ case (ldNext, ld) => ldNext := ld << 1 }
     }
     if(isEnq) {
-      common.validRegNext     := Mux(commonIn.enq.valid && common.enqReady, true.B, Mux(common.clear, false.B, validReg))
+      common.validRegNext := Mux(commonIn.enq.valid && common.enqReady, true.B, Mux(common.clear, false.B, validReg))
     } else {
-      common.validRegNext     := Mux(commonIn.enq.valid, true.B, Mux(common.clear, false.B, validReg))
+      common.validRegNext := Mux(commonIn.enq.valid, true.B, Mux(common.clear, false.B, validReg))
     }
     if (params.numRegSrc == 5) {
       // only when numRegSrc == 5 need vl
-      val wakeUpFromVl = VecInit(commonIn.wakeUpFromWB.map{ bundle => 
+      val wakeUpFromVl = VecInit(commonIn.wakeUpFromWB.map{bundle => 
         val psrcSrcTypeVec = status.srcStatus.map(_.psrc) zip status.srcStatus.map(_.srcType)
         bundle.bits.wakeUpVl(psrcSrcTypeVec(4), bundle.valid)
       })
-      var numVecWb = params.backendParam.getVfWBExeGroup.size
-      var numV0Wb = params.backendParam.getV0WBExeGroup.size
+      // var numVecWb = params.backendParam.getVfWBExeGroup.size
+      // var numV0Wb = params.backendParam.getV0WBExeGroup.size
+      var numVecWb = params.needWakeupFromVfWBPort.size
+      var numV0Wb = params.needWakeupFromV0WBPort.size
       // int wb is first bit of vlwb, which is after vfwb and v0wb
       common.vlWakeupByIntWb  := wakeUpFromVl(numVecWb + numV0Wb)
       // vf wb is second bit of wb

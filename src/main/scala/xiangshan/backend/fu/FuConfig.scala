@@ -185,7 +185,7 @@ case class FuConfig (
   def isVecMem: Boolean = fuType == FuType.vldu || fuType == FuType.vstu ||
                           fuType == FuType.vsegldu || fuType == FuType.vsegstu
 
-  def needOg2: Boolean = isVecArith || fuType == FuType.vsetfwf || isVecMem
+  def needOg2: Boolean = false // isVecArith || fuType == FuType.vsetfwf || isVecMem
 
   def isSta: Boolean = name.contains("sta")
 
@@ -731,7 +731,7 @@ object FuConfig {
   val Vfma64Cfg = FuConfig (
     name = "vfma64",
     fuType = FuType.vfma,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFMA(cfg)(p).suggestName("Vfma")),
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFMA64(cfg)(p).suggestName("Vfma")),
     srcData = Seq(
       Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
     ),

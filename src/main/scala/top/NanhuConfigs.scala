@@ -143,11 +143,11 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
 
     dpParams = DispatchParameters(
       IntDqSize = 8,
-      FpDqSize = 8,
+      FpDqSize = 12,
       LsDqSize = 12,
       IntDqDeqWidth = 8,
       FpDqDeqWidth = 6,
-      VecDqDeqWidth = 6,
+      VecDqDeqWidth = 8,
       LsDqDeqWidth = 6
     ),
 

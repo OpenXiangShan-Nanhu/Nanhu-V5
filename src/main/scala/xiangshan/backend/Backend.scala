@@ -36,7 +36,7 @@ import xiangshan.backend.exu.ExuBlock
 import xiangshan.backend.fu.vector.Bundles.{VConfig, VType}
 import xiangshan.backend.fu.{FenceIO, FenceToSbuffer, FuConfig, FuType, PFEvent, PerfCounterIO}
 import xiangshan.backend.issue.EntryBundles._
-import xiangshan.backend.issue.{CancelNetwork, Scheduler, SchedulerArithImp, SchedulerImpBase, SchedulerMemImp}
+import xiangshan.backend.issue.{Scheduler, SchedulerArithImp, SchedulerImpBase, SchedulerMemImp}
 import xiangshan.backend.rob.{RobCoreTopDownIO, RobDebugRollingIO, RobLsqIO, RobPtr}
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend.{FtqPtr, FtqRead, PreDecodeInfo}
@@ -195,7 +195,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val intExuBlock = wrapper.intExuBlock.get.module
   // private val fpExuBlock = wrapper.fpExuBlock.get.module
   private val vfExuBlock = wrapper.vfExuBlock.get.module
-  private val og2ForVector = Module(new Og2ForVector(params))
+  // private val og2ForVector = Module(new Og2ForVector(params))
   private val bypassNetwork = Module(new BypassNetwork)
   private val wbDataPath = Module(new WbDataPath(params))
   private val wbFuBusyTable = wrapper.wbFuBusyTable.module
@@ -276,25 +276,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   intScheduler.io.vlWriteBackInfo.vlFromVfIsZero := false.B
   intScheduler.io.vlWriteBackInfo.vlFromVfIsVlmax := false.B
 
-  // fpScheduler.io.fromTop.hartId := io.fromTop.hartId
-  // fpScheduler.io.fromCtrlBlock.flush := ctrlBlock.io.toIssueBlock.flush
-  // fpScheduler.io.fromDispatch.allocPregs <> ctrlBlock.io.toIssueBlock.allocPregs
-  // fpScheduler.io.fromDispatch.uops <> ctrlBlock.io.toIssueBlock.fpUops
-  // fpScheduler.io.intWriteBack := 0.U.asTypeOf(fpScheduler.io.intWriteBack)
-  // // fpScheduler.io.fpWriteBack := wbDataPath.io.toFpPreg
-  // fpScheduler.io.vfWriteBack := wbDataPath.io.toVfPreg
-  // fpScheduler.io.v0WriteBack := 0.U.asTypeOf(fpScheduler.io.v0WriteBack)
-  // fpScheduler.io.vlWriteBack := 0.U.asTypeOf(fpScheduler.io.vlWriteBack)
-  // fpScheduler.io.fromDataPath.resp := dataPath.io.toFpIQ
-  // fpScheduler.io.fromSchedulers.wakeupVec.foreach { wakeup => wakeup := iqWakeUpMappedBundle(wakeup.bits.exuIdx) }
-  // fpScheduler.io.fromDataPath.og0Cancel := og0Cancel
-  // fpScheduler.io.fromDataPath.og1Cancel := og1Cancel
-  // fpScheduler.io.ldCancel := io.mem.ldCancel
-  // fpScheduler.io.vlWriteBackInfo.vlFromIntIsZero := false.B
-  // fpScheduler.io.vlWriteBackInfo.vlFromIntIsVlmax := false.B
-  // fpScheduler.io.vlWriteBackInfo.vlFromVfIsZero := false.B
-  // fpScheduler.io.vlWriteBackInfo.vlFromVfIsVlmax := false.B
-
   memScheduler.io.fromTop.hartId := io.fromTop.hartId
   memScheduler.io.fromCtrlBlock.flush := ctrlBlock.io.toIssueBlock.flush
   memScheduler.io.fromDispatch.allocPregs <> ctrlBlock.io.toIssueBlock.allocPregs
@@ -332,7 +313,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   memScheduler.io.vlWriteBackInfo.vlFromIntIsVlmax := vlFromIntIsVlmax
   memScheduler.io.vlWriteBackInfo.vlFromVfIsZero := vlFromVfIsZero
   memScheduler.io.vlWriteBackInfo.vlFromVfIsVlmax := vlFromVfIsVlmax
-  memScheduler.io.fromOg2Resp.get := og2ForVector.io.toMemIQOg2Resp
+  // memScheduler.io.fromOg2Resp.get := og2ForVector.io.toMemIQOg2Resp
 
   vfScheduler.io.fromTop.hartId := io.fromTop.hartId
   vfScheduler.io.fromCtrlBlock.flush := ctrlBlock.io.toIssueBlock.flush
@@ -351,7 +332,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   vfScheduler.io.vlWriteBackInfo.vlFromIntIsVlmax := vlFromIntIsVlmax
   vfScheduler.io.vlWriteBackInfo.vlFromVfIsZero := vlFromVfIsZero
   vfScheduler.io.vlWriteBackInfo.vlFromVfIsVlmax := vlFromVfIsVlmax
-  vfScheduler.io.fromOg2Resp.get := og2ForVector.io.toVfIQOg2Resp
+  // vfScheduler.io.fromOg2Resp.get := og2ForVector.io.toVfIQOg2Resp
 
   dataPath.io.hartId := io.fromTop.hartId
   dataPath.io.flush := ctrlBlock.io.toDataPath.flush
@@ -378,34 +359,34 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   dataPath.io.fromVecExcpMod.r := vecExcpMod.o.toVPRF.r
   dataPath.io.fromVecExcpMod.w := vecExcpMod.o.toVPRF.w
 
-  og2ForVector.io.flush := ctrlBlock.io.toDataPath.flush
-  og2ForVector.io.ldCancel := io.mem.ldCancel
-  og2ForVector.io.fromOg1VfArith <> dataPath.io.toVecExu
-  og2ForVector.io.fromOg1VecMem.zip(dataPath.io.toMemExu.zip(params.memSchdParams.get.issueBlockParams).filter(_._2.needOg2Resp).map(_._1))
-    .foreach {
-      case (og1Mem, datapathMem) => og1Mem <> datapathMem
-    }
-  og2ForVector.io.fromOg1ImmInfo := dataPath.io.og1ImmInfo.zip(params.allExuParams).filter(_._2.needOg2).map(_._1)
+  // og2ForVector.io.flush := ctrlBlock.io.toDataPath.flush
+  // og2ForVector.io.ldCancel := io.mem.ldCancel
+  // og2ForVector.io.fromOg1VfArith <> dataPath.io.toVecExu
+  // og2ForVector.io.fromOg1VecMem.zip(dataPath.io.toMemExu.zip(params.memSchdParams.get.issueBlockParams).filter(_._2.needOg2Resp).map(_._1))
+  //   .foreach {
+  //     case (og1Mem, datapathMem) => og1Mem <> datapathMem
+  //   }
+  // og2ForVector.io.fromOg1ImmInfo := dataPath.io.og1ImmInfo.zip(params.allExuParams).filter(_._2.needOg2).map(_._1)
 
   println(s"[Backend] BypassNetwork OG1 Mem Size: ${bypassNetwork.io.fromDataPath.mem.zip(params.memSchdParams.get.issueBlockParams).filterNot(_._2.needOg2Resp).size}")
   println(s"[Backend] BypassNetwork OG2 Mem Size: ${bypassNetwork.io.fromDataPath.mem.zip(params.memSchdParams.get.issueBlockParams).filter(_._2.needOg2Resp).size}")
   println(s"[Backend] bypassNetwork.io.fromDataPath.mem: ${bypassNetwork.io.fromDataPath.mem.size}, dataPath.io.toMemExu: ${dataPath.io.toMemExu.size}")
   bypassNetwork.io.fromDataPath.int <> dataPath.io.toIntExu
   // bypassNetwork.io.fromDataPath.fp <> dataPath.io.toFpExu
-  bypassNetwork.io.fromDataPath.vf <> og2ForVector.io.toVfArithExu
+  bypassNetwork.io.fromDataPath.vf <> dataPath.io.toVecExu
   bypassNetwork.io.fromDataPath.mem.lazyZip(params.memSchdParams.get.issueBlockParams).lazyZip(dataPath.io.toMemExu).filterNot(_._2.needOg2Resp)
     .map(x => (x._1, x._3)).foreach {
       case (bypassMem, datapathMem) => bypassMem <> datapathMem
     }
-  bypassNetwork.io.fromDataPath.mem.zip(params.memSchdParams.get.issueBlockParams).filter(_._2.needOg2Resp).map(_._1)
-    .zip(og2ForVector.io.toVecMemExu).foreach {
-      case (bypassMem, og2Mem) => bypassMem <> og2Mem
-    }
+  // bypassNetwork.io.fromDataPath.mem.zip(params.memSchdParams.get.issueBlockParams).filter(_._2.needOg2Resp).map(_._1)
+  //   .zip(og2ForVector.io.toVecMemExu).foreach {
+  //     case (bypassMem, og2Mem) => bypassMem <> og2Mem
+  //   }
   bypassNetwork.io.fromDataPath.immInfo := dataPath.io.og1ImmInfo
-  bypassNetwork.io.fromDataPath.immInfo.zip(params.allExuParams).filter(_._2.needOg2).map(_._1)
-    .zip(og2ForVector.io.toBypassNetworkImmInfo).foreach {
-      case (immInfo, og2ImmInfo) => immInfo := og2ImmInfo
-    }
+  // bypassNetwork.io.fromDataPath.immInfo.zip(params.allExuParams).filter(_._2.needOg2).map(_._1)
+  //   .zip(og2ForVector.io.toBypassNetworkImmInfo).foreach {
+  //     case (immInfo, og2ImmInfo) => immInfo := og2ImmInfo
+  //   }
   bypassNetwork.io.fromDataPath.rcData := dataPath.io.toBypassNetworkRCData
   bypassNetwork.io.fromExus.connectExuOutput(_.int)(intExuBlock.io.out)
   // bypassNetwork.io.fromExus.connectExuOutput(_.fp)(fpExuBlock.io.out)
@@ -765,7 +746,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
       // ModuleNode(fpScheduler),
       ModuleNode(vfScheduler),
       ModuleNode(memScheduler),
-      ModuleNode(og2ForVector),
+      // ModuleNode(og2ForVector),
       ModuleNode(wbFuBusyTable),
       ResetGenNode(Seq(
         ModuleNode(ctrlBlock),

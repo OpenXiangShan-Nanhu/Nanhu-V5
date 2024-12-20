@@ -384,19 +384,15 @@ case class IssueBlockParams(
       case IntScheduler() | MemScheduler() => needWakeupFromIntWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    // val fpBundle = schdType match {
-    //   case FpScheduler() | MemScheduler() => needWakeupFromFpWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
-    //   case _ => Seq()
-    // }
-    val vfBundle = schdType match {
+    val vfBundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
       case VfScheduler() | MemScheduler() => needWakeupFromVfWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val v0Bundle = schdType match {
+    val v0Bundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
       case VfScheduler() | MemScheduler() => needWakeupFromV0WBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val vlBundle = schdType match {
+    val vlBundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
       case VfScheduler() | MemScheduler() => needWakeupFromVlWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }

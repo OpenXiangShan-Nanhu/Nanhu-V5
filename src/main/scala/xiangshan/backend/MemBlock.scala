@@ -742,6 +742,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // LoadUnit
   val correctMissTrain = Constantin.createRecord(s"CorrectMissTrain$hartId", initValue = false)
 
+
   for (i <- 0 until LduCnt) {
     loadUnits(i).io.redirect <> redirect
 
@@ -772,7 +773,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     loadUnits(i).io.dcache <> dcache.io.lsu.load(i)
     if(i == 0){
       vSegmentUnit.io.rdcache := DontCare
-      dcache.io.lsu.load(i).req.valid := loadUnits(i).io.dcache.req.valid || vSegmentUnit.io.rdcache.req.valid
+      dcache.io.lsu.load(i).req.valid := (loadUnits(i).io.dcache.req.valid && !vSegmentUnit.io.in.fire) || vSegmentUnit.io.rdcache.req.valid
       dcache.io.lsu.load(i).req.bits  := Mux1H(Seq(
         vSegmentUnit.io.rdcache.req.valid -> vSegmentUnit.io.rdcache.req.bits,
         loadUnits(i).io.dcache.req.valid -> loadUnits(i).io.dcache.req.bits

@@ -440,11 +440,11 @@ case class XSCoreParameters
                                 Seq(Seq(VfRD(6, 0)), Seq(VfRD(7, 0)), Seq(VfRD(8, 0)), Seq(V0RD(2, 0)), Seq(VlRD(2, 0)))),
       ), numEntries = 24, numEnq = 2, numComp = 12),
       IssueBlockParams(Seq(
-        ExeUnitParams("VFALU0",  Seq(VfaluCfg, VfcvtCfg, FcvtCfg),
+        ExeUnitParams("VFALU0",  Seq(Vfalu64Cfg, VfcvtCfg, FcvtCfg),
                                 Seq(VfWB(4, 0), V0WB(4, 0), IntWB(7, 0)),
                                 Seq(Seq(VfRD(9, 0)), Seq(VfRD(10, 0)), Seq(VfRD(11, 0)), Seq(V0RD(3, 0)), Seq(VlRD(3, 0)))),
 
-        ExeUnitParams("VFALU1",  Seq(VfaluCfg, VfcvtCfg, FcvtCfg),
+        ExeUnitParams("VFALU1",  Seq(Vfalu64Cfg, VfcvtCfg, FcvtCfg),
                                 Seq(VfWB(5, 0), V0WB(5, 0), IntWB(8, 0)),
                                 Seq(Seq(VfRD(12, 0)), Seq(VfRD(13, 0)), Seq(VfRD(14, 0)), Seq(V0RD(4, 0)), Seq(VlRD(4, 0)))),
       ), numEntries = 24, numEnq = 2, numComp = 12),

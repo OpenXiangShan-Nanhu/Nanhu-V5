@@ -28,9 +28,9 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 	val fp_bIsFpCanonicalNAN = Wire(Bool())
 	val fp_cIsFpCanonicalNAN = Wire(Bool())
 	vfma.io.fire         := io.in.valid
-	vfma.io.fp_a         := vs2
-	vfma.io.fp_b         := vs1
-	vfma.io.fp_c         := oldVd
+	vfma.io.fp_a         := vs2(63, 0)
+	vfma.io.fp_b         := vs1(63, 0)
+	vfma.io.fp_c         := oldVd(63, 0)
 	vfma.io.widen_a      := vs2 //TODO
 	vfma.io.widen_b      := vs1 //TODO
 	vfma.io.frs1         := 0.U     // already vf -> vv

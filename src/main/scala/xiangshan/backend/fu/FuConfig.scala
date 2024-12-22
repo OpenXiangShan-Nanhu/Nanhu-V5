@@ -711,7 +711,7 @@ object FuConfig {
   val Vfalu64Cfg = FuConfig (
     name = "vfalu64",
     fuType = FuType.vfalu,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFAlu(cfg)(p).suggestName("Vfalu")),
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFAlu64(cfg)(p).suggestName("Vfalu")),
     srcData = Seq(
       Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
     ),

@@ -475,19 +475,19 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
    * WARNING: Make sure that OldestSelectStride must less than or equal stages of load pipeline.        *
    ******************************************************************************************************
    */
-  val OldestSelectStride = 4
-  val oldestPtrExt = (0 until OldestSelectStride).map(i => io.ldWbPtr + i.U)
-  val s0_oldestMatchMaskVec = (0 until LoadQueueReplaySize).map(i => (0 until OldestSelectStride).map(j => s0_loadNormalReplaySelMask(i) && uop(i).lqIdx === oldestPtrExt(j)))
-  val s0_remOldsetMatchMaskVec = (0 until LoadPipelineWidth).map(rem => getRemSeq(s0_oldestMatchMaskVec.map(_.take(1)))(rem))
-  val s0_remOlderMatchMaskVec = (0 until LoadPipelineWidth).map(rem => getRemSeq(s0_oldestMatchMaskVec.map(_.drop(1)))(rem))
-  val s0_remOldestSelVec = VecInit(Seq.tabulate(LoadPipelineWidth)(rem => {
-    VecInit((0 until LoadQueueReplaySize / LoadPipelineWidth).map(i => {
-      Mux(ParallelORR(s0_remOldsetMatchMaskVec(rem).map(_(0))), s0_remOldsetMatchMaskVec(rem)(i)(0), s0_remOlderMatchMaskVec(rem)(i).reduce(_|_))
-    })).asUInt
-  }))
-  val s0_remOldestHintSelVec = s0_remOldestSelVec.zip(s0_remLoadHintSelMask).map {
-    case(oldestVec, hintVec) => oldestVec & hintVec
-  }
+  // val OldestSelectStride = 4
+  // val oldestPtrExt = (0 until OldestSelectStride).map(i => io.ldWbPtr + i.U)
+  // val s0_oldestMatchMaskVec = (0 until LoadQueueReplaySize).map(i => (0 until OldestSelectStride).map(j => s0_loadNormalReplaySelMask(i) && uop(i).lqIdx === oldestPtrExt(j)))
+  // val s0_remOldsetMatchMaskVec = (0 until LoadPipelineWidth).map(rem => getRemSeq(s0_oldestMatchMaskVec.map(_.take(1)))(rem))
+  // val s0_remOlderMatchMaskVec = (0 until LoadPipelineWidth).map(rem => getRemSeq(s0_oldestMatchMaskVec.map(_.drop(1)))(rem))
+  // val s0_remOldestSelVec = VecInit(Seq.tabulate(LoadPipelineWidth)(rem => {
+  //   VecInit((0 until LoadQueueReplaySize / LoadPipelineWidth).map(i => {
+  //     Mux(ParallelORR(s0_remOldsetMatchMaskVec(rem).map(_(0))), s0_remOldsetMatchMaskVec(rem)(i)(0), s0_remOlderMatchMaskVec(rem)(i).reduce(_|_))
+  //   })).asUInt
+  // }))
+  // val s0_remOldestHintSelVec = s0_remOldestSelVec.zip(s0_remLoadHintSelMask).map {
+  //   case(oldestVec, hintVec) => oldestVec & hintVec
+  // }
 
   // select oldest logic
   s0_oldestSel := VecInit((0 until LoadPipelineWidth).map(rport => {
@@ -497,22 +497,22 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val ageOldestValid = ageOldest.valid
     val ageOldestIndexOH = ageOldest.bits
 
-    // select program order oldest
-    val l2HintFirst = io.l2_hint.valid && ParallelORR(s0_remOldestHintSelVec(rport))
-    val issOldestValid = l2HintFirst || ParallelORR(s0_remOldestSelVec(rport))
-    val issOldestIndexOH = Mux(l2HintFirst, PriorityEncoderOH(s0_remOldestHintSelVec(rport)), PriorityEncoderOH(s0_remOldestSelVec(rport)))
+    // // select program order oldest
+    // val l2HintFirst = io.l2_hint.valid && ParallelORR(s0_remOldestHintSelVec(rport))
+    // val issOldestValid = l2HintFirst || ParallelORR(s0_remOldestSelVec(rport))
+    // val issOldestIndexOH = Mux(l2HintFirst, PriorityEncoderOH(s0_remOldestHintSelVec(rport)), PriorityEncoderOH(s0_remOldestSelVec(rport)))
 
     val oldest = Wire(Valid(UInt()))
-    val oldestSel = Mux(issOldestValid, issOldestIndexOH, ageOldestIndexOH)
+    // val oldestSel = Mux(issOldestValid, issOldestIndexOH, ageOldestIndexOH)
     val oldestBitsVec = Wire(Vec(LoadQueueReplaySize, Bool()))
 
     require((LoadQueueReplaySize % LoadPipelineWidth) == 0)
     oldestBitsVec.foreach(e => e := false.B)
     for (i <- 0 until LoadQueueReplaySize / LoadPipelineWidth) {
-      oldestBitsVec(i * LoadPipelineWidth + rport) := oldestSel(i)
+      oldestBitsVec(i * LoadPipelineWidth + rport) := ageOldestIndexOH(i)
     }
 
-    oldest.valid := ageOldest.valid || issOldestValid
+    oldest.valid := ageOldest.valid
     oldest.bits := oldestBitsVec.asUInt
     oldest
   }))
@@ -642,7 +642,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   // Allocate logic
   needEnqueue.zip(newEnqueue).zip(io.enq).map {
     case ((needEnq, newEnq), enq) =>
-      newEnq := needEnq && !enq.bits.isLoadReplay
+      newEnq := needEnq && !enq.bits.isLoadReplay && enq.ready
   }
 
   val canAcceptCount = PopCount(freeList.io.canAllocate)

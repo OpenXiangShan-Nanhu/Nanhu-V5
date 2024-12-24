@@ -538,10 +538,10 @@ case class XSCoreParameters
       //   Seq("FEX0", "FEX1", "FEX2", "FEX3") ->
       //   Seq("STD0", "STD1")
       // ),
-      WakeUpConfig(
-        Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1") ->
-        Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1", "VFDIV0", "VFDIV1")
-      ),
+      // WakeUpConfig(
+      //   Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1") ->
+      //   Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1", "VFDIV0", "VFDIV1")
+      // ),
     ).flatten
   }
 

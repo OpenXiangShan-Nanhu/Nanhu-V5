@@ -22,6 +22,7 @@ import chisel3.util._
 import xiangshan._
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.exu.ExeUnitParams
+import freechips.rocketchip.util.SeqToAugmentedSeq
 
 class RfReadPort(dataWidth: Int, addrWidth: Int) extends Bundle {
   val addr = Input(UInt(addrWidth.W))
@@ -49,7 +50,11 @@ class RfWritePortWithConfig(pregParams: PregParams) extends Bundle {
   val intWen = Input(Bool())
   val fpWen = Input(Bool())
   val vecWen = Input(Bool())
+  val vfWenH = Input(Bool())
+  val vfWenL = Input(Bool())
   val v0Wen = Input(Bool())
+  val v0WenH = Input(Bool())
+  val v0WenL = Input(Bool())
   val vlWen = Input(Bool())
 }
 
@@ -151,8 +156,8 @@ object Regfile {
   )(implicit p: Parameters): Unit = {
     val numReadPorts = raddr.length
     val numWritePorts = wen.length
-    require(wen.length == waddr.length)
-    require(wen.length == wdata.length)
+    require(wen.length == waddr.length, s"wen.length = ${wen.length}, but waddr.length = ${waddr.length}")
+    require(wen.length == wdata.length, s"wen.length = ${wen.length}, but wdata.length = ${wdata.length}")
     val dataBits = wdata.map(_.getWidth).min
     require(wdata.map(_.getWidth).min == wdata.map(_.getWidth).max, s"dataBits != $dataBits")
     val addrBits = waddr.map(_.getWidth).min
@@ -259,6 +264,8 @@ object VfRegFile {
     raddr        : Seq[UInt],
     rdata        : Vec[UInt],
     wen          : Seq[Seq[Bool]],
+    wenH         : Seq[Seq[Bool]],
+    wenL         : Seq[Seq[Bool]],
     waddr        : Seq[UInt],
     wdata        : Seq[UInt],
     vecdebugReadAddr: Option[Seq[UInt]],
@@ -283,10 +290,19 @@ object VfRegFile {
       val fpdebugRDataVec: Option[Vec[Vec[UInt]]] = fpdebugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
       for (i <- 0 until splitNum) {
         wdataVec(i) := wdata.map(_ ((i + 1) * dataWidth - 1, i * dataWidth))
-        Regfile(
-          name + s"Part${i}", numEntries, raddr, rdataVec(i), wen(i), waddr, wdataVec(i),
-          hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
-        )
+        if(i == 0) {
+          val realWen = (wen(i).asUInt & wenL(i).asUInt).asBools
+          Regfile(
+            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr, wdataVec(i),
+            hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
+          )
+        } else if(i == 1) {
+          val realWen = (wen(i).asUInt & wenH(i).asUInt).asBools
+          Regfile(
+            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr, wdataVec(i),
+            hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
+          )
+        }
       }
       for (i <- 0 until rdata.length) {
         rdata(i) := Cat(rdataVec.map(_ (i)).reverse)

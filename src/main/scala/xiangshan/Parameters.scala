@@ -429,7 +429,7 @@ case class XSCoreParameters
         ExeUnitParams("VFEX0",  Seq(VialuCfg, VimacCfg, VppuCfg, VipuCfg, VidivCfg, VSetRvfWvfCfg), 
                                 Seq(VfWB(1, 0), V0WB(1, 0), VlWB(1, 0), IntWB(1, 2)),
                                 Seq(Seq(VfRD(0, 0)), Seq(VfRD(1, 0)), Seq(VfRD(2, 0)), Seq(V0RD(0, 0)), Seq(VlRD(0, 0)))),
-      ), numEntries = 24, numEnq = 2, numComp = 12),
+      ), numEntries = 24, numEnq = 1, numComp = 12),
       IssueBlockParams(Seq(
         ExeUnitParams("VFMA0",  Seq(Vfma64Cfg),
                                 Seq(VfWB(2, 0), V0WB(2, 0)),
@@ -438,25 +438,25 @@ case class XSCoreParameters
         ExeUnitParams("VFMA1",  Seq(Vfma64Cfg),
                                 Seq(VfWB(3, 0), V0WB(3, 0)),
                                 Seq(Seq(VfRD(6, 0)), Seq(VfRD(7, 0)), Seq(VfRD(8, 0)), Seq(V0RD(2, 0)), Seq(VlRD(2, 0)))),
-      ), numEntries = 24, numEnq = 2, numComp = 12),
+      ), numEntries = 24, numEnq = 2, numComp = 12, sharedVf = true),
       IssueBlockParams(Seq(
-        ExeUnitParams("VFALU0",  Seq(Vfalu64Cfg, VfcvtCfg, FcvtCfg),
+        ExeUnitParams("VFALU0", Seq(Vfalu64Cfg, VfcvtCfg, FcvtCfg),
                                 Seq(VfWB(4, 0), V0WB(4, 0), IntWB(7, 0)),
                                 Seq(Seq(VfRD(9, 0)), Seq(VfRD(10, 0)), Seq(VfRD(11, 0)), Seq(V0RD(3, 0)), Seq(VlRD(3, 0)))),
 
-        ExeUnitParams("VFALU1",  Seq(Vfalu64Cfg, VfcvtCfg, FcvtCfg),
+        ExeUnitParams("VFALU1", Seq(Vfalu64Cfg, VfcvtCfg, FcvtCfg),
                                 Seq(VfWB(5, 0), V0WB(5, 0), IntWB(8, 0)),
                                 Seq(Seq(VfRD(12, 0)), Seq(VfRD(13, 0)), Seq(VfRD(14, 0)), Seq(V0RD(4, 0)), Seq(VlRD(4, 0)))),
-      ), numEntries = 24, numEnq = 2, numComp = 12),
+      ), numEntries = 24, numEnq = 2, numComp = 12, sharedVf = true),
       IssueBlockParams(Seq(
-        ExeUnitParams("VFDIV0",  Seq(Vfdiv64Cfg),
+        ExeUnitParams("VFDIV", Seq(VfdivCfg),
                                 Seq(VfWB(6, 0), V0WB(6, 0)),
                                 Seq(Seq(VfRD(15, 0)), Seq(VfRD(16, 0)), Seq(VfRD(17, 0)), Seq(V0RD(5, 0)), Seq(VlRD(5, 0)))),
 
-        ExeUnitParams("VFDIV1",  Seq(Vfdiv64Cfg),
-                                Seq(VfWB(7, 0), V0WB(7, 0)),
-                                Seq(Seq(VfRD(18, 0)), Seq(VfRD(19, 0)), Seq(VfRD(20, 0)), Seq(V0RD(6, 0)), Seq(VlRD(6, 0)))),
-      ), numEntries = 24, numEnq = 2, numComp = 12, sharedVf = true),
+        // ExeUnitParams("VFDIV1", Seq(Vfdiv64Cfg),
+        //                         Seq(VfWB(7, 0), V0WB(7, 0)),
+        //                         Seq(Seq(VfRD(18, 0)), Seq(VfRD(19, 0)), Seq(VfRD(20, 0)), Seq(V0RD(6, 0)), Seq(VlRD(6, 0)))),
+      ), numEntries = 24, numEnq = 1, numComp = 12),
       
     ),
       numPregs = vfPreg.numEntries,
@@ -484,33 +484,33 @@ case class XSCoreParameters
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("LDU0", Seq(LduCfg),
-                              Seq(IntWB(5, 0), VfWB(8, 0)),
+                              Seq(IntWB(5, 0), VfWB(7, 0)),
                               Seq(Seq(IntRD(8, 0))), true, 2),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("LDU1", Seq(LduCfg),
-                              Seq(IntWB(6, 0), VfWB(9, 0)),
+                              Seq(IntWB(6, 0), VfWB(8, 0)),
                               Seq(Seq(IntRD(9, 0))), true, 2),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("VLSU0",  Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg),
-                                Seq(VfWB(10, 0), V0WB(8, 0), VlWB(2, 0)),
-                                Seq(Seq(VfRD(21, 0)), Seq(VfRD(22, 0)), Seq(VfRD(23, 0)), Seq(V0RD(7, 0)), Seq(VlRD(7, 0)))),
+                                Seq(VfWB(9, 0), V0WB(7, 0), VlWB(2, 0)),
+                                Seq(Seq(VfRD(18, 0)), Seq(VfRD(19, 0)), Seq(VfRD(20, 0)), Seq(V0RD(6, 0)), Seq(VlRD(6, 0)))),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("VLSU1",  Seq(VlduCfg, VstuCfg),
-                                Seq(VfWB(11, 0), V0WB(9, 0), VlWB(3, 0)),
-                                Seq(Seq(VfRD(24, 0)), Seq(VfRD(25, 0)), Seq(VfRD(26, 0)), Seq(V0RD(8, 0)), Seq(VlRD(8, 0)))),
+                                Seq(VfWB(10, 0), V0WB(8, 0), VlWB(3, 0)),
+                                Seq(Seq(VfRD(21, 0)), Seq(VfRD(22, 0)), Seq(VfRD(23, 0)), Seq(V0RD(7, 0)), Seq(VlRD(7, 0)))),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("STD0", Seq(StdCfg, MoudCfg),
                               Seq(),
-                              Seq(Seq(IntRD(5, 2), VfRD(27, 0)))),
+                              Seq(Seq(IntRD(5, 2), VfRD(24, 0)))),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("STD1", Seq(StdCfg, MoudCfg),
                               Seq(),
-                              Seq(Seq(IntRD(3, 2), VfRD(28, 0)))),
+                              Seq(Seq(IntRD(3, 2), VfRD(25, 0)))),
       ), numEntries = 16, numEnq = 1, numComp = 15),
     ),
       numPregs = intPreg.numEntries max vfPreg.numEntries,
@@ -531,7 +531,7 @@ case class XSCoreParameters
       ),
       WakeUpConfig(
         Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1") ->
-        Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1", "VFDIV0", "VFDIV1")
+        Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1", "VFDIV")
       ),
     ).flatten
   }
@@ -572,17 +572,17 @@ case object DebugOptionsKey extends Field[DebugOptions]
 
 case class DebugOptions
 (
-  FPGAPlatform: Boolean = false,
-  ResetGen: Boolean = false,
-  EnableDifftest: Boolean = false,
-  AlwaysBasicDiff: Boolean = false,
-  EnableDebug: Boolean = false,
-  EnablePerfDebug: Boolean = true,
-  UseDRAMSim: Boolean = false,
+  FPGAPlatform:     Boolean = false,
+  ResetGen:         Boolean = false,
+  EnableDifftest:   Boolean = false,
+  AlwaysBasicDiff:  Boolean = false,
+  EnableDebug:      Boolean = false,
+  EnablePerfDebug:  Boolean = false,
+  UseDRAMSim:       Boolean = false,
   EnableConstantin: Boolean = false,
-  EnableChiselDB: Boolean = false,
-  AlwaysBasicDB: Boolean = false,
-  EnableRollingDB: Boolean = false
+  EnableChiselDB:   Boolean = false,
+  AlwaysBasicDB:    Boolean = false,
+  EnableRollingDB:  Boolean = false
 )
 
 trait HasXSParameter {

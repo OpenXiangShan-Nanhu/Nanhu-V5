@@ -70,7 +70,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	vfalu.io.mask             := "b1111".U
 	vfalu.io.maskForReduction := "b11111111".U
 	vfalu.io.uop_idx          := vuopIdx(0)
-	vfalu.io.is_vec           := true.B // Todo
+	vfalu.io.is_vec           := !vecCtrl.fpu.isFpToVecInst
 	vfalu.io.round_mode       := rm
 	vfalu.io.fp_format        := Mux(resWiden, vsew + 1.U, vsew)
 	vfalu.io.opb_widening     := opbWiden
@@ -82,12 +82,12 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	resultData           			:= vfalu.io.fp_result
 	fflagsData           			:= vfalu.io.fflags
 	fp_aIsFpCanonicalNAN := vecCtrl.fpu.isFpToVecInst & (
-		((vsew === VSew.e32) & (vs2(63, 32).andR)) |
-			((vsew === VSew.e16) & (vs2(63, 48).andR))
+		((vsew === VSew.e32) & ~(vs2(63, 32).andR)) |
+			((vsew === VSew.e16) & ~(vs2(63, 48).andR))
 		)
 	fp_bIsFpCanonicalNAN := vecCtrl.fpu.isFpToVecInst & (
-		((vsew === VSew.e32) & (vs1(63, 32).andR)) |
-			((vsew === VSew.e16) & (vs1(63, 48).andR))
+		((vsew === VSew.e32) & ~(vs1(63, 32).andR)) |
+			((vsew === VSew.e16) & ~(vs1(63, 48).andR))
 		)
 	vfalu.io.fp_aIsFpCanonicalNAN := fp_aIsFpCanonicalNAN
 	vfalu.io.fp_bIsFpCanonicalNAN := fp_bIsFpCanonicalNAN

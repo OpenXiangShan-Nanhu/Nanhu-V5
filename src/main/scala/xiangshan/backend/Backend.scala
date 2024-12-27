@@ -166,12 +166,10 @@ class BackendInlined(val params: BackendParams)(implicit p: Parameters) extends 
   val ctrlBlock = LazyModule(new CtrlBlock(params))
   val pcTargetMem = LazyModule(new PcTargetMem(params))
   val intScheduler = params.intSchdParams.map(x => LazyModule(new Scheduler(x)))
-  // val fpScheduler = params.fpSchdParams.map(x => LazyModule(new Scheduler(x)))
   val vfScheduler = params.vfSchdParams.map(x => LazyModule(new Scheduler(x)))
   val memScheduler = params.memSchdParams.map(x => LazyModule(new Scheduler(x)))
   val dataPath = LazyModule(new DataPath(params))
   val intExuBlock = params.intSchdParams.map(x => LazyModule(new ExuBlock(x)))
-  // val fpExuBlock = params.fpSchdParams.map(x => LazyModule(new ExuBlock(x)))
   val vfExuBlock = params.vfSchdParams.map(x => LazyModule(new ExuBlock(x)))
   val wbFuBusyTable = LazyModule(new WbFuBusyTable(params))
 
@@ -193,7 +191,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val memScheduler = wrapper.memScheduler.get.module
   private val dataPath = wrapper.dataPath.module
   private val intExuBlock = wrapper.intExuBlock.get.module
-  // private val fpExuBlock = wrapper.fpExuBlock.get.module
   private val vfExuBlock = wrapper.vfExuBlock.get.module
   // private val og2ForVector = Module(new Og2ForVector(params))
   private val bypassNetwork = Module(new BypassNetwork)
@@ -518,7 +515,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   wbDataPath.io.flush := ctrlBlock.io.redirect
   wbDataPath.io.fromTop.hartId := io.fromTop.hartId
   wbDataPath.io.fromIntExu <> intExuBlock.io.out
-  // wbDataPath.io.fromFpExu <> fpExuBlock.io.out
   wbDataPath.io.fromVfExu <> vfExuBlock.io.out
   wbDataPath.io.fromMemExu.flatten.zip(io.mem.writeBack).foreach { case (sink, source) =>
     sink.valid := source.valid
@@ -529,7 +525,11 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     sink.bits.intWen.foreach(_ := source.bits.uop.rfWen)
     sink.bits.fpWen.foreach(_ := source.bits.uop.fpWen)
     sink.bits.vecWen.foreach(_ := source.bits.uop.vecWen)
+    sink.bits.vfWenH.foreach(_ := true.B)
+    sink.bits.vfWenL.foreach(_ := true.B)
     sink.bits.v0Wen.foreach(_ := source.bits.uop.v0Wen)
+    sink.bits.v0WenH.foreach(_ := true.B)
+    sink.bits.v0WenL.foreach(_ := true.B)
     sink.bits.vlWen.foreach(_ := source.bits.uop.vlWen)
     sink.bits.exceptionVec.foreach(_ := source.bits.uop.exceptionVec)
     sink.bits.flushPipe.foreach(_ := source.bits.uop.flushPipe)

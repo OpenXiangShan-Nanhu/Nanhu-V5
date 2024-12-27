@@ -260,7 +260,7 @@ class VecExceptionGen(implicit p: Parameters) extends XSModule{
 
   // 6. v0 Overlap
   private val v0AllowOverlap = (vdIsMask || vdIsSingleElem) && !Seq(VMSBF_M, VMSIF_M, VMSOF_M).map(_ === inst.ALL).reduce(_ || _)
-  private val v0Overlap = isVArithMem && io.decodedInst.vecWen && inst.VM === 0.U && inst.VD === 0.U && !v0AllowOverlap
+  private val v0Overlap = isVArithMem && io.decodedInst.vecWen && !io.decodedInst.fpWen && inst.VM === 0.U && inst.VD === 0.U && !v0AllowOverlap
 
   // 7. Src Reg Overlap
   private val vs1RegLo = inst.VS1

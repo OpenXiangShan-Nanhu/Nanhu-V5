@@ -36,7 +36,7 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 	vfma.io.frs1         := 0.U     // already vf -> vv
 	vfma.io.is_frs1      := false.B // already vf -> vv
 	vfma.io.uop_idx      := vuopIdx(0)
-	vfma.io.is_vec       := true.B // Todo
+	vfma.io.is_vec       := !vecCtrl.fpu.isFpToVecInst
 	vfma.io.round_mode   := rm
 	vfma.io.fp_format    := Mux(resWiden, vsew + 1.U, vsew)
 	vfma.io.res_widening := resWiden

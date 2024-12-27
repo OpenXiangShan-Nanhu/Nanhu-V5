@@ -712,7 +712,11 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     deq.bits.common.rfWen.foreach(_ := deqEntryVec(i).bits.payload.rfWen)
     deq.bits.common.fpWen.foreach(_ := deqEntryVec(i).bits.payload.fpWen)
     deq.bits.common.vecWen.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
+    deq.bits.common.vfWenH.foreach(_ := DontCare)
+    deq.bits.common.vfWenL.foreach(_ := DontCare)
     deq.bits.common.v0Wen.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
+    deq.bits.common.v0WenH.foreach(_ := DontCare)
+    deq.bits.common.v0WenL.foreach(_ := DontCare)
     deq.bits.common.vlWen.foreach(_ := deqEntryVec(i).bits.payload.vlWen)
     deq.bits.common.flushPipe.foreach(_ := deqEntryVec(i).bits.payload.flushPipe)
     deq.bits.common.pdest := deqEntryVec(i).bits.payload.pdest

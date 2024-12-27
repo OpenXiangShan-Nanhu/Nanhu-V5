@@ -728,6 +728,7 @@ object FuConfig {
     destDataBits = 64,
     exceptionOut = Seq(illegalInstr),
     needSrcFrm = true,
+    srcDataBits = Some(128)
   )
 
   val Vfma64Cfg = FuConfig (
@@ -747,6 +748,7 @@ object FuConfig {
     destDataBits = 64,
     exceptionOut = Seq(illegalInstr),
     needSrcFrm = true,
+    srcDataBits = Some(128)
   )
 
   val Vfdiv64Cfg = FuConfig(
@@ -766,6 +768,7 @@ object FuConfig {
     destDataBits = 64,
     exceptionOut = Seq(illegalInstr),
     needSrcFrm = true,
+    srcDataBits = Some(128)
   )
 
   val FaluCfg = FuConfig(

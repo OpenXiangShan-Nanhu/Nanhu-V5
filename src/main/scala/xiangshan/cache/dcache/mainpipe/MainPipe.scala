@@ -345,9 +345,9 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val s1_way_en = Mux(s1_need_replacement, s1_repl_way_en, s1_tag_match_way)
   assert(!RegNext(s1_fire && PopCount(s1_way_en) > 1.U))
 
-  val s1_tag = Mux(s1_need_replacement, s1_repl_tag, s1_hit_tag)
+  val s1_tag = s1_hit_tag
 
-  val s1_coh = Mux(s1_need_replacement, s1_repl_coh, s1_hit_coh)
+  val s1_coh = s1_hit_coh
 
   XSPerfAccumulate("store_has_invalid_way_but_select_valid_way", io.replace_way.set.valid && wayMap(w => !meta_resp(w).asTypeOf(new Meta).coh.isValid()).asUInt.orR && s1_need_replacement && s1_repl_coh.isValid())
   XSPerfAccumulate("store_using_replacement", io.replace_way.set.valid && s1_need_replacement)
@@ -376,8 +376,8 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
 
 
   val s2_way_en = RegEnable(s1_way_en, s1_fire)
-  val s2_tag = RegEnable(s1_tag, s1_fire)
-  val s2_coh = RegEnable(s1_coh, s1_fire)
+  val s2_tag = Mux(s2_need_replacement, s2_repl_tag, RegEnable(s1_tag, s1_fire))
+  val s2_coh = Mux(s2_need_replacement, s2_repl_coh, RegEnable(s1_coh, s1_fire))
   val s2_banked_store_wmask = RegEnable(s1_banked_store_wmask, s1_fire)
   val s2_flag_error = RegEnable(s1_flag_error, s1_fire)
   val s2_tag_error = WireInit(false.B)

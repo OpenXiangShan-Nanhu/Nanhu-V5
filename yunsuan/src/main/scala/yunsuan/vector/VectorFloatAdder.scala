@@ -285,13 +285,13 @@ class VectorFloatAdder() extends Module {
   val res_is_f32 = fp_format_reg === 2.U
   val res_is_f64 = fp_format_reg === 3.U
 
-  val scalar_is_fadd   = !is_vec_reg && io.op_code === VfaddOpCode.fadd
-  val scalar_is_fsub   = !is_vec_reg && io.op_code === VfaddOpCode.fsub
-  val scalar_is_fmin   = !is_vec_reg && io.op_code === VfaddOpCode.fmin
-  val scalar_is_fmax   = !is_vec_reg && io.op_code === VfaddOpCode.fmax
-  val scalar_is_fsgnj  = !is_vec_reg && io.op_code === VfaddOpCode.fsgnj
-  val scalar_is_fsgnjn = !is_vec_reg && io.op_code === VfaddOpCode.fsgnjn
-  val scalar_is_fsgnjx = !is_vec_reg && io.op_code === VfaddOpCode.fsgnjx
+  val scalar_is_fadd   = !io.is_vec && (io.op_code === VfaddOpCode.fadd)
+  val scalar_is_fsub   = !io.is_vec && (io.op_code === VfaddOpCode.fsub)
+  val scalar_is_fmin   = !io.is_vec && (io.op_code === VfaddOpCode.fmin)
+  val scalar_is_fmax   = !io.is_vec && (io.op_code === VfaddOpCode.fmax)
+  val scalar_is_fsgnj  = !io.is_vec && (io.op_code === VfaddOpCode.fsgnj)
+  val scalar_is_fsgnjn = !io.is_vec && (io.op_code === VfaddOpCode.fsgnjn)
+  val scalar_is_fsgnjx = !io.is_vec && (io.op_code === VfaddOpCode.fsgnjx)
 
   val needBoxed = RegEnable(scalar_is_fadd || scalar_is_fsub || scalar_is_fmin || scalar_is_fmax || scalar_is_fsgnj || scalar_is_fsgnjn || scalar_is_fsgnjx, fire)
 

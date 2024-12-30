@@ -693,8 +693,8 @@ object Bundles {
     val rfWen         = if (params.needIntWen)    Some(Bool())                        else None
     val fpWen         = if (params.needVecWen)    Some(Bool())                        else None
     val vecWen        = if (params.needVecWen)    Some(Bool())                        else None
-    val vfWenH        = if (params.needVecWen)     Some(Bool())                        else None
-    val vfWenL        = if (params.needVecWen)     Some(Bool())                        else None
+    val vfWenH        = if (params.needVecWen)    Some(Bool())                        else None
+    val vfWenL        = if (params.needVecWen)    Some(Bool())                        else None
     val v0Wen         = if (params.needV0Wen)     Some(Bool())                        else None
     val v0WenH        = if (params.needV0Wen)     Some(Bool())                        else None
     val v0WenL        = if (params.needV0Wen)     Some(Bool())                        else None

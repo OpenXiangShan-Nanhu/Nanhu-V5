@@ -370,7 +370,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   println(s"[Backend] bypassNetwork.io.fromDataPath.mem: ${bypassNetwork.io.fromDataPath.mem.size}, dataPath.io.toMemExu: ${dataPath.io.toMemExu.size}")
   bypassNetwork.io.fromDataPath.int <> dataPath.io.toIntExu
   // bypassNetwork.io.fromDataPath.fp <> dataPath.io.toFpExu
-  bypassNetwork.io.fromDataPath.vf <> dataPath.io.toVecExu
+  bypassNetwork.io.fromDataPath.vf <> dataPath.io.toVfExu
   bypassNetwork.io.fromDataPath.mem.lazyZip(params.memSchdParams.get.issueBlockParams).lazyZip(dataPath.io.toMemExu).filterNot(_._2.needOg2Resp)
     .map(x => (x._1, x._3)).foreach {
       case (bypassMem, datapathMem) => bypassMem <> datapathMem

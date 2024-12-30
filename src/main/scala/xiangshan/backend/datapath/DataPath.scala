@@ -1,14 +1,15 @@
 package xiangshan.backend.datapath
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import difftest.{DiffArchFpRegState, DiffArchIntRegState, DiffArchVecRegState, DifftestModule}
+import utils.SeqUtils._
+import utils._
+import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
-import utils.SeqUtils._
-import utils._
+import difftest.{DiffArchFpRegState, DiffArchIntRegState, DiffArchVecRegState, DifftestModule}
+import freechips.rocketchip.util.SeqToAugmentedSeq
 import xiangshan._
 import xiangshan.backend.{BackendParams, ExcpModToVprf, PcToDataPathIO, VprfToExcpMod}
 import xiangshan.backend.Bundles._
@@ -21,7 +22,85 @@ import xiangshan.backend.regfile._
 import xiangshan.backend.regcache._
 import xiangshan.backend.fu.FuType.is0latency
 import xiangshan.mem.{LqPtr, SqPtr}
-import freechips.rocketchip.util.SeqToAugmentedSeq
+
+class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBundle {
+  // params
+  private val intSchdParams = params.schdParams(IntScheduler())
+  private val vfSchdParams  = params.schdParams(VfScheduler())
+  private val memSchdParams = params.schdParams(MemScheduler())
+
+  // bundles
+  val hartId = Input(UInt(8.W))
+
+  val flush: ValidIO[Redirect] = Flipped(ValidIO(new Redirect))
+
+  val wbConfictRead = Input(MixedVec(params.allSchdParams.map(x => MixedVec(x.issueBlockParams.map(x => x.genWbConflictBundle())))))
+
+  val fromIntIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
+    Flipped(MixedVec(intSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
+
+  val fromMemIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
+    Flipped(MixedVec(memSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
+
+  val fromVfIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
+    Flipped(MixedVec(vfSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
+
+  val fromVecExcpMod = Input(new ExcpModToVprf(maxMergeNumPerCycle * 2, maxMergeNumPerCycle))
+
+  val toIntIQ = MixedVec(intSchdParams.issueBlockParams.map(_.genOGRespBundle))
+
+  val toMemIQ = MixedVec(memSchdParams.issueBlockParams.map(_.genOGRespBundle))
+
+  val toVfIQ = MixedVec(vfSchdParams.issueBlockParams.map(_.genOGRespBundle))
+
+  val toVecExcpMod = Output(new VprfToExcpMod(maxMergeNumPerCycle * 2))
+
+  val og0Cancel = Output(ExuVec())
+
+  val og1Cancel = Output(ExuVec())
+
+  val ldCancel = Vec(backendParams.LduCnt + backendParams.HyuCnt, Flipped(new LoadCancelIO))
+
+  val toIntExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = intSchdParams.genExuInputBundle
+
+  val toVfExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = MixedVec(vfSchdParams.genExuInputBundle)
+
+  val toMemExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = memSchdParams.genExuInputBundle
+
+  val og1ImmInfo: Vec[ImmInfo] = Output(Vec(params.allExuParams.size, new ImmInfo))
+
+  val fromIntWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genIntWriteBackBundle)
+
+  val fromVfWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genVfWriteBackBundle)
+
+  val fromV0Wb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genV0WriteBackBundle)
+
+  val fromVlWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genVlWriteBackBundle)
+
+  val fromPcTargetMem = Flipped(new PcToDataPathIO(params))
+
+  val fromBypassNetwork: Vec[RCWritePort] = Vec(params.getIntExuRCWriteSize + params.getMemExuRCWriteSize, 
+    new RCWritePort(params.intSchdParams.get.rfDataWidth, RegCacheIdxWidth, params.intSchdParams.get.pregIdxWidth, params.debugEn)
+  )
+
+  val toBypassNetworkRCData: MixedVec[MixedVec[Vec[UInt]]] = MixedVec(
+    Seq(intSchdParams, vfSchdParams, memSchdParams).map(schd => schd.issueBlockParams.map(iq => 
+      MixedVec(iq.exuBlockParams.map(exu => Output(Vec(exu.numRegSrc, UInt(exu.srcDataBitsMax.W)))))
+    )).flatten
+  )
+
+  val toWakeupQueueRCIdx: Vec[UInt] = Vec(params.getIntExuRCWriteSize + params.getMemExuRCWriteSize, 
+    Output(UInt(RegCacheIdxWidth.W))
+  )
+
+  val diffIntRat = if (params.basicDebugEn) Some(Input(Vec(32, UInt(intSchdParams.pregIdxWidth.W)))) else None
+  val diffFpRat  = if (params.basicDebugEn) Some(Input(Vec(32, UInt(vfSchdParams.pregIdxWidth.W)))) else None
+  val diffVecRat = if (params.basicDebugEn) Some(Input(Vec(31, UInt(vfSchdParams.pregIdxWidth.W)))) else None
+  val diffV0Rat  = if (params.basicDebugEn) Some(Input(Vec(1, UInt(log2Up(V0PhyRegs).W)))) else None
+  val diffVlRat  = if (params.basicDebugEn) Some(Input(Vec(1, UInt(log2Up(VlPhyRegs).W)))) else None
+  val diffVl     = if (params.basicDebugEn) Some(Output(UInt(VlData().dataWidth.W))) else None
+}
+
 
 class DataPath(params: BackendParams)(implicit p: Parameters) extends LazyModule {
   override def shouldBeInlined: Boolean = false
@@ -29,11 +108,11 @@ class DataPath(params: BackendParams)(implicit p: Parameters) extends LazyModule
   private implicit val dpParams: BackendParams = params
   lazy val module = new DataPathImp(this)
 
-  println(s"[DataPath] Preg Params: ")
-  println(s"[DataPath]   Int R(${params.getRfReadSize(params.intPregParams)}), W(${params.getRfWriteSize(params.intPregParams)}) ")
-  println(s"[DataPath]   Vf R(${params.getRfReadSize(params.vfPregParams)}), W(${params.getRfWriteSize(params.vfPregParams)}) ")
-  println(s"[DataPath]   V0 R(${params.getRfReadSize(params.v0PregParams)}), W(${params.getRfWriteSize(params.v0PregParams)}) ")
-  println(s"[DataPath]   Vl R(${params.getRfReadSize(params.vlPregParams)}), W(${params.getRfWriteSize(params.vlPregParams)}) ")
+  println(s"[DataPath]  Preg Params: ")
+  println(s"[DataPath]  Int R(${params.getRfReadSize(params.intPregParams)}), W(${params.getRfWriteSize(params.intPregParams)}) ")
+  println(s"[DataPath]  Vf R(${params.getRfReadSize(params.vfPregParams)}), W(${params.getRfWriteSize(params.vfPregParams)}) ")
+  println(s"[DataPath]  V0 R(${params.getRfReadSize(params.v0PregParams)}), W(${params.getRfWriteSize(params.v0PregParams)}) ")
+  println(s"[DataPath]  Vl R(${params.getRfReadSize(params.vlPregParams)}), W(${params.getRfWriteSize(params.vlPregParams)}) ")
 }
 
 class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params: BackendParams)
@@ -47,7 +126,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
 
   private val (fromIntIQ, toIntIQ, toIntExu) = (io.fromIntIQ, io.toIntIQ, io.toIntExu)
   private val (fromMemIQ, toMemIQ, toMemExu) = (io.fromMemIQ, io.toMemIQ, io.toMemExu)
-  private val (fromVfIQ,  toVfIQ,  toVfExu ) = (io.fromVfIQ,  io.toVfIQ,  io.toVecExu)
+  private val (fromVfIQ,  toVfIQ,  toVfExu ) = (io.fromVfIQ,  io.toVfIQ,  io.toVfExu)
   private val (fromVecExcp, toVecExcp)       = (io.fromVecExcpMod, io.toVecExcpMod)
 
   private val fromVfIQWithParams = fromVfIQ.zip(vfIssueBlockParams)
@@ -74,8 +153,6 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val toIQs = toIntIQ ++ toVfIQ ++ toMemIQ
 
   private val toExu: Seq[MixedVec[DecoupledIO[ExuInput]]] = (toIntExu ++ toVfExu ++ toMemExu).toSeq
-
-  private val fromFlattenIQ: Seq[DecoupledIO[IssueQueueIssueBundle]] = fromIQ.flatten
 
   private val toFlattenExu: Seq[DecoupledIO[ExuInput]] = toExu.flatten
 
@@ -847,88 +924,4 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
       XSPerfAccumulate(s"MEM_ExuId${exuParams.exuIdx}_src0_dataSource_zero",     exu.fire && exu.bits.common.dataSources(0).readZero)
     }
   })
-}
-
-class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBundle {
-  // params
-  private val intSchdParams = params.schdParams(IntScheduler())
-  // private val fpSchdParams = params.schdParams(FpScheduler())
-  private val vfSchdParams = params.schdParams(VfScheduler())
-  private val memSchdParams = params.schdParams(MemScheduler())
-  // bundles
-  val hartId = Input(UInt(8.W))
-
-  val flush: ValidIO[Redirect] = Flipped(ValidIO(new Redirect))
-
-  val wbConfictRead = Input(MixedVec(params.allSchdParams.map(x => MixedVec(x.issueBlockParams.map(x => x.genWbConflictBundle())))))
-
-  val fromIntIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
-    Flipped(MixedVec(intSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
-
-  // val fromFpIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
-  //   Flipped(MixedVec(fpSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
-
-  val fromMemIQ: MixedVec[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] =
-    Flipped(MixedVec(memSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
-
-  val fromVfIQ = Flipped(MixedVec(vfSchdParams.issueBlockParams.map(_.genIssueDecoupledBundle)))
-
-  val fromVecExcpMod = Input(new ExcpModToVprf(maxMergeNumPerCycle * 2, maxMergeNumPerCycle))
-
-  val toIntIQ = MixedVec(intSchdParams.issueBlockParams.map(_.genOGRespBundle))
-
-  // val toFpIQ = MixedVec(fpSchdParams.issueBlockParams.map(_.genOGRespBundle))
-
-  val toMemIQ = MixedVec(memSchdParams.issueBlockParams.map(_.genOGRespBundle))
-
-  val toVfIQ = MixedVec(vfSchdParams.issueBlockParams.map(_.genOGRespBundle))
-
-  val toVecExcpMod = Output(new VprfToExcpMod(maxMergeNumPerCycle * 2))
-
-  val og0Cancel = Output(ExuVec())
-
-  val og1Cancel = Output(ExuVec())
-
-  val ldCancel = Vec(backendParams.LduCnt + backendParams.HyuCnt, Flipped(new LoadCancelIO))
-
-  val toIntExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = intSchdParams.genExuInputBundle
-
-  // val toFpExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = MixedVec(fpSchdParams.genExuInputBundle)
-
-  val toVecExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = MixedVec(vfSchdParams.genExuInputBundle)
-
-  val toMemExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = memSchdParams.genExuInputBundle
-
-  val og1ImmInfo: Vec[ImmInfo] = Output(Vec(params.allExuParams.size, new ImmInfo))
-
-  val fromIntWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genIntWriteBackBundle)
-
-  val fromVfWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genVfWriteBackBundle)
-
-  val fromV0Wb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genV0WriteBackBundle)
-
-  val fromVlWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genVlWriteBackBundle)
-
-  val fromPcTargetMem = Flipped(new PcToDataPathIO(params))
-
-  val fromBypassNetwork: Vec[RCWritePort] = Vec(params.getIntExuRCWriteSize + params.getMemExuRCWriteSize, 
-    new RCWritePort(params.intSchdParams.get.rfDataWidth, RegCacheIdxWidth, params.intSchdParams.get.pregIdxWidth, params.debugEn)
-  )
-
-  val toBypassNetworkRCData: MixedVec[MixedVec[Vec[UInt]]] = MixedVec(
-    Seq(intSchdParams, vfSchdParams, memSchdParams).map(schd => schd.issueBlockParams.map(iq => 
-      MixedVec(iq.exuBlockParams.map(exu => Output(Vec(exu.numRegSrc, UInt(exu.srcDataBitsMax.W)))))
-    )).flatten
-  )
-
-  val toWakeupQueueRCIdx: Vec[UInt] = Vec(params.getIntExuRCWriteSize + params.getMemExuRCWriteSize, 
-    Output(UInt(RegCacheIdxWidth.W))
-  )
-
-  val diffIntRat = if (params.basicDebugEn) Some(Input(Vec(32, UInt(intSchdParams.pregIdxWidth.W)))) else None
-  val diffFpRat  = if (params.basicDebugEn) Some(Input(Vec(32, UInt(vfSchdParams.pregIdxWidth.W)))) else None
-  val diffVecRat = if (params.basicDebugEn) Some(Input(Vec(31, UInt(vfSchdParams.pregIdxWidth.W)))) else None
-  val diffV0Rat  = if (params.basicDebugEn) Some(Input(Vec(1, UInt(log2Up(V0PhyRegs).W)))) else None
-  val diffVlRat  = if (params.basicDebugEn) Some(Input(Vec(1, UInt(log2Up(VlPhyRegs).W)))) else None
-  val diffVl     = if (params.basicDebugEn) Some(Output(UInt(VlData().dataWidth.W))) else None
 }

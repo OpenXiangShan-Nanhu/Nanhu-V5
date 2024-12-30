@@ -19,7 +19,7 @@ class FCVT(cfg: FuConfig)(implicit p: Parameters) extends FpPipedFuncUnit(cfg) {
 
   // io alias
   private val opcode = fuOpType(8, 0)
-  private val src0 = inData.src(0)
+  private val src0 = inData.src(0)(63, 0)
   private val sew = fp_fmt
 
   private val isFround  = opcode === VfcvtType.fround

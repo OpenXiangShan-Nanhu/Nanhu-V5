@@ -183,8 +183,8 @@ class DecodeStage(implicit p: Parameters) extends XSModule
     inst.bits.lsrc(1) := Mux(finalDecodedInst(i).vpu.isReverse, finalDecodedInst(i).lsrc(0), finalDecodedInst(i).lsrc(1))
     inst.bits.srcType(0) := Mux(finalDecodedInst(i).vpu.isReverse, finalDecodedInst(i).srcType(1), finalDecodedInst(i).srcType(0))
     inst.bits.srcType(1) := Mux(finalDecodedInst(i).vpu.isReverse, finalDecodedInst(i).srcType(0), finalDecodedInst(i).srcType(1))
-    inst.bits.v0Wen := finalDecodedInst(i).vecWen && finalDecodedInst(i).ldest === 0.U || finalDecodedInst(i).v0Wen
-    inst.bits.vecWen := finalDecodedInst(i).vecWen && finalDecodedInst(i).ldest =/= 0.U
+    inst.bits.v0Wen := finalDecodedInst(i).vecWen && !finalDecodedInst(i).fpWen && finalDecodedInst(i).ldest === 0.U || finalDecodedInst(i).v0Wen
+    inst.bits.vecWen := (finalDecodedInst(i).vecWen && finalDecodedInst(i).ldest =/= 0.U) || (finalDecodedInst(i).vecWen && finalDecodedInst(i).fpWen)
     // when src0/src1/src2 read V0, src3 read V0
     val srcType0123HasV0 = finalDecodedInst(i).srcType.zip(finalDecodedInst(i).lsrc).take(4).map { case (s, l) =>
       SrcType.isVp(s) && (l === 0.U)
@@ -194,7 +194,7 @@ class DecodeStage(implicit p: Parameters) extends XSModule
 
   io.out.map(x =>
     when(x.valid){
-      assert(PopCount(VecInit(x.bits.rfWen, x.bits.fpWen, x.bits.vecWen, x.bits.v0Wen, x.bits.vlWen)) < 2.U,
+      assert(PopCount(VecInit(x.bits.rfWen, x.bits.vecWen, x.bits.v0Wen, x.bits.vlWen)) < 2.U,
         "DecodeOut: can't wirte two regfile in one uop/instruction")
     }
   )

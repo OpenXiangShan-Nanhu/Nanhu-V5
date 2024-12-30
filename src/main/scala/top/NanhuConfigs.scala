@@ -19,7 +19,7 @@ package top
 
 import xiangshan._
 import org.chipsalliance.cde.config._
-import xiangshan.backend.regfile.{IntPregParams, FpPregParams, VfPregParams}
+import xiangshan.backend.regfile.{IntPregParams, VfPregParams}
 import xiangshan.cache.DCacheParameters
 import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
 import device.{EnableJtag, XSDebugModuleParams}
@@ -50,11 +50,6 @@ class WithNanhuV5Config extends Config((site, here, up) =>{
     NRPhyRegs = 128,                // Default: 192
     intPreg = IntPregParams(        // Default:
       numEntries = 128,             // Default: 224
-      numRead = None,               // Default:
-      numWrite = None,              // Default:
-    ),                              // Default:
-    fpPreg = FpPregParams(          // Default:
-      numEntries = 128,             // Default: 192
       numRead = None,               // Default:
       numWrite = None,              // Default:
     ),                              // Default:
@@ -90,11 +85,6 @@ class WithNanhuV5_2Config extends Config((site, here, up) =>{
     NRPhyRegs = 128,                // Default: 192
     intPreg = IntPregParams(        // Default:
       numEntries = 128,             // Default: 224
-      numRead = None,               // Default:
-      numWrite = None,              // Default:
-    ),                              // Default:
-    fpPreg = FpPregParams(          // Default:
-      numEntries = 128,             // Default: 192
       numRead = None,               // Default:
       numWrite = None,              // Default:
     ),                              // Default:
@@ -134,11 +124,11 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
       numRead = None,               // Default:
       numWrite = None,              // Default:
     ),                              // Default:
-    fpPreg = FpPregParams(          // Default:
-      numEntries = 128,             // Default: 192
-      numRead = None,               // Default:
-      numWrite = None,              // Default:
-    ),                              // Default:
+    vfPreg = VfPregParams(
+      numEntries = 160,             // Default: 160
+      numRead = None,
+      numWrite = None,
+    ),
     VirtualLoadQueueSize = 56,      // Default: 72
     LoadQueueRAWSize = 24,          // Default: 64
     LoadQueueReplaySize = 32,       // Default: 72
@@ -152,11 +142,11 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
 
     dpParams = DispatchParameters(
       IntDqSize = 8,
-      FpDqSize = 8,
+      FpDqSize = 12,
       LsDqSize = 12,
       IntDqDeqWidth = 8,
       FpDqDeqWidth = 6,
-      VecDqDeqWidth = 6,
+      VecDqDeqWidth = 8,
       LsDqDeqWidth = 6
     ),
     dtlbParameters = TLBParameters(

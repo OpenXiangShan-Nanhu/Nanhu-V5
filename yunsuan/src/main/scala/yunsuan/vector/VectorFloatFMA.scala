@@ -1462,17 +1462,18 @@ class VectorFloatFMA() extends Module{
   }.otherwise{
     fp_result_f16_3 := normal_result_f16_3
   }
+
+  val is_fp16_reg2 = !is_fp32_reg2 & !is_fp64_reg2
+  val is_vec_reg2 = RegEnable(RegEnable(RegEnable(io.is_vec, fire), fire_reg0), fire_reg1)
   io.fp_result := Mux(
     is_fp64_reg2,
     fp_result_f64,
     Mux(
       is_fp32_reg2,
-      Cat(fp_result_f32_1,fp_result_f32_0),
-      Cat(fp_result_f16_3,fp_result_f16_2,fp_result_f16_1,fp_result_f16_0)
+      Cat(fp_result_f32_1 | Cat(Fill(32, !is_vec_reg2)).asUInt, fp_result_f32_0),
+      Cat(fp_result_f16_3 | Cat(Fill(16, !is_vec_reg2)).asUInt, fp_result_f16_2 | Cat(Fill(16, !is_vec_reg2)).asUInt, fp_result_f16_1 | Cat(Fill(16, !is_vec_reg2)).asUInt, fp_result_f16_0)
     )
   )
-  val is_fp16_reg2 = !is_fp32_reg2 & !is_fp64_reg2
-  val is_vec_reg2 = RegEnable(RegEnable(RegEnable(io.is_vec, fire), fire_reg0), fire_reg1)
   io.fflags := Cat(
     Fill(5,is_vec_reg2 & is_fp16_reg2) & fflags_f16_3,
     Fill(5,is_vec_reg2 & is_fp16_reg2) & fflags_f16_2,

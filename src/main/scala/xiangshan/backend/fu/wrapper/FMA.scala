@@ -15,9 +15,9 @@ class FMA(cfg: FuConfig)(implicit p: Parameters) extends FpPipedFuncUnit(cfg) {
 
   // io alias
   private val opcode = fuOpType(3, 0)
-  private val src0 = inData.src(0)
-  private val src1 = inData.src(1)
-  private val src2 = inData.src(2)
+  private val src0 = inData.src(0)(63, 0)
+  private val src1 = inData.src(1)(63, 0)
+  private val src2 = inData.src(2)(63, 0)
 
   // modules
   private val fma = Module(new FloatFMA)

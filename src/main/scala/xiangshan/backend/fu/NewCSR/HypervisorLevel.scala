@@ -46,7 +46,7 @@ trait HypervisorLevel { self: NewCSR =>
   })
     .setAddr(CSRs.hie)
 
-  val htimedelta = Module(new CSRModule("Htimedelta"))
+  val htimedelta = Module(new CSRModule("Htimedelta", new Htimedelta))
     .setAddr(CSRs.htimedelta)
 
   val hcounteren = Module(new CSRModule("Hcounteren", new Counteren))

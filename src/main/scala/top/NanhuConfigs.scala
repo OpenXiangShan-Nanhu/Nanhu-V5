@@ -139,9 +139,9 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
       numRead = None,               // Default:
       numWrite = None,              // Default:
     ),                              // Default:
-    VirtualLoadQueueSize = 64,      // Default: 72
+    VirtualLoadQueueSize = 56,      // Default: 72
     LoadQueueRAWSize = 24,          // Default: 64
-    LoadQueueReplaySize = 36,       // Default: 72
+    LoadQueueReplaySize = 32,       // Default: 72
     LoadQueueNWriteBanks = 4,       // Default: 8
     LoadUncacheBufferSize = 8,      // Default: 20
     StoreQueueSize = 32,            // Default: 64

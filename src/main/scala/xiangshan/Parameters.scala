@@ -237,7 +237,7 @@ case class XSCoreParameters
   VlMergeBufferSize: Int = 16,
   VsMergeBufferSize: Int = 16,
   UopWritebackWidth: Int = 2,
-  VLUopWritebackWidth: Int = 2,
+  VLUopWritebackWidth: Int = 1,
   VSUopWritebackWidth: Int = 1,
   VSegmentBufferSize: Int = 8,
   VFOFBufferSize: Int = 8,

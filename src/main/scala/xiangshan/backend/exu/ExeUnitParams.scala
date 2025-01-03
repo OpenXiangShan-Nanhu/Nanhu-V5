@@ -34,7 +34,6 @@ case class ExeUnitParams(
   var backendParam: BackendParams = null
 
   val numIntSrc: Int = fuConfigs.map(_.numIntSrc).max
-  // val numFpSrc: Int = fuConfigs.map(_.numFpSrc).max
   val numVecSrc: Int = fuConfigs.map(_.numVecSrc).max
   val numVfSrc: Int = fuConfigs.map(_.numVfSrc).max
   val numV0Src: Int = fuConfigs.map(_.numV0Src).max
@@ -44,7 +43,6 @@ case class ExeUnitParams(
   val destDataBitsMax: Int = fuConfigs.map(_.destDataBits).max
   val srcDataBitsMax: Int = fuConfigs.map(x => x.srcDataBits.getOrElse(x.destDataBits)).max
   val readIntRf: Boolean = numIntSrc > 0
-  // val readFpRf: Boolean = numFpSrc > 0
   val readVecRf: Boolean = numVecSrc > 0
   val readVfRf: Boolean = numVfSrc > 0
   val readVlRf: Boolean = numVlSrc > 0

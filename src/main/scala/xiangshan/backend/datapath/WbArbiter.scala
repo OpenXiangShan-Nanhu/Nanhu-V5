@@ -344,12 +344,10 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   io.toVfPreg := toVfPreg
   io.toV0Preg := toV0Preg
   io.toVlPreg := toVlPreg
-  io.toCtrlBlock.writeback.zip(wb2Ctrl).zipWithIndex.foreach { case ((sink, source), i) =>
-    if(i >= intExuWBs.length && i < intExuWBs.length + vfExuWBs.length) {
-      sink.valid := source.valid && !(source.bits.vecWen.getOrElse(false.B) && (source.bits.vfWenH.getOrElse(false.B) || source.bits.v0WenH.getOrElse(false.B)))
-    } else {
-      sink.valid := source.valid
-    }
+
+  io.toCtrlBlock.writeback.zip(wb2Ctrl).foreach { case (sink, source) =>
+    sink.valid := source.valid && !((source.bits.vecWen.getOrElse(false.B) && source.bits.vfWenH.getOrElse(false.B) && !source.bits.vfWenL.getOrElse(true.B)) || 
+                                    (source.bits.v0Wen.getOrElse(false.B) && source.bits.v0WenH.getOrElse(false.B) && !source.bits.v0WenL.getOrElse(true.B)))
     sink.bits := source.bits
     source.ready := true.B
   }

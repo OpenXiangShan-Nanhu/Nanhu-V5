@@ -355,8 +355,11 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     for(deqIdx <- 0 until params.numDeq) {
       entriesIO.deqReady(deqIdx)                                := deqBeforeDly(deqIdx).ready
       if(params.sharedVf) {
+        // port0-v              ->  b'10
+        // port0-fp, port1-fp   ->  b'11
+        // port0-fp, port1-v    ->  b'10
         entriesIO.deqSelOH(0).valid := deqSelValidVec(0)
-        entriesIO.deqSelOH(1).valid := deqSelValidVec(1) && !(deqSelValidVec(0) && !entriesIO.deqEntry(0).bits.payload.vpu.fpu.isFpToVecInst)
+        entriesIO.deqSelOH(1).valid := deqSelValidVec(1) && entriesIO.deqEntry(1).bits.payload.vpu.fpu.isFpToVecInst && entriesIO.deqEntry(0).bits.payload.vpu.fpu.isFpToVecInst
       } else {
         entriesIO.deqSelOH(deqIdx).valid := deqSelValidVec(deqIdx)
       }
@@ -730,9 +733,9 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     deq.bits.common.vecWen.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
     deq.bits.common.v0Wen.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
     deq.bits.common.vfWenH.foreach(_ := false.B)
-    deq.bits.common.vfWenL.foreach(_ := true.B)
+    deq.bits.common.vfWenL.foreach(_ := false.B)
     deq.bits.common.v0WenH.foreach(_ := false.B)
-    deq.bits.common.v0WenL.foreach(_ := true.B)
+    deq.bits.common.v0WenL.foreach(_ := false.B)
     deq.bits.common.vlWen.foreach(_ := deqEntryVec(i).bits.payload.vlWen)
     deq.bits.common.flushPipe.foreach(_ := deqEntryVec(i).bits.payload.flushPipe)
     deq.bits.common.pdest := deqEntryVec(i).bits.payload.pdest
@@ -1011,10 +1014,10 @@ class IssueQueueIntImp(override val wrapper: IssueQueue)(implicit p: Parameters,
     // for i2f
     deq.bits.common.fpu.foreach(_ := deqEntryVec(i).bits.payload.fpu)
 
-    deq.bits.common.vfWenH.foreach(_ := false.B)
-    deq.bits.common.vfWenL.foreach(_ := true.B)
-    deq.bits.common.v0WenH.foreach(_ := false.B)
-    deq.bits.common.v0WenL.foreach(_ := true.B)
+    deq.bits.common.vfWenH.foreach(_ := deqEntryVec(i).bits.payload.vecWen & FuType.FuTypeOrR(deqEntryVec(i).bits.payload.fuType, FuType.i2v))
+    deq.bits.common.vfWenL.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
+    deq.bits.common.v0WenH.foreach(_ := deqEntryVec(i).bits.payload.v0Wen & FuType.FuTypeOrR(deqEntryVec(i).bits.payload.fuType, FuType.i2v))
+    deq.bits.common.v0WenL.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
   }}
 }
 
@@ -1051,6 +1054,8 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
         deqDly.valid := deq.valid
         when(validVec.asUInt.orR) {
           deqDly.bits := deq.bits
+          deqDly.bits.common.vfWenL.foreach(_ := deq.bits.common.vecWen.get)
+          deqDly.bits.common.v0WenL.foreach(_ := deq.bits.common.v0Wen.get)
         }
         // deqBeforeDly.ready is always true
         deq.ready := true.B
@@ -1215,10 +1220,10 @@ class IssueQueueVecMemImp(override val wrapper: IssueQueue)(implicit p: Paramete
     deq.bits.common.vpu.foreach(_.connectSimple(deqEntryVec(i).bits.payload.vpu))
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
-    deq.bits.common.vfWenH.foreach(_ := true.B)
-    deq.bits.common.vfWenL.foreach(_ := true.B)
-    deq.bits.common.v0WenH.foreach(_ := true.B)
-    deq.bits.common.v0WenL.foreach(_ := true.B)
+    deq.bits.common.vfWenH.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
+    deq.bits.common.vfWenL.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
+    deq.bits.common.v0WenH.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
+    deq.bits.common.v0WenL.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
   }
 
   io.vecLoadIssueResp.foreach(dontTouch(_))

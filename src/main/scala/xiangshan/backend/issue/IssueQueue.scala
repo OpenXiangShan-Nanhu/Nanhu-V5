@@ -2,6 +2,8 @@ package xiangshan.backend.issue
 
 import chisel3._
 import chisel3.util._
+import chisel3.ltl.{Sequence, AssertProperty, Delay, SequenceAtom}
+import chisel3.ltl.Sequence.BoolSequence
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xs.utils.{GTimer, GatedValidRegNext, HasCircularQueuePtrHelper, SelectOne}
@@ -1076,6 +1078,18 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
       // deqBeforeDly.ready is always true
       deq.ready := true.B
     }
+  }
+
+  if(iqParams.sharedVf && iqParams.backendParam.assertEn) {
+    val vfNeedSplit = BoolSequence(deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst)
+    val issuePort_0_1_robSame = deqDelay.map(_.valid).reduce(_ && _) && (deqDelay(0).bits.common.robIdx === deqDelay(1).bits.common.robIdx)
+    val issuePort_0_1_wenDiff = (deqDelay(0).bits.common.vfWenL.get === true.B && deqDelay(0).bits.common.vfWenH.get === false.B) &&
+                                                  (deqDelay(0).bits.common.v0WenL.get === true.B && deqDelay(0).bits.common.v0WenH.get === false.B) &&
+                                                  (deqDelay(1).bits.common.vfWenL.get === false.B && deqDelay(1).bits.common.vfWenH.get === true.B) && 
+                                                  (deqDelay(1).bits.common.v0WenL.get === false.B && deqDelay(1).bits.common.v0WenH.get === true.B)
+    val issuePort_0_1_uopIdxSame = (deqDelay(0).bits.common.vpu.get.vuopIdx === deqDelay(1).bits.common.vpu.get.vuopIdx)
+    val issuePort_property = BoolSequence(issuePort_0_1_robSame && issuePort_0_1_uopIdxSame && issuePort_0_1_wenDiff)
+    AssertProperty(Sequence(vfNeedSplit, Delay(), issuePort_property))
   }
 }
 

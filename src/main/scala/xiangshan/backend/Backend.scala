@@ -200,7 +200,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   private val iqWakeUpMappedBundle: Map[Int, ValidIO[IssueQueueIQWakeUpBundle]] = (
     intScheduler.io.toSchedulers.wakeupVec ++
-      // fpScheduler.io.toSchedulers.wakeupVec ++
       vfScheduler.io.toSchedulers.wakeupVec ++
       memScheduler.io.toSchedulers.wakeupVec
     ).map(x => (x.bits.exuIdx, x)).toMap
@@ -208,11 +207,9 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   println(s"[Backend] iq wake up keys: ${iqWakeUpMappedBundle.keys}")
 
   wbFuBusyTable.io.in.intSchdBusyTable := intScheduler.io.wbFuBusyTable
-  // wbFuBusyTable.io.in.fpSchdBusyTable := fpScheduler.io.wbFuBusyTable
   wbFuBusyTable.io.in.vfSchdBusyTable := vfScheduler.io.wbFuBusyTable
   wbFuBusyTable.io.in.memSchdBusyTable := memScheduler.io.wbFuBusyTable
   intScheduler.io.fromWbFuBusyTable.fuBusyTableRead := wbFuBusyTable.io.out.intRespRead
-  // fpScheduler.io.fromWbFuBusyTable.fuBusyTableRead := wbFuBusyTable.io.out.fpRespRead
   vfScheduler.io.fromWbFuBusyTable.fuBusyTableRead := wbFuBusyTable.io.out.vfRespRead
   memScheduler.io.fromWbFuBusyTable.fuBusyTableRead := wbFuBusyTable.io.out.memRespRead
   dataPath.io.wbConfictRead := wbFuBusyTable.io.out.wbConflictRead
@@ -225,7 +222,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val vlFromVfIsVlmax = vfExuBlock.io.vlIsVlmax.get
 
   ctrlBlock.io.intIQValidNumVec := intScheduler.io.intIQValidNumVec
-  // ctrlBlock.io.fpIQValidNumVec := fpScheduler.io.fpIQValidNumVec
   ctrlBlock.io.fromTop.hartId := io.fromTop.hartId
   ctrlBlock.io.frontend <> io.frontend
   ctrlBlock.io.fromCSR.toDecode := intExuBlock.io.csrToDecode.get
@@ -335,7 +331,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   dataPath.io.flush := ctrlBlock.io.toDataPath.flush
 
   dataPath.io.fromIntIQ <> intScheduler.io.toDataPathAfterDelay
-  // dataPath.io.fromFpIQ <> fpScheduler.io.toDataPathAfterDelay
   dataPath.io.fromVfIQ <> vfScheduler.io.toDataPathAfterDelay
   dataPath.io.fromMemIQ <> memScheduler.io.toDataPathAfterDelay
 
@@ -472,23 +467,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val fenceio = intExuBlock.io.fenceio.get
   io.fenceio <> fenceio
 
-  // to fpExuBlock
-  // fpExuBlock.io.flush := ctrlBlock.io.toExuBlock.flush
-  // for (i <- 0 until fpExuBlock.io.in.length) {
-  //   for (j <- 0 until fpExuBlock.io.in(i).length) {
-  //     val shouldLdCancel = LoadShouldCancel(bypassNetwork.io.toExus.fp(i)(j).bits.loadDependency, io.mem.ldCancel)
-  //     NewPipelineConnect(
-  //       bypassNetwork.io.toExus.fp(i)(j), fpExuBlock.io.in(i)(j), fpExuBlock.io.in(i)(j).fire,
-  //       Mux(
-  //         bypassNetwork.io.toExus.fp(i)(j).fire,
-  //         bypassNetwork.io.toExus.fp(i)(j).bits.robIdx.needFlush(ctrlBlock.io.toExuBlock.flush) || shouldLdCancel,
-  //         fpExuBlock.io.in(i)(j).bits.robIdx.needFlush(ctrlBlock.io.toExuBlock.flush)
-  //       ),
-  //       Option("bypassNetwork2fpExuBlock")
-  //     )
-  //   }
-  // }
-
   vfExuBlock.io.flush := ctrlBlock.io.toExuBlock.flush
   for (i <- 0 until vfExuBlock.io.in.size) {
     for (j <- 0 until vfExuBlock.io.in(i).size) {
@@ -507,8 +485,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   }
 
   intExuBlock.io.frm.foreach(_ := csrio.fpu.frm)
-  // fpExuBlock.io.frm.foreach(_ := csrio.fpu.frm)
-  // fpExuBlock.io.vxrm.foreach(_ := csrio.vpu.vxrm)
   vfExuBlock.io.frm.foreach(_ := csrio.fpu.frm)
   vfExuBlock.io.vxrm.foreach(_ := csrio.vpu.vxrm)
 
@@ -735,7 +711,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     val rightResetTree = ResetGenNode(Seq(
       ModuleNode(dataPath),
       ModuleNode(intExuBlock),
-      // ModuleNode(fpExuBlock),
       ModuleNode(vfExuBlock),
       ModuleNode(bypassNetwork),
       ModuleNode(wbDataPath)
@@ -743,7 +718,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     val leftResetTree = ResetGenNode(Seq(
       ModuleNode(pcTargetMem),
       ModuleNode(intScheduler),
-      // ModuleNode(fpScheduler),
       ModuleNode(vfScheduler),
       ModuleNode(memScheduler),
       // ModuleNode(og2ForVector),

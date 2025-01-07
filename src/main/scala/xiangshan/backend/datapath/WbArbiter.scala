@@ -185,7 +185,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
       vfWrite := exuOut.valid && writeCond._1(2)
       v0Write := exuOut.valid && writeCond._1(3)
       vlWrite := exuOut.valid && writeCond._1(4)
-      notWrite := writeCond._2
+      notWrite := exuOut.valid && writeCond._2 || !exuOut.valid
 
       intArbiterInput.valid := intWrite
       intArbiterInput.bits := exuOut.bits

@@ -908,7 +908,7 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   val ifu_wb_valid = pdWb.valid
   val ifu_wb_idx = pdWb.bits.ftqIdx.value
   // read ports:                                                         commit update
-  val ftq_pd_mem = Module(new SyncDataModuleTemplate(new Ftq_pd_Entry, FtqSize, FtqRedirectAheadNum+1, 1, hasRen = true))
+  val ftq_pd_mem = Module(new SyncDataModuleTemplate(new Ftq_pd_Entry, FtqSize, FtqRedirectAheadNum+1, 1, perReadPortBypassEnable = Some(Seq.fill(FtqRedirectAheadNum+1)(false)) , hasRen = true))
   ftq_pd_mem.io.wen(0) := ifu_wb_valid
   ftq_pd_mem.io.waddr(0) := pdWb.bits.ftqIdx.value
   ftq_pd_mem.io.wdata(0).fromPdWb(pdWb.bits)

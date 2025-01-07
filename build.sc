@@ -187,6 +187,12 @@ object difftest extends HasChisel {
 
   override def millSourcePath = os.pwd / "difftest"
 
+  object test extends SbtModuleTests with TestModule.ScalaTest {
+    override def sources = T.sources {
+      super.sources() ++ Seq(PathRef(millSourcePath / "src" / "generator" / "chisel"))
+    }
+  }
+
 }
 
 object fudian extends HasChisel {
@@ -345,6 +351,9 @@ object xiangshan extends XiangShanModule with HasChisel {
 
   object test extends SbtModuleTests with TestModule.ScalaTest {
     override def forkArgs = Seq("-Xmx40G", "-Xss256m")
+    override def moduleDeps = super.moduleDeps ++ Seq(
+      difftestModule.test
+    )
 
     override def ivyDeps = super.ivyDeps() ++ Agg(
       defaultVersions("chiseltest")

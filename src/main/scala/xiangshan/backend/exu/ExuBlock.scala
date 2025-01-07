@@ -54,9 +54,6 @@ class ExuBlockImp(
     exu.io.in <> input
     output <> exu.io.out
     io.csrToDecode.foreach(toDecode => exu.io.csrToDecode.foreach(exuOut => toDecode := exuOut))
-//    if (exu.wrapper.exuParams.fuConfigs.contains(AluCfg) || exu.wrapper.exuParams.fuConfigs.contains(BrhCfg)){
-//      XSPerfAccumulate(s"${(exu.wrapper.exuParams.name)}_fire_cnt", PopCount(exu.io.in.fire))
-//    }
     XSPerfAccumulate(s"${(exu.wrapper.exuParams.name)}_fire_cnt", PopCount(exu.io.in.fire))
   }
   exus.find(_.io.csrio.nonEmpty).map(_.io.csrio.get).foreach { csrio =>
@@ -66,7 +63,9 @@ class ExuBlockImp(
   exeUnits.zip(io.out).zip(params.issueBlockParams).foreach{
     case ((exes, out), param) => {
       if(param.sharedVf) {
-        out.head.bits.fflags.foreach(_ := exes.map(_.io.out.bits.fflags.get).reduce(_ | _))
+        when(exes.head.io.out.valid && !exes.head.io.out.bits.fpWen.getOrElse(false.B)) {
+          out.head.bits.fflags.foreach(_ := exes.map(_.io.out.bits.fflags.get).reduce(_ | _))
+        }
       }
     }
   }

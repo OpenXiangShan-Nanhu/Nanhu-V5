@@ -243,31 +243,26 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
 
   println(s"[WbDataPath] write int preg: " +
     s"IntExu(${io.fromIntExu.flatten.count(_.bits.params.writeIntRf)}) " +
-    // s"FpExu(${io.fromFpExu.flatten.count(_.bits.params.writeIntRf)}) " +
     s"VfExu(${io.fromVfExu.flatten.count(_.bits.params.writeIntRf)}) " +
     s"MemExu(${io.fromMemExu.flatten.count(_.bits.params.writeIntRf)})"
   )
   println(s"[WbDataPath] write fp preg: " +
     s"IntExu(${io.fromIntExu.flatten.count(_.bits.params.writeFpRf)}) " +
-    // s"FpExu(${io.fromFpExu.flatten.count(_.bits.params.writeFpRf)}) " +
     s"VfExu(${io.fromVfExu.flatten.count(_.bits.params.writeFpRf)}) " +
     s"MemExu(${io.fromMemExu.flatten.count(_.bits.params.writeFpRf)})"
   )
   println(s"[WbDataPath] write vf preg: " +
     s"IntExu(${io.fromIntExu.flatten.count(_.bits.params.writeVfRf)}) " +
-    // s"FpExu(${io.fromFpExu.flatten.count(_.bits.params.writeVfRf)}) " +
     s"VfExu(${io.fromVfExu.flatten.count(_.bits.params.writeVfRf)}) " +
     s"MemExu(${io.fromMemExu.flatten.count(_.bits.params.writeVfRf)})"
   )
   println(s"[WbDataPath] write v0 preg: " +
     s"IntExu(${io.fromIntExu.flatten.count(_.bits.params.writeV0Rf)}) " +
-    // s"FpExu(${io.fromFpExu.flatten.count(_.bits.params.writeV0Rf)}) " +
     s"VfExu(${io.fromVfExu.flatten.count(_.bits.params.writeV0Rf)}) " +
     s"MemExu(${io.fromMemExu.flatten.count(_.bits.params.writeV0Rf)})"
   )
   println(s"[WbDataPath] write vl preg: " +
     s"IntExu(${io.fromIntExu.flatten.count(_.bits.params.writeVlRf)}) " +
-    // s"FpExu(${io.fromFpExu.flatten.count(_.bits.params.writeVlRf)}) " +
     s"VfExu(${io.fromVfExu.flatten.count(_.bits.params.writeVlRf)}) " +
     s"MemExu(${io.fromMemExu.flatten.count(_.bits.params.writeVlRf)})"
   )

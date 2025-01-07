@@ -134,6 +134,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
 
   // just refences for convience
   private val fromIQ: Seq[MixedVec[DecoupledIO[IssueQueueIssueBundle]]] = (fromIntIQ ++ fromVfIQ ++ fromMemIQ).toSeq
+  private val iqBlkParams = (intIssueBlockParams ++ vfIssueBlockParams ++ memIssueBlockParams).toSeq
 
   private val toIQs = toIntIQ ++ toVfIQ ++ toMemIQ
 
@@ -171,9 +172,11 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val vlRdNotBlock: Seq2[Bool] = vlRdArbWinner.map(_.map(_.asUInt.andR))
 
   private val intRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
-  private val vfRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
+  private val vfRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid && xx.bits.common.vfWenL.getOrElse(false.B))).toSeq).toSeq
   private val v0RFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
   private val vlRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
+
+  private val vfRFReadNeedSplit: Seq[Bool] = fromIQ.zip(iqBlkParams).map(x => x._1.last.valid && x._1.last.bits.common.vfWenH.getOrElse(false.B) && x._2.sharedVf.B)
 
   private val allDataSources: Seq[Seq[Vec[DataSource]]] = fromIQ.map(x => x.map(xx => xx.bits.common.dataSources).toSeq)
   private val allNumRegSrcs: Seq[Seq[Int]] = fromIQ.map(x => x.map(xx => xx.bits.exuParams.numRegSrc).toSeq)
@@ -707,7 +710,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     dontTouch(isVfScheduler)
     dontTouch(og0_cancel_delay_for_mem)
   }
-  val toExuParams = intIssueBlockParams ++ vfIssueBlockParams ++ memIssueBlockParams
+  val toExuParams = (intIssueBlockParams ++ vfIssueBlockParams ++ memIssueBlockParams).toSeq
   for (i <- toExu.indices) {
     for (j <- toExu(i).indices) {
       // s1Reg --[Ctrl]--> exu(s1) ---------- begin
@@ -743,7 +746,20 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
               (SrcType.isXp(s1_srcType(i)(j)(k)) -> s1_intPregRData(i)(j)(k)))
             :+
             OptionWrapper(s1_vfPregRData(i)(j).isDefinedAt(k) && srcDataTypeSet.intersect(VecRegSrcDataSet).nonEmpty,
-              (SrcType.isVp(s1_srcType(i)(j)(k)) -> s1_vfPregRData(i)(j)(k)))
+              (SrcType.isVp(s1_srcType(i)(j)(k)) -> {
+                val src = Wire(UInt(128.W))
+                if(iqBlkParams(i).sharedVf) {
+                  if(j == 0) {
+                    src := Cat(0.U(64.W), s1_vfPregRData(i)(j)(k)(63, 0))
+                  } else {
+                    val s1_vfRFReadNeedSplit = RegNext(vfRFReadNeedSplit(i))
+                    src := Cat(0.U(64.W), Mux(s1_vfRFReadNeedSplit, s1_vfPregRData(i)(j-1)(k)(127, 64), s1_vfPregRData(i)(j)(k)(63, 0)))
+                  }
+                } else {
+                  src := s1_vfPregRData(i)(j)(k)
+                }
+                src
+              }))
           )}
         ).filter(_.nonEmpty).map(_.get)
 

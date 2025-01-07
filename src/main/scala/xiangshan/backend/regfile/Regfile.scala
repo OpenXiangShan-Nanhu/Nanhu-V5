@@ -290,6 +290,11 @@ object VfRegFile {
       val fpdebugRDataVec: Option[Vec[Vec[UInt]]] = fpdebugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
       for (i <- 0 until splitNum) {
         wdataVec(i) := wdata.map(_ ((i + 1) * dataWidth - 1, i * dataWidth))
+        wdataVec(i).zipWithIndex.foreach {
+          case (data, idx) => {
+            data := Mux(wenH(i)(idx) && wenL(i)(idx), wdata(idx)((i+1)*64-1, i*64), wdata(idx)(63, 0))
+          }
+        }
         if(i == 0) {
           val realWen = (wen(i).asUInt & wenL(i).asUInt).asBools
           Regfile(
@@ -322,23 +327,23 @@ object VfRegFile {
 
 object VfRegFile128 {
   def apply(
-    name         : String,
-    numEntries   : Int,
-    raddr_h        : Seq[UInt],
-    rdata_h        : Vec[UInt],
-    raddr_l        : Seq[UInt],
-    rdata_l        : Vec[UInt],
-    wen_h          : Seq[Bool],
-    waddr_h        : Seq[UInt],
-    wdata_h        : Seq[UInt],
-    wen_l          : Seq[Bool],
-    waddr_l        : Seq[UInt],
-    wdata_l        : Seq[UInt],
+    name            : String,
+    numEntries      : Int,
+    raddr_h         : Seq[UInt],
+    rdata_h         : Vec[UInt],
+    raddr_l         : Seq[UInt],
+    rdata_l         : Vec[UInt],
+    wen_h           : Seq[Bool],
+    waddr_h         : Seq[UInt],
+    wdata_h         : Seq[UInt],
+    wen_l           : Seq[Bool],
+    waddr_l         : Seq[UInt],
+    wdata_l         : Seq[UInt],
     vecdebugReadAddr: Option[Seq[UInt]],
     vecdebugReadData: Option[Vec[UInt]],
-    fpdebugReadAddr: Option[Seq[UInt]],
-    fpdebugReadData: Option[Vec[UInt]],
-    withReset    : Boolean = false,
+    fpdebugReadAddr : Option[Seq[UInt]],
+    fpdebugReadData : Option[Vec[UInt]],
+    withReset       : Boolean = false,
   )(implicit p: Parameters): Unit = {
     val dataWidth = 64
     val wdataVec_h = Wire(Vec(wdata_h.length, UInt(dataWidth.W)))
@@ -347,13 +352,13 @@ object VfRegFile128 {
     val rdataVec_l = Wire(Vec(raddr_l.length, UInt(dataWidth.W)))
     val vecdebugRDataVec: Option[Vec[Vec[UInt]]] = vecdebugReadData.map(x => Wire(Vec(2, Vec(x.length, UInt(dataWidth.W)))))
     val fpdebugRDataVec: Option[Vec[Vec[UInt]]] = fpdebugReadData.map(x => Wire(Vec(2, Vec(x.length, UInt(dataWidth.W)))))
-    wdataVec_h := wdata_h.map(_(dataWidth * 2 - 1, dataWidth))
+    wdataVec_h := wdata_h.map(_(63, 0))
     Regfile(
       name + s"_high", numEntries, raddr_h, rdataVec_h, wen_h, waddr_h, wdataVec_h,
       hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(1)), fpdebugReadAddr, fpdebugRDataVec.map(_(1))
     )
 
-    wdataVec_l := wdata_l.map(_(dataWidth - 1, 0))
+    wdataVec_l := wdata_l.map(_(63, 0))
     Regfile(
       name + s"_low", numEntries, raddr_l, rdataVec_l, wen_l, waddr_l, wdataVec_l,
       hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(0)), fpdebugReadAddr, fpdebugRDataVec.map(_(0))

@@ -186,7 +186,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val ctrlBlock = wrapper.ctrlBlock.module
   private val pcTargetMem = wrapper.pcTargetMem.module
   private val intScheduler: SchedulerImpBase = wrapper.intScheduler.get.module
-  // private val fpScheduler = wrapper.fpScheduler.get.module
   private val vfScheduler = wrapper.vfScheduler.get.module
   private val memScheduler = wrapper.memScheduler.get.module
   private val dataPath = wrapper.dataPath.module

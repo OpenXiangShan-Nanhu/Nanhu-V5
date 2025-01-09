@@ -640,7 +640,8 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   //FTB switch register & temporary storage of fauftb prediction results
   val s0_close_ftb_req = RegInit(false.B)
   val s1_close_ftb_req = RegEnable(s0_close_ftb_req, false.B, io.s0_fire(0))
-  val s2_close_ftb_req = RegEnable(s1_close_ftb_req, false.B, io.s1_fire(0))
+  // val s2_close_ftb_req = RegEnable(s1_close_ftb_req, false.B, io.s1_fire(0))
+  val s2_close_ftb_req_dup = io.s1_fire.map(f => RegEnable(s1_close_ftb_req, f))
   val s2_fauftb_ftb_entry_dup = io.s1_fire.map(f => RegEnable(io.fauftb_entry_in, f))
   val s2_fauftb_ftb_entry_hit_dup = io.s1_fire.map(f => RegEnable(io.fauftb_entry_hit_in, f))
 
@@ -653,7 +654,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   val s2_multi_hit = ftbBank.io.read_multi_hits.valid && io.s2_fire(0)
   val s2_multi_hit_way = ftbBank.io.read_multi_hits.bits
   val s2_multi_hit_entry = ftbBank.io.read_multi_entry
-  val s2_multi_hit_enable = s2_multi_hit && !s2_close_ftb_req
+  val s2_multi_hit_enable = s2_multi_hit && !s2_close_ftb_req_dup(0)
   XSPerfAccumulate("ftb_s2_multi_hit", s2_multi_hit)
   XSPerfAccumulate("ftb_s2_multi_hit_enable", s2_multi_hit_enable)
 
@@ -662,9 +663,9 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   val s1_read_resp = Mux(s1_close_ftb_req, io.fauftb_entry_in, ftbBank.io.read_resp)
   val s2_ftbBank_dup = io.s1_fire.map(f => RegEnable(ftbBank.io.read_resp, f))
   val s2_ftb_entry_dup = dup(0.U.asTypeOf(new FTBEntry))
-  for(((s2_fauftb_entry, s2_ftbBank_entry), s2_ftb_entry) <-
-    s2_fauftb_ftb_entry_dup zip s2_ftbBank_dup zip s2_ftb_entry_dup){
-      s2_ftb_entry := Mux(s2_close_ftb_req, s2_fauftb_entry, s2_ftbBank_entry)
+  for((((s2_fauftb_entry, s2_ftbBank_entry), s2_ftb_entry), close_ftb) <-
+    s2_fauftb_ftb_entry_dup zip s2_ftbBank_dup zip s2_ftb_entry_dup zip s2_close_ftb_req_dup){
+      s2_ftb_entry := Mux(close_ftb, s2_fauftb_entry, s2_ftbBank_entry)
   }
   val s3_ftb_entry_dup  = io.s2_fire.zip(s2_ftb_entry_dup).map {case (f, e) => RegEnable(Mux(s2_multi_hit_enable, s2_multi_hit_entry, e), f)}
   val real_s2_ftb_entry = Mux(s2_multi_hit_enable, s2_multi_hit_entry, s2_ftb_entry_dup(0))
@@ -679,9 +680,9 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   val s1_hit = Mux(s1_close_ftb_req, false.B, ftbBank.io.read_hits.valid && io.ctrl.btb_enable)
   val s2_ftb_hit_dup = io.s1_fire.map(f => RegEnable(s1_hit, 0.B, f))
   val s2_hit_dup = dup(0.U.asTypeOf(Bool()))
-  for(((s2_fauftb_hit, s2_ftb_hit), s2_hit) <-
-    s2_fauftb_ftb_entry_hit_dup zip s2_ftb_hit_dup zip s2_hit_dup){
-      s2_hit := Mux(s2_close_ftb_req, s2_fauftb_hit, s2_ftb_hit)
+  for((((s2_fauftb_hit, s2_ftb_hit), s2_hit), close_ftb) <-
+    s2_fauftb_ftb_entry_hit_dup zip s2_ftb_hit_dup zip s2_hit_dup zip s2_close_ftb_req_dup){
+      s2_hit := Mux(close_ftb, s2_fauftb_hit, s2_ftb_hit)
   }
   val s3_hit_dup = io.s2_fire.zip(s2_hit_dup).map {case (f, h) => RegEnable(Mux(s2_multi_hit_enable, s2_multi_hit, h), 0.B, f)}
   val s3_multi_hit_dup = io.s2_fire.map(f => RegEnable(s2_multi_hit_enable,f))
@@ -716,19 +717,19 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   val s2_close_consistent = s2_fauftb_ftb_entry_dup(0).entryConsistent(s2_ftb_entry_dup(0))
   val s2_not_close_consistent = s2_ftbBank_dup(0).entryConsistent(s2_ftb_entry_dup(0))
 
-  when(s2_close_ftb_req && io.s2_fire(0)){
+  when(s2_close_ftb_req_dup(0) && io.s2_fire(0)){
     assert(s2_close_consistent, s"Entry inconsistency after ftb req is closed!")
-  }.elsewhen(!s2_close_ftb_req &&  io.s2_fire(0)){
+  }.elsewhen(!s2_close_ftb_req_dup(0) &&  io.s2_fire(0)){
     assert(s2_not_close_consistent, s"Entry inconsistency after ftb req is not closed!")
   }
 
-  val  reopenCounter = !s1_close_ftb_req && s2_close_ftb_req &&  io.s2_fire(0)
+  val  reopenCounter = !s1_close_ftb_req && s2_close_ftb_req_dup(0) &&  io.s2_fire(0)
   val  falseHitReopenCounter = ftb_false_hit && s1_close_ftb_req
   XSPerfAccumulate("ftb_req_reopen_counter", reopenCounter)
   XSPerfAccumulate("false_hit_reopen_Counter", falseHitReopenCounter)
   XSPerfAccumulate("ifuRedirec_needReopen",s1_close_ftb_req && io.redirectFromIFU)
-  XSPerfAccumulate("this_cycle_is_close",s2_close_ftb_req && io.s2_fire(0))
-  XSPerfAccumulate("this_cycle_is_open",!s2_close_ftb_req && io.s2_fire(0))
+  XSPerfAccumulate("this_cycle_is_close",s2_close_ftb_req_dup(0) && io.s2_fire(0))
+  XSPerfAccumulate("this_cycle_is_open",!s2_close_ftb_req_dup(0) && io.s2_fire(0))
 
   // io.out.bits.resp := RegEnable(io.in.bits.resp_in(0), 0.U.asTypeOf(new BranchPredictionResp), io.s1_fire)
   io.out := io.in.bits.resp_in(0)

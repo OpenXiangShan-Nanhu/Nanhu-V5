@@ -88,9 +88,9 @@ class NewIFUIO(implicit p: Parameters) extends XSBundle {
 // record the situation in which fallThruAddr falls into
 // the middle of an RVI inst
 class LastHalfInfo(implicit p: Parameters) extends XSBundle {
-  val valid = Bool()
+  val valid_dup = Vec(PredictWidth / 4, Bool())
   val middlePC = UInt(VAddrBits.W)
-  def matchThisBlock(startAddr: UInt) = valid && middlePC === startAddr
+  def matchThisBlock(startAddr: UInt) = valid_dup(0) && middlePC === startAddr
 }
 
 class IfuToPreDecode(implicit p: Parameters) extends XSBundle {
@@ -802,13 +802,15 @@ class NewIFU(implicit p: Parameters) extends XSModule
   }
 
   when (f3_flush) {
-    f3_lastHalf.valid := false.B
+    f3_lastHalf.valid_dup.foreach(_ := false.B)
   }.elsewhen (f3_fire) {
-    f3_lastHalf.valid := f3_hasLastHalf && !f3_lastHalf_disable
-    f3_lastHalf.middlePC := f3_ftq_req.nextStartAddr
+    f3_lastHalf.valid_dup.foreach(_ := f3_hasLastHalf && !f3_lastHalf_disable)
+    f3_lastHalf.middlePC  := f3_ftq_req.nextStartAddr
   }
 
-  f3_instr_valid := Mux(f3_lastHalf.valid,f3_hasHalfValid ,VecInit(f3_pd.map(inst => inst.valid)))
+  for (i <- 0 until PredictWidth) {
+    f3_instr_valid(i) := Mux(f3_lastHalf.valid_dup(i % 4), f3_hasHalfValid(i), f3_pd(i).valid)
+  }
 
   /*** frontend Trigger  ***/
   frontendTrigger.io.pds  := f3_pd
@@ -844,7 +846,7 @@ class NewIFU(implicit p: Parameters) extends XSModule
   io.toIbuffer.bits.illegalInstr:= f3_ill
   io.toIbuffer.bits.triggered   := f3_triggered
 
-  when(f3_lastHalf.valid){
+  when(f3_lastHalf.valid_dup(0)){
     io.toIbuffer.bits.enqEnable := checkerOutStage1.fixedRange.asUInt & f3_instr_valid.asUInt & f3_lastHalf_mask
     io.toIbuffer.bits.valid     := f3_lastHalf_mask & f3_instr_valid.asUInt
   }
@@ -977,7 +979,7 @@ class NewIFU(implicit p: Parameters) extends XSModule
   when(wb_valid && RegNext(f3_hasLastHalf,init = false.B)
         && wb_check_result_stage2.fixedMissPred(PredictWidth - 1) && f3_fire
       ){
-    f3_lastHalf.valid := false.B
+    f3_lastHalf.valid_dup.foreach(_ := false.B)
   }
 
   val checkFlushWb = Wire(Valid(new PredecodeWritebackBundle))

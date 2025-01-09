@@ -374,6 +374,7 @@ class PredChecker(implicit p: Parameters) extends XSModule with HasPdConst {
   val takenIdxNext   = RegEnable(takenIdx, io.in.fire_in)
   val predTakenNext  = RegEnable(predTaken, io.in.fire_in)
   val predTargetNext = RegEnable(predTarget, io.in.fire_in)
+  val targetDiffNext = jumpTargets.map( t => RegEnable(predTarget =/= t, io.in.fire_in) )
   val jumpTargetsNext = RegEnable(jumpTargets, io.in.fire_in)
   val jumpOffsetNext = RegEnable(jumpOffset, io.in.fire_in)
   val seqTargetsNext = RegEnable(seqTargets, io.in.fire_in)
@@ -383,8 +384,13 @@ class PredChecker(implicit p: Parameters) extends XSModule with HasPdConst {
   val notCFITakenNext = RegEnable(notCFITaken, io.in.fire_in)
   val invalidTakenNext = RegEnable(invalidTaken, io.in.fire_in)
 
-  targetFault      := VecInit(pdsNext.zipWithIndex.map{case(pd,i) => fixedRangeNext(i) && instrValidNext(i) && (pd.isJal || pd.isBr) && takenIdxNext === i.U && predTakenNext  && (predTargetNext =/= jumpTargetsNext(i))})
-
+  // targetFault      := VecInit(pdsNext.zipWithIndex.map{case(pd,i) => fixedRangeNext(i) && instrValidNext(i) && (pd.isJal || pd.isBr) && takenIdxNext === i.U && predTakenNext  && (predTargetNext =/= jumpTargetsNext(i))})
+  targetFault      := VecInit(pdsNext.zipWithIndex.map{case(pd,i) => fixedRangeNext(i) && instrValidNext(i) && (pd.isJal || pd.isBr) && takenIdxNext === i.U && predTakenNext  && targetDiffNext(i)})
+  when(RegNext(io.in.fire_in)){
+    targetDiffNext.zipWithIndex.foreach{ case (diff, i) =>
+      XSError(diff =/= (predTargetNext =/= jumpTargetsNext(i)), "predecoder retiming error")
+    }
+  }
 
   io.out.stage2Out.faultType.zipWithIndex.foreach{case(faultType, i) => faultType.value := Mux(jalFaultVecNext(i) , FaultType.jalFault ,
                                                                              Mux(retFaultVecNext(i), FaultType.retFault ,

@@ -12,6 +12,7 @@ import xiangshan.ExceptionNO
 import yunsuan.VfpuType
 import yunsuan.VfmaType
 import yunsuan.vector.VectorFloatFMA
+import xiangshan.backend.fu.vector.Mgu64
 
 class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg) {
 	XSError(io.in.valid && io.in.bits.ctrl.fuOpType === VfpuType.dummy, "Vfalu OpType not supported")
@@ -21,6 +22,7 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 
 	// modules
 	private val vfma = Module(new VectorFloatFMA)
+	private val mgu = Module(new Mgu64(VLEN))
 
 	private val resultData = Wire(UInt(64.W))
 	private val fflagsData = Wire(UInt(20.W))
@@ -113,22 +115,23 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 	}.reduce(_ | _)
 	io.out.bits.res.fflags.get := outFFlags
 
-//	val resultDataUInt = resultData.asUInt
-//	mgu.io.in.vd := resultDataUInt
-//	mgu.io.in.oldVd := outOldVd
-//	mgu.io.in.mask := maskToMgu
-//	mgu.io.in.info.ta := outVecCtrl.vta
-//	mgu.io.in.info.ma := outVecCtrl.vma
-//	mgu.io.in.info.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 1.U, outVl)
-//	mgu.io.in.info.vlmul := outVecCtrl.vlmul
-//	mgu.io.in.info.valid := io.out.valid
-//	mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
-//	mgu.io.in.info.eew := outEew
-//	mgu.io.in.info.vsew := outVecCtrl.vsew
-//	mgu.io.in.info.vdIdx := outVecCtrl.vuopIdx
-//	mgu.io.in.info.narrow := outVecCtrl.isNarrow
-//	mgu.io.in.info.dstMask := outVecCtrl.isDstMask
-//	mgu.io.in.isIndexedVls := false.B
-	io.out.bits.res.data := resultData.asUInt //mgu.io.out.vd
+	val resultDataUInt = resultData.asUInt
+	mgu.io.in.vd := resultDataUInt
+	mgu.io.in.oldVd := outOldVd
+	mgu.io.in.mask := maskToMgu
+	mgu.io.in.info.ta := outVecCtrl.vta
+	mgu.io.in.info.ma := outVecCtrl.vma
+	mgu.io.in.info.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 1.U, outVl)
+	mgu.io.in.info.vlmul := outVecCtrl.vlmul
+	mgu.io.in.info.valid := io.out.valid
+	mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
+	mgu.io.in.info.eew := outEew
+	mgu.io.in.info.vsew := outVecCtrl.vsew
+	mgu.io.in.info.vdIdx := outVecCtrl.vuopIdx
+	mgu.io.in.info.narrow := outVecCtrl.isNarrow
+	mgu.io.in.info.dstMask := outVecCtrl.isDstMask
+	mgu.io.in.isIndexedVls := false.B
+	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B))
+	io.out.bits.res.data := mgu.io.out.vd
 	io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B //mgu.io.out.illegal
 }

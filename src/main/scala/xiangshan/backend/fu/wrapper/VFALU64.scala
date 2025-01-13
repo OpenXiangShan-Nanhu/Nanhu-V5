@@ -7,7 +7,7 @@ import xs.utils.perf.{XSError}
 import xiangshan.backend.fu.FuConfig
 import xiangshan.backend.fu.vector.Bundles.{VLmul, VSew}
 import xiangshan.backend.fu.vector.utils.VecDataSplitModule
-import xiangshan.backend.fu.vector.{Mgu, Mgtu, VecInfo, VecPipedFuncUnit}
+import xiangshan.backend.fu.vector.{Mgu64, Mgtu, VecInfo, VecPipedFuncUnit}
 import xiangshan.ExceptionNO
 import yunsuan.{VfaluType, VfpuType}
 import yunsuan.vector.VectorFloatAdder
@@ -23,6 +23,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 
 	// modules
 	private val vfalu = Module(new VectorFloatAdder)
+	private val mgu = Module(new Mgu64(VLEN))
+  private val mgtu = Module(new Mgtu(VLEN))
 
 	private val resultData = Wire(UInt(64.W))
 	private val fflagsData = Wire(UInt(20.W))
@@ -204,19 +206,24 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		outIsResuction ||
 		outVecCtrl.fpu.isFpToVecInst
 	val maskToMgu = Mux(needNoMask, allMaskTrue, outSrcMask)
-	val allFFlagsEn = Wire(Vec(4,Bool()))
-	val outSrcMaskRShift = Wire(UInt(4.W))
-	outSrcMaskRShift := (maskToMgu >> (outVecCtrl.vuopIdx(2,0) * vlMax))(3, 0)
-	val f16FFlagsEn = outSrcMaskRShift
+	val allFFlagsEn = Wire(Vec(4, Bool()))
+	val outSrcMaskRShift = Wire(UInt(8.W))
+	outSrcMaskRShift := (maskToMgu >> (outVecCtrl.vuopIdx(2,0) * vlMax))(7, 0)
+	val f16FFlagsEn = Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
+											outSrcMaskRShift(3, 0), outSrcMaskRShift(7, 4))
 	val f32FFlagsEn = Wire(UInt(4.W))
 	val f64FFlagsEn = Wire(UInt(4.W))
 	val f16VlMaskEn = vlMaskRShift
 	val f32VlMaskEn = Wire(UInt(4.W))
 	val f64VlMaskEn = Wire(UInt(4.W))
-	f32FFlagsEn := Cat(Fill(2, 0.U), outSrcMaskRShift(3, 0))
-	f64FFlagsEn := Cat(Fill(3, 0.U), outSrcMaskRShift)
-	f32VlMaskEn := Cat(Fill(2, 0.U), vlMaskRShift(3, 0))
-	f64VlMaskEn := Cat(Fill(3, 0.U), vlMaskRShift)
+	f32FFlagsEn := Cat(Fill(2, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
+																				outSrcMaskRShift(1, 0), outSrcMaskRShift(3, 2)))
+	f64FFlagsEn := Cat(Fill(3, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
+																				outSrcMaskRShift(0), outSrcMaskRShift(1)))
+	f32VlMaskEn := Cat(Fill(2, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
+																				vlMaskRShift(1, 0), vlMaskRShift(3, 2)))
+	f64VlMaskEn := Cat(Fill(3, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
+																				vlMaskRShift(0), vlMaskRShift(1)))
 	val fflagsEn = Mux1H(
 		Seq(
 			(outEew === 1.U) -> f16FFlagsEn.asUInt,
@@ -233,18 +240,18 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	)
 	val fflagsRedMask = "b11111111".U
 
-	// if (backendParams.debugEn){
-	// 	dontTouch(allFFlagsEn)
-	// 	dontTouch(fflagsRedMask)
-	// }
 	allFFlagsEn := Mux(outIsResuction, Cat(Fill(3, firstNeedFFlags || outIsVfRedUnSum) & fflagsRedMask(3, 1),
 		lastNeedFFlags || firstNeedFFlags || outIsVfRedOrdered || outIsVfRedUnSum), fflagsEn & vlMaskEn).asTypeOf(allFFlagsEn)
 
-	val allFFlags = fflagsData.asTypeOf(Vec(4 ,UInt(5.W)))
+	val allFFlags = fflagsData.asTypeOf(Vec(4, UInt(5.W)))
 	val outFFlags = allFFlagsEn.zip(allFFlags).map{
 		case(en,fflags) => Mux(en, fflags, 0.U(5.W))
 	}.reduce(_ | _)
 
+	if (backendParams.debugEn) {
+		dontTouch(outSrcMaskRShift)
+		dontTouch(allFFlagsEn)
+	}
 
 	val cmpResultOldVd = Wire(UInt(cmpResultWidth.W))
 	val cmpResultOldVdRshiftWidth = Wire(UInt(6.W))
@@ -303,14 +310,32 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	// outVecCtrl.fpu.isFpToVecInst means the instruction is float instruction, not vector float instruction
 	val notUseVl = outVecCtrl.fpu.isFpToVecInst || (outCtrl.fuOpType === VfaluType.vfmv_f_s)
 	val notModifyVd = !notUseVl && (outVl === 0.U)
+	mgu.io.in.vd := Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt), resultDataUInt)
+  mgu.io.in.oldVd := Mux(isOutOldVdForREDO, outOldVdForRED, outOldVd)
+  mgu.io.in.mask := maskToMgu
+  mgu.io.in.info.ta := Mux(outCtrl.fuOpType === VfaluType.vfmv_f_s, true.B , Mux(taIsFalseForVFREDO, false.B, outVecCtrl.vta))
+  mgu.io.in.info.ma := Mux(outCtrl.fuOpType === VfaluType.vfmv_s_f, true.B , outVecCtrl.vma)
+  mgu.io.in.info.vl := outVlFix
+  mgu.io.in.info.vstart := outVecCtrl.vstart
+  mgu.io.in.info.vlmul := outVecCtrl.vlmul
+  mgu.io.in.info.valid := Mux(notModifyVd, false.B, io.in.valid)
+  mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
+  mgu.io.in.info.eew :=  RegEnable(outEew_s0,io.in.fire)
+  mgu.io.in.info.vsew := outVecCtrl.vsew
+  mgu.io.in.info.vdIdx := RegEnable(Mux(outIsResuction_s0, 0.U, outVecCtrl_s0.vuopIdx), io.in.fire)
+  mgu.io.in.info.narrow := outVecCtrl.isNarrow
+  mgu.io.in.info.dstMask := outVecCtrl.isDstMask
+  mgu.io.in.isIndexedVls := false.B
+	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B))
+  mgtu.io.in.vd := Mux(outVecCtrl.isDstMask, mgu.io.out.vd, resultDataUInt)
+  mgtu.io.in.vl := outVl
 	val resultFpMask = Wire(UInt(VLEN.W))
 	val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
 	val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
 	val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
 	resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
 	// when dest is mask, the result need to be masked by mgtu
-	io.out.bits.res.data := resultData
+	io.out.bits.res.data := Mux(notModifyVd, outOldVd, Mux(outVecCtrl.isDstMask, mgtu.io.out.vd, mgu.io.out.vd) & resultFpMask)
 	io.out.bits.res.fflags.get := Mux(notModifyVd, 0.U(5.W), outFFlags)
-	io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
-
+	io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
 }

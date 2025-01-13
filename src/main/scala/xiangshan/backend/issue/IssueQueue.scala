@@ -82,8 +82,7 @@ class IssueQueueIO()(implicit p: Parameters, params: IssueBlockParams) extends X
 }
 
 class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, val params: IssueBlockParams)
-  extends LazyModuleImp(wrapper)
-  with HasXSParameter {
+  extends LazyModuleImp(wrapper) with HasXSParameter {
 
   override def desiredName: String = s"${params.getIQName}"
 
@@ -229,9 +228,12 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
   val issuedVec = VecInit(entries.io.issued.asBools)
   val requestForTrans = VecInit(validVec.zip(issuedVec).map(x => x._1 && !x._2))
   val canIssueVec = VecInit(entries.io.canIssue.asBools)
+  val fpToVfVec = entries.io.fpToVec.getOrElse(0.U)
   dontTouch(canIssueVec)
+  if(params.sharedVf) {
+    dontTouch(fpToVfVec)
+  }
   val deqFirstIssueVec = entries.io.isFirstIssue
-
   val dataSources: Vec[Vec[DataSource]] = entries.io.dataSources
   val finalDataSources: Vec[Vec[DataSource]] = VecInit(finalDeqSelOHVec.map(oh => Mux1H(oh, dataSources)))
   val loadDependency: Vec[Vec[UInt]] = entries.io.loadDependency
@@ -303,7 +305,7 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
         enq.bits.status.srcStatus(j).dataSources.value          := (if (j < 3) {
                                                                       MuxCase(DataSource.reg, Seq(
                                                                         (SrcType.isXp(s0_enqBits(enqIdx).srcType(j)) && (s0_enqBits(enqIdx).psrc(j) === 0.U)) -> DataSource.zero,
-                                                                        SrcType.isNotReg(s0_enqBits(enqIdx).srcType(j))                                       -> DataSource.imm,
+                                                                        (SrcType.isNotReg(s0_enqBits(enqIdx).srcType(j)))                                     -> DataSource.imm,
                                                                         (SrcType.isVp(s0_enqBits(enqIdx).srcType(j)) && (s0_enqBits(enqIdx).psrc(j) === 0.U)) -> DataSource.v0,
                                                                       ))
                                                                     } else {
@@ -491,9 +493,11 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
       subDeqSelValidVec.get := subDeqPolicy.io.deqSelOHVec.map(oh => oh.valid)
       subDeqSelOHVec.get := subDeqPolicy.io.deqSelOHVec.map(oh => Reverse(oh.bits))
     }
-
-    subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W))
-
+    if(params.sharedVf) {
+      subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W)) & fpToVfVec
+    } else {
+      subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W))
+    }
     deqSelValidVec(0) := othersEntryOldestSel(0).valid || subDeqSelValidVec.get(1)
     deqSelValidVec(1) := subDeqSelValidVec.get(0)
     deqSelOHVec(0) := Mux(othersEntryOldestSel(0).valid,
@@ -1069,7 +1073,6 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
         // deqBeforeDly.ready is always true
         deq.ready := true.B
       }
-      deqDelay(1).valid := deqBeforeDly(1).valid && !((deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst) || (deqBeforeDly(1).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst))
     }
   } else {
     deqDelay.zip(deqBeforeDly).foreach { case (deqDly, deq) =>

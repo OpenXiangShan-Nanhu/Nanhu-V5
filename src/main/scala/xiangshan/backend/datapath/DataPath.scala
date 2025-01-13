@@ -172,9 +172,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val vlRdNotBlock: Seq2[Bool] = vlRdArbWinner.map(_.map(_.asUInt.andR))
 
   private val intRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
-  private val vfRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid && 
-                                                                                                                        !(xx.bits.common.vecWen.getOrElse(false.B) &&
-                                                                                                                          xx.bits.common.vfWenH.getOrElse(false.B)))).toSeq).toSeq
+  private val vfRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
   private val v0RFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
   private val vlRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
 
@@ -494,11 +492,11 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   }
 
   println(s"[DataPath] " +
-    s"has intDiffRead: ${intDiffRead.nonEmpty}, " +
-    s"has fpDiffRead: ${fpDiffRead.nonEmpty}, " +
-    s"has vecDiffRead: ${vfDiffRead.nonEmpty}, " +
-    s"has v0DiffRead: ${v0DiffRead.nonEmpty}, " +
-    s"has vlDiffRead: ${vlDiffRead.nonEmpty}")
+    s"\n\thas intDiffRead: ${intDiffRead.nonEmpty}, " +
+    s"\n\thas fpDiffRead: ${fpDiffRead.nonEmpty}, " +
+    s"\n\thas vecDiffRead: ${vfDiffRead.nonEmpty}, " +
+    s"\n\thas v0DiffRead: ${v0DiffRead.nonEmpty}, " +
+    s"\n\thas vlDiffRead: ${vlDiffRead.nonEmpty}")
 
   // regcache
   private val regCache = Module(new RegCache())

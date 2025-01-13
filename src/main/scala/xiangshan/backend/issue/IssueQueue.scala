@@ -1069,7 +1069,7 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
         // deqBeforeDly.ready is always true
         deq.ready := true.B
       }
-      
+      deqDelay(1).valid := deqBeforeDly(1).valid && !((deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst) || (deqBeforeDly(1).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst))
     }
   } else {
     deqDelay.zip(deqBeforeDly).foreach { case (deqDly, deq) =>

@@ -28,8 +28,7 @@ import xiangshan.backend.rob.RobPtr
 import xiangshan.backend.fu.util.HasCSRConst
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink._
-import xiangshan.backend.fu.{PMPReqBundle, PMPConfig}
-import xiangshan.backend.fu.PMPBundle
+import xiangshan.backend.fu.{PMPBundle, PMPConfig, PMPEntry, PMPReqBundle}
 
 
 abstract class TlbBundle(implicit p: Parameters) extends XSBundle with HasTlbConst
@@ -1292,13 +1291,17 @@ class PtwRespS2withMemIdx(implicit p: Parameters) extends PtwRespS2 {
   val getGpa = Bool() // this req is to get gpa when having guest page fault
 }
 
-class L2TLBIO(implicit p: Parameters) extends PtwBundle {
+class L2TLBIO(implicit p: Parameters) extends PtwBundle with HasPMParameters {
   val hartId = Input(UInt(hartIdLen.W))
   val tlb = Vec(PtwWidth, Flipped(new TlbPtwIO))
   val sfence = Input(new SfenceBundle)
   val csr = new Bundle {
     val tlb = Input(new TlbCsrBundle)
     val distribute_csr = Flipped(new DistributedCSRIO)
+  }
+  val pmpInfo = new Bundle {
+    val pmp = Input(Vec(NumPMP, new PMPEntry()))
+    val pma = Input(Vec(NumPMA, new PMPEntry()))
   }
 }
 

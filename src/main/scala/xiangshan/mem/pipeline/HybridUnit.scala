@@ -866,8 +866,7 @@ class HybridUnit(implicit p: Parameters) extends XSModule
                          !s2_in.tlbMiss &&
                          !s2_ld_flow
   val s2_full_fwd      = Wire(Bool())
-  val s2_mem_amb       = s2_in.uop.storeSetHit &&
-                         io.ldu_io.lsq.forward.addrInvalid
+  val s2_mem_amb       = io.ldu_io.lsq.forward.addrInvalid
 
   val s2_tlb_miss      = s2_in.tlbMiss
   val s2_fwd_fail      = io.ldu_io.lsq.forward.dataInvalid || io.ldu_io.vec_forward.dataInvalid
@@ -1013,7 +1012,7 @@ class HybridUnit(implicit p: Parameters) extends XSModule
   s2_out.rep_info.dcache_miss     := s2_dcache_miss && s2_troublem
   s2_out.rep_info.bank_conflict   := s2_bank_conflict && s2_troublem
   s2_out.rep_info.wpu_fail        := s2_wpu_pred_fail && s2_troublem
-  s2_out.rep_info.rar_nack        := s2_rar_nack && s2_troublem
+  // s2_out.rep_info.rar_nack        := s2_rar_nack && s2_troublem
   s2_out.rep_info.raw_nack        := s2_raw_nack && s2_troublem
   s2_out.rep_info.nuke            := s2_nuke && s2_troublem
   s2_out.rep_info.full_fwd        := s2_data_fwded

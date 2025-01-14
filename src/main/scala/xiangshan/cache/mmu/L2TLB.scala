@@ -90,10 +90,11 @@ class L2TLBImp(outer: L2TLB)(implicit p: Parameters) extends PtwModule(outer) wi
   val hPBMTE = csr_dup(0).hPBMTE
   val flush  = sfence_dup(0).valid || satp.changed || vsatp.changed || hgatp.changed
 
-  val pmp = Module(new PMP())
+//  val pmp = Module(new PMP())
+  val pmpInfo = io.pmpInfo
   val pmp_check = VecInit(Seq.fill(3)(Module(new PMPChecker(lgMaxSize = 3, sameCycle = true)).io))
-  pmp.io.distribute_csr := io.csr.distribute_csr
-  pmp_check.foreach(_.check_env.apply(ModeS, pmp.io.pmp, pmp.io.pma))
+//  pmp.io.distribute_csr := io.csr.distribute_csr
+  pmp_check.foreach(_.check_env.apply(ModeS, pmpInfo.pmp, pmpInfo.pma))
 
   val missQueue = Module(new L2TlbMissQueue)
   val cache = Module(new PtwCache)

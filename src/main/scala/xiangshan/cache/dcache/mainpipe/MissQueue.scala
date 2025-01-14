@@ -312,6 +312,9 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     // send refill info to load queue, useless now
     val refill_to_ldq = ValidIO(new Refill)
 
+    val sbuffer_id = Output(UInt(reqIdWidth.W))
+    val req_source = Output(UInt(sourceTypeWidth.W))
+
     // replace pipe
     val l2_hint = Input(Valid(new L2ToL1Hint())) // Hint from L2 Cache
 
@@ -414,7 +417,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   // refill data with store data, this reg will be used to store:
   // 1. store data (if needed), before l2 refill data
   // 2. store data and l2 refill data merged result (i.e. new cacheline taht will be write to data array)
-  val refill_and_store_data = Reg(Vec(blockRows, UInt(rowBits.W)))
   // raw data refilled to l1 by l2
   val refill_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
 
@@ -460,12 +462,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     w_l2hint := false.B
     mainpipe_req_fired := false.B
 
-    when(miss_req_pipe_reg_bits.isFromStore) {
-      req_store_mask := miss_req_pipe_reg_bits.store_mask
-      for (i <- 0 until blockRows) {
-        refill_and_store_data(i) := miss_req_pipe_reg_bits.store_data(rowBits * (i + 1) - 1, rowBits * i)
-      }
-    }
     full_overwrite := miss_req_pipe_reg_bits.isFromStore && miss_req_pipe_reg_bits.full_overwrite
 
     when (!miss_req_pipe_reg_bits.isFromAMO) {
@@ -499,10 +495,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     when (miss_req_pipe_reg_bits.isFromStore) {
       req := miss_req_pipe_reg_bits
       req.addr := get_block_addr(miss_req_pipe_reg_bits.addr)
-      req_store_mask := miss_req_pipe_reg_bits.store_mask
-      for (i <- 0 until blockRows) {
-        refill_and_store_data(i) := miss_req_pipe_reg_bits.store_data(rowBits * (i + 1) - 1, rowBits * i)
-      }
       full_overwrite := miss_req_pipe_reg_bits.isFromStore && miss_req_pipe_reg_bits.full_overwrite
       assert(is_alias_match(req.vaddr, miss_req_pipe_reg_bits.vaddr), "alias bits should be the same when merging store")
     }
@@ -519,50 +511,17 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     s_acquire := true.B
   }
 
-  // merge data refilled by l2 and store data, update miss queue entry, gen refill_req
-  val new_data = Wire(Vec(blockRows, UInt(rowBits.W)))
-  val new_mask = Wire(Vec(blockRows, UInt(rowBytes.W)))
-  // merge refilled data and store data (if needed)
-  def mergePutData(old_data: UInt, new_data: UInt, wmask: UInt): UInt = {
-    val full_wmask = FillInterleaved(8, wmask)
-    (~full_wmask & old_data | full_wmask & new_data)
-  }
-  for (i <- 0 until blockRows) {
-    // new_data(i) := req.store_data(rowBits * (i + 1) - 1, rowBits * i)
-    new_data(i) := refill_and_store_data(i)
-    // we only need to merge data for Store
-    new_mask(i) := Mux(req.isFromStore, req_store_mask(rowBytes * (i + 1) - 1, rowBytes * i), 0.U)
-  }
-
   val hasData = RegInit(true.B)
   val isDirty = RegInit(false.B)
   when (io.mem_grant.fire) {
     w_grantfirst := true.B
     grant_param := io.mem_grant.bits.param
     when (edge.hasData(io.mem_grant.bits)) {
-      // GrantData
-      when (isKeyword) {
-       for (i <- 0 until beatRows) {
-         val idx = ((refill_count << log2Floor(beatRows)) + i.U) ^ 4.U
-         val grant_row = io.mem_grant.bits.data(rowBits * (i + 1) - 1, rowBits * i)
-         refill_and_store_data(idx) := mergePutData(grant_row, new_data(idx), new_mask(idx))
-        }
-      }
-      .otherwise{
-       for (i <- 0 until beatRows) {
-         val idx = (refill_count << log2Floor(beatRows)) + i.U
-         val grant_row = io.mem_grant.bits.data(rowBits * (i + 1) - 1, rowBits * i)
-         refill_and_store_data(idx) := mergePutData(grant_row, new_data(idx), new_mask(idx))
-        }
-      }
       w_grantlast := w_grantlast || refill_done
       hasData := true.B
     }.otherwise {
       // Grant
       assert(full_overwrite)
-      for (i <- 0 until blockRows) {
-        refill_and_store_data(i) := new_data(i)
-      }
       w_grantlast := true.B
       hasData := false.B
     }
@@ -594,9 +553,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     w_refill_resp := true.B
   }
 
-  when (io.l2_hint.valid) {
-    w_l2hint := true.B
-  }
+  w_l2hint :=Mux(req.isFromStore || req.isFromAMO, RegNext(io.mem_grant.fire) && io.mem_grant.fire, io.l2_hint.valid)
 
   def before_req_sent_can_merge(new_req: MissReqWoStoreData): Bool = {
     // acquire_not_sent && (new_req.isFromLoad || new_req.isFromStore)
@@ -681,15 +638,12 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   // should not allocate, merge or reject at the same time
   assert(RegNext(PopCount(Seq(io.primary_ready, io.secondary_ready, io.secondary_reject)) <= 1.U || !io.req.valid))
 
-  val refill_data_splited = WireInit(VecInit(Seq.tabulate(cfg.blockBytes * 8 / l1BusDataWidth)(i => {
-    val data = refill_and_store_data.asUInt
-    data((i + 1) * l1BusDataWidth - 1, i * l1BusDataWidth)
-  })))
   // when granted data is all ready, wakeup lq's miss load
   val refill_to_ldq_en = !w_grantlast && io.mem_grant.fire
   io.refill_to_ldq.valid := GatedValidRegNext(refill_to_ldq_en)
   io.refill_to_ldq.bits.addr := RegEnable(req.addr + ((refill_count ^ isKeyword) << refillOffBits), refill_to_ldq_en)
-  io.refill_to_ldq.bits.data := refill_data_splited(RegEnable(refill_count ^ isKeyword, refill_to_ldq_en))
+//  io.refill_to_ldq.bits.data := refill_data_splited(RegEnable(refill_count ^ isKeyword, refill_to_ldq_en))
+  io.refill_to_ldq.bits.data := DontCare
   io.refill_to_ldq.bits.error := RegEnable(io.mem_grant.bits.corrupt || io.mem_grant.bits.denied, refill_to_ldq_en)
   io.refill_to_ldq.bits.refill_done := RegEnable(refill_done && io.mem_grant.fire, refill_to_ldq_en)
   io.refill_to_ldq.bits.hasdata := hasData
@@ -770,19 +724,23 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   io.req_addr.bits := req.addr
 
   io.refill_info.valid := req_valid && w_grantlast
-  io.refill_info.bits.store_data := refill_and_store_data.asUInt
+  io.refill_info.bits.store_data := DontCare
   io.refill_info.bits.store_mask := ~0.U(blockBytes.W)
   io.refill_info.bits.miss_param := grant_param
   io.refill_info.bits.miss_dirty := isDirty
   io.refill_info.bits.error      := error
 
-  XSPerfAccumulate("miss_refill_mainpipe_req", io.main_pipe_req.fire)
+  io.sbuffer_id := req.id
+  io.req_source := req.source
+
+   XSPerfAccumulate("miss_refill_mainpipe_req", io.main_pipe_req.fire)
   XSPerfAccumulate("miss_refill_without_hint", io.main_pipe_req.fire && !mainpipe_req_fired && !w_l2hint)
   XSPerfAccumulate("miss_refill_replay", io.main_pipe_replay)
 
   val w_grantfirst_forward_info = Mux(isKeyword, w_grantlast, w_grantfirst)
   val w_grantlast_forward_info = Mux(isKeyword, w_grantfirst, w_grantlast)
-  io.forwardInfo.apply(req_valid, req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info)
+  val refill_and_store_data = VecInit(Seq.fill(blockRows)(0.U(rowBits.W)))
+  io.forwardInfo.apply(req_valid && (req.isFromLoad || req.isFromPrefetch), req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info)
 
   io.matched := req_valid && (get_block(req.addr) === get_block(io.req.bits.addr)) && !prefetch
   io.prefetch_info.late_prefetch := io.req.valid && !(io.req.bits.isFromPrefetch) && req_valid && (get_block(req.addr) === get_block(io.req.bits.addr)) && prefetch
@@ -845,6 +803,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val mem_grant = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
     val mem_finish = DecoupledIO(new TLBundleE(edge.bundle))
 
+    val refill_to_sbuffer = ValidIO(new RefillToSbuffer)
+
     val l2_hint = Input(Valid(new L2ToL1Hint())) // Hint from L2 Cache
 
     val main_pipe_req = DecoupledIO(new MainPipeReq)
@@ -893,6 +853,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   // 128KBL1: FIXME: provide vaddr for l2
 
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
+  val dataBuffer = Module(new dataBuffer(MissqDataBufferDepth))
+  val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
 
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))
   val acquire_from_pipereg = Wire(chiselTypeOf(io.mem_acquire))
@@ -958,13 +920,22 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   io.memSetPattenDetected := memSetPattenDetected
 
+  (0 until LoadPipelineWidth).map(i => {
+    dataBuffer.io.forward(i).valid := false.B
+    dataBuffer.io.forward(i).bits := DontCare
+  })
+
+  //only load or prefetch mshr can be forwarded
   val forwardInfo_vec = VecInit(entries.map(_.io.forwardInfo))
   (0 until LoadPipelineWidth).map(i => {
     val id = io.forward(i).mshrid
     val req_valid = io.forward(i).valid
     val paddr = io.forward(i).paddr
+    dataBuffer.io.forward(i).valid := req_valid
+    dataBuffer.io.forward(i).bits.rid := id
+    val forwardRawData = dataBuffer.io.forwardData(i)
 
-    val (forward_mshr, forwardData) = forwardInfo_vec(id).forward(req_valid, paddr)
+    val (forward_mshr, forwardData) = forwardInfo_vec(id).forward(req_valid, paddr, forwardRawData)
     io.forward(i).forward_result_valid := forwardInfo_vec(id).check(req_valid, paddr)
     io.forward(i).forward_mshr := forward_mshr
     io.forward(i).forwardData := forwardData
@@ -991,6 +962,20 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   }
 
   io.mem_grant.ready := false.B
+  io.refill_to_sbuffer.valid := false.B
+  io.refill_to_sbuffer.bits := DontCare
+
+  val hasData = edge.hasData(io.mem_grant.bits)
+  val refill_row_data = io.mem_grant.bits.data
+  val isKeyword = io.mem_grant.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
+  val (_, _, refill_done, refill_count) = edge.count(io.mem_grant)
+  dataBuffer.io.read.valid := false.B
+  dataBuffer.io.read.bits := DontCare
+  dataBuffer.io.write.valid := false.B
+  dataBuffer.io.write.bits := DontCare
+
+  val diff_refill = Wire(Bool())
+  diff_refill := merge && io.req.valid && !io.req.bits.cancel && io.req.bits.isFromLoad
 
   val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = 14)
   entries.zipWithIndex.foreach {
@@ -1015,7 +1000,31 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
       e.io.mem_grant.valid := false.B
       e.io.mem_grant.bits := DontCare
       when (io.mem_grant.bits.source === i.U) {
-        e.io.mem_grant <> io.mem_grant
+        when(e.io.req_source === STORE_SOURCE.U || e.io.req_source === AMO_SOURCE.U){
+          io.mem_grant.ready := e.io.mem_grant.ready
+          when(io.mem_grant.fire && hasData){
+            io.refill_to_sbuffer.valid := true.B
+            io.refill_to_sbuffer.bits.data := refill_row_data
+            io.refill_to_sbuffer.bits.id := e.io.sbuffer_id
+            io.refill_to_sbuffer.bits.isKeyword := isKeyword
+            io.refill_to_sbuffer.bits.refill_count := refill_count
+
+            difftest_data_raw(refill_count ^ isKeyword) := refill_row_data
+          }
+        }.elsewhen(e.io.req_source === LOAD_SOURCE.U || e.io.req_source === DCACHE_PREFETCH_SOURCE.U){
+          io.mem_grant.ready := !dataBuffer.io.full && e.io.mem_grant.ready
+          when(io.mem_grant.fire && hasData){
+            dataBuffer.io.write.valid := true.B
+            dataBuffer.io.write.bits.wid := io.mem_grant.bits.source
+            dataBuffer.io.write.bits.wdata := refill_row_data
+            dataBuffer.io.write.bits.wbeat := refill_count ^ isKeyword
+            dataBuffer.io.write.bits.refill_count := refill_count
+
+            difftest_data_raw(refill_count ^ isKeyword) := refill_row_data
+          }
+        }
+        e.io.mem_grant.bits := io.mem_grant.bits
+        e.io.mem_grant.valid := Mux(io.mem_grant.ready, io.mem_grant.valid, false.B)
       }
 
       when(miss_req_pipe_reg.reg_valid() && miss_req_pipe_reg.mshr_id === i.U) {
@@ -1057,6 +1066,13 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   io.refill_info.valid := VecInit(entries.zipWithIndex.map{ case(e,i) => e.io.refill_info.valid && io.mainpipe_info.s2_valid && io.mainpipe_info.s2_miss_id === i.U}).asUInt.orR
   io.refill_info.bits := Mux1H(entries.zipWithIndex.map{ case(e,i) => (io.mainpipe_info.s2_miss_id === i.U) -> e.io.refill_info.bits })
+
+  dataBuffer.io.read.valid := io.refill_info.valid
+  dataBuffer.io.read.bits.rid := io.mainpipe_info.s2_miss_id
+  io.refill_info.bits.store_data := dataBuffer.io.rdata
+
+  dataBuffer.io.free.valid :=  io.mainpipe_info.s3_valid && io.mainpipe_info.s3_refill_resp
+  dataBuffer.io.free.bits := io.mainpipe_info.s3_miss_id
 
   acquire_from_pipereg.valid := miss_req_pipe_reg.can_send_acquire(io.req.valid, io.req.bits)
   acquire_from_pipereg.bits := miss_req_pipe_reg.get_acquire(io.l2_pf_store_only)
@@ -1102,7 +1118,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     difftest.index := 1.U
     difftest.valid := io.refill_to_ldq.valid && io.refill_to_ldq.bits.hasdata && io.refill_to_ldq.bits.refill_done
     difftest.addr := io.refill_to_ldq.bits.addr
-    difftest.data := io.refill_to_ldq.bits.data_raw.asTypeOf(difftest.data)
+    difftest.data := difftest_data_raw.asTypeOf(difftest.data)
     difftest.idtfr := DontCare
   }
 
@@ -1159,4 +1175,109 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     ("dcache_missq_4_4_valid", (perfValidCount > (cfg.nMissEntries.U*3.U/4.U))),
   )
   generatePerfEvent()
+}
+
+
+class dataBufferReadReq(implicit p: Parameters) extends DCacheBundle {
+  val rid = Output(UInt(log2Up(cfg.nMissEntries).W)) //onhot
+}
+
+class dataBufferWriteReq(implicit p: Parameters) extends DCacheBundle {
+  val wdata = UInt(l1BusDataWidth.W)
+  val wid = UInt(log2Up(cfg.nMissEntries).W)
+  val wbeat = UInt((blockBytes/beatBytes).W)
+  val refill_count = Bool()
+}
+
+class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
+  val io = IO(new Bundle {
+    val read = Flipped(ValidIO(new dataBufferReadReq))
+    val rdata = Output(UInt(CacheLineSize.W))
+    val free = Flipped(ValidIO(UInt(log2Up(cfg.nMissEntries).W)))
+    val write = Flipped(ValidIO(new dataBufferWriteReq))
+    val forward = Vec(LoadPipelineWidth, Flipped(ValidIO(new dataBufferReadReq)))
+    val forwardData = Output(Vec(LoadPipelineWidth, Vec(blockRows, UInt(rowBits.W))))
+    val full = Bool()
+  })
+
+  def getFirstOneOH(input: UInt): UInt = {
+    assert(input.getWidth > 1)
+    val output = WireInit(VecInit(input.asBools))
+    (1 until input.getWidth).map(i => {
+      output(i) := !input(i - 1, 0).orR && input(i)
+    })
+    output.asUInt
+  }
+
+  val data = Reg(Vec(numEntries, Vec(CacheLineSize/l1BusDataWidth, UInt(l1BusDataWidth.W))))
+  val valid = RegInit(VecInit(List.fill(numEntries)(false.B)))
+  val id = RegInit(VecInit(List.fill(numEntries)(0.U(log2Up(cfg.nMissEntries).W))))
+  val waddr = OHToUInt(getFirstOneOH(VecInit(valid.map(!_)).asUInt))
+  val raddrOh = WireInit(VecInit(List.fill(numEntries)(false.B)))
+  val raddr = WireInit(0.U(log2Up(numEntries).W))
+  val freeOh = WireInit(VecInit(List.fill(numEntries)(false.B)))
+  val freeAddr = WireInit(0.U(log2Up(numEntries).W))
+  val forwardOh =VecInit(Seq.fill(LoadPipelineWidth)(VecInit(Seq.fill(numEntries)(false.B))))
+  val forwardAddr = VecInit(Seq.fill(LoadPipelineWidth)(0.U(log2Up(numEntries).W)))
+  val infilghtAddr = RegInit(0.U(log2Up(numEntries).W))
+  val infilght = RegInit(false.B)
+  val infilghtId = Reg(UInt(log2Up(cfg.nMissEntries).W))
+  dontTouch(raddrOh)
+
+  id.zipWithIndex.foreach({ case(id, i) =>
+    raddrOh(i) := Mux(id === io.read.bits.rid, 1.B, 0.B) && valid(i)
+    freeOh(i) := Mux(id === io.free.bits, 1.B, 0.B) && valid(i)
+    (0 until LoadPipelineWidth).map{ j =>
+      forwardOh(j)(i) := Mux(infilght && infilghtId === io.forward(j).bits.rid && infilghtAddr === i.U, true.B,
+      Mux(id === io.forward(j).bits.rid && valid(i), true.B, false.B))
+    }
+    
+  })
+
+  io.rdata := DontCare
+  raddr := OHToUInt(raddrOh.asUInt)
+  val real_read = raddrOh.reduce(_ | _)
+  when(io.read.valid && real_read){
+    io.rdata := data(raddr).asUInt
+    assert(PopCount(raddrOh.asUInt) <= 1.U)
+  }
+
+  freeAddr := OHToUInt(freeOh.asUInt)
+  val real_free = freeOh.reduce(_ | _)
+  when(io.free.valid && real_free){
+    valid(freeAddr) := false.B
+    assert(PopCount(freeOh.asUInt) <= 1.U)
+  }
+  
+  (0 until LoadPipelineWidth).map({ i =>
+    io.forwardData := DontCare
+  })
+
+  (0 until LoadPipelineWidth).map{ i =>
+    forwardAddr(i) := OHToUInt(forwardOh(i).asUInt)
+    val real_forward = forwardOh(i).reduce(_ | _)
+    when(io.forward(i).valid){
+      val flatData = data(forwardAddr(i)).reduceLeft((a,b) => Cat(b,a))
+      val reshapedData = VecInit(Seq.tabulate(8)(j => flatData(((j + 1) * 64) - 1, j * 64)))
+      io.forwardData(i) := reshapedData
+      assert(PopCount(forwardOh(i).asUInt) <= 1.U)
+    }     
+  }
+
+  io.full := valid.reduce(_ && _)
+
+  when(io.write.valid){
+    assert(!io.full)
+    when(io.write.bits.refill_count === 0.U){
+      infilghtAddr := waddr
+      infilght := true.B
+      infilghtId := io.write.bits.wid
+      data(waddr)(io.write.bits.wbeat) := io.write.bits.wdata 
+    }.otherwise{
+      id(infilghtAddr) := io.write.bits.wid
+      valid(infilghtAddr) := true.B
+      data(infilghtAddr)(io.write.bits.wbeat) := io.write.bits.wdata
+      infilght := false.B
+    }
+  }
 }

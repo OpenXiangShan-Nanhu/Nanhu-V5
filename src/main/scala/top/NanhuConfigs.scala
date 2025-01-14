@@ -54,7 +54,6 @@ class WithNanhuV5Config extends Config((site, here, up) =>{
       numWrite = None,              // Default:
     ),                              // Default:
     VirtualLoadQueueSize = 32,      // Default: 72
-    LoadQueueRARSize = 32,          // Default: 72
     LoadQueueRAWSize = 32,          // Default: 64
     LoadQueueReplaySize = 48,       // Default: 72
     LoadUncacheBufferSize = 16,     // Default: 20
@@ -90,7 +89,6 @@ class WithNanhuV5_2Config extends Config((site, here, up) =>{
       numWrite = None,              // Default:
     ),                              // Default:
     VirtualLoadQueueSize = 48,      // Default: 72
-    LoadQueueRARSize = 48,          // Default: 72
     LoadQueueRAWSize = 24,          // Default: 64
     LoadQueueReplaySize = 48,       // Default: 72
     LoadUncacheBufferSize = 8,      // Default: 20
@@ -130,16 +128,17 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
       numEntries = 160,             // Default: 160
       numRead = None,
       numWrite = None,
-    ),
-    VirtualLoadQueueSize = 64,      // Default: 72
-    LoadQueueRARSize = 64,          // Default: 72
+    ),                            // Default:
+    VirtualLoadQueueSize = 56,      // Default: 72
     LoadQueueRAWSize = 24,          // Default: 64
-    LoadQueueReplaySize = 64,       // Default: 72
+    LoadQueueReplaySize = 32,       // Default: 72
     LoadQueueNWriteBanks = 4,       // Default: 8
     LoadUncacheBufferSize = 8,      // Default: 20
     StoreQueueSize = 32,            // Default: 64
     StoreBufferSize = 8,            // Default: 16
     LoadPipelineWidth = 2,          // Default: 3
+    StorePipelineWidth = 1,         // Default: 2
+    VecStorePipelineWidth = 1,      // Default: 2
 
     dpParams = DispatchParameters(
       IntDqSize = 8,
@@ -150,19 +149,27 @@ class WithNanhuV5_3Config extends Config((site, here, up) =>{
       VecDqDeqWidth = 8,
       LsDqDeqWidth = 6
     ),
-
+    dtlbParameters = TLBParameters(
+      name = "dtlb",
+      NWays = 48,
+      outReplace = false,
+      partialStaticPMP = true,
+      outsideRecvFlush = true,
+      saveLevel = false,
+      lgMaxSize = 4
+    ),
     l2tlbParameters = L2TLBParameters(
       name = "l2tlb",
       // l3
-      l3Size = 16,
+      l3Size = 4,
       l3Associative = "fa",
       l3Replacer = Some("plru"),
-      l2Size = 16,
+      l2Size = 8,
       l2Associative = "fa",
       l2Replacer = Some("plru"),
       // l1
       l1nSets = 8,
-      l1nWays = 4,
+      l1nWays = 2,
       l1ReservedBits = 10,
       l1Replacer = Some("setplru"),
       // l0

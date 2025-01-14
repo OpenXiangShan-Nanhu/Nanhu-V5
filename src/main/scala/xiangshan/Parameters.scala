@@ -166,7 +166,6 @@ case class XSCoreParameters
   Vl_IDX: Int = 0,
   NRPhyRegs: Int = 192,
   VirtualLoadQueueSize: Int = 72,
-  LoadQueueRARSize: Int = 72,
   LoadQueueRAWSize: Int = 64, // NOTE: make sure that LoadQueueRAWSize is power of 2.
   RollbackGroupSize: Int = 8,
   LoadQueueReplaySize: Int = 72,
@@ -233,7 +232,7 @@ case class XSCoreParameters
   VlMergeBufferSize: Int = 16,
   VsMergeBufferSize: Int = 16,
   UopWritebackWidth: Int = 2,
-  VLUopWritebackWidth: Int = 2,
+  VLUopWritebackWidth: Int = 1,
   VSUopWritebackWidth: Int = 1,
   VSegmentBufferSize: Int = 8,
   VFOFBufferSize: Int = 8,
@@ -277,6 +276,15 @@ case class XSCoreParameters
   ),
   itlbPortNum: Int = ICacheParameters().PortNumber + 1,
   ipmpPortNum: Int = 2 * ICacheParameters().PortNumber + 1,
+  dtlbParameters: TLBParameters = TLBParameters(
+    name = "dtlb",
+    NWays = 48,
+    outReplace = false,
+    partialStaticPMP = true,
+    outsideRecvFlush = true,
+    saveLevel = false,
+    lgMaxSize = 4
+  ),
   ldtlbParameters: TLBParameters = TLBParameters(
     name = "ldtlb",
     NWays = 48,
@@ -452,10 +460,6 @@ case class XSCoreParameters
         ExeUnitParams("VFDIV", Seq(VfdivCfg),
                                 Seq(VfWB(1, 1), V0WB(1, 1)),
                                 Seq(Seq(VfRD(0, 1)), Seq(VfRD(1, 1)), Seq(VfRD(2, 1)), Seq(V0RD(0, 1)), Seq(VlRD(0, 1)))),
-
-        // ExeUnitParams("VFDIV1", Seq(Vfdiv64Cfg),
-        //                         Seq(VfWB(7, 0), V0WB(7, 0)),
-        //                         Seq(Seq(VfRD(18, 0)), Seq(VfRD(19, 0)), Seq(VfRD(20, 0)), Seq(V0RD(6, 0)), Seq(VlRD(6, 0)))),
       ), numEntries = 24, numEnq = 1, numComp = 12),
       
     ),
@@ -475,13 +479,8 @@ case class XSCoreParameters
       IssueBlockParams(Seq(
         ExeUnitParams("STA0", Seq(StaCfg, MouCfg),
                               Seq(FakeIntWB()),
-                              Seq(Seq(IntRD(7, 2)))),
-      ), numEntries = 16, numEnq = 1, numComp = 15),
-      IssueBlockParams(Seq(
-        ExeUnitParams("STA1", Seq(StaCfg, MouCfg),
-                              Seq(FakeIntWB()),
-                              Seq(Seq(IntRD(6, 2)))),
-      ), numEntries = 16, numEnq = 1, numComp = 15),
+                              Seq(Seq(IntRD(10, 0)))),
+      ), numEntries = 20, numEnq = 2, numComp = 18),
       IssueBlockParams(Seq(
         ExeUnitParams("LDU0", Seq(LduCfg),
                               Seq(IntWB(5, 0), VfWB(6, 0)),
@@ -489,29 +488,19 @@ case class XSCoreParameters
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("LDU1", Seq(LduCfg),
-                              Seq(IntWB(6, 0), VfWB(7, 0)),
+                              Seq(IntWB(6, 0), VfWB(6, 0)),
                               Seq(Seq(IntRD(9, 0))), true, 2),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("VLSU0",  Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg),
-                                Seq(VfWB(2, 1), V0WB(2, 1), VlWB(2, 0)),
-                                Seq(Seq(VfRD(3, 1)), Seq(VfRD(4, 1)), Seq(VfRD(5, 1)), Seq(V0RD(1, 1)), Seq(VlRD(1, 1)))),
-      ), numEntries = 16, numEnq = 1, numComp = 15),
-      IssueBlockParams(Seq(
-        ExeUnitParams("VLSU1",  Seq(VlduCfg, VstuCfg),
-                                Seq(VfWB(3, 1), V0WB(3, 1), VlWB(3, 0)),
-                                Seq(Seq(VfRD(6, 1)), Seq(VfRD(7, 1)), Seq(VfRD(8, 1)), Seq(V0RD(2, 1)), Seq(VlRD(2, 1)))),
-      ), numEntries = 16, numEnq = 1, numComp = 15),
+                                Seq(VfWB(4, 1), V0WB(4, 1), VlWB(port = 2, 0)),
+                                Seq(Seq(VfRD(0, 1)), Seq(VfRD(1, 1)), Seq(VfRD(2, 1)), Seq(V0RD(0, 1)), Seq(VlRD(0, 1)))),
+      ), numEntries = 16, numEnq = 2, numComp = 14),
       IssueBlockParams(Seq(
         ExeUnitParams("STD0", Seq(StdCfg, MoudCfg),
                               Seq(),
-                              Seq(Seq(IntRD(5, 2), VfRD(5, 2)))),
-      ), numEntries = 16, numEnq = 1, numComp = 15),
-      IssueBlockParams(Seq(
-        ExeUnitParams("STD1", Seq(StdCfg, MoudCfg),
-                              Seq(),
-                              Seq(Seq(IntRD(3, 2), VfRD(8, 2)))),
-      ), numEntries = 16, numEnq = 1, numComp = 15),
+                              Seq(Seq(IntRD(11, 0), VfRD(12, 0)))),
+      ), numEntries = 20, numEnq = 2, numComp = 18),
     ),
       numPregs = intPreg.numEntries max vfPreg.numEntries,
       numDeqOutside = 0,
@@ -527,7 +516,7 @@ case class XSCoreParameters
     Seq(
       WakeUpConfig(
         Seq("ALU0", "ALU1", "ALU2", "ALU3", "LDU0", "LDU1") ->
-        Seq("ALU0", "BJU0", "ALU1", "BJU1", "ALU2", "BJU2", "ALU3", "BJU3", "LDU0", "LDU1", "STA0", "STA1", "STD0", "STD1")
+        Seq("ALU0", "BJU0", "ALU1", "BJU1", "ALU2", "BJU2", "ALU3", "BJU3", "LDU0", "LDU1", "STA0", "STD0")
       ),
       WakeUpConfig(
         Seq("VFMA0", "VFMA1", "VFALU0", "VFALU1") ->
@@ -778,7 +767,6 @@ trait HasXSParameter {
   def LSQLdEnqWidth = LSQEnqWidth min backendParams.numLoadDp
   def LSQStEnqWidth = LSQEnqWidth min backendParams.numStoreDp
   def VirtualLoadQueueSize = coreParams.VirtualLoadQueueSize
-  def LoadQueueRARSize = coreParams.LoadQueueRARSize
   def LoadQueueRAWSize = coreParams.LoadQueueRAWSize
   def RollbackGroupSize = coreParams.RollbackGroupSize
   def LoadQueueReplaySize = coreParams.LoadQueueReplaySize
@@ -844,6 +832,7 @@ trait HasXSParameter {
   def refillBothTlb = coreParams.refillBothTlb
   def iwpuParam = coreParams.iwpuParameters
   def dwpuParam = coreParams.dwpuParameters
+  def dtlbParams = coreParams.dtlbParameters
   def itlbParams = coreParams.itlbParameters
   def ldtlbParams = coreParams.ldtlbParameters
   def sttlbParams = coreParams.sttlbParameters
@@ -874,7 +863,7 @@ trait HasXSParameter {
   def ResetTimeMin2Pow = 10 //1024
   // wait table parameters
   def WaitTableSize = coreParams.WaitTableSize
-  def MemPredPCWidth = log2Up(WaitTableSize)
+  def MemPredPCWidth = 10
   def LWTUse2BitCounter = true
   // store set parameters
   def SSITSize = WaitTableSize

@@ -343,12 +343,14 @@ trait PMPMethod extends PMPConst {
   }
 }
 
+class PMPIOBundle(implicit p: Parameters) extends XSBundle with HasPMParameters{
+  val distribute_csr = Flipped(new DistributedCSRIO())
+  val pmp = Output(Vec(NumPMP, new PMPEntry()))
+  val pma = Output(Vec(NumPMA, new PMPEntry()))
+}
+
 class PMP(implicit p: Parameters) extends PMPXSModule with HasXSParameter with PMPMethod with PMAMethod with HasCSRConst {
-  val io = IO(new Bundle {
-    val distribute_csr = Flipped(new DistributedCSRIO())
-    val pmp = Output(Vec(NumPMP, new PMPEntry()))
-    val pma = Output(Vec(NumPMA, new PMPEntry()))
-  })
+  val io = IO(new PMPIOBundle)
 
   val w = io.distribute_csr.w
 

@@ -92,15 +92,7 @@ import xiangshan.backend.fu.vector.Bundles.NumLsElem
     // Take snapshot at this CFI inst
     // val snapshot        = Bool()
     val debugInfo       = new PerfDebugInfo
-    val storeSetHit     = Bool() // inst has been allocated an store set
-    val waitForRobIdx   = new RobPtr // store set predicted previous store robIdx
-    // Load wait is needed
-    // load inst will not be executed until former store (predicted by mdp) addr calcuated
-    val loadWaitBit     = Bool()
-    // If (loadWaitBit && loadWaitStrict), strict load wait is needed
-    // load inst will not be executed until ALL former store addr calcuated
-    val loadWaitStrict  = Bool()
-    val ssid            = UInt(SSIDWidth.W)
+    val mdpTag = UInt(MemPredPCWidth.W)
     // Todo
     val lqIdx = new LqPtr
     val sqIdx = new SqPtr

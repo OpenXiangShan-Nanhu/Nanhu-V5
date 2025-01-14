@@ -64,7 +64,6 @@ class MinimalConfig(n: Int = 1) extends Config(
         RobCommitWidth = 8,
         FetchWidth = 4,
         VirtualLoadQueueSize = 24,
-        LoadQueueRARSize = 24,
         LoadQueueRAWSize = 12,
         LoadQueueReplaySize = 24,
         LoadUncacheBufferSize = 8,
@@ -147,6 +146,14 @@ class MinimalConfig(n: Int = 1) extends Config(
           fetchi = true,
           useDmode = false,
           NWays = 4,
+        ),
+        dtlbParameters = TLBParameters(
+          name = "ldtlb",
+          NWays = 4,
+          partialStaticPMP = true,
+          outsideRecvFlush = true,
+          outReplace = false,
+          lgMaxSize = 4
         ),
         ldtlbParameters = TLBParameters(
           name = "ldtlb",
@@ -271,8 +278,8 @@ class WithNKBL1D(n: Int, ways: Int = 8) extends Config((site, here, up) => {
         dataECC = Some("secded"),
         replacer = Some("setplru"),
         nMissEntries = 16,
-        nProbeEntries = 8,
-        nReleaseEntries = 18,
+        nProbeEntries = 4,
+        nReleaseEntries = 4,
         nMaxPrefetchEntry = 6,
       ))
     ))

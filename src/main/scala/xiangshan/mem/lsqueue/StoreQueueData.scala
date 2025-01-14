@@ -29,6 +29,103 @@ import xiangshan.mem._
 import xiangshan.backend.rob.RobPtr
 
 
+class SQVPAddrModule(PAddrWidth: Int, VAddrWidth: Int, numEntries: Int,  CommonNumRead: Int, CommonNumWrite: Int, numForward: Int)(implicit p: Parameters) extends XSModule with HasDCacheParameters {
+  require((CommonNumRead == 2) && (CommonNumWrite == 1))  // nanhuV5_3Config only has 1 storepipe
+  val io = IO(new Bundle {
+    // sync read
+    val raddr = Input(Vec(CommonNumRead, UInt(log2Up(numEntries).W)))
+    val rdata_p = Output(Vec(CommonNumRead, UInt(PAddrWidth.W))) // rdata: store addr
+    val rdata_v = Output(Vec(CommonNumRead, UInt(VAddrWidth.W))) // rdata: store addr
+    val rlineflag = Output(Vec(CommonNumRead, Bool())) // rdata: line op flag
+    // write
+    val wen   = Input(Vec(CommonNumWrite, Bool()))
+    val waddr = Input(Vec(CommonNumWrite, UInt(log2Up(numEntries).W)))
+    val wdata_p = Input(Vec(CommonNumWrite, UInt(PAddrWidth.W))) // wdata: store addr
+    val wdata_v = Input(Vec(CommonNumWrite, UInt(VAddrWidth.W))) // wdata: store addr
+    val wmask = Input(Vec(CommonNumWrite, UInt((VLEN/8).W)))
+    val wlineflag = Input(Vec(CommonNumWrite, Bool())) // wdata: line op flag
+    // forward addr cam
+    val forwardMdata_p = Input(Vec(numForward, UInt(PAddrWidth.W))) // addr
+    val forwardMdata_v = Input(Vec(numForward, UInt(VAddrWidth.W))) // addr
+    val forwardDataMask = Input(Vec(numForward, UInt((VLEN/8).W))) // forward mask
+    val forwardMmask_p = Output(Vec(numForward, Vec(numEntries, Bool()))) // cam result mask
+    val forwardMmask_v = Output(Vec(numForward, Vec(numEntries, Bool()))) // cam result mask
+    // debug
+    val debug_data_p = Output(Vec(numEntries, UInt(PAddrWidth.W)))
+    val debug_data_v = Output(Vec(numEntries, UInt(VAddrWidth.W)))
+  })
+
+  val offset = 12
+  val data_paddr = Reg(Vec(numEntries, UInt((PAddrWidth - offset).W)))
+  val data_vaddr = Reg(Vec(numEntries, UInt((VAddrWidth - offset).W)))
+  val data_offset = Reg(Vec(numEntries, UInt(offset.W)))
+  val mask = Reg(Vec(numEntries, UInt((VLEN/8).W)))
+  val lineflag = Reg(Vec(numEntries, Bool())) // cache line match flag
+  // if lineflag == true, this address points to a whole cacheline
+
+  val data_paddr_cat = Wire(Vec(numEntries, UInt(PAddrWidth.W)))
+  val data_vaddr_cat = Wire(Vec(numEntries, UInt(VAddrWidth.W)))
+  (0 until numEntries).foreach( {case (i) => 
+    data_paddr_cat(i) := Cat(data_paddr(i), data_offset(i))
+    data_vaddr_cat(i) := Cat(data_vaddr(i), data_offset(i))
+  })
+  // for debug
+  io.debug_data_p := data_paddr_cat
+  io.debug_data_v := data_vaddr_cat
+  dontTouch(io.debug_data_p)
+  dontTouch(io.debug_data_v)
+  // debug test-port
+  val debug_paddr = Wire(Vec(CommonNumWrite, UInt(PAddrWidth.W)))
+  val debug_vaddr = Wire(Vec(CommonNumWrite, UInt(VAddrWidth.W)))
+  debug_paddr := io.wdata_p
+  debug_vaddr := io.wdata_v
+  dontTouch(debug_paddr)
+  dontTouch(debug_vaddr)
+
+
+  // read ports
+  for (i <- 0 until CommonNumRead) {
+    io.rdata_p(i) := data_paddr_cat(GatedRegNext(io.raddr(i)))
+    io.rdata_v(i) := data_vaddr_cat(GatedRegNext(io.raddr(i)))
+    io.rlineflag(i) := lineflag(GatedRegNext(io.raddr(i)))
+  }
+
+  // below is the write ports (with priorities)
+  for (i <- 0 until CommonNumWrite) {
+    when (io.wen(i)) {
+      assert(io.wdata_p(i)(offset-1, 0) === io.wdata_v(i)(offset-1, 0))
+      data_offset(io.waddr(i)) := io.wdata_p(i)(offset-1, 0)
+      data_paddr(io.waddr(i)) := io.wdata_p(i)(PAddrWidth-1, offset)
+      data_vaddr(io.waddr(i)) := io.wdata_v(i)(VAddrWidth-1, offset)
+      mask(io.waddr(i)) := io.wmask(i)
+      lineflag(io.waddr(i)) := io.wlineflag(i)
+    }
+  }
+
+  // content addressed match
+  for (i <- 0 until numForward) {
+    for (j <- 0 until numEntries) {
+      // io.forwardMmask(i)(j) := io.forwardMdata(i)(dataWidth-1, 3) === data(j)(dataWidth-1, 3)
+      val linehit_p = io.forwardMdata_p(i)(PAddrWidth-1, DCacheLineOffset) === data_paddr_cat(j)(PAddrWidth-1, DCacheLineOffset)
+      val hit128bit_p = (io.forwardMdata_p(i)(DCacheLineOffset-1, DCacheVWordOffset) === data_paddr_cat(j)(DCacheLineOffset-1, DCacheVWordOffset)) &&
+                    (!StoreQueueForwardWithMask.B || (mask(j) & io.forwardDataMask(i)).orR)
+      io.forwardMmask_p(i)(j) := linehit_p && (hit128bit_p || lineflag(j))
+      
+      val linehit_v = io.forwardMdata_v(i)(VAddrWidth-1, DCacheLineOffset) === data_vaddr_cat(j)(VAddrWidth-1, DCacheLineOffset)
+      val hit128bit_v = (io.forwardMdata_v(i)(DCacheLineOffset-1, DCacheVWordOffset) === data_vaddr_cat(j)(DCacheLineOffset-1, DCacheVWordOffset)) &&
+                    (!StoreQueueForwardWithMask.B || (mask(j) & io.forwardDataMask(i)).orR)
+      io.forwardMmask_v(i)(j) := linehit_v && (hit128bit_v || lineflag(j))
+    }
+  }
+
+  // DataModuleTemplate should not be used when there're any write conflicts
+  for (i <- 0 until CommonNumWrite) {
+    for (j <- i+1 until CommonNumWrite) {
+      assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
+    }
+  }
+}
+
 // Data module define
 // These data modules are like SyncDataModuleTemplate, but support cam-like ops
 class SQAddrModule(dataWidth: Int, numEntries: Int, numRead: Int, numWrite: Int, numForward: Int)(implicit p: Parameters) extends XSModule with HasDCacheParameters {

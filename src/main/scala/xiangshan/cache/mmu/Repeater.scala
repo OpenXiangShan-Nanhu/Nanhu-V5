@@ -214,7 +214,8 @@ class PTWFilterEntry(Width: Int, Size: Int, hasHint: Boolean = false)(implicit p
     canenq(0) := !(Cat(v).andR)
     enqidx(0) := firstValidIndex(v, false.B)
   } else if (Width == 2) {
-    require(Size == 8, s"store filter Size ($Size) should be 8")
+//    require(Size == 8, s"store filter Size ($Size) should be 8")
+    //load
     canenq(0) := !(Cat(v.take(Size/2)).andR)
     enqidx(0) := firstValidIndex(v.take(Size/2), false.B)
     canenq(1) := !(Cat(v.drop(Size/2)).andR)
@@ -229,7 +230,8 @@ class PTWFilterEntry(Width: Int, Size: Int, hasHint: Boolean = false)(implicit p
     canenq(2) := !(Cat(v.drop(12)).andR)
     enqidx(2) := firstValidIndex(v.drop(12), false.B) + 12.U
   } else if (Width == 4) {
-    require(Size == 16, s"load filter Size ($Size) should be 16")
+//    require(Size == 16, s"load filter Size ($Size) should be 16")
+    //store and prefetch
     for (i <- 0 until Width) {
       canenq(i) := !(Cat(VecInit(v.slice(i * 4, (i + 1) * 4))).andR)
       enqidx(i) := firstValidIndex(v.slice(i * 4, (i + 1) * 4), false.B) + (i * 4).U
@@ -346,29 +348,28 @@ class PTWNewFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameter
   private val LdExuCnt = backendParams.LdExuCnt
   // all store address execute units, including sta and hyu
   private val StaExuCnt = backendParams.StaExuCnt
+  private val PrefetchCnt = 3
 
   val io = IO(new PTWFilterIO(Width, hasHint = true))
 
+  /*
+    LduCnt
+    (StaCnt + BOP + SMS + L1P)
+   */
   val load_filter = VecInit(Seq.fill(1) {
-    val load_entry = Module(new PTWFilterEntry(Width = LdExuCnt + 1, Size = loadfiltersize, hasHint = true))
+    val load_entry = Module(new PTWFilterEntry(Width = LdExuCnt, Size = loadfiltersize, hasHint = true))
     load_entry.io
   })
 
-  val store_filter = VecInit(Seq.fill(1) {
-    val store_entry = Module(new PTWFilterEntry(Width = StaCnt, Size = storefiltersize))
+  val st_pf_filter = VecInit(Seq.fill(1) {
+    val store_entry = Module(new PTWFilterEntry(Width = StaCnt + PrefetchCnt, Size = storefiltersize+ prefetchfiltersize, hasHint = false))
     store_entry.io
   })
 
-  val prefetch_filter = VecInit(Seq.fill(1) {
-    val prefetch_entry = Module(new PTWFilterEntry(Width = 2, Size = prefetchfiltersize))
-    prefetch_entry.io
-  })
+  val filter = load_filter ++ st_pf_filter
 
-  val filter = load_filter ++ store_filter ++ prefetch_filter
-
-  load_filter.map(_.tlb.req := io.tlb.req.take(LdExuCnt + 1))
-  store_filter.map(_.tlb.req := io.tlb.req.drop(LdExuCnt + 1).take(StaCnt))
-  prefetch_filter.map(_.tlb.req := io.tlb.req.drop(LdExuCnt + 1 + StaCnt))
+  load_filter.map(_.tlb.req := io.tlb.req.take(LdExuCnt))
+  st_pf_filter.map(_.tlb.req := io.tlb.req.drop(LdExuCnt).take(StaCnt + PrefetchCnt))
 
   val flush = DelayN(io.sfence.valid || io.csr.satp.changed || (io.csr.priv.virt && io.csr.vsatp.changed), FenceDelay)
   val ptwResp = RegEnable(io.ptw.resp.bits, io.ptw.resp.fire)
@@ -396,11 +397,9 @@ class PTWNewFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameter
     io.tlb.resp.bits.getGpa(i) := false.B
   }
   io.tlb.resp.bits.vector(0) := load_filter(0).refill
-  io.tlb.resp.bits.vector(LdExuCnt + 1) := store_filter(0).refill
-  io.tlb.resp.bits.vector(LdExuCnt + 1 + StaCnt) := prefetch_filter(0).refill
+  io.tlb.resp.bits.vector(LdExuCnt) := st_pf_filter(0).refill
   io.tlb.resp.bits.getGpa(0) := load_filter(0).getGpa
-  io.tlb.resp.bits.getGpa(LdExuCnt + 1) := store_filter(0).getGpa
-  io.tlb.resp.bits.getGpa(LdExuCnt + 1 + StaCnt) := prefetch_filter(0).getGpa
+  io.tlb.resp.bits.getGpa(LdExuCnt) := st_pf_filter(0).refill
 
   val hintIO = io.hint.getOrElse(new TlbHintIO)
   val load_hintIO = load_filter(0).hint.getOrElse(new TlbHintIO)
@@ -414,17 +413,13 @@ class PTWNewFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameter
     io.tlb.resp.bits.vector(0) := true.B
     io.tlb.resp.bits.data.memidx := load_filter(0).memidx
   }
-  when (store_filter(0).refill) {
+  when (st_pf_filter(0).refill) {
     io.tlb.resp.bits.vector(LdExuCnt + 1) := true.B
-    io.tlb.resp.bits.data.memidx := store_filter(0).memidx
-  }
-  when (prefetch_filter(0).refill) {
-    io.tlb.resp.bits.vector(LdExuCnt + 1 + StaCnt) := true.B
-    io.tlb.resp.bits.data.memidx := 0.U.asTypeOf(new MemBlockidxBundle)
+    io.tlb.resp.bits.data.memidx := st_pf_filter(0).memidx
   }
 
-  val ptw_arb = Module(new RRArbiterInit(new PtwReq, 3))
-  for (i <- 0 until 3) {
+  val ptw_arb = Module(new RRArbiterInit(new PtwReq, 2))
+  for (i <- 0 until 2) {
     ptw_arb.io.in(i).valid := filter(i).ptw.req(0).valid
     ptw_arb.io.in(i).bits.vpn := filter(i).ptw.req(0).bits.vpn
     ptw_arb.io.in(i).bits.s2xlate := filter(i).ptw.req(0).bits.s2xlate

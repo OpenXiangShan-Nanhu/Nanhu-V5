@@ -25,12 +25,12 @@ import xs.utils.perf._
 import xiangshan.ExceptionNO._
 import xiangshan._
 import xiangshan.backend.fu.PMPRespBundle
-import xiangshan.cache._
+import xiangshan.cache.{HasDCacheParameters, _}
 import xiangshan.cache.mmu.{TlbCmd, TlbReq, TlbRequestIO, TlbResp}
 
-trait HasL1PrefetchSourceParameter {
+trait HasL1PrefetchSourceParameter extends HasXSParameter {
   // l1 prefetch source related
-  def L1PfSourceBits = 3
+  def L1PfSourceBits = if(EnableStorePrefetchAtCommit || EnableStorePrefetchAtIssue || EnableStorePrefetchSPB) 3 else 2
   def L1_HW_PREFETCH_NULL = 0.U
   def L1_HW_PREFETCH_CLEAR = 1.U // used to be a prefetch, clear by demand request
   def L1_HW_PREFETCH_STRIDE = 2.U

@@ -161,6 +161,7 @@ class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   val schedIndex = UInt(log2Up(LoadQueueReplaySize).W)
   // hardware prefetch and fast replay no need to query tlb
   val tlbNoQuery = Bool()
+  val isReplayForRAW = Bool()
 }
 
 class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
@@ -313,6 +314,7 @@ class LoadForwardQueryIO(implicit p: Parameters) extends XSBundle {
   val mask = Output(UInt((VLEN/8).W))
   val uop = Output(new DynInst) // for replay
   val pc = Output(UInt(VAddrBits.W)) //for debug
+  val mdpFoldPc = Output(UInt(MemPredPCWidth.W))
   val valid = Output(Bool())
 
   val forwardMaskFast = Input(Vec((VLEN/8), Bool())) // resp to load_s1
@@ -352,6 +354,10 @@ class PipeLoadForwardQueryIO(implicit p: Parameters) extends LoadForwardQueryIO 
   // val dataInvalid = Input(Bool()) // resp to load_s2
   val dataInvalidSqIdx = Input(new SqPtr) // resp to load_s2, sqIdx
   val addrInvalidSqIdx = Input(new SqPtr) // resp to load_s2, sqIdx
+
+  val mdpHit = Output(Bool())
+  val waitStIdx = Output(new SqPtr)
+  val isReplayForRAW = Output(Bool())
 }
 
 // Query load queue for ld-ld violation
@@ -370,6 +376,8 @@ class LoadNukeQueryReq(implicit p: Parameters) extends XSBundle { // provide lqI
   val paddr      = UInt(PAddrBits.W)
   // dataInvalid: load data is invalid.
   val data_valid = Bool()
+  val full_fwd = Bool()
+  // val fwd_mask = Wire(Vec((VLEN/8), Bool()))
 }
 
 class LoadNukeQueryResp(implicit p: Parameters) extends XSBundle {

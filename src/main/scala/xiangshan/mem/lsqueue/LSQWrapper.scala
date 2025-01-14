@@ -25,13 +25,14 @@ import xs.utils.perf._
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
 import xiangshan.cache._
-import xiangshan.cache.{DCacheWordIO, DCacheLineIO, MemoryOpConstants}
-import xiangshan.cache.mmu.{TlbRequestIO, TlbHintIO}
+import xiangshan.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
+import xiangshan.cache.mmu.{TlbHintIO, TlbRequestIO}
 import xiangshan.mem._
 import xiangshan.backend._
 import xiangshan.backend.rob.RobLsqIO
 import coupledL2.{CMOReq, CMOResp}
 import xiangshan.backend.fu.FuType
+import xiangshan.mem.mdp.MDPResUpdateIO
 
 class ExceptionAddrIO(implicit p: Parameters) extends XSBundle {
   val isStore = Input(Bool())
@@ -68,7 +69,7 @@ class LsqEnqIO(implicit p: Parameters) extends MemBlockBundle {
 class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParameters with HasPerfEvents {
   val io = IO(new Bundle() {
     val hartId = Input(UInt(hartIdLen.W))
-    val brqRedirect = Flipped(ValidIO(new Redirect))
+    val redirect = Flipped(ValidIO(new Redirect))
     val stvecFeedback = Vec(VecStorePipelineWidth, Flipped(ValidIO(new FeedbackToLsqIO)))
     val ldvecFeedback = Vec(VecLoadPipelineWidth, Flipped(ValidIO(new FeedbackToLsqIO)))
     val enq = new LsqEnqIO
@@ -85,15 +86,15 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val std = new Bundle() {
       val storeDataIn = Vec(StorePipelineWidth, Flipped(Valid(new MemExuOutput(isVector = true)))) // from store_s0, store data, send to sq from rs
     }
-    val ldout = Vec(LoadPipelineWidth, DecoupledIO(new MemExuOutput))
-    val ld_raw_data = Vec(LoadPipelineWidth, Output(new LoadDataFromLQBundle))
+    val ldout = DecoupledIO(new MemExuOutput)
+    val ld_raw_data = Output(new LoadDataFromLQBundle)
     val replay = Vec(LoadPipelineWidth, Decoupled(new LsPipelineBundle))
     val sbuffer = Vec(EnsbufferWidth, Decoupled(new DCacheWordReqWithVaddrAndPfFlag))
     val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DynInst)) // The vector store difftest needs is
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
     val rob = Flipped(new RobLsqIO)
     val nuke_rollback = Vec(StorePipelineWidth, Output(Valid(new Redirect)))
-    val nack_rollback = Output(Valid(new Redirect))
+    // val nack_rollback = Output(Valid(new Redirect))
     val release = Flipped(Valid(new Release))
    // val refill = Flipped(Valid(new Refill))
     val tl_d_channel  = Input(new DcacheToLduForwardIO)
@@ -125,6 +126,8 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val flushSbuffer = new SbufferFlushBundle
     val force_write = Output(Bool())
     val lqEmpty = Output(Bool())
+    val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
+    val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
 
     // top-down
     val debugTopDown = new LoadQueueTopDownIO
@@ -135,6 +138,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
 
   storeQueue.io.hartId := io.hartId
   storeQueue.io.uncacheOutstanding := io.uncacheOutstanding
+  io.mdpTrainUpdate := storeQueue.io.mdpTrainUpdate
 
 
   dontTouch(loadQueue.io.tlbReplayDelayCycleCtrl)
@@ -148,6 +152,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   io.enq.canAccept := loadQueue.io.enq.canAccept && storeQueue.io.enq.canAccept
   io.lqCanAccept := loadQueue.io.enq.canAccept
   io.sqCanAccept := storeQueue.io.enq.canAccept
+  io.replayQValidCount := loadQueue.io.replayQValidCount
   loadQueue.io.enq.sqCanAccept := storeQueue.io.enq.canAccept
   storeQueue.io.enq.lqCanAccept := loadQueue.io.enq.canAccept
   io.lqDeqPtr := loadQueue.io.lqDeqPtr
@@ -168,7 +173,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   }
 
   // store queue wiring
-  storeQueue.io.brqRedirect <> io.brqRedirect
+  storeQueue.io.brqRedirect <> RegNextWithEnable(io.redirect)
   storeQueue.io.vecFeedback   <> io.stvecFeedback
   storeQueue.io.storeAddrIn <> io.sta.storeAddrIn // from store_s1
   storeQueue.io.storeAddrInRe <> io.sta.storeAddrInRe // from store_s2
@@ -194,14 +199,14 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   /* <------- DANGEROUS: Don't change sequence here ! -------> */
 
   //  load queue wiring
-  loadQueue.io.redirect            <> io.brqRedirect
+  loadQueue.io.redirect            <> io.redirect
   loadQueue.io.vecFeedback           <> io.ldvecFeedback
   loadQueue.io.ldu                 <> io.ldu
   loadQueue.io.ldout               <> io.ldout
   loadQueue.io.ld_raw_data         <> io.ld_raw_data
   loadQueue.io.rob                 <> io.rob
   loadQueue.io.nuke_rollback       <> io.nuke_rollback
-  loadQueue.io.nack_rollback       <> io.nack_rollback
+  // loadQueue.io.nack_rollback       <> io.nack_rollback
   loadQueue.io.replay              <> io.replay
  // loadQueue.io.refill              <> io.refill
   loadQueue.io.tl_d_channel        <> io.tl_d_channel

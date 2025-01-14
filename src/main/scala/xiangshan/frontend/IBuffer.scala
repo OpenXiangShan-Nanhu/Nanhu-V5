@@ -104,7 +104,6 @@ class IBufEntry(implicit p: Parameters) extends XSBundle {
     cf.pd := pd
     cf.pred_taken := pred_taken
     cf.crossPageIPFFix := IBufferExceptionType.isCrossPage(this.exceptionType)
-    cf.storeSetHit := DontCare
     cf.waitForRobIdx := DontCare
     cf.loadWaitBit := DontCare
     cf.loadWaitStrict := DontCare

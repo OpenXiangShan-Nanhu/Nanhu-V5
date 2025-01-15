@@ -170,6 +170,7 @@ class BasePredictorIO (implicit p: Parameters) extends XSBundle with HasBPUConst
   val s2_ready = Output(Bool())
   val s3_ready = Output(Bool())
 
+  val updateValid_dup = Input(Vec(2, Bool()))
   val update = Flipped(Valid(new BranchPredictionUpdate))
   val redirect = Flipped(Valid(new BranchPredictionRedirect))
   val redirectFromIFU = Input(Bool())
@@ -763,6 +764,7 @@ class Predictor(implicit p: Parameters) extends XSModule
   io.bpu_to_ftq.resp.bits.s3.ftq_idx := s3_ftq_idx
 
   predictors.io.update.valid := RegNext(io.ftq_to_bpu.update.valid, init = false.B)
+  predictors.io.updateValid_dup.foreach( _ := RegNext(io.ftq_to_bpu.update.valid, init = false.B))
   predictors.io.update.bits := RegEnable(io.ftq_to_bpu.update.bits, io.ftq_to_bpu.update.valid)
   predictors.io.update.bits.ghist := RegEnable(
     getHist(io.ftq_to_bpu.update.bits.spec_info.histPtr), io.ftq_to_bpu.update.valid)

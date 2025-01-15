@@ -315,8 +315,14 @@ class FTBEntry(implicit p: Parameters) extends FTBEntry_part with FTBParams with
   }
 
   def getOffsetVec = VecInit(brSlots.map(_.offset) :+ tailSlot.offset)
-  def getFallThrough(pc: UInt, last_stage_entry: Option[Tuple2[FTBEntry, Bool]] = None) = {
-    if (last_stage_entry.isDefined) {
+  def getFallThrough(pc: UInt, last_stage_pc: Option[Tuple2[UInt, Bool]] = None, last_stage_entry: Option[Tuple2[FTBEntry, Bool]] = None) = {
+    if (last_stage_entry.isDefined && last_stage_pc.isDefined) {
+      var stashed_carry = RegEnable(last_stage_entry.get._1.carry, last_stage_entry.get._2)
+      val higher = last_stage_pc.get._1.head(VAddrBits-log2Ceil(PredictWidth)-instOffsetBits)
+      val higherReg = RegEnable(higher, last_stage_pc.get._2)
+      val higherRegPlusOne = RegEnable(higher+1.U, last_stage_pc.get._2)
+      Cat(Mux(stashed_carry, higherRegPlusOne, higherReg), pftAddr, 0.U(instOffsetBits.W))
+    } else if (last_stage_entry.isDefined) {
       var stashed_carry = RegEnable(last_stage_entry.get._1.carry, last_stage_entry.get._2)
       getFallThroughAddr(pc, stashed_carry, pftAddr)
     } else {
@@ -661,6 +667,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   //After closing ftb, the entry output from s2 is the entry of FauFTB cached in s1
   val btb_enable_dup = dup(RegNext(io.ctrl.btb_enable))
   val s1_read_resp = Mux(s1_close_ftb_req, io.fauftb_entry_in, ftbBank.io.read_resp)
+  val s2_read_resp = RegEnable(s1_read_resp, 0.U.asTypeOf(s1_read_resp), io.s1_fire(0))
   val s2_ftbBank_dup = io.s1_fire.map(f => RegEnable(ftbBank.io.read_resp, f))
   val s2_ftb_entry_dup = dup(0.U.asTypeOf(new FTBEntry))
   for((((s2_fauftb_entry, s2_ftbBank_entry), s2_ftb_entry), close_ftb) <-
@@ -751,7 +758,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   io.out.s3.full_pred.zip(s3_multi_hit_dup).map {case (fp, m) => fp.multiHit := m}
   for (full_pred & s3_ftb_entry & s3_pc & s2_pc & s2_fire <-
     io.out.s3.full_pred zip s3_ftb_entry_dup zip s3_pc_dup zip s2_pc_dup zip io.s2_fire)
-      full_pred.fromFtbEntry(s3_ftb_entry, s3_pc.getAddr(), Some((s2_pc.getAddr(), s2_fire)))
+      full_pred.fromFtbEntry(s3_ftb_entry, s3_pc.getAddr(), Some((s2_pc.getAddr(), s2_fire)), Some(s2_read_resp, s2_fire))
 
   // Overwrite the fallThroughErr value
   io.out.s3.full_pred.zipWithIndex.map {case(fp, i) => fp.fallThroughErr := real_s3_fallThroughErr_dup(i)}

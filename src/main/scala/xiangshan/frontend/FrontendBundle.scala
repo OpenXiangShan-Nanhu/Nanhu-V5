@@ -677,10 +677,29 @@ class FullBranchPrediction(val isNotS3: Boolean)(implicit p: Parameters) extends
     is_br_sharing := entry.tailSlot.valid && entry.tailSlot.sharing
     predCycle.map(_ := GTimer())
 
-    val startLower        = Cat(0.U(1.W),    pc(instOffsetBits+log2Ceil(PredictWidth)-1, instOffsetBits))
-    val endLowerwithCarry = Cat(entry.carry, entry.pftAddr)
-    fallThroughErr := startLower >= endLowerwithCarry || endLowerwithCarry > (startLower + (PredictWidth).U)
-    fallThroughAddr := Mux(fallThroughErr, pc + (FetchWidth * 4).U, entry.getFallThrough(pc, last_stage_entry))
+    if(last_stage_pc.isDefined && last_stage_entry.isDefined) {
+      val startLower_last_stage  = Cat(0.U(1.W),  last_stage_pc.get._1(instOffsetBits+log2Ceil(PredictWidth)-1, instOffsetBits))
+      val startLowerNextLine_last_stage = startLower_last_stage + (PredictWidth).U
+      val endLowerwithCarry_last_stage = Cat(last_stage_entry.get._1.carry, last_stage_entry.get._1.pftAddr)
+
+      // val startLower = RegEnable(startLower_last_stage, last_stage_pc.get._2)
+      // val startLowerNextLine = RegEnable(startLowerNextLine_last_stage, last_stage_pc.get._2)
+      // val endLowerwithCarry = Cat(entry.carry, entry.pftAddr)
+      // fallThroughErr := startLower >= endLowerwithCarry || endLowerwithCarry > startLowerNextLine
+
+      val upperBound = RegEnable(startLower_last_stage >= endLowerwithCarry_last_stage, last_stage_pc.get._2)
+      val lowerBound = RegEnable(startLowerNextLine_last_stage < endLowerwithCarry_last_stage, last_stage_pc.get._2)
+
+      fallThroughErr := upperBound || lowerBound
+      fallThroughAddr := Mux(fallThroughErr,
+        RegEnable(last_stage_pc.get._1 + (FetchWidth * 4).U, last_stage_pc.get._2),
+        entry.getFallThrough(pc, last_stage_pc, last_stage_entry))
+    } else {
+      val startLower        = Cat(0.U(1.W),    pc(instOffsetBits+log2Ceil(PredictWidth)-1, instOffsetBits))
+      val endLowerwithCarry = Cat(entry.carry, entry.pftAddr)
+      fallThroughErr := startLower >= endLowerwithCarry || endLowerwithCarry > (startLower + (PredictWidth).U)
+      fallThroughAddr := Mux(fallThroughErr, pc + (FetchWidth * 4).U, entry.getFallThrough(pc, None, last_stage_entry))
+    }
   }
 
   def display(cond: Bool): Unit = {

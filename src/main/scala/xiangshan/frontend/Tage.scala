@@ -628,7 +628,7 @@ class Tage(implicit p: Parameters) extends BaseTage {
   val resp_s3 = io.out.s3
 
   // Update logic
-  val u_valid = io.update.valid
+  val u_valid = io.updateValid_dup(0)
   val update = io.update.bits
   val updateValids = VecInit((0 until TageBanks).map(w =>
       update.ftb_entry.brValids(w) && u_valid && !update.ftb_entry.always_taken(w) &&

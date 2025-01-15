@@ -351,7 +351,7 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
   io.mem_grant.ready := true.B
 
   val last_fire_r = RegNext(last_fire)
-  val id_r        = RegNext(io.mem_grant.bits.source)
+  val id_r_dup    = VecInit(Seq.fill(3)(RegNext(io.mem_grant.bits.source)))
 
   // if any beat is corrupt, the whole response (to mainPipe/metaArray/dataArray) is corrupt
   val corrupt_r   = RegInit(false.B)
@@ -367,7 +367,7 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
     ******************************************************************************
     */
   (0 until (nFetchMshr + nPrefetchMshr)).foreach{ i =>
-    allMSHRs(i).io.invalid := last_fire_r && (id_r === i.U)
+    allMSHRs(i).io.invalid := last_fire_r && (id_r_dup(i%2) === i.U)
   }
 
   /**
@@ -377,7 +377,7 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
     */
   // get request information from MSHRs
   val allMSHRs_resp = VecInit(allMSHRs.map(mshr => mshr.io.resp))
-  val mshr_resp = allMSHRs_resp(id_r)
+  val mshr_resp = allMSHRs_resp(id_r_dup(2))
 
   // get waymask from replacer when acquire fire
   io.victim.vSetIdx.valid := acquireArb.io.out.fire

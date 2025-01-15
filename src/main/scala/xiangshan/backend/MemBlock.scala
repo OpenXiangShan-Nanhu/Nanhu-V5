@@ -356,12 +356,14 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     io.error.valid := false.B
   }
 
+  val lsq     = Module(new LsqWrapper)
   val mdp = Module(new NewMDP)
   mdp.io.reUpdate.valid := io.memPredUpdate.valid
   mdp.io.reUpdate.bits.stIdx := io.memPredUpdate.stIdx
   mdp.io.reUpdate.bits.ld_stIdx := io.memPredUpdate.ld_stIdx
   mdp.io.reUpdate.bits.ldFoldPc := io.memPredUpdate.ldFoldPc
   mdp.io.reUpdate.bits.stFoldPc := io.memPredUpdate.stFoldPc
+  mdp.io.csrCtrl.replayQValidNum := lsq.io.replayQValidCount
 
 
   val loadUnits = Seq.fill(LduCnt)(Module(new LoadUnit))
@@ -517,7 +519,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   }
 
   // TODO: fast load wakeup
-  val lsq     = Module(new LsqWrapper)
   val sbuffer = Module(new Sbuffer)
   // if you wants to stress test dcache store, use FakeSbuffer
   // val sbuffer = Module(new FakeSbuffer) // out of date now

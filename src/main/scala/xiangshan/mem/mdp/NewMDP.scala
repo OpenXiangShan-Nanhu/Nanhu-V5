@@ -32,8 +32,8 @@ class MDPEntry(implicit p: Parameters) extends XSBundle with HasMDPParameters{
   val confidence = UInt(counterWidth.W)
 
 
-  def confidenceValid : Bool = {
-    this.confidence >= 0.U
+  def confidenceValid(replayQNum: UInt = 0.U) : Bool = {
+    this.confidence >= replayQNum / LoadQueueReplaySize.U
   }
 
   def writeConFull() = {
@@ -85,7 +85,9 @@ class MDPResp(implicit p: Parameters) extends XSBundle{
   val hit = Bool()
 }
 
-
+class MDPCtrlInfo(implicit p: Parameters) extends XSBundle{
+  val replayQValidNum = UInt(log2Up(LoadQueueReplaySize + 1).W)
+}
 
 class NewMDP(implicit p: Parameters) extends XSModule with HasMDPParameters{
   val io = IO(new Bundle{
@@ -94,7 +96,8 @@ class NewMDP(implicit p: Parameters) extends XSModule with HasMDPParameters{
 
     val reUpdate = Input(Valid(new MDPUpdateIO))
     val ldUpdate =  Vec(LoadPipelineWidth, Input(Valid(new MDPResUpdateIO)))
-//    val csrCtrl = Input(new CustomCSRCtrlIO)
+
+    val csrCtrl = Input(new MDPCtrlInfo)
   })
 
   //entry
@@ -123,7 +126,7 @@ class NewMDP(implicit p: Parameters) extends XSModule with HasMDPParameters{
     val s0_reqValid = io.ldReq(i).valid
     val s0_reqTag = io.ldReq(i).bits.getTag()
     for(j <- 0 until mdpSize){
-      q(j) := s0_reqValid && s0_reqTag === tag(j).fold_pc && allocated(j) && tag(j).confidenceValid
+      q(j) := s0_reqValid && s0_reqTag === tag(j).fold_pc && allocated(j) && tag(j).confidenceValid(io.csrCtrl.replayQValidNum)
     }
     when(s0_reqValid){
       assert(PopCount(q) <= 1.U, "hit 2 entry?")

@@ -131,7 +131,7 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 	mgu.io.in.info.narrow := outVecCtrl.isNarrow
 	mgu.io.in.info.dstMask := outVecCtrl.isDstMask
 	mgu.io.in.isIndexedVls := false.B
-	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B))
+	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B)) || vecCtrl.fpu.isFpToVecInst
 	io.out.bits.res.data := mgu.io.out.vd
 	io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B //mgu.io.out.illegal
 }

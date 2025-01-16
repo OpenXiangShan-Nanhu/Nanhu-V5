@@ -326,7 +326,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
   mgu.io.in.info.narrow := outVecCtrl.isNarrow
   mgu.io.in.info.dstMask := outVecCtrl.isDstMask
   mgu.io.in.isIndexedVls := false.B
-	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B))
+	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B)) || vecCtrl.fpu.isFpToVecInst
   mgtu.io.in.vd := Mux(outVecCtrl.isDstMask, mgu.io.out.vd, resultDataUInt)
   mgtu.io.in.vl := outVl
 	val resultFpMask = Wire(UInt(VLEN.W))

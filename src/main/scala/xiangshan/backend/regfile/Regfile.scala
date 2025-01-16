@@ -16,13 +16,14 @@
 
 package xiangshan.backend.regfile
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
+import org.chipsalliance.cde.config.Parameters
+import freechips.rocketchip.util.SeqToAugmentedSeq
 import xiangshan._
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.exu.ExeUnitParams
-import freechips.rocketchip.util.SeqToAugmentedSeq
+
 
 class RfReadPort(dataWidth: Int, addrWidth: Int) extends Bundle {
   val addr = Input(UInt(addrWidth.W))
@@ -44,22 +45,21 @@ class RfWritePortWithConfig(pregParams: PregParams) extends Bundle {
   val addrWidth = pregParams.addrWidth
   val dataWidth = pregParams.dataCfg.map(_.dataWidth).max
 
-  val wen = Input(Bool())
-  val addr = Input(UInt(addrWidth.W))
-  val data = Input(UInt(dataWidth.W))
-  val intWen = Input(Bool())
-  val fpWen = Input(Bool())
-  val vecWen = Input(Bool())
-  val vfWenH = Input(Bool())
-  val vfWenL = Input(Bool())
-  val v0Wen = Input(Bool())
-  val v0WenH = Input(Bool())
-  val v0WenL = Input(Bool())
-  val vlWen = Input(Bool())
+  val wen     = Input(Bool())
+  val addr    = Input(UInt(addrWidth.W))
+  val data    = Input(UInt(dataWidth.W))
+  val intWen  = Input(Bool())
+  val fpWen   = Input(Bool())
+  val vecWen  = Input(Bool())
+  val vfWenH  = Input(Bool())
+  val vfWenL  = Input(Bool())
+  val v0Wen   = Input(Bool())
+  val v0WenH  = Input(Bool())
+  val v0WenL  = Input(Bool())
+  val vlWen   = Input(Bool())
 }
 
-class Regfile
-(
+class Regfile(
   name: String,
   numPregs: Int,
   numReadPorts: Int,
@@ -67,63 +67,56 @@ class Regfile
   hasZero: Boolean,
   len: Int,
   width: Int,
-  bankNum: Int = 1,
+  bankNum: Int = 1, // TODO
   isVlRegfile: Boolean = false,
 ) extends Module {
   val io = IO(new Bundle() {
-    val readPorts = Vec(numReadPorts, new RfReadPort(len, width))
-    val writePorts = Vec(numWritePorts, new RfWritePort(len, width))
-    val debug_rports = Vec(33, new RfReadPort(len, width))
-    val extra_debug_rports = Vec(33, new RfReadPort(len, width))
+    val readPorts           = Vec(numReadPorts,   new RfReadPort(len, width))
+    val writePorts          = Vec(numWritePorts,  new RfWritePort(len, width))
+    val debug_rports        = Vec(33,             new RfReadPort(len, width))
+    val extra_debug_rports  = Vec(33,             new RfReadPort(len, width))
   })
   override def desiredName = name
   println(name + ": size:" + numPregs + " read: " + numReadPorts + " write: " + numWritePorts)
 
   val mem_0 = if (isVlRegfile) RegInit(0.U(len.W)) else Reg(UInt(len.W))
-  val mem = Reg(Vec(numPregs, UInt(len.W)))
+  val mem = Reg(Vec(numPregs - 1, UInt(len.W)))
   val memForRead = Wire(Vec(numPregs, UInt(len.W)))
   memForRead.zipWithIndex.map{ case(m, i) =>
     if (i == 0) m := mem_0
-    else m := mem(i)
+    else m := mem(i - 1)
   }
-  require(Seq(1, 2, 4).contains(bankNum), "bankNum must be 1 or 2 or 4")
+  require(Seq(1).contains(bankNum), "bankNum must be 1")
   for (r <- io.readPorts) {
-    if (bankNum == 1) {
-      r.data := memForRead(RegNext(r.addr))
-    }
-    else {
-      val banks = (0 until bankNum).map { case i =>
-        memForRead.zipWithIndex.filter{ case (m, index) => (index % bankNum) == i }.map(_._1)
-      }
-      val bankWidth = bankNum.U.getWidth - 1
-      val hitBankWire = VecInit((0 until bankNum).map { case i => r.addr(bankWidth - 1, 0) === i.U })
-      val hitBankReg = Reg(Vec(bankNum, Bool()))
-      hitBankReg := hitBankWire
-      val banksRdata = Wire(Vec(bankNum, UInt(len.W)))
-      for (i <- 0 until bankNum) {
-        banksRdata(i) := RegEnable(VecInit(banks(i))(r.addr(r.addr.getWidth - 1, bankWidth)), hitBankWire(i))
-      }
-      r.data := Mux1H(hitBankReg, banksRdata)
+    val rdOH = RegNext(UIntToOH(r.addr))
+    r.data := Mux1H(rdOH, memForRead)
+  }
+
+  if (hasZero) {
+    mem_0 := 0.U
+  } else {
+    val reg0WenOHVec = io.writePorts.map(w => w.wen && !w.addr.orR)
+    val reg0WData = Mux1H(reg0WenOHVec, io.writePorts.map(_.data))
+    when(reg0WenOHVec.reduce(_ || _)) {
+      mem_0 := reg0WData
     }
   }
+
+  mem.zipWithIndex.foreach {
+    case (r, i) => {
+      val wenOH = io.writePorts.map(w => w.wen && w.addr === (i + 1).U)
+      val wdata = Mux1H(wenOH, io.writePorts.map(_.data))
+      when(wenOH.reduce(_ || _)) {
+        r := wdata
+      }
+    }
+  }
+
   val writePorts = io.writePorts
   for (i <- writePorts.indices) {
     if (i < writePorts.size-1) {
       val hasSameWrite = writePorts.drop(i + 1).map(w => w.wen && w.addr === writePorts(i).addr && writePorts(i).wen).reduce(_ || _)
       assert(!hasSameWrite, "RegFile two or more writePorts write same addr")
-    }
-  }
-  for (i <- mem.indices) {
-    if (hasZero && i == 0) {
-      mem_0 := 0.U
-    }
-    else {
-      val wenOH = VecInit(io.writePorts.map(w => w.wen && w.addr === i.U))
-      val wData = Mux1H(wenOH, io.writePorts.map(_.data))
-      when(wenOH.asUInt.orR) {
-        if (i == 0) mem_0 := wData
-        else mem(i) := wData
-      }
     }
   }
 
@@ -236,19 +229,19 @@ object IntRegFile {
 object FpRegFile {
   // non-return version
   def apply(
-             name         : String,
-             numEntries   : Int,
-             raddr        : Seq[UInt],
-             rdata        : Vec[UInt],
-             wen          : Seq[Bool],
-             waddr        : Seq[UInt],
-             wdata        : Seq[UInt],
-             debugReadAddr: Option[Seq[UInt]],
-             debugReadData: Option[Vec[UInt]],
-             withReset    : Boolean = false,
-             bankNum      : Int,
-             isVlRegfile  : Boolean = false,
-           )(implicit p: Parameters): Unit = {
+    name         : String,
+    numEntries   : Int,
+    raddr        : Seq[UInt],
+    rdata        : Vec[UInt],
+    wen          : Seq[Bool],
+    waddr        : Seq[UInt],
+    wdata        : Seq[UInt],
+    debugReadAddr: Option[Seq[UInt]],
+    debugReadData: Option[Vec[UInt]],
+    withReset    : Boolean = false,
+    bankNum      : Int,
+    isVlRegfile  : Boolean = false,
+  )(implicit p: Parameters): Unit = {
     Regfile(
       name, numEntries, raddr, rdata, wen, waddr, wdata,
       hasZero = false, withReset, bankNum, debugReadAddr, debugReadData, debugReadAddr, debugReadData, isVlRegfile)

@@ -120,7 +120,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
   )
   val eNum1HEffect = Mux(isWidenCvt || isNarrowCvt, eNum1H << 1, eNum1H)
   when(io.in.valid){
-    assert(lmul === "b001".U && sew === "b011".U,"FIXME: lmul = 1/2, and sew = 64 bits not support now ")
+    assert(!(lmul === "b001".U && sew === "b011".U),"FIXME: lmul = 1/2, and sew = 64 bits not support now ")
     assert(!eNum1H(0).asBool,"fp128 is forbidden now")
   }
   // calculate eNum in the condition whether lmul is negetive or positive.

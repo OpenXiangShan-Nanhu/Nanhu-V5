@@ -450,6 +450,12 @@ class NactNocConfig(n: Int = 1) extends Config(
   ++ new BaseConfig(n)
 )
 
+class NactNoCDiffTopConfig(n: Int = 1) extends Config(
+  (new NactNocConfig(n)).alter((site, here, up) => {
+    case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCDiffTop = true)
+  })
+)
+
 class NactMiniConfig(n: Int = 1)extends Config(
   new NactConfig(n).alter((site, here, up) => {
     case XSTileKey => up(XSTileKey).map(_.copy(
@@ -533,6 +539,12 @@ class KunminghuV2Config(n: Int = 1) extends Config(
 class XSNoCTopConfig(n: Int = 1) extends Config(
   (new KunminghuV2Config(n)).alter((site, here, up) => {
     case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCTop = true)
+  })
+)
+
+class XSNoCDiffTopConfig(n: Int = 1) extends Config(
+  (new XSNoCTopConfig(n)).alter((site, here, up) => {
+    case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCDiffTop = true)
   })
 )
 

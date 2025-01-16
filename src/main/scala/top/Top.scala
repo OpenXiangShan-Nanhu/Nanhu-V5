@@ -346,21 +346,25 @@ object TopMain extends App {
   Constantin.init(enableConstantin && !envInFPGA)
   ChiselDB.init(enableChiselDB && !envInFPGA)
 
-  val soc = if (config(SoCParamsKey).UseXSNoCTop)
-    DisableMonitors(p => LazyModule(new XSNoCTop()(p)))(config)
-  else
-    DisableMonitors(p => LazyModule(new XSTop()(p)))(config)
+  if (config(SoCParamsKey).UseXSNoCDiffTop) {
+    Generator.execute(firrtlOpts, DisableMonitors(p => new XSNoCDiffTop()(p))(config), firtoolOpts)
+  } else {
+    val soc = if (config(SoCParamsKey).UseXSNoCTop)
+      DisableMonitors(p => LazyModule(new XSNoCTop()(p)))(config)
+    else
+      DisableMonitors(p => LazyModule(new XSTop()(p)))(config)
 
-  Generator.execute(firrtlOpts, soc.module, firtoolOpts)
+    Generator.execute(firrtlOpts, soc.module, firtoolOpts)
 
-  // generate difftest bundles (w/o DifftestTopIO)
-  if (enableDifftest) {
-    DifftestModule.finish("XiangShan", false)
+    // generate difftest bundles (w/o DifftestTopIO)
+    if (enableDifftest) {
+      DifftestModule.finish("XiangShan", false)
+    }
   }
 
-  FileRegisters.add("dts", soc.dts)
-  FileRegisters.add("graphml", soc.graphML)
-  FileRegisters.add("json", soc.json)
-  FileRegisters.add("plusArgs", freechips.rocketchip.util.PlusArgArtefacts.serialize_cHeader())
+  // FileRegisters.add("dts", soc.dts)
+  // FileRegisters.add("graphml", soc.graphML)
+  // FileRegisters.add("json", soc.json)
+  // FileRegisters.add("plusArgs", freechips.rocketchip.util.PlusArgArtefacts.serialize_cHeader())
   FileRegisters.write(fileDir = "./build", filePrefix = "XSTop.")
 }

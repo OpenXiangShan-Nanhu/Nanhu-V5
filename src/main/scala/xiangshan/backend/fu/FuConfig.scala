@@ -692,7 +692,7 @@ object FuConfig {
   val Vfcvt64Cfg = FuConfig(
     name = "vfcvt64",
     fuType = FuType.vfcvt,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VCVT(cfg)(p).suggestName("Vfcvt")),
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VCVT64(cfg)(p).suggestName("Vfcvt64")),
     srcData = Seq(
       Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
     ),

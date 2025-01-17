@@ -651,7 +651,7 @@ class CtrlBlockImp(
   // backend to rob
   rob.io.vstartIsZero := io.toDecode.vstart === 0.U
 
-  io.toCSR.trapInstInfo := decode.io.toCSR.trapInstInfo
+  io.toCSR.trapInstInfo := RegNext(decode.io.toCSR.trapInstInfo)
 
   io.toVecExcpMod.logicPhyRegMap := rob.io.toVecExcpMod.logicPhyRegMap
   io.toVecExcpMod.excpInfo       := rob.io.toVecExcpMod.excpInfo

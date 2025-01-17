@@ -246,7 +246,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   ctrlBlock.io.fpIQValidNumVec := fpScheduler.io.fpIQValidNumVec
   ctrlBlock.io.fromTop.hartId := io.fromTop.hartId
   ctrlBlock.io.frontend <> io.frontend
-  ctrlBlock.io.fromCSR.toDecode := intExuBlock.io.csrToDecode.get
+  ctrlBlock.io.fromCSR.toDecode := RegNext(intExuBlock.io.csrToDecode.get)
   ctrlBlock.io_writeback <> wbDataPath.io.toCtrlBlock.writeback
   ctrlBlock.io.fromMem.stIn <> io.mem.stIn
   ctrlBlock.io.fromMem.violation <> io.mem.memoryViolation

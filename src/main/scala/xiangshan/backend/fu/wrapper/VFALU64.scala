@@ -3,15 +3,17 @@ package xiangshan.backend.fu.wrapper
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.decode._
 import xs.utils.perf.{XSError}
+import xs.utils.RegNextN
 import xiangshan.backend.fu.FuConfig
-import xiangshan.backend.fu.vector.Bundles.{VLmul, VSew}
+import xiangshan.backend.fu.vector.Bundles.{VLmul, VSew, VConfig}
 import xiangshan.backend.fu.vector.utils.VecDataSplitModule
 import xiangshan.backend.fu.vector.{Mgu64, Mgtu, VecInfo, VecPipedFuncUnit}
 import xiangshan.ExceptionNO
 import yunsuan.{VfaluType, VfpuType}
 import yunsuan.vector.VectorFloatAdder
-import xiangshan.backend.fu.vector.Bundles.VConfig
+import yunsuan.util._
 
 class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg) {
 	XSError(io.in.valid && io.in.bits.ctrl.fuOpType === VfpuType.dummy, "Vfalu OpType not supported")
@@ -140,6 +142,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	val outVecCtrl_s0 = ctrlVec.head.vpu.get
 	val outEew_s0 = Mux(resWiden, outVecCtrl_s0.vsew + 1.U, outVecCtrl_s0.vsew)
 	val outWiden = RegEnable(resWiden, io.in.fire)
+	val outNarrow = outVecCtrl.isNarrow
 	val outEew = Mux(outWiden, outVecCtrl.vsew + 1.U, outVecCtrl.vsew)
 	val vlMax_s0 = ((VLEN/8).U >> outEew_s0).asUInt
 	val vlMax = ((VLEN/8).U >> outEew).asUInt
@@ -209,39 +212,55 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	val allFFlagsEn = Wire(Vec(4, Bool()))
 	val outSrcMaskRShift = Wire(UInt(8.W))
 	outSrcMaskRShift := (maskToMgu >> (outVecCtrl.vuopIdx(2,0) * vlMax))(7, 0)
-	val f16FFlagsEn = Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
-											outSrcMaskRShift(3, 0), outSrcMaskRShift(7, 4))
-	val f32FFlagsEn = Wire(UInt(4.W))
-	val f64FFlagsEn = Wire(UInt(4.W))
-	val f16VlMaskEn = vlMaskRShift
-	val f32VlMaskEn = Wire(UInt(4.W))
-	val f64VlMaskEn = Wire(UInt(4.W))
-	f32FFlagsEn := Cat(Fill(2, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
-																				outSrcMaskRShift(1, 0), outSrcMaskRShift(3, 2)))
-	f64FFlagsEn := Cat(Fill(3, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
-																				outSrcMaskRShift(0), outSrcMaskRShift(1)))
-	f32VlMaskEn := Cat(Fill(2, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
-																				vlMaskRShift(1, 0), vlMaskRShift(3, 2)))
-	f64VlMaskEn := Cat(Fill(3, 0.U), Mux(outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B),
-																				vlMaskRShift(0), vlMaskRShift(1)))
-	val fflagsEn = Mux1H(
-		Seq(
-			(outEew === 1.U) -> f16FFlagsEn.asUInt,
-			(outEew === 2.U) -> f32FFlagsEn.asUInt,
-			(outEew === 3.U) -> f64FFlagsEn.asUInt
-		)
-	)
-	val vlMaskEn = Mux1H(
-		Seq(
-			(outEew === 1.U) -> f16VlMaskEn.asUInt,
-			(outEew === 2.U) -> f32VlMaskEn.asUInt,
-			(outEew === 3.U) -> f64VlMaskEn.asUInt
-		)
-	)
+
+	/** fflags: */
+	val inWiden = inCtrl.fuOpType(4)
+	val inNarrow = vecCtrl.isNarrow
+  val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
+    TruthTable(
+      Seq(                     // 8, 4, 2, 1
+        BitPat("b001") -> BitPat("b1000"), //8
+        BitPat("b010") -> BitPat("b1000"), //8
+        BitPat("b011") -> BitPat("b0100"), //4
+        BitPat("b100") -> BitPat("b0100"), //4
+        BitPat("b101") -> BitPat("b0010"), //2
+        BitPat("b110") -> BitPat("b0010"), //2
+      ),
+      BitPat.N(4)
+    )
+  )
+  val eNum1HEffect = Mux(inWiden || inNarrow, eNum1H << 1, eNum1H)
+  when(io.in.valid) {
+    assert(!eNum1H(0).asBool,"fp128 is forbidden now")
+  }
+  // calculate eNum in the condition whether lmul is negetive or positive.
+  val eNumMax1H = Mux(vlmul.head(1).asBool, eNum1HEffect >> ((~vlmul.tail(1)).asUInt + 1.U), eNum1HEffect << vlmul.tail(1)).asUInt(6, 0)
+  val eNumMax = Mux1H(eNumMax1H, Seq(1,2,4,8,16,32,64).map(i => i.U)) //only for cvt intr, don't exist 128 in cvt
+  val vlForFflags = Mux(vecCtrl.fpu.isFpToVecInst, 1.U, vl)
+  val eNumEffectIdx = Mux(vlForFflags > eNumMax, eNumMax, vlForFflags)
+
+  val writeHigh = io.in.bits.ctrl.vfWenH.getOrElse(false.B) || io.in.bits.ctrl.v0WenH.getOrElse(false.B)
+  val eNum = Mux1H(eNum1H, Seq(1, 2, 4, 8).map(num => num.U)) // element Number per Vreg
+  val eStart = vuopIdx * eNum
+  val maskForFflags = Mux(vecCtrl.fpu.isFpToVecInst, allMaskTrue, srcMask)
+  // shift eStart bits and get the mask of current Vreg
+  val maskPart = maskForFflags >> eStart
+  val eleMask = Mux1H(
+    Seq(
+      (eNum1H === 1.U) -> Cat(0.U(3.W), maskPart(0)), // don't exist
+      (eNum1H === 2.U) -> Cat(0.U(3.W), Mux(writeHigh, maskPart(1), maskPart(0))),
+      (eNum1H === 4.U) -> Cat(0.U(2.W), Mux(writeHigh, maskPart(3, 2), maskPart(1, 0))),
+      (eNum1H === 8.U) -> Mux(writeHigh, maskPart(7, 4), maskPart(3, 0))
+    )
+  )
+  val fflagsEn = Wire(Vec(4, Bool()))
+  val eStartPositionInVreg = Mux(writeHigh, eNum >> 1.U, 0.U)
+  fflagsEn := RegNextN(VecInit(eleMask.asBools.zipWithIndex.map{case(m, i) => m & (eNumEffectIdx > eStart + eStartPositionInVreg + i.U) }), cfg.latency.latencyVal.get)
+
 	val fflagsRedMask = "b11111111".U
 
 	allFFlagsEn := Mux(outIsResuction, Cat(Fill(3, firstNeedFFlags || outIsVfRedUnSum) & fflagsRedMask(3, 1),
-		lastNeedFFlags || firstNeedFFlags || outIsVfRedOrdered || outIsVfRedUnSum), fflagsEn & vlMaskEn).asTypeOf(allFFlagsEn)
+		lastNeedFFlags || firstNeedFFlags || outIsVfRedOrdered || outIsVfRedUnSum), fflagsEn.asUInt).asTypeOf(allFFlagsEn)
 
 	val allFFlags = fflagsData.asTypeOf(Vec(4, UInt(5.W)))
 	val outFFlags = allFFlagsEn.zip(allFFlags).map{
@@ -249,7 +268,6 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	}.reduce(_ | _)
 
 	if (backendParams.debugEn) {
-		dontTouch(outSrcMaskRShift)
 		dontTouch(allFFlagsEn)
 	}
 

@@ -62,6 +62,8 @@ class ExeUnitImp(
   private val fuCfgs = exuParams.fuConfigs
 
   override val desiredName = "Exu" + fuCfgs.map(_.name.capitalize).reduce(_ + _)
+  suggestName(desiredName)
+  println(s"[ExeUnits]: ExeUnits ${this.getClass.getSimpleName} desiredName: $desiredName")
 
   val io = IO(new ExeUnitIO(exuParams))
 

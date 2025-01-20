@@ -807,8 +807,6 @@ object Bundles {
     val v0WenH       = if (params.needV0Wen)    Some(Bool())                  else None
     val v0WenL       = if (params.needV0Wen)    Some(Bool())                  else None
     val vlWen        = if (params.needVlWen)    Some(Bool())                  else None
-    val isNarrow     = if (params.isShareVf)    Some(Bool())                  else None
-    val isWiden      = if (params.isShareVf)    Some(Bool())                  else None
     val redirect     = if (params.hasRedirect)  Some(ValidIO(new Redirect))   else None
     val fflags       = if (params.writeFflags)  Some(UInt(5.W))               else None
     val wflags       = if (params.writeFflags)  Some(Bool())                  else None
@@ -835,6 +833,9 @@ object Bundles {
       val isVecLoad = Bool()
       val isVlm = Bool()
     })
+    // share vf ctrl signal
+    val shareVpuCtrl = if (params.isShareVf) Some(Vec(params.wbPathNum, new VPUCtrlSignals)) else None
+    
     val debug = new DebugBundle
     val debugInfo = new PerfDebugInfo
   }

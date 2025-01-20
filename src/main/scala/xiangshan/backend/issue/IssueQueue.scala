@@ -505,7 +505,8 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
                           subDeqSelOHVec.get(1)) & canIssueMergeAllBusy(0)
     deqSelOHVec(1) := subDeqSelOHVec.get(0) & canIssueMergeAllBusy(1)
 
-    finalDeqSelValidVec.zip(finalDeqSelOHVec).zip(deqSelValidVec).zip(deqSelOHVec).zipWithIndex.foreach { case ((((selValid, selOH), deqValid), deqOH), i) =>
+    finalDeqSelValidVec.zip(finalDeqSelOHVec).zip(deqSelValidVec).zip(deqSelOHVec).zipWithIndex.foreach {
+      case ((((selValid, selOH), deqValid), deqOH), i) =>
       selValid := deqValid && deqOH.orR
       selOH := deqOH
     }
@@ -566,7 +567,8 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
       }
     }
 
-    finalDeqSelValidVec.zip(finalDeqSelOHVec).zip(deqSelValidVec).zip(deqSelOHVec).zipWithIndex.foreach { case ((((selValid, selOH), deqValid), deqOH), i) =>
+    finalDeqSelValidVec.zip(finalDeqSelOHVec).zip(deqSelValidVec).zip(deqSelOHVec).zipWithIndex.foreach {
+      case ((((selValid, selOH), deqValid), deqOH), i) =>
       selValid := deqValid
       selOH := deqOH
     }

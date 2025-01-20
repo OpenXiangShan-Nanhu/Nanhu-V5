@@ -185,6 +185,8 @@ case class FuConfig (
   def isVecMem: Boolean = fuType == FuType.vldu || fuType == FuType.vstu ||
                           fuType == FuType.vsegldu || fuType == FuType.vsegstu
 
+  def isShareVf : Boolean = writeVecRf && writeV0Rf && (destDataBits == 64)
+
   def needOg2: Boolean = false // isVecArith || fuType == FuType.vsetfwf || isVecMem
 
   def isSta: Boolean = name.contains("sta")

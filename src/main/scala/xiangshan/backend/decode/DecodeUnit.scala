@@ -927,8 +927,35 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   private val needReverseInsts = Seq(VRSUB_VI, VRSUB_VX, VFRDIV_VF, VFRSUB_VF, VFMV_F_S)
   private val vextInsts = Seq(VZEXT_VF2, VZEXT_VF4, VZEXT_VF8, VSEXT_VF2, VSEXT_VF4, VSEXT_VF8)
   private val narrowInsts = Seq(
+    // Narrowing Int Right Shift
     VNSRA_WV, VNSRA_WX, VNSRA_WI, VNSRL_WV, VNSRL_WX, VNSRL_WI,
+    // Narrowing Fp Clip
     VNCLIP_WV, VNCLIP_WX, VNCLIP_WI, VNCLIPU_WV, VNCLIPU_WX, VNCLIPU_WI,
+    // Narrowing Fp-Int Convert
+    VFNCVT_F_F_W, VFNCVT_F_X_W, VFNCVT_F_XU_W, VFNCVT_X_F_W, VFNCVT_XU_F_W,
+    VFNCVT_ROD_F_F_W, VFNCVT_RTZ_X_F_W, VFNCVT_RTZ_XU_F_W
+  )
+  private val widenInsts = Seq(
+    // Widening Int Add and Sub
+    VWADD_VV, VWADD_VX, VWADD_WV, VWADD_WX, VWADDU_VV, VWADDU_VX, VWADDU_WV, VWADDU_WX,
+    VWSUB_VV, VWSUB_VX, VWSUB_WV, VWSUB_WX, VWSUBU_VV, VWSUBU_VX, VWSUBU_WV, VWSUBU_WX,
+    // Widening Fp Add and Sub
+    VFWADD_VF, VFWADD_VV, VFWADD_WF, VFWADD_WV,
+    VFWSUB_VF, VFWSUB_VV, VFWSUB_WF, VFWSUB_WV,
+    // Widening Int Multiply
+    VWMUL_VV, VWMUL_VX, VWMULSU_VV, VWMULSU_VX, VWMULU_VV, VWMULU_VX,
+    // Widening Int Multiply-Add
+    VWMACC_VV, VWMACC_VX, VWMACCSU_VV, VWMACCSU_VX, VWMACCU_VV, VWMACCU_VX, VWMACCUS_VX,
+    // Widening Fp Multiply
+    VFWMUL_VF, VFWMUL_VV,
+    // Widening Fp Fused Multiply-Add
+    VFWMACC_VF, VFWMACC_VV, VFWMSAC_VF, VFWMSAC_VV,
+    VFWNMACC_VF, VFWNMACC_VV, VFWNMSAC_VF, VFWNMSAC_VV,
+    // Widening Fp-Int Convert
+    VFWCVT_F_F_V, VFWCVT_F_X_V, VFWCVT_F_XU_V, VFWCVT_X_F_V, VFWCVT_XU_F_V,
+    VFWCVT_RTZ_X_F_V, VFWCVT_RTZ_XU_F_V,
+    // Widening Int/Fp Reduction
+    VWREDSUM_VS, VWREDSUMU_VS, VFWREDOSUM_VS, VFWREDUSUM_VS
   )
   private val maskDstInsts = Seq(
     VMADC_VV, VMADC_VX,  VMADC_VI,  VMADC_VVM, VMADC_VXM, VMADC_VIM,
@@ -1024,6 +1051,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     decodedInst.vpu.isReverse := needReverseInsts.map(_ === inst.ALL).reduce(_ || _)
     decodedInst.vpu.isExt := vextInsts.map(_ === inst.ALL).reduce(_ || _)
     val isNarrow = narrowInsts.map(_ === inst.ALL).reduce(_ || _)
+    val isWiden = widenInsts.map(_ === inst.ALL).reduce(_ || _)
     val isDstMask = maskDstInsts.map(_ === inst.ALL).reduce(_ || _)
     val isOpMask = maskOpInsts.map(_ === inst.ALL).reduce(_ || _)
     val isVlx = decodedInst.fuOpType === VlduType.vloxe || decodedInst.fuOpType === VlduType.vluxe
@@ -1033,6 +1061,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     val isVma = vmaInsts.map(_ === inst.ALL).reduce(_ || _)
     val emulIsFrac = Cat(~decodedInst.vpu.vlmul(2), decodedInst.vpu.vlmul(1, 0)) +& decodedInst.vpu.veew < 4.U +& decodedInst.vpu.vsew
     decodedInst.vpu.isNarrow := isNarrow
+    decodedInst.vpu.isWiden := isWiden
     decodedInst.vpu.isDstMask := isDstMask
     decodedInst.vpu.isOpMask := isOpMask
     decodedInst.vpu.isDependOldvd := isVppu || isVecOPF || isVStore || (isDstMask && !isOpMask) || isNarrow || isVlx || isVma

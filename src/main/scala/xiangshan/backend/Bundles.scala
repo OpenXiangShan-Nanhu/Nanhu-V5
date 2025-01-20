@@ -439,6 +439,7 @@ object Bundles {
     val isReverse = Bool() // vrsub, vrdiv
     val isExt     = Bool()
     val isNarrow  = Bool()
+    val isWiden  = Bool()
     val isDstMask = Bool() // vvm, vvvm, mmm
     val isOpMask  = Bool() // vmand, vmnand
     val isMove    = Bool() // vmv.s.x, vmv.v.v, vmv.v.x, vmv.v.i
@@ -806,6 +807,8 @@ object Bundles {
     val v0WenH       = if (params.needV0Wen)    Some(Bool())                  else None
     val v0WenL       = if (params.needV0Wen)    Some(Bool())                  else None
     val vlWen        = if (params.needVlWen)    Some(Bool())                  else None
+    val isNarrow     = if (params.isShareVf)    Some(Bool())                  else None
+    val isWiden      = if (params.isShareVf)    Some(Bool())                  else None
     val redirect     = if (params.hasRedirect)  Some(ValidIO(new Redirect))   else None
     val fflags       = if (params.writeFflags)  Some(UInt(5.W))               else None
     val wflags       = if (params.writeFflags)  Some(Bool())                  else None

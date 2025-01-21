@@ -90,6 +90,9 @@ class VecPipedFuncUnit(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(c
     )
   }
 
+  io.out.bits.ctrl.vpu.foreach(_ := outVecCtrl)
+  io.out.bits.ctrl.oldVd.foreach(_ := outOldVd)
+
   override def latency: Int = cfg.latency.latencyVal.get
 
 }

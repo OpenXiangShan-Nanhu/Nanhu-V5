@@ -796,32 +796,35 @@ object Bundles {
   )(implicit
     val p: Parameters
   ) extends Bundle with BundleSource with HasXSParameter {
-    val data         = Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
-    val pdest        = UInt(params.wbPregIdxWidth.W)
-    val robIdx       = new RobPtr
-    val intWen       = if (params.needIntWen)   Some(Bool())                  else None
-    val fpWen        = if (params.needVecWen)   Some(Bool())                  else None
-    val vecWen       = if (params.needVecWen)   Some(Bool())                  else None
-    val vfWenH       = if (params.needVecWen)   Some(Bool())                  else None
-    val vfWenL       = if (params.needVecWen)   Some(Bool())                  else None
-    val v0Wen        = if (params.needV0Wen)    Some(Bool())                  else None
-    val v0WenH       = if (params.needV0Wen)    Some(Bool())                  else None
-    val v0WenL       = if (params.needV0Wen)    Some(Bool())                  else None
-    val vlWen        = if (params.needVlWen)    Some(Bool())                  else None
-    val shareVpuCtrl = if (params.isShareVf)    Some(new VPUCtrlSignals)      else None // shareVF ctrl signal to mgu
-    val redirect     = if (params.hasRedirect)  Some(ValidIO(new Redirect))   else None
-    val fflags       = if (params.writeFflags)  Some(UInt(5.W))               else None
-    val wflags       = if (params.writeFflags)  Some(Bool())                  else None
-    val vxsat        = if (params.writeVxsat)   Some(Bool())                  else None
-    val exceptionVec = if (params.exceptionOut.nonEmpty) Some(ExceptionVec()) else None
-    val flushPipe    = if (params.flushPipe)    Some(Bool())                  else None
-    val replay       = if (params.replayInst)   Some(Bool())                  else None
-    val lqIdx        = if (params.hasLoadFu)    Some(new LqPtr())             else None
-    val sqIdx        = if (params.hasStoreAddrFu || params.hasStdFu)
-                                                Some(new SqPtr())             else None
-    val trigger      = if (params.trigger)      Some(TriggerAction())           else None
+    val data          = Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
+    val pdest         = UInt(params.wbPregIdxWidth.W)
+    val robIdx        = new RobPtr
+    val intWen        = if (params.needIntWen)    Some(Bool())                  else None
+    val fpWen         = if (params.needVecWen)    Some(Bool())                  else None
+    val vecWen        = if (params.needVecWen)    Some(Bool())                  else None
+    val vfWenH        = if (params.needVecWen)    Some(Bool())                  else None
+    val vfWenL        = if (params.needVecWen)    Some(Bool())                  else None
+    val v0Wen         = if (params.needV0Wen)     Some(Bool())                  else None
+    val v0WenH        = if (params.needV0Wen)     Some(Bool())                  else None
+    val v0WenL        = if (params.needV0Wen)     Some(Bool())                  else None
+    val vlWen         = if (params.needVlWen)     Some(Bool())                  else None
+    val shareVpuCtrl  = if (params.isShareVf)     Some(new VPUCtrlSignals)      else None // shareVF ctrl signal to mgu
+    val oldVd         = if (params.isShareVf)     Some(UInt(VLEN.W))            else None // shareVF ctrl signal to mgu
+    // val oldVdForWbMgu = if (params.isShareVf)     Some(UInt(VLEN.W))            else None
+    val redirect      = if (params.hasRedirect)   Some(ValidIO(new Redirect))   else None
+    val fflags        = if (params.writeFflags)   Some(UInt(5.W))               else None
+    val wflags        = if (params.writeFflags)   Some(Bool())                  else None
+    val vxsat         = if (params.writeVxsat)    Some(Bool())                  else None
+    val exceptionVec  = if (params.exceptionOut.nonEmpty)
+                                                  Some(ExceptionVec())          else None
+    val flushPipe     = if (params.flushPipe)     Some(Bool())                  else None
+    val replay        = if (params.replayInst)    Some(Bool())                  else None
+    val lqIdx         = if (params.hasLoadFu)     Some(new LqPtr())             else None
+    val sqIdx         = if (params.hasStoreAddrFu || params.hasStdFu)
+                                                  Some(new SqPtr())             else None
+    val trigger       = if (params.trigger)       Some(TriggerAction())         else None
     // uop info
-    val predecodeInfo = if(params.hasPredecode) Some(new PreDecodeInfo) else None
+    val predecodeInfo = if(params.hasPredecode)   Some(new PreDecodeInfo)       else None
     // vldu used only
     val vls = OptionWrapper(params.hasVLoadFu, new Bundle {
       val vpu = new VPUCtrlSignals

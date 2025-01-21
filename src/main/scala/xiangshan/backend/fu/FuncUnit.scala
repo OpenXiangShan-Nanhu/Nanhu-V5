@@ -58,6 +58,7 @@ class FuncUnitCtrlOutput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle
   val preDecode     = OptionWrapper(cfg.hasPredecode, new PreDecodeInfo)
   val fpu           = OptionWrapper(cfg.writeFflags, new FPUCtrlSignals)
   val vpu           = OptionWrapper(cfg.needVecCtrl, new VPUCtrlSignals)
+  val oldVd         = OptionWrapper(cfg.isShareVf, UInt(VLEN.W))
 }
 
 class FuncUnitDataInput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle {

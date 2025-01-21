@@ -25,8 +25,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 
 	// modules
 	private val vfalu = Module(new VectorFloatAdder)
-	private val mgu = Module(new Mgu64(VLEN))
-  private val mgtu = Module(new Mgtu(VLEN))
+	private val mguOpt: Option[Mgu64] = if(cfg.VecNeedSharedMgu) None else Some(Module(new Mgu64(VLEN)))
+	private val mgtuOpt: Option[Mgtu] = if(cfg.VecNeedSharedMgu) None else Some(Module(new Mgtu(VLEN)))
 
 	private val resultData = Wire(UInt(64.W))
 	private val fflagsData = Wire(UInt(20.W))
@@ -216,46 +216,46 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	/** fflags: */
 	val inWiden = inCtrl.fuOpType(4)
 	val inNarrow = vecCtrl.isNarrow
-  val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
-    TruthTable(
-      Seq(                     // 8, 4, 2, 1
-        BitPat("b001") -> BitPat("b1000"), //8
-        BitPat("b010") -> BitPat("b1000"), //8
-        BitPat("b011") -> BitPat("b0100"), //4
-        BitPat("b100") -> BitPat("b0100"), //4
-        BitPat("b101") -> BitPat("b0010"), //2
-        BitPat("b110") -> BitPat("b0010"), //2
-      ),
-      BitPat.N(4)
-    )
-  )
-  val eNum1HEffect = Mux(inWiden || inNarrow, eNum1H << 1, eNum1H)
-  when(io.in.valid) {
-    assert(!eNum1H(0).asBool,"fp128 is forbidden now")
-  }
-  // calculate eNum in the condition whether lmul is negetive or positive.
-  val eNumMax1H = Mux(vlmul.head(1).asBool, eNum1HEffect >> ((~vlmul.tail(1)).asUInt + 1.U), eNum1HEffect << vlmul.tail(1)).asUInt(6, 0)
-  val eNumMax = Mux1H(eNumMax1H, Seq(1,2,4,8,16,32,64).map(i => i.U)) //only for cvt intr, don't exist 128 in cvt
-  val vlForFflags = Mux(vecCtrl.fpu.isFpToVecInst, 1.U, vl)
-  val eNumEffectIdx = Mux(vlForFflags > eNumMax, eNumMax, vlForFflags)
+  	val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
+		TruthTable(
+		Seq(                     // 8, 4, 2, 1
+			BitPat("b001") -> BitPat("b1000"), //8
+			BitPat("b010") -> BitPat("b1000"), //8
+			BitPat("b011") -> BitPat("b0100"), //4
+			BitPat("b100") -> BitPat("b0100"), //4
+			BitPat("b101") -> BitPat("b0010"), //2
+			BitPat("b110") -> BitPat("b0010"), //2
+		),
+		BitPat.N(4)
+		)
+  	)
+	val eNum1HEffect = Mux(inWiden || inNarrow, eNum1H << 1, eNum1H)
+	when(io.in.valid) {
+		assert(!eNum1H(0).asBool,"fp128 is forbidden now")
+	}
+	// calculate eNum in the condition whether lmul is negetive or positive.
+	val eNumMax1H = Mux(vlmul.head(1).asBool, eNum1HEffect >> ((~vlmul.tail(1)).asUInt + 1.U), eNum1HEffect << vlmul.tail(1)).asUInt(6, 0)
+	val eNumMax = Mux1H(eNumMax1H, Seq(1,2,4,8,16,32,64).map(i => i.U)) //only for cvt intr, don't exist 128 in cvt
+	val vlForFflags = Mux(vecCtrl.fpu.isFpToVecInst, 1.U, vl)
+	val eNumEffectIdx = Mux(vlForFflags > eNumMax, eNumMax, vlForFflags)
 
-  val writeHigh = io.in.bits.ctrl.vfWenH.getOrElse(false.B) || io.in.bits.ctrl.v0WenH.getOrElse(false.B)
-  val eNum = Mux1H(eNum1H, Seq(1, 2, 4, 8).map(num => num.U)) // element Number per Vreg
-  val eStart = vuopIdx * eNum
-  val maskForFflags = Mux(vecCtrl.fpu.isFpToVecInst, allMaskTrue, srcMask)
-  // shift eStart bits and get the mask of current Vreg
-  val maskPart = maskForFflags >> eStart
-  val eleMask = Mux1H(
-    Seq(
-      (eNum1H === 1.U) -> Cat(0.U(3.W), maskPart(0)), // don't exist
-      (eNum1H === 2.U) -> Cat(0.U(3.W), Mux(writeHigh, maskPart(1), maskPart(0))),
-      (eNum1H === 4.U) -> Cat(0.U(2.W), Mux(writeHigh, maskPart(3, 2), maskPart(1, 0))),
-      (eNum1H === 8.U) -> Mux(writeHigh, maskPart(7, 4), maskPart(3, 0))
-    )
-  )
-  val fflagsEn = Wire(Vec(4, Bool()))
-  val eStartPositionInVreg = Mux(writeHigh, eNum >> 1.U, 0.U)
-  fflagsEn := RegNextN(VecInit(eleMask.asBools.zipWithIndex.map{case(m, i) => m & (eNumEffectIdx > eStart + eStartPositionInVreg + i.U) }), cfg.latency.latencyVal.get)
+	val writeHigh = io.in.bits.ctrl.vfWenH.getOrElse(false.B) || io.in.bits.ctrl.v0WenH.getOrElse(false.B)
+	val eNum = Mux1H(eNum1H, Seq(1, 2, 4, 8).map(num => num.U)) // element Number per Vreg
+	val eStart = vuopIdx * eNum
+	val maskForFflags = Mux(vecCtrl.fpu.isFpToVecInst, allMaskTrue, srcMask)
+	// shift eStart bits and get the mask of current Vreg
+	val maskPart = maskForFflags >> eStart
+	val eleMask = Mux1H(
+		Seq(
+		(eNum1H === 1.U) -> Cat(0.U(3.W), maskPart(0)), // don't exist
+		(eNum1H === 2.U) -> Cat(0.U(3.W), Mux(writeHigh, maskPart(1), maskPart(0))),
+		(eNum1H === 4.U) -> Cat(0.U(2.W), Mux(writeHigh, maskPart(3, 2), maskPart(1, 0))),
+		(eNum1H === 8.U) -> Mux(writeHigh, maskPart(7, 4), maskPart(3, 0))
+		)
+	)
+	val fflagsEn = Wire(Vec(4, Bool()))
+	val eStartPositionInVreg = Mux(writeHigh, eNum >> 1.U, 0.U)
+	fflagsEn := RegNextN(VecInit(eleMask.asBools.zipWithIndex.map{case(m, i) => m & (eNumEffectIdx > eStart + eStartPositionInVreg + i.U) }), cfg.latency.latencyVal.get)
 
 	val fflagsRedMask = "b11111111".U
 
@@ -328,32 +328,41 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	// outVecCtrl.fpu.isFpToVecInst means the instruction is float instruction, not vector float instruction
 	val notUseVl = outVecCtrl.fpu.isFpToVecInst || (outCtrl.fuOpType === VfaluType.vfmv_f_s)
 	val notModifyVd = !notUseVl && (outVl === 0.U)
-	mgu.io.in.vd := Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt), resultDataUInt)
-  mgu.io.in.oldVd := Mux(isOutOldVdForREDO, outOldVdForRED, outOldVd)
-  mgu.io.in.mask := maskToMgu
-  mgu.io.in.info.ta := Mux(outCtrl.fuOpType === VfaluType.vfmv_f_s, true.B , Mux(taIsFalseForVFREDO, false.B, outVecCtrl.vta))
-  mgu.io.in.info.ma := Mux(outCtrl.fuOpType === VfaluType.vfmv_s_f, true.B , outVecCtrl.vma)
-  mgu.io.in.info.vl := outVlFix
-  mgu.io.in.info.vstart := outVecCtrl.vstart
-  mgu.io.in.info.vlmul := outVecCtrl.vlmul
-  mgu.io.in.info.valid := Mux(notModifyVd, false.B, io.in.valid)
-  mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
-  mgu.io.in.info.eew :=  RegEnable(outEew_s0,io.in.fire)
-  mgu.io.in.info.vsew := outVecCtrl.vsew
-  mgu.io.in.info.vdIdx := RegEnable(Mux(outIsResuction_s0, 0.U, outVecCtrl_s0.vuopIdx), io.in.fire)
-  mgu.io.in.info.narrow := outVecCtrl.isNarrow
-  mgu.io.in.info.dstMask := outVecCtrl.isDstMask
-  mgu.io.in.isIndexedVls := false.B
-	mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B)) || vecCtrl.fpu.isFpToVecInst
-  mgtu.io.in.vd := Mux(outVecCtrl.isDstMask, mgu.io.out.vd, resultDataUInt)
-  mgtu.io.in.vl := outVl
-	val resultFpMask = Wire(UInt(VLEN.W))
-	val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
-	val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
-	val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
-	resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
-	// when dest is mask, the result need to be masked by mgtu
-	io.out.bits.res.data := Mux(notModifyVd, outOldVd, Mux(outVecCtrl.isDstMask, mgtu.io.out.vd, mgu.io.out.vd) & resultFpMask)
 	io.out.bits.res.fflags.get := Mux(notModifyVd, 0.U(5.W), outFFlags)
-	io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
+	mguOpt match {
+		case Some(mgu) =>{
+			mgu.io.in.vd := Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt), resultDataUInt)
+			mgu.io.in.oldVd := Mux(isOutOldVdForREDO, outOldVdForRED, outOldVd)
+			mgu.io.in.mask := maskToMgu
+			mgu.io.in.info.ta := Mux(outCtrl.fuOpType === VfaluType.vfmv_f_s, true.B , Mux(taIsFalseForVFREDO, false.B, outVecCtrl.vta))
+			mgu.io.in.info.ma := Mux(outCtrl.fuOpType === VfaluType.vfmv_s_f, true.B , outVecCtrl.vma)
+			mgu.io.in.info.vl := outVlFix
+			mgu.io.in.info.vstart := outVecCtrl.vstart
+			mgu.io.in.info.vlmul := outVecCtrl.vlmul
+			mgu.io.in.info.valid := Mux(notModifyVd, false.B, io.in.valid)
+			mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
+			mgu.io.in.info.eew :=  RegEnable(outEew_s0,io.in.fire)
+			mgu.io.in.info.vsew := outVecCtrl.vsew
+			mgu.io.in.info.vdIdx := RegEnable(Mux(outIsResuction_s0, 0.U, outVecCtrl_s0.vuopIdx), io.in.fire)
+			mgu.io.in.info.narrow := outVecCtrl.isNarrow
+			mgu.io.in.info.dstMask := outVecCtrl.isDstMask
+			mgu.io.in.isIndexedVls := false.B
+			mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B)) || vecCtrl.fpu.isFpToVecInst
+			mgtuOpt.get.io.in.vd := Mux(outVecCtrl.isDstMask, mgu.io.out.vd, resultDataUInt)
+			mgtuOpt.get.io.in.vl := outVl
+			val resultFpMask = Wire(UInt(VLEN.W))
+			val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
+			val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
+			val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
+			resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
+			// when dest is mask, the result need to be masked by mgtu
+			io.out.bits.res.data := Mux(notModifyVd, outOldVd, Mux(outVecCtrl.isDstMask, mgtuOpt.get.io.out.vd, mgu.io.out.vd) & resultFpMask)
+			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
+		}
+		case None =>{
+			io.mguEew.foreach(x => x:= RegEnable(outEew_s0,io.in.fire))
+			io.out.bits.res.data := outOldVd
+			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+		}
+	}
 }

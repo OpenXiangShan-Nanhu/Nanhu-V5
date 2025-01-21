@@ -79,8 +79,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 
   // modules
   private val vfcvt = Module(new VectorCvt64Top(XLEN))
-  // private val mgu = Module(new Mgu64(VLEN))
-
+  private val mguOpt: Option[Mgu64] = if(cfg.VecNeedSharedMgu) None else Some(Module(new Mgu64(VLEN)))
   /**
    * [[vfcvt]]'s in connection
    */
@@ -163,38 +162,51 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
     outNarrowVd := Mux(narrowNeedCat, Cat(resultDataUInt(31, 0), outOldVd(31, 0)),
                                       Cat(outOldVd(95, 64), resultDataUInt(31, 0)))
   }
-  
-  // mgu.io.in.vd := Mux(narrow, outNarrowVd, resultDataUInt)
-  // mgu.io.in.oldVd := outOldVd
-  // mgu.io.in.mask := maskToMgu
-  // mgu.io.in.info.ta := outVecCtrl.vta
-  // mgu.io.in.info.ma := outVecCtrl.vma
-  // mgu.io.in.info.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 1.U, outVl)
-  // mgu.io.in.info.vlmul := outVecCtrl.vlmul
-  // mgu.io.in.info.valid := io.out.valid
-  // mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
-  // mgu.io.in.info.eew := outEew
-  // mgu.io.in.info.vsew := outVecCtrl.vsew
-  // mgu.io.in.info.vdIdx := outVecCtrl.vuopIdx
-  // mgu.io.in.info.narrow := narrow
-  // mgu.io.in.info.dstMask := outVecCtrl.isDstMask
-  // mgu.io.in.isIndexedVls := false.B
-  // mgu.io.in.isLo := outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B) || vecCtrl.fpu.isFpToVecInst
 
-  // for scalar f2i cvt inst
-  val isFp2VecForInt = outVecCtrl.fpu.isFpToVecInst && outIs32bits && outIsInt
-  // for f2i mv inst
-  val result = Mux(outIsMvInst, RegNext(RegNext(vs2.tail(64))), Mux(narrow, outNarrowVd, resultDataUInt))
-
-  io.out.bits.res.data := Mux(isFp2VecForInt,
-    Fill(32, result(31)) ## result(31, 0),
-    result
-  )
-  io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
-  io.out.bits.ctrl.vpu.foreach(_ := outVecCtrl)
-  io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
-  io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
-  io.out.bits.ctrl.vpu.foreach(_.vl := outVl)
+  mguOpt match {
+    case Some(mgu) =>{
+      mgu.io.in.vd := Mux(narrow, outNarrowVd, resultDataUInt)
+      mgu.io.in.oldVd := outOldVd
+      mgu.io.in.mask := maskToMgu
+      mgu.io.in.info.ta := outVecCtrl.vta
+      mgu.io.in.info.ma := outVecCtrl.vma
+      mgu.io.in.info.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 1.U, outVl)
+      mgu.io.in.info.vlmul := outVecCtrl.vlmul
+      mgu.io.in.info.valid := io.out.valid
+      mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
+      mgu.io.in.info.eew := outEew
+      mgu.io.in.info.vsew := outVecCtrl.vsew
+      mgu.io.in.info.vdIdx := outVecCtrl.vuopIdx
+      mgu.io.in.info.narrow := narrow
+      mgu.io.in.info.dstMask := outVecCtrl.isDstMask
+      mgu.io.in.isIndexedVls := false.B
+      mgu.io.in.isLo := outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B) || vecCtrl.fpu.isFpToVecInst
+      // for scalar f2i cvt inst
+      val isFp2VecForInt = outVecCtrl.fpu.isFpToVecInst && outIs32bits && outIsInt
+      // for f2i mv inst
+      val result = Mux(outIsMvInst, RegNext(RegNext(vs2.tail(64))), mgu.io.out.vd)
+      io.out.bits.res.data := Mux(isFp2VecForInt,
+        Fill(32, result(31)) ## result(31, 0),
+        result)
+      io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
+    }
+    case None =>{
+      // for scalar f2i cvt inst
+      val isFp2VecForInt = outVecCtrl.fpu.isFpToVecInst && outIs32bits && outIsInt
+      // for f2i mv inst
+      val result = Mux(outIsMvInst, RegNext(RegNext(vs2.tail(64))), Mux(narrow, outNarrowVd, resultDataUInt))
+      io.out.bits.res.data := Mux(isFp2VecForInt,
+        Fill(32, result(31)) ## result(31, 0),
+        result
+      )
+      io.mguEew.foreach(x => x:= outEew)
+      io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+      io.out.bits.ctrl.vpu.foreach(_ := outVecCtrl)
+      io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
+      io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
+      io.out.bits.ctrl.vpu.foreach(_.vl := outVl)
+    }
+  }
 }
 
 

@@ -808,7 +808,8 @@ object Bundles {
     val v0WenH       = if (params.needV0Wen)    Some(Bool())                  else None
     val v0WenL       = if (params.needV0Wen)    Some(Bool())                  else None
     val vlWen        = if (params.needVlWen)    Some(Bool())                  else None
-    val shareVpuCtrl = if (params.isShareVf)    Some(new VPUCtrlSignals)      else None // shareVF ctrl signal to mgu
+    val shareVpuCtrl = if (params.isSharedVf)   Some(new VPUCtrlSignals)      else None // shareVF ctrl signal to mgu
+    val mguEew       = if (params.isSharedVf)   Some(VSew())                  else None // for share mgu
     val redirect     = if (params.hasRedirect)  Some(ValidIO(new Redirect))   else None
     val fflags       = if (params.writeFflags)  Some(UInt(5.W))               else None
     val wflags       = if (params.writeFflags)  Some(Bool())                  else None

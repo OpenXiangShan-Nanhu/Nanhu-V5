@@ -325,6 +325,7 @@ class ExeUnitImp(
   io.out.bits.replay.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.replay.getOrElse(0.U.asTypeOf(io.out.bits.replay.get)))))
   io.out.bits.predecodeInfo.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.preDecode.getOrElse(0.U.asTypeOf(io.out.bits.predecodeInfo.get)))))
   io.out.bits.shareVpuCtrl.foreach(x => x := fuOutBitsVec.head.ctrl.vpu.getOrElse(0.U.asTypeOf(io.out.bits.shareVpuCtrl.get)))
+  io.out.bits.mguEew.foreach(x => x := funcUnits.head.io.mguEew.getOrElse(0.U.asTypeOf(io.out.bits.mguEew.get)))
 
   io.csrio.foreach(exuio => funcUnits.foreach(fu => fu.io.csrio.foreach{
     fuio =>

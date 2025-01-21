@@ -425,8 +425,12 @@ case class ExeUnitParams(
     }.toMap
   }
 
+  def getFuName = {
+    "exu" ++ fuConfigs.flatMap(_.name.capitalize).distinct.mkString
+  }
+
   def genExuModule(implicit p: Parameters): ExeUnit = {
-    new ExeUnit(this)
+    new ExeUnit(this).suggestName(this.getFuName)
   }
 
   def genExuInputBundle(implicit p: Parameters): ExuInput = {

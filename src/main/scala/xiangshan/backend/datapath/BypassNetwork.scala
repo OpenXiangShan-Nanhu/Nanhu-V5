@@ -11,6 +11,7 @@ import xiangshan.backend.issue.{ImmExtractor, IntScheduler, MemScheduler, VfSche
 import xiangshan.backend.datapath.DataConfig.RegDataMaxWidth
 import xiangshan.backend.decode.ImmUnion
 import xiangshan.backend.regcache._
+import xiangshan.backend.fu.FuType
 
 class BypassNetworkIO()(implicit p: Parameters, params: BackendParams) extends XSBundle {
   // params
@@ -146,7 +147,7 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
   toExus.zipWithIndex.foreach { case (exuInput, exuIdx) => {
       val needReadHi = ((exuInput.bits.vecWen.getOrElse(false.B) && exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
                         (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) && !exuInput.bits.v0WenL.getOrElse(false.B)))
-      val isWiden = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden
+      val isWiden = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden && exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U
       val uopIdx0 = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).vuopIdx(0)
       exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
         val imm = ImmExtractor(

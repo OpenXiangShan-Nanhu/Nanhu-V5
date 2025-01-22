@@ -74,9 +74,9 @@ class RedirectGenerator(implicit p: Parameters) extends XSModule
 
   val s1_isReplay = s1_redirect_onehot.last
 
-  io.memPredPcRead.valid := s1_redirect_valid_reg
-  io.memPredPcRead.ptr := s1_redirect_bits_reg.ftqIdx
-  io.memPredPcRead.offset := s1_redirect_bits_reg.ftqOffset
+  io.memPredPcRead.valid := s0_redirect_valid_reg
+  io.memPredPcRead.ptr := s0_redirect_bits_reg.stFtqIdx
+  io.memPredPcRead.offset := s0_redirect_bits_reg.stFtqOffset
 
   // get pc from ftq
   // valid only if redirect is caused by load violation

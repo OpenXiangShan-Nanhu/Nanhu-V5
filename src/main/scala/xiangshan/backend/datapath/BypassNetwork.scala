@@ -145,8 +145,7 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
 
   toExus.zipWithIndex.foreach { case (exuInput, exuIdx) => {
       val needReadHi = ((exuInput.bits.vecWen.getOrElse(false.B) && exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
-                        (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) && !exuInput.bits.v0WenL.getOrElse(false.B))) &&
-                        ~exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isNarrow
+                        (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) && !exuInput.bits.v0WenL.getOrElse(false.B)))
       exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
         val imm = ImmExtractor(
           immInfo(exuIdx).imm,

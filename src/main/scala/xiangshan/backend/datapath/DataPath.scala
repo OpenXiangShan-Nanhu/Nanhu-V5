@@ -176,7 +176,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val v0RFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
   private val vlRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
 
-  private val vfRFReadNeedSplit: Seq[Bool] = fromIQ.zip(iqBlkParams).map(x => x._1.last.valid && x._1.last.bits.common.vfWenH.getOrElse(false.B) && x._2.sharedVf.B)
+  private val vfRFReadNeedSplit: Seq[Bool] = fromIQ.zip(iqBlkParams).map(x => x._1.last.valid && (x._1.last.bits.common.vfWenH.getOrElse(false.B) || x._1.last.bits.common.vfWenH.getOrElse(false.B)) && x._2.sharedVf.B)
 
   private val allDataSources: Seq[Seq[Vec[DataSource]]] = fromIQ.map(x => x.map(xx => xx.bits.common.dataSources).toSeq)
   private val allNumRegSrcs: Seq[Seq[Int]] = fromIQ.map(x => x.map(xx => xx.bits.exuParams.numRegSrc).toSeq)

@@ -58,20 +58,20 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
       val resDataLo_31_0  = Wire(UInt(32.W))
       val resDataLo_63_32 = Wire(UInt(32.W))
       when(~io.ins.head.bits.shareVpuCtrl.get.vuopIdx(0)) {
-        resDataHi_31_0  := Mux(sharedNarrow, lo(63, 32), hi(31, 0))
-        resDataHi_63_32 := hi(63, 32)
+        resDataHi_31_0  := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(95, 64), hi(31, 0))
+        resDataHi_63_32 := Mux(sharedNarrow, io.ins(1).bits.oldVd.getOrElse(0.U)(127, 96), hi(63, 32))
         resDataLo_31_0  := lo(31, 0)
         resDataLo_63_32 := Mux(sharedNarrow, hi(31, 0), lo(63, 32))
       }.otherwise {
-        resDataHi_31_0  := Mux(sharedNarrow, lo(63, 32), hi(31, 0))
-        resDataHi_63_32 := Mux(sharedNarrow, hi(63, 32), hi(63, 32))
-        resDataLo_31_0  := Mux(sharedNarrow, lo(31, 0), lo(31, 0))
-        resDataLo_63_32 := Mux(sharedNarrow, hi(31, 0), lo(63, 32))
+        resDataHi_31_0  := Mux(sharedNarrow, lo(31, 0), hi(31, 0))
+        resDataHi_63_32 := Mux(sharedNarrow, hi(31, 0), hi(63, 32))
+        resDataLo_31_0  := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(31, 0), lo(31, 0))
+        resDataLo_63_32 := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(63, 32), lo(63, 32))
       }
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
       outData := useMgu(vdData, io.ins.head.bits.shareVpuCtrl.get, 0)
-      io.outs.head.bits.data(i) := outData
-      io.outs.last.bits.data(i) := outData(127, 64)
+      io.outs(0).bits.data(i) := outData
+      io.outs(1).bits.data(i) := outData(127, 64)
     }
   }
 }

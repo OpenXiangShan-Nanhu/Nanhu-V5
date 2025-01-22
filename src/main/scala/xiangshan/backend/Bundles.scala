@@ -16,6 +16,7 @@ import xiangshan.backend.fu.FuType
 import xiangshan.backend.fu.fpu.Bundles.Frm
 import xiangshan.backend.fu.vector.Bundles._
 import xiangshan.backend.issue.{IssueBlockParams, IssueQueueDeqRespBundle, SchedulerType}
+import xiangshan.backend.issue.{IntScheduler, MemScheduler, VfScheduler}
 import xiangshan.backend.issue.EntryBundles._
 import xiangshan.backend.regfile.{RfReadPortWithConfig, RfWritePortWithConfig}
 import xiangshan.backend.rob.RobPtr
@@ -796,7 +797,7 @@ object Bundles {
   )(implicit
     val p: Parameters
   ) extends Bundle with BundleSource with HasXSParameter {
-    val data          = Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
+    val data          = if(params.schdType == VfScheduler()) Vec(params.wbPathNum, UInt(128.W)) else Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
     val pdest         = UInt(params.wbPregIdxWidth.W)
     val robIdx        = new RobPtr
     val intWen        = if (params.needIntWen)    Some(Bool())                  else None
@@ -968,7 +969,7 @@ object Bundles {
     val params: ExeUnitParams,
   )(implicit p: Parameters) extends XSBundle {
     val intWen = Bool()
-    val data   = UInt(params.destDataBitsMax.W)
+    val data   = if(params.schdType == VfScheduler()) UInt(VLEN.W) else UInt(params.destDataBitsMax.W)
     val pdest  = UInt(params.wbPregIdxWidth.W)
   }
 

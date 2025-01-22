@@ -153,15 +153,8 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
   resultDataUInt := vfcvt.io.result
 
   private val narrow = RegEnable(RegEnable(isNarrowCvt, fire), fireReg)
-  private val narrowNeedCat = outVecCtrl.vuopIdx(0).asBool && narrow
   private val outNarrowVd = Wire(UInt(64.W))
-  when(writeHigh) {
-    outNarrowVd := Mux(narrowNeedCat, Cat(resultDataUInt(31, 0), outOldVd(63, 32)),
-                                      Cat(outOldVd(127, 96), resultDataUInt(31, 0)))
-  }.otherwise {
-    outNarrowVd := Mux(narrowNeedCat, Cat(resultDataUInt(31, 0), outOldVd(31, 0)),
-                                      Cat(outOldVd(95, 64), resultDataUInt(31, 0)))
-  }
+  outNarrowVd := 0.U(32.W) ## resultDataUInt(31, 0)
 
   mguOpt match {
     case Some(mgu) =>{

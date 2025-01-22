@@ -15,12 +15,12 @@ import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
 import xiangshan.backend.fu.vector.Mgu
 import xiangshan.backend.Bundles.VPUCtrlSignals
 
-class SharedVfWbMgu(params: ExeUnitParams)(implicit p: Parameters) extends XSModule {
+class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle {
     val ins = Vec(2, Flipped(DecoupledIO(new ExuOutput(params))))
     val outs = Vec(2, DecoupledIO(new ExuOutput(params)))
   })
-
+  override val desiredName = name
   val sharedNarrow = io.ins.head.bits.shareVpuCtrl.get.isNarrow
   val resData_hi = io.ins.last.bits.data
   val resData_lo = io.ins.head.bits.data
@@ -70,7 +70,7 @@ class SharedVfWbMgu(params: ExeUnitParams)(implicit p: Parameters) extends XSMod
       }
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
       outData := useMgu(vdData, io.ins.head.bits.shareVpuCtrl.get, 0)
-      io.outs.head.bits.data(i) := outData(63, 0)
+      io.outs.head.bits.data(i) := outData
       io.outs.last.bits.data(i) := outData(127, 64)
     }
   }

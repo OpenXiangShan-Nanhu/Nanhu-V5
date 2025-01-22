@@ -6,7 +6,7 @@ import chisel3.util._
 import xs.utils.{GatedValidRegNext, SignExt, ZeroExt}
 import xiangshan.{XSBundle, XSModule}
 import xiangshan.backend.BackendParams
-import xiangshan.backend.Bundles.{ExuBypassBundle, ExuInput, ExuOH, ExuOutput, ExuVec, ImmInfo}
+import xiangshan.backend.Bundles.{ExuBypassBundle, ExuInput, ExuOH, ExuOutput, ExuVec, ImmInfo, VPUCtrlSignals}
 import xiangshan.backend.issue.{ImmExtractor, IntScheduler, MemScheduler, VfScheduler}
 import xiangshan.backend.datapath.DataConfig.RegDataMaxWidth
 import xiangshan.backend.decode.ImmUnion
@@ -143,43 +143,50 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
     sink <> source
   }
 
-  toExus.zipWithIndex.foreach { case (exuInput, exuIdx) =>
-    exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
-      val imm = ImmExtractor(
-        immInfo(exuIdx).imm,
-        immInfo(exuIdx).immType,
-        exuInput.bits.params.destDataBitsMax,
-        exuInput.bits.params.immType.map(_.litValue)
-      )
-      val immLoadSrc0 = SignExt(ImmUnion.U.toImm32(immInfo(exuIdx).imm(immInfo(exuIdx).imm.getWidth - 1, ImmUnion.I.len)), XLEN)
-      val exuParm = exuInput.bits.params
-      val isIntScheduler = exuParm.isIntExeUnit
-      val isReadVfRf= exuParm.readVfRf
-      val isReadV0Rf= exuParm.readV0Rf
-      val dataSource = exuInput.bits.dataSources(srcIdx)
-      val isWakeUpSink = params.allIssueParams.filter(_.exuBlockParams.contains(exuParm)).head.exuBlockParams.map(_.isIQWakeUpSink).reduce(_ || _)
-      val readForward = if (isWakeUpSink) dataSource.readForward else false.B
-      val readBypass = if (isWakeUpSink) dataSource.readBypass else false.B
-      val readZero = if (isIntScheduler) dataSource.readZero else false.B
-      val readV0 = if (srcIdx < 3 && isReadVfRf) dataSource.readV0 else false.B
-      val readRegOH = exuInput.bits.dataSources(srcIdx).readRegOH
-      val readRegCache = if (exuParm.needReadRegCache) exuInput.bits.dataSources(srcIdx).readRegCache else false.B
-      val readImm = if (exuParm.immType.nonEmpty || exuParm.hasLoadExu) exuInput.bits.dataSources(srcIdx).readImm else false.B
-      val bypass2ExuIdx = fromDPsHasBypass2Sink.indexOf(exuIdx)
-      println(s"${exuParm.name}: bypass2ExuIdx is ${bypass2ExuIdx}")
-      val readBypass2 = if (bypass2ExuIdx >= 0) dataSource.readBypass2 else false.B
-      src := Mux1H(
-        Seq(
-          readForward    -> Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), forwardDataVec),
-          readBypass     -> Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassDataVec),
-          readBypass2    -> (if (bypass2ExuIdx >= 0) Mux1H(bypass2ValidVec3(bypass2ExuIdx)(srcIdx), bypass2DataVec) else 0.U),
-          readZero       -> 0.U,
-          readV0         -> (if (srcIdx < 3 && isReadVfRf && isReadV0Rf) exuInput.bits.src(3) else 0.U),
-          readRegOH      -> fromDPs(exuIdx).bits.src(srcIdx),
-          readRegCache   -> fromDPsRCData(exuIdx)(srcIdx),
-          readImm        -> (if (exuParm.hasLoadExu && srcIdx == 0) immLoadSrc0 else imm)
+  toExus.zipWithIndex.foreach { case (exuInput, exuIdx) => {
+      val needReadHi = ((exuInput.bits.vecWen.getOrElse(false.B) && exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
+                        (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) && !exuInput.bits.v0WenL.getOrElse(false.B))) &&
+                        ~exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isNarrow
+      exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
+        val imm = ImmExtractor(
+          immInfo(exuIdx).imm,
+          immInfo(exuIdx).immType,
+          exuInput.bits.params.destDataBitsMax,
+          exuInput.bits.params.immType.map(_.litValue)
         )
-      )
+        val immLoadSrc0 = SignExt(ImmUnion.U.toImm32(immInfo(exuIdx).imm(immInfo(exuIdx).imm.getWidth - 1, ImmUnion.I.len)), XLEN)
+        val exuParm = exuInput.bits.params
+        val isIntScheduler = exuParm.isIntExeUnit
+        val isReadVfRf= exuParm.readVfRf
+        val isReadV0Rf= exuParm.readV0Rf
+        val dataSource = exuInput.bits.dataSources(srcIdx)
+        val isWakeUpSink = params.allIssueParams.filter(_.exuBlockParams.contains(exuParm)).head.exuBlockParams.map(_.isIQWakeUpSink).reduce(_ || _)
+        val readForward = if (isWakeUpSink) dataSource.readForward else false.B
+        val readBypass = if (isWakeUpSink) dataSource.readBypass else false.B
+        val readZero = if (isIntScheduler) dataSource.readZero else false.B
+        val readV0 = if (srcIdx < 3 && isReadVfRf) dataSource.readV0 else false.B
+        val readRegOH = exuInput.bits.dataSources(srcIdx).readRegOH
+        val readRegCache = if (exuParm.needReadRegCache) exuInput.bits.dataSources(srcIdx).readRegCache else false.B
+        val readImm = if (exuParm.immType.nonEmpty || exuParm.hasLoadExu) exuInput.bits.dataSources(srcIdx).readImm else false.B
+        val bypass2ExuIdx = fromDPsHasBypass2Sink.indexOf(exuIdx)
+        println(s"${exuParm.name}: bypass2ExuIdx is ${bypass2ExuIdx}")
+        val readBypass2 = if (bypass2ExuIdx >= 0) dataSource.readBypass2 else false.B
+        val forwardData = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), forwardDataVec)
+        val bypassData = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassDataVec)
+        val bypass2Data = if (bypass2ExuIdx >= 0) Mux1H(bypass2ValidVec3(bypass2ExuIdx)(srcIdx), bypass2DataVec) else 0.U
+        src := Mux1H(
+          Seq(
+            readForward    -> Mux(needReadHi, forwardData(127, 64), forwardData(63, 0)),
+            readBypass     -> Mux(needReadHi, bypassData(127, 64), bypassData(63, 0)),
+            readBypass2    -> (if (bypass2ExuIdx >= 0) Mux(needReadHi, bypass2Data(127, 64), bypass2Data(63, 0)) else 0.U),
+            readZero       -> 0.U,
+            readV0         -> (if (srcIdx < 3 && isReadVfRf && isReadV0Rf) exuInput.bits.src(3) else 0.U),
+            readRegOH      -> fromDPs(exuIdx).bits.src(srcIdx),
+            readRegCache   -> fromDPsRCData(exuIdx)(srcIdx),
+            readImm        -> (if (exuParm.hasLoadExu && srcIdx == 0) immLoadSrc0 else imm)
+          )
+        )
+      }
     }
   }
 

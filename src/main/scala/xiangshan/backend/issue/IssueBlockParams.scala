@@ -443,4 +443,8 @@ case class IssueBlockParams(
   def getEntryName = {
     "Entries" ++ getFuCfgs.map(_.name).distinct.map(_.capitalize).reduce(_ ++ _)
   }
+
+  def getExuName = {
+    getFuCfgs.map(_.name).distinct.map(_.capitalize).reduce(_ ++ _)
+  }
 }

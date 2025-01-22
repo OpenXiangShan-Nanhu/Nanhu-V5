@@ -720,6 +720,8 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
       toExu(i)(j).valid := s1_toExuValid(i)(j)
       s1_toExuReady(i)(j) := toExu(i)(j).ready
       sinkData := s1_toExuData(i)(j)
+      val isWiden = sinkData.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden
+      val uopIdx0 = sinkData.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).vuopIdx(0)
       // s1Reg --[Ctrl]--> exu(s1) ---------- end
 
       // s1Reg --[Data]--> exu(s1) ---------- begin
@@ -750,10 +752,9 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
                 val src = Wire(UInt(128.W))
                 if(iqBlkParams(i).sharedVf) {
                   if(j == 0) {
-                    src := Cat(0.U(64.W), s1_vfPregRData(i)(j)(k)(63, 0))
+                    src := s1_vfPregRData(i)(j)(k)
                   } else {
-                    val s1_vfRFReadNeedSplit = RegNext(vfRFReadNeedSplit(i))
-                    src := Cat(0.U(64.W), Mux(s1_vfRFReadNeedSplit, s1_vfPregRData(i)(j-1)(k)(127, 64), s1_vfPregRData(i)(j)(k)(63, 0)))
+                    src := s1_vfPregRData(i)(j-1)(k)
                   }
                 } else {
                   src := s1_vfPregRData(i)(j)(k)

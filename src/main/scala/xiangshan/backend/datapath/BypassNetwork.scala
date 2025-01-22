@@ -146,6 +146,8 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
   toExus.zipWithIndex.foreach { case (exuInput, exuIdx) => {
       val needReadHi = ((exuInput.bits.vecWen.getOrElse(false.B) && exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
                         (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) && !exuInput.bits.v0WenL.getOrElse(false.B)))
+      val isWiden = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden
+      val uopIdx0 = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).vuopIdx(0)
       exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
         val imm = ImmExtractor(
           immInfo(exuIdx).imm,
@@ -173,11 +175,11 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
         val forwardData = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), forwardDataVec)
         val bypassData = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassDataVec)
         val bypass2Data = if (bypass2ExuIdx >= 0) Mux1H(bypass2ValidVec3(bypass2ExuIdx)(srcIdx), bypass2DataVec) else 0.U
-        src := Mux1H(
+        val srcData = Mux1H(
           Seq(
-            readForward    -> Mux(needReadHi, forwardData(127, 64), forwardData(63, 0)),
-            readBypass     -> Mux(needReadHi, bypassData(127, 64), bypassData(63, 0)),
-            readBypass2    -> (if (bypass2ExuIdx >= 0) Mux(needReadHi, bypass2Data(127, 64), bypass2Data(63, 0)) else 0.U),
+            readForward    -> forwardData,
+            readBypass     -> bypassData,
+            readBypass2    -> (if (bypass2ExuIdx >= 0) bypass2Data else 0.U),
             readZero       -> 0.U,
             readV0         -> (if (srcIdx < 3 && isReadVfRf && isReadV0Rf) exuInput.bits.src(3) else 0.U),
             readRegOH      -> fromDPs(exuIdx).bits.src(srcIdx),
@@ -185,6 +187,19 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
             readImm        -> (if (exuParm.hasLoadExu && srcIdx == 0) immLoadSrc0 else imm)
           )
         )
+        if(srcIdx == 0 || srcIdx == 1) {
+          when(isWiden) {
+            val widenDataHi = srcData(127, 96) ## srcData(63, 32)
+            val widenDataLo = srcData(95, 64) ## srcData(31, 0)
+            src := Mux(needReadHi, widenDataHi, widenDataLo)
+          }.otherwise {
+            src := Mux(needReadHi, srcData(127, 64), srcData)
+          }
+        } else if(srcIdx == 2) {
+          src := Mux(needReadHi, srcData(127, 64), srcData)
+        } else {
+          src := srcData
+        }
       }
     }
   }

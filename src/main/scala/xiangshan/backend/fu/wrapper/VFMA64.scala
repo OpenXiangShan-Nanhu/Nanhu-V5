@@ -122,30 +122,35 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 
   val resultDataUInt = resultData.asUInt
   mguOpt match {
-	case Some(mgu) => {
-		mgu.io.in.vd := resultDataUInt
-		mgu.io.in.oldVd := outOldVd
-		mgu.io.in.mask := maskToMgu
-		mgu.io.in.info.ta := outVecCtrl.vta
-		mgu.io.in.info.ma := outVecCtrl.vma
-		mgu.io.in.info.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 1.U, outVl)
-		mgu.io.in.info.vlmul := outVecCtrl.vlmul
-		mgu.io.in.info.valid := io.out.valid
-		mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
-		mgu.io.in.info.eew := outEew
-		mgu.io.in.info.vsew := outVecCtrl.vsew
-		mgu.io.in.info.vdIdx := outVecCtrl.vuopIdx
-		mgu.io.in.info.narrow := outVecCtrl.isNarrow
-		mgu.io.in.info.dstMask := outVecCtrl.isDstMask
-		mgu.io.in.isIndexedVls := false.B
-		mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B)) || vecCtrl.fpu.isFpToVecInst
-		io.out.bits.res.data := mgu.io.out.vd
-	}
-	case None =>{ 
-		io.mguEew.foreach(x => x:= outEew)
-		io.out.bits.res.data := resultDataUInt
-	}
+		case Some(mgu) => {
+			mgu.io.in.vd := resultDataUInt
+			mgu.io.in.oldVd := outOldVd
+			mgu.io.in.mask := maskToMgu
+			mgu.io.in.info.ta := outVecCtrl.vta
+			mgu.io.in.info.ma := outVecCtrl.vma
+			mgu.io.in.info.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 1.U, outVl)
+			mgu.io.in.info.vlmul := outVecCtrl.vlmul
+			mgu.io.in.info.valid := io.out.valid
+			mgu.io.in.info.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart)
+			mgu.io.in.info.eew := outEew
+			mgu.io.in.info.vsew := outVecCtrl.vsew
+			mgu.io.in.info.vdIdx := outVecCtrl.vuopIdx
+			mgu.io.in.info.narrow := outVecCtrl.isNarrow
+			mgu.io.in.info.dstMask := outVecCtrl.isDstMask
+			mgu.io.in.isIndexedVls := false.B
+			mgu.io.in.isLo := (outCtrl.vfWenL.getOrElse(false.B) || outCtrl.v0WenL.getOrElse(false.B)) || vecCtrl.fpu.isFpToVecInst
+			io.out.bits.res.data := mgu.io.out.vd
+		}
+		case None => { 
+			io.out.bits.res.data := resultDataUInt
+			io.mguEew.foreach(x => x:= outEew)
+			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+			io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
+			io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
+			io.out.bits.ctrl.vpu.foreach(_.vl := outVl)
+		}
   }
   io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B //mgu.io.out.illegal
+
 
 }

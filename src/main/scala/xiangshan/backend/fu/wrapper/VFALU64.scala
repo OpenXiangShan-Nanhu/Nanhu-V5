@@ -68,7 +68,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	vfalu.io.fp_a             := vs2(63, 0)
 	vfalu.io.fp_b             := vs1(63, 0)
 	vfalu.io.widen_a          := vs2(63, 0)
-	vfalu.io.widen_b          := vs2(63, 0)
+	vfalu.io.widen_b          := vs1(63, 0)
 	vfalu.io.frs1             := 0.U     // already vf -> vv
 	vfalu.io.is_frs1          := false.B // already vf -> vv
 	vfalu.io.mask             := "b1111".U
@@ -360,9 +360,12 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
 		}
 		case None =>{
-			io.mguEew.foreach(x => x:= RegEnable(outEew_s0,io.in.fire))
-			io.out.bits.res.data := outOldVd
-			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+			io.out.bits.res.data := Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt), resultDataUInt)
+			io.mguEew.foreach(x => x:= outEew)
+      io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+      io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
+      io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
+      io.out.bits.ctrl.vpu.foreach(_.vl := outVl)
 		}
 	}
 }

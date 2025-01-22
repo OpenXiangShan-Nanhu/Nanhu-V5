@@ -716,7 +716,7 @@ object FuConfig {
   val Vfalu64Cfg = FuConfig (
     name = "vfalu64",
     fuType = FuType.vfalu,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFAlu64(cfg)(p).suggestName("Vfalu")),
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFAlu64(cfg)(p).suggestName("Vfalu64")),
     srcData = Seq(
       Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
     ),
@@ -738,7 +738,7 @@ object FuConfig {
   val Vfma64Cfg = FuConfig (
     name = "vfma64",
     fuType = FuType.vfma,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFMA64(cfg)(p).suggestName("Vfma")),
+    fuGen = (p: Parameters, cfg: FuConfig) => Module(new VFMA64(cfg)(p).suggestName("Vfma64")),
     srcData = Seq(
       Seq(VecData(), VecData(), VecData(), V0Data(), VlData()), // vs1, vs2, vd_old, v0, vtype&vl
     ),

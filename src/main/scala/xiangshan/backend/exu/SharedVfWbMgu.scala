@@ -31,7 +31,8 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     val mask = Mux(ctrl.fpu.isFpToVecInst, allMaskTrue, ctrl.vmask)
     val vl = Mux(ctrl.fpu.isFpToVecInst, 1.U, ctrl.vl)
     val vstart = Mux(ctrl.fpu.isFpToVecInst, 0.U, ctrl.vstart)
-    
+    val notUseVl = ctrl.fpu.isFpToVecInst
+    val notModifyVd = !notUseVl && (vl === 0.U)
     mgu.io.in.vd := vd
     mgu.io.in.oldVd := Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
     mgu.io.in.mask := mask
@@ -39,7 +40,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     mgu.io.in.info.ma := ctrl.vma
     mgu.io.in.info.vl := vl
     mgu.io.in.info.vlmul := ctrl.vlmul
-    mgu.io.in.info.valid := io.ins(idx).valid
+    mgu.io.in.info.valid := Mux(notModifyVd, false.B, io.ins(idx).valid)
     mgu.io.in.info.vstart := vstart
     mgu.io.in.info.eew := ctrl.veew
     mgu.io.in.info.vsew := ctrl.vsew

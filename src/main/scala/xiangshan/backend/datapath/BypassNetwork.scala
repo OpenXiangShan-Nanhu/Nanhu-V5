@@ -145,13 +145,17 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
   }
 
   toExus.zipWithIndex.foreach { case (exuInput, exuIdx) => {
-      val isSharedVf = FuType.sharedVf.contains(exuInput.bits.fuType).B
-      val needReadHi = isSharedVf && ((exuInput.bits.vecWen.getOrElse(false.B) && exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
-                        (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) && !exuInput.bits.v0WenL.getOrElse(false.B)))
+      val isSharedVf = FuType.FuTypeOrR(exuInput.bits.fuType, FuType.sharedVf)
+      val needReadHi = isSharedVf && ((exuInput.bits.vecWen.getOrElse(false.B) &&
+                        exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
+                        (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) &&
+                        !exuInput.bits.v0WenL.getOrElse(false.B)))
       val isWidenF_VV = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
-                        exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U && !exuInput.bits.fuOpType(6)
+                        exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U &&
+                        !exuInput.bits.fuOpType(6)
       val isWidenF_WV = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
-                        exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U && exuInput.bits.fuOpType(6)
+                        exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U &&
+                        exuInput.bits.fuOpType(6)
       
       val uopIdx0 = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).vuopIdx(0)
       exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>

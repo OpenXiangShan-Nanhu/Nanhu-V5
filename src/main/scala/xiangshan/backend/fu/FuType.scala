@@ -135,6 +135,7 @@ object FuType extends Enumeration {
   val fpOP = fpArithAll ++ Seq(i2f, i2v)
   val scalaNeedFrm = Seq(i2f, fmac, fDivSqrt)
   val vectorNeedFrm = Seq(vfalu, vfma, vfdiv, vfcvt)
+  val sharedVf = Seq(vfalu, vfma, vfcvt)
 
   def num = this.values.size
 

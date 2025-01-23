@@ -50,7 +50,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	val existMaskReg = RegEnable(existMask, io.in.fire)
 
 	val isScalarMove = (fuOpType === VfaluType.vfmv_f_s) || (fuOpType === VfaluType.vfmv_s_f)
-	val srcMaskRShift = Wire(UInt(4.W))
+	val srcMaskRShift = Wire(UInt(8.W))
 	val maskRshiftWidth = Wire(UInt(6.W))
 	maskRshiftWidth := Mux1H(
 		Seq(
@@ -59,11 +59,31 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			(vsew === VSew.e64) -> (vuopIdx(2,0) << 1),
 		)
 	)
-	srcMaskRShift := (srcMask >> maskRshiftWidth)(3, 0)
+	srcMaskRShift := (srcMask >> maskRshiftWidth)(7, 0)
 	val fp_aIsFpCanonicalNAN = Wire(Bool())
 	val fp_bIsFpCanonicalNAN = Wire(Bool())
+	
 	val inIsFold = Wire(UInt(3.W))
 	inIsFold := Cat(vecCtrl.fpu.isFoldTo1_8, vecCtrl.fpu.isFoldTo1_4, vecCtrl.fpu.isFoldTo1_2)
+
+	val isLo = inCtrl.vfWenL.getOrElse(false.B) || inCtrl.v0WenL.getOrElse(false.B) || vecCtrl.fpu.isFpToVecInst
+	def genMaskForMerge(inmask: UInt, sew: UInt, isLo: Bool): UInt = {
+		val f64Mask = Mux(isLo, inmask(0), inmask(1))
+		val f32Mask = Mux(isLo, inmask(1, 0), inmask(3, 2))
+		val f16Mask = Mux(isLo, inmask(3, 0), inmask(7, 4))
+		val f64MaskI = Cat(0.U(3.W), f64Mask)
+		val f32MaskI = Cat(0.U(2.W), f32Mask)
+		val f16MaskI = f16Mask
+		val outMask = Mux1H(
+			Seq(
+				(sew === 3.U) -> f64MaskI,
+				(sew === 2.U) -> f32MaskI,
+				(sew === 1.U) -> f16MaskI,
+			)
+		)
+		outMask
+	}
+
 	vfalu.io.fire             := io.in.valid
 	vfalu.io.fp_a             := vs2(63, 0)
 	vfalu.io.fp_b             := vs1(63, 0)
@@ -71,7 +91,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	vfalu.io.widen_b          := vs1(63, 0)
 	vfalu.io.frs1             := 0.U     // already vf -> vv
 	vfalu.io.is_frs1          := false.B // already vf -> vv
-	vfalu.io.mask             := "b1111".U
+	vfalu.io.mask             := Mux(isScalarMove, !vuopIdx.orR, genMaskForMerge(inmask = srcMaskRShift, sew = vsew, isLo = isLo))
 	vfalu.io.maskForReduction := "b11111111".U
 	vfalu.io.uop_idx          := vuopIdx(0)
 	vfalu.io.is_vec           := !vecCtrl.fpu.isFpToVecInst

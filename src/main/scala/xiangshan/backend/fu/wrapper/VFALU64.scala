@@ -356,11 +356,14 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
 			resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
 			// when dest is mask, the result need to be masked by mgtu
-			io.out.bits.res.data := Mux(notModifyVd, outOldVd, Mux(outVecCtrl.isDstMask, mgtuOpt.get.io.out.vd, mgu.io.out.vd) & resultFpMask)
+			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
+				Mux(outVecCtrl.isDstMask, mgtuOpt.get.io.out.vd, mgu.io.out.vd) & resultFpMask)
 			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
 		}
 		case None =>{
-			io.out.bits.res.data := Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt), resultDataUInt)
+			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
+				Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt),
+					resultDataUInt))
 			io.mguEew.foreach(x => x:= outEew)
       io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
       io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)

@@ -64,7 +64,7 @@ class ExuBlockImp(
     case ((exes, out), param) => {
       if(param.sharedVf) {
         val wbMguName = "WbMgu_" + param.getExuName
-        val wbMgu = Module(new SharedVfWbMgu(param.exuBlockParams.head, wbMguName))
+        val wbMgu = Module(new SharedVfWbMgu(param.exuBlockParams.head, wbMguName).suggestName(wbMguName))
         wbMgu.io.ins.head <> exes.head.io.out
         wbMgu.io.ins.last <> exes.last.io.out
         out.head <> wbMgu.io.outs.head

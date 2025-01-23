@@ -49,15 +49,23 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     mgu.io.in.isIndexedVls := false.B
     mgu.io.out.vd
   }
+
+  def useTailAgnostic(vl: UInt, vd:UInt, destMask:Bool): UInt = {
+    val mask = ((1.U << vl) - 1.U)
+    Mux(destMask, (vd & mask) | (~mask), vd)
+  }
+  
   resData_hi.zip(resData_lo).zipWithIndex.foreach {
     case ((hi, lo), i) => {
-      val vdData = Wire(UInt(128.W))
-      val outData = Wire(UInt(128.W))
+      val vdData = Wire(UInt(VLEN.W))
+      val maskedData = Wire(UInt(VLEN.W))
+      val outData    = Wire(UInt(VLEN.W))
       val resDataHi_31_0  = Wire(UInt(32.W))
       val resDataHi_63_32 = Wire(UInt(32.W))
       val resDataLo_31_0  = Wire(UInt(32.W))
       val resDataLo_63_32 = Wire(UInt(32.W))
-      when(~io.ins.head.bits.shareVpuCtrl.get.vuopIdx(0)) {
+      val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
+      when(~vpuCtrl.vuopIdx(0)) {
         resDataHi_31_0  := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(95, 64), hi(31, 0))
         resDataHi_63_32 := Mux(sharedNarrow, io.ins(1).bits.oldVd.getOrElse(0.U)(127, 96), hi(63, 32))
         resDataLo_31_0  := lo(31, 0)
@@ -69,7 +77,8 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
         resDataLo_63_32 := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(63, 32), lo(63, 32))
       }
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
-      outData := useMgu(vdData, io.ins.head.bits.shareVpuCtrl.get, 0)
+      maskedData := useMgu(vdData, vpuCtrl, 0)
+      outData := useTailAgnostic(vpuCtrl.vl, maskedData, vpuCtrl.isDstMask)
       io.outs(0).bits.data(i) := outData
       io.outs(1).bits.data(i) := outData(127, 64)
     }

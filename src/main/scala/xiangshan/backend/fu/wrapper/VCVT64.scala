@@ -230,7 +230,7 @@ class VectorCvt64Top(xlen: Int) extends Module{
   val fireReg = GatedValidRegNext(fire)
 
   val in0 = Mux(isWiden && !isFpToVecInst,
-                  Mux(isLo, src.tail(32), src.head(32)),
+                  Mux(uopIdx, src.head(32), src.tail(32)),
                   src
                 )
 

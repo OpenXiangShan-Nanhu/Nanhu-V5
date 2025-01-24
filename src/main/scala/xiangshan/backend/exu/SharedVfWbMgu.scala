@@ -14,6 +14,9 @@ import xiangshan.backend.fu.fpu.Bundles.Frm
 import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
 import xiangshan.backend.fu.vector.Mgu
 import xiangshan.backend.Bundles.VPUCtrlSignals
+import xiangshan.backend.fu.vector.Bundles.VSew
+import chisel3.util.experimental.decode.TruthTable
+import freechips.rocketchip.util.SeqToAugmentedSeq
 
 class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle {
@@ -25,6 +28,10 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
   val resData_hi = io.ins.last.bits.data
   val resData_lo = io.ins.head.bits.data
   io.outs <> io.ins
+
+  val wholeOldVd = Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
+  val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
+
   def useMgu(vd: UInt, ctrl: VPUCtrlSignals, idx: Int): UInt = {
     val mgu = Module(new Mgu(VLEN))
     val allMaskTrue = VecInit(Seq.fill(VLEN)(true.B)).asUInt
@@ -34,7 +41,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     val notUseVl = ctrl.fpu.isFpToVecInst
     val notModifyVd = !notUseVl && (vl === 0.U)
     mgu.io.in.vd := vd
-    mgu.io.in.oldVd := Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
+    mgu.io.in.oldVd := wholeOldVd
     mgu.io.in.mask := mask
     mgu.io.in.info.ta := ctrl.vta
     mgu.io.in.info.ma := ctrl.vma
@@ -55,17 +62,75 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     val mask = ((1.U << vl) - 1.U)
     Mux(destMask, (vd & mask) | (~mask), vd)
   }
-  
+
+
+  def cmpResultBitMask(result: UInt): UInt={
+    // Computes the masked result based on high and low FU operations
+    def getMaskData(result:UInt, mask:UInt, oldVd:UInt, vma:Bool, isHigh:Bool): UInt={
+      val RshiftHalfWidth = chisel3.util.experimental.decode.decoder(vpuCtrl.vsew ## isHigh.asUInt,
+        TruthTable(
+          Seq(
+            BitPat("b010") -> BitPat("b000"),// isLow
+            BitPat("b100") -> BitPat("b000"),
+            BitPat("b110") -> BitPat("b000"),
+            BitPat("b011") -> BitPat("b100"),// isHigh, 16
+            BitPat("b101") -> BitPat("b010"),// 32
+            BitPat("b111") -> BitPat("b001"),// 64
+          ),
+          BitPat.N(3)
+        )
+      )
+      val RshiftWidth = Wire(UInt(6.W))
+      RshiftWidth := Mux1H(
+        Seq(
+          (vpuCtrl.vsew === VSew.e16) -> (vpuCtrl.vuopIdx(2, 0) << 3),
+          (vpuCtrl.vsew === VSew.e32) -> (vpuCtrl.vuopIdx(2, 0) << 2),
+          (vpuCtrl.vsew === VSew.e64) -> (vpuCtrl.vuopIdx(2, 0) << 1),
+        )
+      )
+      // Apply bit shift to old value and mask, then compute the masked result
+      val cmpOldVd = (oldVd >> RshiftWidth)(3, 0) >> RshiftHalfWidth
+      val cmpMask = (oldVd >> RshiftWidth)(3, 0) >> RshiftHalfWidth
+      val cmpResult = result(3,0)
+      val cmpMaskedData = Wire(Vec(4, Bool()))
+      for (i <- 0 until 4) {
+        cmpMaskedData(i) := Mux(cmpMask(i), cmpResult(i), Mux(vma, true.B, cmpOldVd(i)))
+      }
+      cmpMaskedData.asUInt
+    }
+    // Get masked results for high and low parts
+    val result_H = getMaskData(result(127,64), vpuCtrl.vmask, wholeOldVd, vpuCtrl.vma, true.B)
+    val result_L = getMaskData(result(63,0),   vpuCtrl.vmask, wholeOldVd, vpuCtrl.vma, false.B)
+    // Generate the tail mask for 3 different SEW conditions (16, 32, 64)
+    val finalMaskedResult = VecInit(Seq.fill(4)(0.U(VLEN.W))) // sew is 16\32\64 three cases
+    for (i <- 0 until 3){
+      val eew = 1 << (i+4) // eew = 16\32\64
+      val elmtNum = (VLEN/eew)/2 // element num = 8\4\2
+      val tailMask = Cat(Seq.fill(VLEN - elmtNum)(1.U(1.W)).asUInt ,Seq.fill(elmtNum)(0.U(1.W)).asUInt)
+      val result = ZeroExt((Cat(result_H(elmtNum-1,0), result_L(elmtNum-1,0))), VLEN)
+      finalMaskedResult(i) := Mux(vpuCtrl.vta && vpuCtrl.lastUop , result|tailMask, result | (wholeOldVd & tailMask))
+    }
+    // Select final masked result based on vsew (16, 32, 64)
+    val finalSel = MuxCase(
+        0.U(VLEN.W),
+        Seq(
+          (vpuCtrl.vsew === VSew.e16) -> finalMaskedResult(0),
+          (vpuCtrl.vsew === VSew.e32) -> finalMaskedResult(1),
+          (vpuCtrl.vsew === VSew.e64) -> finalMaskedResult(2),
+        )
+      )
+    finalSel
+  }
+
+
   resData_hi.zip(resData_lo).zipWithIndex.foreach {
     case ((hi, lo), i) => {
       val vdData = Wire(UInt(VLEN.W))
       val maskedData = Wire(UInt(VLEN.W))
-      val outData    = Wire(UInt(VLEN.W))
       val resDataHi_31_0  = Wire(UInt(32.W))
       val resDataHi_63_32 = Wire(UInt(32.W))
       val resDataLo_31_0  = Wire(UInt(32.W))
       val resDataLo_63_32 = Wire(UInt(32.W))
-      val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
       when(~vpuCtrl.vuopIdx(0)) {
         resDataHi_31_0  := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(95, 64), hi(31, 0))
         resDataHi_63_32 := Mux(sharedNarrow, io.ins(1).bits.oldVd.getOrElse(0.U)(127, 96), hi(63, 32))
@@ -77,11 +142,12 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
         resDataLo_31_0  := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(31, 0), lo(31, 0))
         resDataLo_63_32 := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(63, 32), lo(63, 32))
       }
+      // Handles vd data ordering for narrow and widen cases.
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
-      maskedData := useMgu(vdData, vpuCtrl, 0)
-      outData := Mux(vpuCtrl.lastUop, useTailAgnostic(vpuCtrl.vl, maskedData, vpuCtrl.isDstMask), maskedData)
-      io.outs(0).bits.data(i) := outData
-      io.outs(1).bits.data(i) := outData(127, 64)
+      // Handles vd data mask.
+      maskedData := Mux(vpuCtrl.isVFCmp, cmpResultBitMask(vdData), useMgu(vdData, vpuCtrl, 0))
+      io.outs(0).bits.data(i) := maskedData
+      io.outs(1).bits.data(i) := maskedData(127, 64)
     }
   }
 }

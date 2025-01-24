@@ -1064,6 +1064,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     decodedInst.vpu.isWiden := isWiden
     decodedInst.vpu.isDstMask := isDstMask
     decodedInst.vpu.isOpMask := isOpMask
+    decodedInst.vpu.isVFCmp := false.B
     decodedInst.vpu.isDependOldvd := isVppu || isVecOPF || isVStore || (isDstMask && !isOpMask) || isNarrow || isVlx || isVma
     decodedInst.vpu.isWritePartVd := isWritePartVd || isVlm || isVle && emulIsFrac
     decodedInst.vpu.vstart := io.enq.vstart

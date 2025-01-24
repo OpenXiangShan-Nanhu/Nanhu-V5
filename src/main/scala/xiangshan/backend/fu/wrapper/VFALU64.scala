@@ -330,19 +330,19 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	/** fflags: */
 	val inWiden = inCtrl.fuOpType(4)
 	val inNarrow = vecCtrl.isNarrow
-  val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
+	val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
 		TruthTable(
-		Seq(                     // 8, 4, 2, 1
-			BitPat("b001") -> BitPat("b1000"), //8
-			BitPat("b010") -> BitPat("b1000"), //8
-			BitPat("b011") -> BitPat("b0100"), //4
-			BitPat("b100") -> BitPat("b0100"), //4
-			BitPat("b101") -> BitPat("b0010"), //2
-			BitPat("b110") -> BitPat("b0010"), //2
-		),
-		BitPat.N(4)
+			Seq(                     // 8, 4, 2, 1
+				BitPat("b001") -> BitPat("b1000"), //8
+				BitPat("b010") -> BitPat("b1000"), //8
+				BitPat("b011") -> BitPat("b0100"), //4
+				BitPat("b100") -> BitPat("b0100"), //4
+				BitPat("b101") -> BitPat("b0010"), //2
+				BitPat("b110") -> BitPat("b0010"), //2
+			),
+			BitPat.N(4)
 		)
-  )
+	)
 	val eNum1HEffect = Mux(inWiden || inNarrow, eNum1H << 1, eNum1H)
 	when(io.in.valid) {
 		assert(!eNum1H(0).asBool,"fp128 is forbidden now")
@@ -450,6 +450,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	// outVecCtrl.fpu.isFpToVecInst means the instruction is float instruction, not vector float instruction
 	val notUseVl = outVecCtrl.fpu.isFpToVecInst || (outCtrl.fuOpType === VfaluType.vfmv_f_s)
 	val notModifyVd = !notUseVl && (outVl === 0.U)
+	val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
+	val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
 	io.out.bits.res.fflags.get := Mux(notModifyVd, 0.U(5.W), outFFlags)
 	mguOpt match {
 		case Some(mgu) =>{
@@ -474,8 +476,6 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			mgtuOpt.get.io.in.vl := outVl
 			val resultFpMask = Wire(UInt(VLEN.W))
 			val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
-			val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
-			val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
 			resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
 			// when dest is mask, the result need to be masked by mgtu
 			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
@@ -484,15 +484,16 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		}
 		case None =>{
 			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
-				Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt),
+				Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResult.asUInt),
 					resultDataUInt))
 			io.mguEew.foreach(x => x:= outEew)
-      io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
-      io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
-      io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
-      io.out.bits.ctrl.vpu.foreach(_.vl := outVlFix)
+			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+			io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
+			io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
+			io.out.bits.ctrl.vpu.foreach(_.vl := outVlFix)
 			io.out.bits.ctrl.vpu.foreach(_.vta := Mux(outCtrl.fuOpType === VfaluType.vfmv_f_s, true.B , Mux(taIsFalseForVFREDO, false.B, outVecCtrl.vta)))
 			io.out.bits.ctrl.vpu.foreach(_.vma := Mux(outCtrl.fuOpType === VfaluType.vfmv_s_f, true.B , outVecCtrl.vma))
+			io.out.bits.ctrl.vpu.foreach(_.isVFCmp := (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_)))
 		}
 	}
 }

@@ -1037,6 +1037,7 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
     deq.bits.common.vpu.foreach(_.connectSimple(deqEntryVec(i).bits.payload.vpu))
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
+    deq.bits.common.vpu.foreach(_.isVFCmp := false.B)
   }}
   if(iqParams.sharedVf) {
     when(deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst) {
@@ -1260,6 +1261,7 @@ class IssueQueueVecMemImp(override val wrapper: IssueQueue)(implicit p: Paramete
     deq.bits.common.vpu.foreach(_.connectSimple(deqEntryVec(i).bits.payload.vpu))
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
+    deq.bits.common.vpu.foreach(_.isVFCmp := false.B)
     deq.bits.common.vfWenH.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
     deq.bits.common.vfWenL.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
     deq.bits.common.v0WenH.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)

@@ -226,6 +226,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	val resultDataUInt = Mux(isLastUopRed && !existMaskReg, vs1Reg, resultData.asUInt)
 	val cmpResultWidth = 4
 	val cmpResult = Wire(Vec(cmpResultWidth, Bool()))
+	val debugCmpResult = cmpResult.asUInt
+	dontTouch(debugCmpResult)
 	for (i <- 0 until cmpResultWidth) {
 		if(i == 0) {
 			cmpResult(i) := resultDataUInt(0)
@@ -324,8 +326,6 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		outVecCtrl.fpu.isFpToVecInst
 	val maskToMgu = Mux(needNoMask, allMaskTrue, outSrcMask)
 	val allFFlagsEn = Wire(Vec(4, Bool()))
-	val outSrcMaskRShift = Wire(UInt(8.W))
-	outSrcMaskRShift := (maskToMgu >> (outVecCtrl.vuopIdx(2,0) * vlMax))(7, 0)
 
 	/** fflags: */
 	val inWiden = inCtrl.fuOpType(4)
@@ -385,17 +385,6 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		dontTouch(allFFlagsEn)
 	}
 
-	val cmpResultOldVd = Wire(UInt(cmpResultWidth.W))
-	val cmpResultOldVdRshiftWidth = Wire(UInt(6.W))
-	cmpResultOldVdRshiftWidth := Mux1H(
-		Seq(
-			(outVecCtrl.vsew === VSew.e16) -> (outVecCtrl.vuopIdx(2, 0) << 3),
-			(outVecCtrl.vsew === VSew.e32) -> (outVecCtrl.vuopIdx(2, 0) << 2),
-			(outVecCtrl.vsew === VSew.e64) -> (outVecCtrl.vuopIdx(2, 0) << 1),
-		)
-	)
-	cmpResultOldVd := (outOldVd >> cmpResultOldVdRshiftWidth)(3, 0)
-	val cmpResultForMgu = Wire(Vec(cmpResultWidth, Bool()))
 	private val maxVdIdx = 8
 	private val elementsInOneUop = Mux1H(
 		Seq(
@@ -406,6 +395,25 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	)
 	private val vdIdx = outVecCtrl.vuopIdx(2, 0)
 	private val elementsComputed = Mux1H(Seq.tabulate(maxVdIdx)(i => (vdIdx === i.U) -> (elementsInOneUop * i.U)))
+
+	// Each uop's mask/vd needs to be R-shifted by uopIdx * vlMax bits.
+	val cmpResultForMgu = Wire(Vec(cmpResultWidth, Bool()))
+	val outSrcMaskRShift = Wire(UInt(cmpResultWidth.W))
+	val cmpResultOldVd = Wire(UInt(cmpResultWidth.W))
+	dontTouch(outSrcMaskRShift);dontTouch(cmpResultOldVd);dontTouch(cmpResultForMgu)
+	
+	val RshiftWidth = Wire(UInt(6.W))
+	RshiftWidth := Mux1H(
+		Seq(
+			(outVecCtrl.vsew === VSew.e16) -> (outVecCtrl.vuopIdx(2, 0) << 3),
+			(outVecCtrl.vsew === VSew.e32) -> (outVecCtrl.vuopIdx(2, 0) << 2),
+			(outVecCtrl.vsew === VSew.e64) -> (outVecCtrl.vuopIdx(2, 0) << 1),
+		)
+	)
+	val highFURShiftHalf = RshiftWidth >> (outCtrl.vfWenH.getOrElse(false.B).asUInt)
+	cmpResultOldVd := (outOldVd >> RshiftWidth)(3, 0)
+	outSrcMaskRShift := (maskToMgu >> RshiftWidth)(3, 0)
+
 	for (i <- 0 until cmpResultWidth) {
 		val cmpResultWithVmask = Mux(outSrcMaskRShift(i), cmpResult(i), Mux(outVecCtrl.vma, true.B, cmpResultOldVd(i)))
 		cmpResultForMgu(i) := Mux(elementsComputed +& i.U >= outVl, true.B, cmpResultWithVmask)

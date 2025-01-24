@@ -79,7 +79,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
       }
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
       maskedData := useMgu(vdData, vpuCtrl, 0)
-      outData := useTailAgnostic(vpuCtrl.vl, maskedData, vpuCtrl.isDstMask)
+      outData := Mux(vpuCtrl.lastUop, useTailAgnostic(vpuCtrl.vl, maskedData, vpuCtrl.isDstMask), maskedData)
       io.outs(0).bits.data(i) := outData
       io.outs(1).bits.data(i) := outData(127, 64)
     }

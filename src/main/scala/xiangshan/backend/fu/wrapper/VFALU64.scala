@@ -228,6 +228,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	val resultDataUInt = Mux(isLastUopRed && !existMaskReg, vs1Reg, resultData.asUInt)
 	val cmpResultWidth = 4
 	val cmpResult = Wire(Vec(cmpResultWidth, Bool()))
+	val debugCmpResult = cmpResult.asUInt
+	dontTouch(debugCmpResult)
 	for (i <- 0 until cmpResultWidth) {
 		if(i == 0) {
 			cmpResult(i) := resultDataUInt(0)
@@ -326,25 +328,23 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		outVecCtrl.fpu.isFpToVecInst
 	val maskToMgu = Mux(needNoMask, allMaskTrue, outSrcMask)
 	val allFFlagsEn = Wire(Vec(4, Bool()))
-	val outSrcMaskRShift = Wire(UInt(8.W))
-	outSrcMaskRShift := (maskToMgu >> (outVecCtrl.vuopIdx(2,0) * vlMax))(7, 0)
 
 	/** fflags: */
 	val inWiden = inCtrl.fuOpType(4)
 	val inNarrow = vecCtrl.isNarrow
-  val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
+	val eNum1H = chisel3.util.experimental.decode.decoder(vsew ## (inWiden || inNarrow),
 		TruthTable(
-		Seq(                     // 8, 4, 2, 1
-			BitPat("b001") -> BitPat("b1000"), //8
-			BitPat("b010") -> BitPat("b1000"), //8
-			BitPat("b011") -> BitPat("b0100"), //4
-			BitPat("b100") -> BitPat("b0100"), //4
-			BitPat("b101") -> BitPat("b0010"), //2
-			BitPat("b110") -> BitPat("b0010"), //2
-		),
-		BitPat.N(4)
+			Seq(                     // 8, 4, 2, 1
+				BitPat("b001") -> BitPat("b1000"), //8
+				BitPat("b010") -> BitPat("b1000"), //8
+				BitPat("b011") -> BitPat("b0100"), //4
+				BitPat("b100") -> BitPat("b0100"), //4
+				BitPat("b101") -> BitPat("b0010"), //2
+				BitPat("b110") -> BitPat("b0010"), //2
+			),
+			BitPat.N(4)
 		)
-  )
+	)
 	val eNum1HEffect = Mux(inWiden || inNarrow, eNum1H << 1, eNum1H)
 	when(io.in.valid) {
 		assert(!eNum1H(0).asBool,"fp128 is forbidden now")
@@ -428,17 +428,6 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		dontTouch(allFFlagsEn)
 	}
 
-	val cmpResultOldVd = Wire(UInt(cmpResultWidth.W))
-	val cmpResultOldVdRshiftWidth = Wire(UInt(6.W))
-	cmpResultOldVdRshiftWidth := Mux1H(
-		Seq(
-			(outVecCtrl.vsew === VSew.e16) -> (outVecCtrl.vuopIdx(2, 0) << 3),
-			(outVecCtrl.vsew === VSew.e32) -> (outVecCtrl.vuopIdx(2, 0) << 2),
-			(outVecCtrl.vsew === VSew.e64) -> (outVecCtrl.vuopIdx(2, 0) << 1),
-		)
-	)
-	cmpResultOldVd := (outOldVd >> cmpResultOldVdRshiftWidth)(3, 0)
-	val cmpResultForMgu = Wire(Vec(cmpResultWidth, Bool()))
 	private val maxVdIdx = 8
 	private val elementsInOneUop = Mux1H(
 		Seq(
@@ -449,6 +438,25 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	)
 	private val vdIdx = outVecCtrl.vuopIdx(2, 0)
 	private val elementsComputed = Mux1H(Seq.tabulate(maxVdIdx)(i => (vdIdx === i.U) -> (elementsInOneUop * i.U)))
+
+	// Each uop's mask/vd needs to be R-shifted by uopIdx * vlMax bits.
+	val cmpResultForMgu = Wire(Vec(cmpResultWidth, Bool()))
+	val outSrcMaskRShift = Wire(UInt(cmpResultWidth.W))
+	val cmpResultOldVd = Wire(UInt(cmpResultWidth.W))
+	dontTouch(outSrcMaskRShift);dontTouch(cmpResultOldVd);dontTouch(cmpResultForMgu)
+	
+	val RshiftWidth = Wire(UInt(6.W))
+	RshiftWidth := Mux1H(
+		Seq(
+			(outVecCtrl.vsew === VSew.e16) -> (outVecCtrl.vuopIdx(2, 0) << 3),
+			(outVecCtrl.vsew === VSew.e32) -> (outVecCtrl.vuopIdx(2, 0) << 2),
+			(outVecCtrl.vsew === VSew.e64) -> (outVecCtrl.vuopIdx(2, 0) << 1),
+		)
+	)
+	val highFURShiftHalf = RshiftWidth >> (outCtrl.vfWenH.getOrElse(false.B).asUInt)
+	cmpResultOldVd := (outOldVd >> RshiftWidth)(3, 0)
+	outSrcMaskRShift := (maskToMgu >> RshiftWidth)(3, 0)
+
 	for (i <- 0 until cmpResultWidth) {
 		val cmpResultWithVmask = Mux(outSrcMaskRShift(i), cmpResult(i), Mux(outVecCtrl.vma, true.B, cmpResultOldVd(i)))
 		cmpResultForMgu(i) := Mux(elementsComputed +& i.U >= outVl, true.B, cmpResultWithVmask)
@@ -508,9 +516,9 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			mgtuOpt.get.io.in.vd := Mux(outVecCtrl.isDstMask, mgu.io.out.vd, resultDataUInt)
 			mgtuOpt.get.io.in.vl := outVl
 			val resultFpMask = Wire(UInt(VLEN.W))
-			val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
 			val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
 			val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
+			val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
 			resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
 			// when dest is mask, the result need to be masked by mgtu
 			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
@@ -519,18 +527,20 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 		}
 		case None =>{
 			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
-				Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt),
+				Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResult.asUInt),
 					resultDataUInt))
 			io.mguEew.foreach(x => x:= outEew)
-      io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
-      io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
-      io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
-      io.out.bits.ctrl.vpu.foreach(_.vl := outVlFix)
+			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
+			io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
+			io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
+			io.out.bits.ctrl.vpu.foreach(_.vl := outVlFix)
 			io.out.bits.ctrl.vpu.foreach(_.vta := Mux(outCtrl.fuOpType === VfaluType.vfmv_f_s, true.B , Mux(taIsFalseForVFREDO, false.B, outVecCtrl.vta)))
 			io.out.bits.ctrl.vpu.foreach(_.vma := Mux(outCtrl.fuOpType === VfaluType.vfmv_s_f, true.B , outVecCtrl.vma))
 			io.out.bits.ctrl.vpu.foreach(_.is_reduction := RegEnable(outIsResuction_s0, io.in.fire))
 			io.out.bits.ctrl.vpu.foreach(_.is_vfredosum := outCtrl.fuOpType === VfaluType.vfredosum || outCtrl.fuOpType === VfaluType.vfwredosum)
 			io.out.bits.ctrl.vpu.foreach(_.is_fold := outIsFold)
+			val vCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vfne, VfaluType.vflt, VfaluType.vfle, VfaluType.vfgt, VfaluType.vfge)
+			io.out.bits.ctrl.vpu.foreach(_.isVFCmp := (vCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_)))
 		}
 	}
 }

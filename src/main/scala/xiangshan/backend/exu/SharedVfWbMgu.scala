@@ -89,8 +89,8 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
         )
       )
       // Apply bit shift to old value and mask, then compute the masked result
-      val cmpOldVd = (oldVd >> RshiftWidth)(3, 0) >> RshiftHalfWidth
-      val cmpMask = (oldVd >> RshiftWidth)(3, 0) >> RshiftHalfWidth
+      val cmpOldVd = ((oldVd >> RshiftWidth)(7, 0) >> RshiftHalfWidth)(3, 0)
+      val cmpMask  = ((mask  >> RshiftWidth)(7, 0) >> RshiftHalfWidth)(3, 0)
       val cmpResult = result(3,0)
       val cmpMaskedData = Wire(Vec(4, Bool()))
       for (i <- 0 until 4) {
@@ -101,14 +101,32 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     // Get masked results for high and low parts
     val result_H = getMaskData(result(127,64), vpuCtrl.vmask, wholeOldVd, vpuCtrl.vma, true.B)
     val result_L = getMaskData(result(63,0),   vpuCtrl.vmask, wholeOldVd, vpuCtrl.vma, false.B)
+    dontTouch(result_H);dontTouch(result_L)
+
     // Generate the tail mask for 3 different SEW conditions (16, 32, 64)
     val finalMaskedResult = VecInit(Seq.fill(4)(0.U(VLEN.W))) // sew is 16\32\64 three cases
+    dontTouch(finalMaskedResult)
+    // Consider different SEW(16, 32, 64) has different location to wirte result,
+    // use for loop to generate all posible result and use SEW to select correct one
     for (i <- 0 until 3){
       val eew = 1 << (i+4) // eew = 16\32\64
-      val elmtNum = (VLEN/eew)/2 // element num = 8\4\2
-      val tailMask = Cat(Seq.fill(VLEN - elmtNum)(1.U(1.W)).asUInt ,Seq.fill(elmtNum)(0.U(1.W)).asUInt)
-      val result = ZeroExt((Cat(result_H(elmtNum-1,0), result_L(elmtNum-1,0))), VLEN)
-      finalMaskedResult(i) := Mux(vpuCtrl.vta && vpuCtrl.lastUop , result|tailMask, result | (wholeOldVd & tailMask))
+      val elmtNum = (VLEN/eew) // element num = 8\4\2
+      val elmtNumHalf = elmtNum/2 // element num = 4\2\1
+
+      // currentUopIdxResult should LeftShift to the right position [uopIdx*elmtNum, (uopIdx+1)*elmtNum]
+      val LshiftHalfWidth = vpuCtrl.vuopIdx(2, 0) << (3-i).U // Lshift = uopIdx*8\uopIdx*4\uopIdx*2
+      // oldResultMask get the history uopIdx result [0, (uopIdx-1)*elmtNum-1]
+      val oldResultMask = Wire(UInt(128.W))
+      dontTouch(oldResultMask)
+      oldResultMask := ((1.U << LshiftHalfWidth) - 1.U)
+      // Only the lastUop should consider VTailAgonistc [vpuCtrl.vl, VLEN]
+      val vTailMask = Cat(Seq.fill(VLEN - elmtNum)(1.U(1.W)).asUInt ,Seq.fill(elmtNum)(0.U(1.W)).asUInt) << LshiftHalfWidth
+      val result = ZeroExt((Cat(result_H(elmtNumHalf-1,0), result_L(elmtNumHalf-1,0))), VLEN) << LshiftHalfWidth
+
+      // finalResult need piece 3 parts together. finalMaskedResult= Cat(VTailAgnositc, currentUopIdxResult, lastUopIdxResut)
+      finalMaskedResult(i) := Mux(vpuCtrl.lastUop ,
+             (result|vTailMask)      |(wholeOldVd & oldResultMask),
+      result|(wholeOldVd & vTailMask)|(wholeOldVd & oldResultMask))
     }
     // Select final masked result based on vsew (16, 32, 64)
     val finalSel = MuxCase(

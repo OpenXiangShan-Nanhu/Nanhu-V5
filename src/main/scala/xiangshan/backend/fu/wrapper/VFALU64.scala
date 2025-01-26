@@ -450,8 +450,6 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	// outVecCtrl.fpu.isFpToVecInst means the instruction is float instruction, not vector float instruction
 	val notUseVl = outVecCtrl.fpu.isFpToVecInst || (outCtrl.fuOpType === VfaluType.vfmv_f_s)
 	val notModifyVd = !notUseVl && (outVl === 0.U)
-	val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
-	val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
 	io.out.bits.res.fflags.get := Mux(notModifyVd, 0.U(5.W), outFFlags)
 	mguOpt match {
 		case Some(mgu) =>{
@@ -475,6 +473,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			mgtuOpt.get.io.in.vd := Mux(outVecCtrl.isDstMask, mgu.io.out.vd, resultDataUInt)
 			mgtuOpt.get.io.in.vl := outVl
 			val resultFpMask = Wire(UInt(VLEN.W))
+			val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
+			val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
 			val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
 			resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
 			// when dest is mask, the result need to be masked by mgtu
@@ -493,7 +493,8 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			io.out.bits.ctrl.vpu.foreach(_.vl := outVlFix)
 			io.out.bits.ctrl.vpu.foreach(_.vta := Mux(outCtrl.fuOpType === VfaluType.vfmv_f_s, true.B , Mux(taIsFalseForVFREDO, false.B, outVecCtrl.vta)))
 			io.out.bits.ctrl.vpu.foreach(_.vma := Mux(outCtrl.fuOpType === VfaluType.vfmv_s_f, true.B , outVecCtrl.vma))
-			io.out.bits.ctrl.vpu.foreach(_.isVFCmp := (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_)))
+			val vCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vfne, VfaluType.vflt, VfaluType.vfle, VfaluType.vfgt, VfaluType.vfge)
+			io.out.bits.ctrl.vpu.foreach(_.isVFCmp := (vCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_)))
 		}
 	}
 }

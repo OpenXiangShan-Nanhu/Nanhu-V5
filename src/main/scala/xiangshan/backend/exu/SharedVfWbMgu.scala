@@ -13,6 +13,7 @@ import xiangshan.backend.fu.vector.Bundles.{VType, Vxrm}
 import xiangshan.backend.fu.fpu.Bundles.Frm
 import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
 import xiangshan.backend.fu.vector.Mgu
+import xiangshan.backend.fu.vector.Bundles.VSew
 import xiangshan.backend.Bundles.VPUCtrlSignals
 
 class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters) extends XSModule {
@@ -25,6 +26,30 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
   val resData_hi = io.ins.last.bits.data
   val resData_lo = io.ins.head.bits.data
   io.outs <> io.ins
+
+  val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
+  val is_vfredosum = vpuCtrl.is_vfredosum && !vpuCtrl.isWiden
+  val is_vfwredosum = vpuCtrl.is_vfredosum && vpuCtrl.isWiden
+  val oldVdData = Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
+  val outOldVdForREDO = Mux1H(Seq(
+    (vpuCtrl.vsew === VSew.e16) -> (oldVdData >> 16),
+    (vpuCtrl.vsew === VSew.e32) -> (oldVdData >> 32),
+    (vpuCtrl.vsew === VSew.e64) -> (oldVdData >> 64),
+  ))
+  val outOldVdForWREDO = Mux(
+    !vpuCtrl.is_fold,
+    Mux(vpuCtrl.vsew === VSew.e16, Cat(oldVdData(VLEN-1-16, 16), 0.U(32.W)), Cat(oldVdData(VLEN-1-32, 32), 0.U(64.W))),
+    Mux(vpuCtrl.vsew === VSew.e16,
+      // Divide vuopIdx by 8 and the remainder is 1
+      Mux(vpuCtrl.vuopIdx(2, 0) === 1.U, oldVdData, oldVdData >> 16),
+      // Divide vuopIdx by 4 and the remainder is 1
+      Mux(vpuCtrl.vuopIdx(1, 0) === 1.U, oldVdData, oldVdData >> 32)
+    ),
+  )
+  val isOutOldVdForREDO = ((is_vfredosum && vpuCtrl.is_fold) || is_vfwredosum) && !vpuCtrl.lastUop
+  val outOldVdForRED = Mux(is_vfredosum, outOldVdForREDO, outOldVdForWREDO)
+  val oldVd = Mux(isOutOldVdForREDO, outOldVdForRED, oldVdData)
+
   def useMgu(vd: UInt, ctrl: VPUCtrlSignals, idx: Int): UInt = {
     val mgu = Module(new Mgu(VLEN))
     val allMaskTrue = VecInit(Seq.fill(VLEN)(true.B)).asUInt
@@ -34,7 +59,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     val notUseVl = ctrl.fpu.isFpToVecInst
     val notModifyVd = !notUseVl && (vl === 0.U)
     mgu.io.in.vd := vd
-    mgu.io.in.oldVd := Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
+    mgu.io.in.oldVd := oldVd
     mgu.io.in.mask := mask
     mgu.io.in.info.ta := ctrl.vta
     mgu.io.in.info.ma := ctrl.vma
@@ -44,7 +69,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     mgu.io.in.info.vstart := vstart
     mgu.io.in.info.eew := ctrl.veew
     mgu.io.in.info.vsew := ctrl.vsew
-    mgu.io.in.info.vdIdx := ctrl.vuopIdx
+    mgu.io.in.info.vdIdx := Mux(ctrl.is_reduction, 0.U, ctrl.vuopIdx)
     mgu.io.in.info.narrow := ctrl.isNarrow
     mgu.io.in.info.dstMask := ctrl.isDstMask
     mgu.io.in.isIndexedVls := false.B
@@ -65,7 +90,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
       val resDataHi_63_32 = Wire(UInt(32.W))
       val resDataLo_31_0  = Wire(UInt(32.W))
       val resDataLo_63_32 = Wire(UInt(32.W))
-      val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
+      
       when(~vpuCtrl.vuopIdx(0)) {
         resDataHi_31_0  := Mux(sharedNarrow, io.ins(0).bits.oldVd.getOrElse(0.U)(95, 64), hi(31, 0))
         resDataHi_63_32 := Mux(sharedNarrow, io.ins(1).bits.oldVd.getOrElse(0.U)(127, 96), hi(63, 32))

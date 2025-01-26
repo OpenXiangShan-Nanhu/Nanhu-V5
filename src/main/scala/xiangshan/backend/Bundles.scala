@@ -450,6 +450,10 @@ object Bundles {
 
     val isVleff = Bool() // vleff
 
+    val is_reduction = Bool()
+    val is_vfredosum = Bool()
+    val is_fold = Bool()
+
     def vtype: VType = {
       val res = Wire(VType())
       res.illegal := this.vill

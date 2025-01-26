@@ -12,6 +12,7 @@ import xiangshan.backend.datapath.DataConfig.RegDataMaxWidth
 import xiangshan.backend.decode.ImmUnion
 import xiangshan.backend.regcache._
 import xiangshan.backend.fu.FuType
+import yunsuan.VfaluType
 
 class BypassNetworkIO()(implicit p: Parameters, params: BackendParams) extends XSBundle {
   // params
@@ -156,6 +157,8 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
       val isWidenF_WV = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
                         exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U &&
                         !(exuInput.bits.fuType === FuType.vfalu.id.U && !exuInput.bits.fuOpType(6))
+      val isWidenF_REDOSUM = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+                        exuInput.bits.fuType === FuType.vfalu.id.U && exuInput.bits.fuOpType === VfaluType.vfwredosum
       
       val uopIdx0 = exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).vuopIdx(0)
       exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
@@ -198,7 +201,9 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
           )
         )
         if(srcIdx == 0) {
-          when(isWidenF_VV || isWidenF_WV) {
+          when(isWidenF_REDOSUM) {
+            src := srcData
+          }.elsewhen(isWidenF_VV || isWidenF_WV) {
             val widenDataHi = srcData(127, 96) ## srcData(63, 32)
             val widenDataLo = srcData(95, 64) ## srcData(31, 0)
             src := Mux(needReadHi, widenDataHi, widenDataLo)
@@ -208,7 +213,9 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
             src := srcData
           }
         } else if(srcIdx == 1) {
-          when(isWidenF_VV) {
+          when(isWidenF_REDOSUM) {
+            src := srcData
+          }.elsewhen(isWidenF_VV) {
             val widenDataHi = srcData(127, 96) ## srcData(63, 32)
             val widenDataLo = srcData(95, 64) ## srcData(31, 0)
             src := Mux(needReadHi, widenDataHi, widenDataLo)

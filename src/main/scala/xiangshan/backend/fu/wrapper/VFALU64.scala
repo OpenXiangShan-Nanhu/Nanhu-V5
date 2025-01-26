@@ -417,7 +417,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 
 	val maskForRed = genMaskForRedFFlag(outVecCtrl.vsew)
 	allFFlagsEn := (Mux(outIsResuction, Cat(Fill(7, firstNeedFFlags || outIsVfRedUnSum) & maskForRed(7, 1).asUInt,
-    lastNeedFFlags || firstNeedFFlags || outIsVfRedOrdered || outIsVfRedUnSum), fflagsEn.asUInt & vlMaskEn) >> Mux(writeHigh_s1, 4.U, 0.U)).asTypeOf(allFFlagsEn)
+    lastNeedFFlags || firstNeedFFlags || outIsVfRedOrdered || outIsVfRedUnSum) >> Mux(writeHigh_s1, 4.U, 0.U), fflagsEn.asUInt)).asTypeOf(allFFlagsEn)
 
 	val allFFlags = fflagsData.asTypeOf(Vec(4, UInt(5.W)))
 	val outFFlags = allFFlagsEn.zip(allFFlags).map{

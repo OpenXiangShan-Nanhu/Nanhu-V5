@@ -143,12 +143,13 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
       oldResultMask := ((1.U << LshiftHalfWidth) - 1.U)
       // Only the lastUop should consider VTailAgonistc [vpuCtrl.vl, VLEN]
       val vTailMask = Cat(Seq.fill(VLEN - elmtNum)(1.U(1.W)).asUInt ,Seq.fill(elmtNum)(0.U(1.W)).asUInt) << LshiftHalfWidth
+      val lastUopTailMask = ~(0.U(128.W)) << vpuCtrl.vl
       val result = ZeroExt((Cat(result_H(elmtNumHalf-1,0), result_L(elmtNumHalf-1,0))), VLEN) << LshiftHalfWidth
 
       // finalResult need piece 3 parts together. finalMaskedResult= Cat(VTailAgnositc, currentUopIdxResult, lastUopIdxResut)
       finalMaskedResult(i) := Mux(vpuCtrl.lastUop ,
-             (result|vTailMask)      |(wholeOldVd & oldResultMask),
-      result|(wholeOldVd & vTailMask)|(wholeOldVd & oldResultMask))
+             (result|vTailMask|lastUopTailMask) | (wholeOldVd & oldResultMask),
+      result|(wholeOldVd & vTailMask)           | (wholeOldVd & oldResultMask))
     }
     // Select final masked result based on vsew (16, 32, 64)
     val finalSel = MuxCase(

@@ -68,6 +68,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
   }
   val outputWidth1H = output1H
   val outIs32bits = RegNext(RegNext(outputWidth1H(2)))
+  val outIs16bits = RegNext(RegNext(outputWidth1H(1)))
   val outIsInt = !outCtrl.fuOpType(6)
 
   // May be useful in the future.
@@ -186,12 +187,19 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
     case None =>{
       // for scalar f2i cvt inst
       val isFp2VecForInt = outVecCtrl.fpu.isFpToVecInst && outIs32bits && outIsInt
+      val needBoxedSigle = outVecCtrl.fpu.isFpToVecInst && outIs32bits && !outIsInt
+      val needBoxedHalf = outVecCtrl.fpu.isFpToVecInst && outIs16bits && !outIsInt
       // for f2i mv inst
       val result = Mux(outIsMvInst, RegNext(RegNext(vs1.tail(64))), Mux(narrow, outNarrowVd, resultDataUInt))
-      io.out.bits.res.data := Mux(isFp2VecForInt,
-        Fill(32, result(31)) ## result(31, 0),
-        result
-      )
+      when(isFp2VecForInt) {
+        io.out.bits.res.data := Fill(32, result(31)) ## result(31, 0)
+      }.elsewhen(needBoxedSigle) {
+        io.out.bits.res.data := Fill(32, 1.U(1.W)) ## result(31, 0)
+      }.elsewhen(needBoxedHalf) {
+        io.out.bits.res.data := Fill(48, 1.U(1.W)) ## result(15, 0)
+      }.otherwise {
+        io.out.bits.res.data := result
+      }
       io.mguEew.foreach(x => x:= outEew)
       io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
       io.out.bits.ctrl.vpu.foreach(_ := outVecCtrl)

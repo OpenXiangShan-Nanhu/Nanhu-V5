@@ -69,10 +69,6 @@ class ExuBlockImp(
         wbMgu.io.ins.last <> exes.last.io.out
         out.head <> wbMgu.io.outs.head
         out.last <> wbMgu.io.outs.last
-        when(((exes.head.io.out.bits.vecWen.getOrElse(false.B) && exes.head.io.out.bits.vfWenL.getOrElse(false.B) && !exes.head.io.out.bits.vfWenH.getOrElse(true.B)) || 
-                                    (exes.head.io.out.bits.v0Wen.getOrElse(false.B) && exes.head.io.out.bits.v0WenL.getOrElse(false.B) && !exes.head.io.out.bits.v0WenH.getOrElse(true.B)))) {
-          out.head.bits.fflags.foreach(_ := exes.map(_.io.out.bits.fflags.get).reduce(_ | _))
-        }
       }
     }
   }

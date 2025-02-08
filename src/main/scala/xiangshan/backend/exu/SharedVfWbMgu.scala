@@ -25,12 +25,13 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     val outs = Vec(2, DecoupledIO(new ExuOutput(params)))
   })
   override val desiredName = name
-  val sharedNarrow = io.ins.head.bits.shareVpuCtrl.get.isNarrow
+
+  val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
+  val sharedNarrow = io.ins.head.valid && !vpuCtrl.fpu.isFpToVecInst && vpuCtrl.isNarrow
   val resData_hi = io.ins.last.bits.data
   val resData_lo = io.ins.head.bits.data
   io.outs <> io.ins
-
-  val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
+  
   val is_vfredosum = vpuCtrl.is_vfredosum && !vpuCtrl.isWiden
   val is_vfwredosum = vpuCtrl.is_vfredosum && vpuCtrl.isWiden
   val oldVdData = Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
@@ -59,11 +60,11 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
   def useMgu(vd: UInt, ctrl: VPUCtrlSignals, idx: Int): UInt = {
     val mgu = Module(new Mgu(VLEN))
     val allMaskTrue = VecInit(Seq.fill(VLEN)(true.B)).asUInt
-    val mask = Mux(hasFp, allMaskTrue, ctrl.vmask)
-    val vl = Mux(hasFp, 2.U, ctrl.vl)
-    val vstart = Mux(hasFp, 0.U, ctrl.vstart)
-    val veew = Mux(hasFp, VSew.e64, ctrl.veew)
-    val vsew = Mux(hasFp, VSew.e64, ctrl.vsew)
+    val mask = ctrl.vmask
+    val vl = ctrl.vl
+    val vstart = ctrl.vstart
+    val veew = ctrl.veew
+    val vsew = ctrl.vsew
     val notUseVl = hasFp
     val notModifyVd = !notUseVl && (vl === 0.U)
     mgu.io.in.vd := vd
@@ -81,7 +82,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     mgu.io.in.info.narrow := ctrl.isNarrow
     mgu.io.in.info.dstMask := ctrl.isDstMask
     mgu.io.in.isIndexedVls := false.B
-    mgu.io.out.vd
+    Mux(hasFp, vd, mgu.io.out.vd)
   }
 
   def useTailAgnostic(vl: UInt, vd:UInt, destMask:Bool): UInt = {

@@ -323,6 +323,7 @@ object xiangshan extends XiangShanModule with HasChisel {
     str
   }
 
+  val pwd = os.pwd
   def packDifftestResources(destDir: os.Path): Unit = {
     // package difftest source as resources, only git tracked files were collected
     val difftest_srcs = os.proc("git", "ls-files").call(cwd = pwd / "difftest").out

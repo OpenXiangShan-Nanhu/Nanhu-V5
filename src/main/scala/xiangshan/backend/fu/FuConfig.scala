@@ -155,13 +155,12 @@ case class FuConfig (
 
   def needFPUCtrl: Boolean = {
     import FuType._
-    Seq(fmac, fDivSqrt, i2f).contains(fuType)
+    Seq(i2f).contains(fuType)
   }
 
   def needVecCtrl: Boolean = {
     import FuType._
-    Seq(falu, fmac, fDivSqrt, fcvt,
-      vipu, vialuF, vimac, vidiv, vfpu, vppu, vfalu, vfma, vfdiv, vfcvt, vldu, vstu).contains(fuType)
+    Seq(vipu, vialuF, vimac, vidiv, vppu, vfalu, vfma, vfdiv, vfcvt, vldu, vstu).contains(fuType)
   }
 
   def isMul: Boolean = fuType == FuType.mul
@@ -775,68 +774,6 @@ object FuConfig {
     srcDataBits = Some(128)
   )
 
-  val FaluCfg = FuConfig(
-    name = "falu",
-    fuType = FuType.falu,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new FAlu(cfg)(p).suggestName("Falu")),
-    srcData = Seq(
-      Seq(FpData(), FpData()),
-    ),
-    piped = true,
-    writeVecRf = true,
-    writeIntRf = true,
-    writeFflags = true,
-    latency = CertainLatency(1),
-    destDataBits = 64,
-    needSrcFrm = true,
-  )
-
-  val FmacCfg = FuConfig(
-    name = "fmac",
-    fuType = FuType.fmac,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new FMA(cfg)(p).suggestName("Fmac")),
-    srcData = Seq(
-      Seq(FpData(), FpData(), FpData()),
-    ),
-    piped = true,
-    writeVecRf = true,
-    writeFflags = true,
-    latency = CertainLatency(3),
-    destDataBits = 64,
-    needSrcFrm = true,
-  )
-
-  val FdivCfg = FuConfig(
-    name = "fdiv",
-    fuType = FuType.fDivSqrt,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new FDivSqrt(cfg)(p).suggestName("Fdiv")),
-    srcData = Seq(
-      Seq(FpData(), FpData()),
-    ),
-    piped = false,
-    writeVecRf = true,
-    writeFflags = true,
-    latency = UncertainLatency(),
-    destDataBits = 64,
-    needSrcFrm = true,
-  )
-
-  val FcvtCfg = FuConfig(
-    name = "fcvt",
-    fuType = FuType.fcvt,
-    fuGen = (p: Parameters, cfg: FuConfig) => Module(new FCVT(cfg)(p).suggestName("Fcvt")),
-    srcData = Seq(
-      Seq(FpData()),
-    ),
-    piped = true,
-    writeVecRf = true,
-    writeIntRf = true,
-    writeFflags = true,
-    latency = CertainLatency(2),
-    destDataBits = 64,
-    needSrcFrm = true,
-  )
-
   val VlduCfg: FuConfig = FuConfig (
     name = "vldu",
     fuType = FuType.vldu,
@@ -922,12 +859,7 @@ object FuConfig {
   def allConfigs = Seq(
     JmpCfg, BrhCfg, I2fCfg, I2vCfg, F2vCfg, CsrCfg, AluCfg, MulCfg, DivCfg, FenceCfg, BkuCfg, VSetRvfWvfCfg, VSetRiWvfCfg, VSetRiWiCfg,
     LduCfg, StaCfg, StdCfg, MouCfg, MoudCfg, VialuCfg, VipuCfg, VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg,
-    FaluCfg, FmacCfg, FcvtCfg, FdivCfg,
-    VfaluCfg, VfmaCfg, VfcvtCfg, HyldaCfg, HystaCfg
-  )
-
-  def VecArithFuConfigs = Seq(
-    VialuCfg, VimacCfg, VppuCfg, VipuCfg, VfaluCfg, VfmaCfg, VfcvtCfg
+    Vfalu64Cfg, Vfma64Cfg, Vfcvt64Cfg, HyldaCfg, HystaCfg
   )
 }
 

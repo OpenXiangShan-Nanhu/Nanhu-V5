@@ -146,8 +146,9 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
 			io.mguEew.foreach(x => x:= outEew)
 			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
 			io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
-			io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
-			io.out.bits.ctrl.vpu.foreach(_.vl := outVl)
+			io.out.bits.ctrl.vpu.foreach(_.veew := Mux(outVecCtrl.fpu.isFpToVecInst, VSew.e64, outEew))
+			io.out.bits.ctrl.vpu.foreach(_.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 2.U, outVl))
+			io.out.bits.ctrl.vpu.foreach(_.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart))
 		}
   }
   io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B //mgu.io.out.illegal

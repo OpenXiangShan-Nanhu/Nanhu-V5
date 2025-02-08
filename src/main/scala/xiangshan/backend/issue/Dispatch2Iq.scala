@@ -638,6 +638,7 @@ class Dispatch2IqArithImp(override val wrapper: Dispatch2Iq)(implicit p: Paramet
   println(s"[Dispatch2IqArithImp] mergedFuDeqMap: $mergedFuDeqMap")
   val expendedFuDeqMap = expendFuDeqMap(mergedFuDeqMap, params.issueBlockParams.map(_.numEnq))
   println(s"[Dispatch2IqArithImp] expendedFuDeqMap: $expendedFuDeqMap")
+  println(FuType.vfalu.id)
 
   // sort by count of port. Port less, priority higher.
   val finalFuDeqMap = expendedFuDeqMap.toSeq.sortBy(_._2.length)

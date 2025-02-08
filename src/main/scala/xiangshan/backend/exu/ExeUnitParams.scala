@@ -291,8 +291,6 @@ case class ExeUnitParams(
 
   def hasStoreAddrExu = hasStoreAddrFu || hasHystaFu
 
-  def hasVecFu = fuConfigs.map(x => FuConfig.VecArithFuConfigs.contains(x)).reduce(_ || _)
-
   def CanCompress = !hasBrhFu || (hasBrhFu && hasi2vFu)
 
   def getSrcDataType(srcIdx: Int): Set[DataConfig] = {

@@ -754,7 +754,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
                   if(j == 0) {
                     src := s1_vfPregRData(i)(j)(k)
                   } else {
-                    src := s1_vfPregRData(i)(j-1)(k)
+                    src := Mux(sinkData.vpu.get.fpu.isFpToVecInst, s1_vfPregRData(i)(j)(k), s1_vfPregRData(i)(j-1)(k))
                   }
                 } else {
                   src := s1_vfPregRData(i)(j)(k)

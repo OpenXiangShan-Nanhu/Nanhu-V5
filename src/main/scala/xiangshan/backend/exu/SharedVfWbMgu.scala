@@ -54,13 +54,17 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
   val wholeOldVd = Cat(io.ins(1).bits.oldVd.getOrElse(0.U)(63, 0), io.ins(0).bits.oldVd.getOrElse(0.U)(63, 0))
   val oldVd = Mux(isOutOldVdForREDO, outOldVdForRED, wholeOldVd)
 
+  val hasFp = io.ins.map(_.bits.shareVpuCtrl.get.fpu.isFpToVecInst).reduce(_ || _)
+
   def useMgu(vd: UInt, ctrl: VPUCtrlSignals, idx: Int): UInt = {
     val mgu = Module(new Mgu(VLEN))
     val allMaskTrue = VecInit(Seq.fill(VLEN)(true.B)).asUInt
-    val mask = Mux(ctrl.fpu.isFpToVecInst, allMaskTrue, ctrl.vmask)
-    val vl = Mux(ctrl.fpu.isFpToVecInst, 1.U, ctrl.vl)
-    val vstart = Mux(ctrl.fpu.isFpToVecInst, 0.U, ctrl.vstart)
-    val notUseVl = ctrl.fpu.isFpToVecInst
+    val mask = Mux(hasFp, allMaskTrue, ctrl.vmask)
+    val vl = Mux(hasFp, 2.U, ctrl.vl)
+    val vstart = Mux(hasFp, 0.U, ctrl.vstart)
+    val veew = Mux(hasFp, VSew.e64, ctrl.veew)
+    val vsew = Mux(hasFp, VSew.e64, ctrl.vsew)
+    val notUseVl = hasFp
     val notModifyVd = !notUseVl && (vl === 0.U)
     mgu.io.in.vd := vd
     mgu.io.in.oldVd := oldVd
@@ -71,8 +75,8 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
     mgu.io.in.info.vlmul := ctrl.vlmul
     mgu.io.in.info.valid := Mux(notModifyVd, false.B, io.ins(idx).valid)
     mgu.io.in.info.vstart := vstart
-    mgu.io.in.info.eew := ctrl.veew
-    mgu.io.in.info.vsew := ctrl.vsew
+    mgu.io.in.info.eew := veew
+    mgu.io.in.info.vsew := vsew
     mgu.io.in.info.vdIdx := Mux(ctrl.is_reduction, 0.U, ctrl.vuopIdx)
     mgu.io.in.info.narrow := ctrl.isNarrow
     mgu.io.in.info.dstMask := ctrl.isDstMask
@@ -147,7 +151,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
       val result = ZeroExt((Cat(result_H(elmtNumHalf-1,0), result_L(elmtNumHalf-1,0))), VLEN) << LshiftHalfWidth
 
       // finalResult need piece 3 parts together. finalMaskedResult= Cat(VTailAgnositc, currentUopIdxResult, lastUopIdxResut)
-      finalMaskedResult(i) := Mux(vpuCtrl.lastUop ,
+      finalMaskedResult(i) := Mux(vpuCtrl.lastUop,
              (result|vTailMask|lastUopTailMask) | (wholeOldVd & oldResultMask),
       result|(wholeOldVd & vTailMask)           | (wholeOldVd & oldResultMask))
     }
@@ -186,7 +190,7 @@ class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters)
       // Handles vd data ordering for narrow and widen cases.
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
       // Handles vd data mask.
-      maskedData := Mux(vpuCtrl.isVFCmp, cmpResultBitMask(vdData), useMgu(vdData, vpuCtrl, 0))
+      maskedData := Mux(vpuCtrl.isVFCmp && !hasFp, cmpResultBitMask(vdData), useMgu(vdData, vpuCtrl, 0))
       io.outs(0).bits.data(i) := maskedData
       io.outs(1).bits.data(i) := maskedData(127, 64)
     }

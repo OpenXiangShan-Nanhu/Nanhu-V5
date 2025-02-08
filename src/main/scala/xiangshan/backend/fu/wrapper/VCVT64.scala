@@ -7,6 +7,7 @@ import chisel3.util.experimental.decode._
 import xs.utils.perf.{XSError}
 import xiangshan.backend.fu.FuConfig
 import xiangshan.backend.fu.vector.{Mgu64, VecPipedFuncUnit}
+import xiangshan.backend.fu.vector.Bundles.VSew
 import xiangshan.ExceptionNO
 import xiangshan.FuOpType
 import yunsuan.VfpuType
@@ -70,8 +71,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
   val outIsInt = !outCtrl.fuOpType(6)
 
   // May be useful in the future.
-  // val outIsMvInst = outCtrl.fuOpType === FuOpType.FMVXF
-  val outIsMvInst = false.B
+  val outIsMvInst = outCtrl.fuOpType === FuOpType.FMVXF
 
   val outEew = RegEnable(RegEnable(Mux1H(output1H, Seq(0,1,2,3).map(i => i.U)), fire), fireReg)
   private val needNoMask = outVecCtrl.fpu.isFpToVecInst
@@ -85,7 +85,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
    */
   vfcvt.fire          := fire
   vfcvt.uopIdx        := vuopIdx(0)
-  vfcvt.src           := vs2(63, 0)
+  vfcvt.src           := Mux(vecCtrl.fpu.isFpToVecInst, vs1(63, 0), vs2(63, 0))
   vfcvt.opType        := opcode(7,0)
   vfcvt.sew           := sew
   vfcvt.rm            := vfcvtRm
@@ -187,7 +187,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
       // for scalar f2i cvt inst
       val isFp2VecForInt = outVecCtrl.fpu.isFpToVecInst && outIs32bits && outIsInt
       // for f2i mv inst
-      val result = Mux(outIsMvInst, RegNext(RegNext(vs2.tail(64))), Mux(narrow, outNarrowVd, resultDataUInt))
+      val result = Mux(outIsMvInst, RegNext(RegNext(vs1.tail(64))), Mux(narrow, outNarrowVd, resultDataUInt))
       io.out.bits.res.data := Mux(isFp2VecForInt,
         Fill(32, result(31)) ## result(31, 0),
         result
@@ -196,8 +196,9 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
       io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
       io.out.bits.ctrl.vpu.foreach(_ := outVecCtrl)
       io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)
-      io.out.bits.ctrl.vpu.foreach(_.veew := outEew)
-      io.out.bits.ctrl.vpu.foreach(_.vl := outVl)
+      io.out.bits.ctrl.vpu.foreach(_.veew := Mux(outVecCtrl.fpu.isFpToVecInst, VSew.e64, outEew))
+			io.out.bits.ctrl.vpu.foreach(_.vl := Mux(outVecCtrl.fpu.isFpToVecInst, 2.U, outVl))
+			io.out.bits.ctrl.vpu.foreach(_.vstart := Mux(outVecCtrl.fpu.isFpToVecInst, 0.U, outVecCtrl.vstart))
     }
   }
 }

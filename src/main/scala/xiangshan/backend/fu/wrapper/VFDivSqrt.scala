@@ -57,7 +57,11 @@ class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUn
   }
   vfdivs.zipWithIndex.foreach {
     case (mod, i) =>
-      mod.io.start_valid_i  := io.in.valid
+      if(i == 0) {
+        mod.io.start_valid_i  := io.in.valid
+      } else {
+        mod.io.start_valid_i := Mux(vecCtrl.fpu.isFpToVecInst, false.B, io.in.valid)
+      }
       mod.io.finish_ready_i := io.out.ready & io.out.valid
       mod.io.flush_i        := thisRobIdx.needFlush(io.flush)
       mod.io.fp_format_i    := vsew
@@ -85,7 +89,7 @@ class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUn
   }
 
   io.in.ready  := vfdivs.map(_.io.start_ready_o).reduce(_&_)
-  io.out.valid := vfdivs.map(_.io.finish_valid_o).reduce(_&_)
+  io.out.valid := Mux(outCtrl.vpu.get.fpu.isFpToVecInst, vfdivs.head.io.finish_valid_o, vfdivs.map(_.io.finish_valid_o).reduce(_&_))
   val outEew = outVecCtrl.vsew
   val outVuopidx = outVecCtrl.vuopIdx(2, 0)
   val vlMax = ((VLEN / 8).U >> outEew).asUInt

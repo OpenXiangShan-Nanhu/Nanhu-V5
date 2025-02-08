@@ -412,18 +412,6 @@ object FpDecode extends DecodeConstants{
 }
 
 /**
- * FP Divide SquareRoot Constants
- */
-object FDivSqrtDecode extends DecodeConstants {
-  val decodeArray: Array[(BitPat, XSDecodeBase)] = Array(
-    FDIV_S  -> FDecode(SrcType.fp,  SrcType.fp,  SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
-    FDIV_D  -> FDecode(SrcType.fp,  SrcType.fp,  SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
-    FSQRT_S -> FDecode(SrcType.fp,  SrcType.imm, SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
-    FSQRT_D -> FDecode(SrcType.fp,  SrcType.imm, SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
-  )
-}
-
-/**
  * Svinval extension Constants
  */
 object SvinvalDecode extends DecodeConstants {
@@ -788,7 +776,6 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
 
   val decode_table: Array[(BitPat, List[BitPat])] = XDecode.table ++
     FpDecode.table ++
-//    FDivSqrtDecode.table ++
     BitmanipDecode.table ++
     ScalarCryptoDecode.table ++
     XSTrapDecode.table ++

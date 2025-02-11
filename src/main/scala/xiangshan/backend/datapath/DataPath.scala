@@ -196,12 +196,17 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     }
   }
 
-  vfRFReadArbiter.io.in.zip(vfRFReadReq).zipWithIndex.foreach { case ((arbInSeq2, inRFReadReqSeq2), iqIdx) =>
-    arbInSeq2.zip(inRFReadReqSeq2).zipWithIndex.foreach { case ((arbInSeq, inRFReadReqSeq), exuIdx) =>
+  val vfRfNeednotArb: Seq2[Bool] = fromIQ.map(x => x.map(xx => xx.valid &&
+                                                                xx.bits.common.vecWen.getOrElse(false.B) &&
+                                                                xx.bits.common.vfWenH.getOrElse(false.B) &&
+                                                                !xx.bits.common.vfWenL.getOrElse(false.B) &&
+                                                                xx.bits.exuParams.isSharedVf.B))
+  vfRFReadArbiter.io.in.zip(vfRFReadReq).zip(vfRfNeednotArb).zipWithIndex.foreach { case (((arbInSeq2, inRFReadReqSeq2), ignoreArb2), iqIdx) =>
+    arbInSeq2.zip(inRFReadReqSeq2).zip(ignoreArb2).zipWithIndex.foreach { case (((arbInSeq, inRFReadReqSeq), ignoreArb), exuIdx) =>
       val srcIndices: Seq[Int] = VecRegSrcDataSet.flatMap(data => fromIQ(iqIdx)(exuIdx).bits.exuParams.getRfReadSrcIdx(data)).toSeq.sorted
       for (srcIdx <- 0 until fromIQ(iqIdx)(exuIdx).bits.exuParams.numRegSrc) {
         if (srcIndices.contains(srcIdx) && inRFReadReqSeq.isDefinedAt(srcIdx)) {
-          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg
+          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg && !ignoreArb
           arbInSeq(srcIdx).bits.addr := inRFReadReqSeq(srcIdx).bits.addr
         } else {
           arbInSeq(srcIdx).valid := false.B
@@ -211,12 +216,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     }
   }
 
-  v0RFReadArbiter.io.in.zip(v0RFReadReq).zipWithIndex.foreach { case ((arbInSeq2, inRFReadReqSeq2), iqIdx) =>
-    arbInSeq2.zip(inRFReadReqSeq2).zipWithIndex.foreach { case ((arbInSeq, inRFReadReqSeq), exuIdx) =>
+  v0RFReadArbiter.io.in.zip(v0RFReadReq).zip(vfRfNeednotArb).zipWithIndex.foreach { case (((arbInSeq2, inRFReadReqSeq2), ignoreArb2), iqIdx) =>
+    arbInSeq2.zip(inRFReadReqSeq2).zip(ignoreArb2).zipWithIndex.foreach { case (((arbInSeq, inRFReadReqSeq), ignoreArb), exuIdx) =>
       val srcIndices: Seq[Int] = V0RegSrcDataSet.flatMap(data => fromIQ(iqIdx)(exuIdx).bits.exuParams.getRfReadSrcIdx(data)).toSeq.sorted
       for (srcIdx <- 0 until fromIQ(iqIdx)(exuIdx).bits.exuParams.numRegSrc) {
         if (srcIndices.contains(srcIdx) && inRFReadReqSeq.isDefinedAt(srcIdx)) {
-          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg
+          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg && !ignoreArb
           arbInSeq(srcIdx).bits.addr := inRFReadReqSeq(srcIdx).bits.addr
         } else {
           arbInSeq(srcIdx).valid := false.B
@@ -226,12 +231,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     }
   }
 
-  vlRFReadArbiter.io.in.zip(vlRFReadReq).zipWithIndex.foreach { case ((arbInSeq2, inRFReadReqSeq2), iqIdx) =>
-    arbInSeq2.zip(inRFReadReqSeq2).zipWithIndex.foreach { case ((arbInSeq, inRFReadReqSeq), exuIdx) =>
+  vlRFReadArbiter.io.in.zip(vlRFReadReq).zip(vfRfNeednotArb).zipWithIndex.foreach { case (((arbInSeq2, inRFReadReqSeq2), ignoreArb2), iqIdx) =>
+    arbInSeq2.zip(inRFReadReqSeq2).zip(ignoreArb2).zipWithIndex.foreach { case (((arbInSeq, inRFReadReqSeq), ignoreArb), exuIdx) =>
       val srcIndices: Seq[Int] = VlRegSrcDataSet.flatMap(data => fromIQ(iqIdx)(exuIdx).bits.exuParams.getRfReadSrcIdx(data)).toSeq.sorted
       for (srcIdx <- 0 until fromIQ(iqIdx)(exuIdx).bits.exuParams.numRegSrc) {
         if (srcIndices.contains(srcIdx) && inRFReadReqSeq.isDefinedAt(srcIdx)) {
-          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg
+          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg && !ignoreArb
           arbInSeq(srcIdx).bits.addr := inRFReadReqSeq(srcIdx).bits.addr
         } else {
           arbInSeq(srcIdx).valid := false.B

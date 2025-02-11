@@ -1,10 +1,10 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import chisel3._
 import chisel3.util._
 import utils.PipeWithFlush
-import xiangshan.backend.Bundles.{ExuInput, connectSamePort}
-import xiangshan.backend.exu.ExeUnitParams
+import nanhuv5.backend.Bundles.{ExuInput, connectSamePort}
+import nanhuv5.backend.exu.ExeUnitParams
 
 class MultiWakeupQueueIO[T <: Bundle, TFlush <: Data](
   gen       : ExuInput,

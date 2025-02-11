@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.dispatch
+package nanhuv5.backend.dispatch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -23,13 +23,13 @@ import difftest._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.ExceptionNO._
-import xiangshan._
-import xiangshan.backend.MemCoreTopDownIO
-import xiangshan.backend.rob.{RobDispatchTopDownIO, RobEnqIO}
-import xiangshan.mem.mdp._
-import xiangshan.backend.Bundles.DynInst
-import xiangshan.backend.fu.FuType
+import nanhuv5.ExceptionNO._
+import nanhuv5._
+import nanhuv5.backend.MemCoreTopDownIO
+import nanhuv5.backend.rob.{RobDispatchTopDownIO, RobEnqIO}
+import nanhuv5.mem.mdp._
+import nanhuv5.backend.Bundles.DynInst
+import nanhuv5.backend.fu.FuType
 
 case class DispatchParameters
 (

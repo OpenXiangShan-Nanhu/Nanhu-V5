@@ -1,9 +1,9 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
-import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW}
-import xiangshan.backend.fu.NewCSR.ChiselRecordForField.AddRecordSpecifyFields
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW}
+import nanhuv5.backend.fu.NewCSR.ChiselRecordForField.AddRecordSpecifyFields
 
 class InterruptBundle extends CSRBundle {
   // Software Interrupt

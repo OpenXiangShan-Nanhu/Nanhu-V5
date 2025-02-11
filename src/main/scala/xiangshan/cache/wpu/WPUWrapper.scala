@@ -1,12 +1,12 @@
-package xiangshan.cache.wpu
+package nanhuv5.cache.wpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.perf.XSPerfAccumulate
-import xiangshan._
-import xiangshan.cache.{DCacheModule, HasDCacheParameters}
-import xiangshan.frontend.icache.HasICacheParameters
+import nanhuv5._
+import nanhuv5.cache.{DCacheModule, HasDCacheParameters}
+import nanhuv5.frontend.icache.HasICacheParameters
 
 class ReplayCarry(nWays: Int)(implicit p: Parameters) extends XSBundle {
   val real_way_en = UInt(nWays.W)

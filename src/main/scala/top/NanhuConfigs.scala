@@ -17,17 +17,17 @@
 package top
 
 
-import xiangshan._
+import nanhuv5._
 import org.chipsalliance.cde.config._
-import xiangshan.backend.regfile.{IntPregParams, FpPregParams, VfPregParams}
-import xiangshan.cache.DCacheParameters
-import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
+import nanhuv5.backend.regfile.{IntPregParams, FpPregParams, VfPregParams}
+import nanhuv5.cache.DCacheParameters
+import nanhuv5.cache.mmu.{L2TLBParameters, TLBParameters}
 import device.{EnableJtag, XSDebugModuleParams}
 import huancun._
 import coupledL2._
 import coupledL2.prefetch._
-import xiangshan.frontend.icache.ICacheParameters
-import xiangshan.backend.dispatch.DispatchParameters
+import nanhuv5.frontend.icache.ICacheParameters
+import nanhuv5.backend.dispatch.DispatchParameters
 
 class WithNanhuV5Config extends Config((site, here, up) =>{
   case XSTileKey => up(XSTileKey).map(_.copy(

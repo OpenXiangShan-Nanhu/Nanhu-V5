@@ -1,10 +1,10 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import chisel3._
 import chisel3.util._
 import top.ArgParser
-import xiangshan.backend.Bundles.DynInst
-import xiangshan.{Redirect, XSCoreParameters, XSCoreParamsKey}
+import nanhuv5.backend.Bundles.DynInst
+import nanhuv5.{Redirect, XSCoreParameters, XSCoreParamsKey}
 
 object MultiWakeupQueueMain extends App {
   val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)

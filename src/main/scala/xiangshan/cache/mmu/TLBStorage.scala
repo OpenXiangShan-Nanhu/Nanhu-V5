@@ -14,7 +14,7 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.cache.mmu
+package nanhuv5.cache.mmu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -23,7 +23,7 @@ import utils._
 import xs.utils._
 import xs.utils.perf._
 import freechips.rocketchip.formal.PropertyClass
-import xiangshan.backend.fu.util.HasCSRConst
+import nanhuv5.backend.fu.util.HasCSRConst
 
 import scala.math.min
 

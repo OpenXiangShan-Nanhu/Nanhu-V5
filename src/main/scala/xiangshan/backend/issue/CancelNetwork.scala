@@ -1,11 +1,11 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import xiangshan.backend.BackendParams
-import xiangshan.backend.Bundles.{ExuOH, IssueQueueIssueBundle}
+import nanhuv5.backend.BackendParams
+import nanhuv5.backend.Bundles.{ExuOH, IssueQueueIssueBundle}
 
 class CancelNetworkIO(backendParams: BackendParams)(implicit p: Parameters) extends Bundle {
   private val numExu = backendParams.numExu

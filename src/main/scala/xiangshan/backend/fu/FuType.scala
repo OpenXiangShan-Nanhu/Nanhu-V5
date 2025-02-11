@@ -1,11 +1,11 @@
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import chisel3._
 import chisel3.util._
 import chisel3.util.BitPat
 import utils.EnumUtils.OHEnumeration
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.XSCoreParamsKey
+import nanhuv5.XSCoreParamsKey
 
 import scala.language.implicitConversions
 

@@ -21,7 +21,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.dataview._
 import difftest.DifftestModule
-import xiangshan._
+import nanhuv5._
 import utils._
 import huancun.{HCCacheParameters, HCCacheParamsKey, HuanCun, PrefetchRecv, TPmetaResp}
 import coupledL2.EnableCHI

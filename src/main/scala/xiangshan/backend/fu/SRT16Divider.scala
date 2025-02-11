@@ -19,7 +19,7 @@
 // https://github.com/OpenXiangShan/XS-Verilog-Library/tree/main/int_div_radix_4_v1
 // Email of original author: hyf_sysu@qq.com
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -27,8 +27,8 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.fu.util.CSA3_2
+import nanhuv5._
+import nanhuv5.backend.fu.util.CSA3_2
 
 class SRT16DividerDataModule(len: Int) extends Module {
   val io = IO(new Bundle() {

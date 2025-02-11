@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.frontend.icache
+package nanhuv5.frontend.icache
 
 import chisel3._
 import chisel3.util._
@@ -24,8 +24,8 @@ import xs.utils.perf._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
-import xiangshan._
-import xiangshan.frontend._
+import nanhuv5._
+import nanhuv5.frontend._
 
 class InsUncacheReq(implicit p: Parameters) extends ICacheBundle
 {

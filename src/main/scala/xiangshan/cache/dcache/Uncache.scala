@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import chisel3._
 import chisel3.util._
@@ -22,7 +22,7 @@ import org.chipsalliance.cde.config.Parameters
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
+import nanhuv5._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
 

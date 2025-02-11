@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -23,11 +23,11 @@ import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates}
 import xs.utils._
 import xs.utils.{ChiselDB, OneHot, ParallelMux, ParallelORR, ParallelPriorityMux}
 import xs.utils.perf.{HasPerfEvents, XSDebug, XSPerfAccumulate}
-import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
-import xiangshan.cache.wpu._
-import xiangshan.mem.HasL1PrefetchSourceParameter
-import xiangshan.mem.prefetch._
-import xiangshan.mem.LqPtr
+import nanhuv5.{L1CacheErrorInfo, XSCoreParamsKey}
+import nanhuv5.cache.wpu._
+import nanhuv5.mem.HasL1PrefetchSourceParameter
+import nanhuv5.mem.prefetch._
+import nanhuv5.mem.LqPtr
 
 class LoadPfDbBundle(implicit p: Parameters) extends DCacheBundle {
   val paddr = UInt(PAddrBits.W)

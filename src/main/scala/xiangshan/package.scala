@@ -17,15 +17,15 @@
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.ExceptionNO._
-import xiangshan.backend.fu._
-import xiangshan.backend.fu.fpu._
-import xiangshan.backend.fu.vector._
-import xiangshan.backend.issue._
-import xiangshan.backend.fu.FuConfig
-import xiangshan.backend.decode.{Imm, ImmUnion}
+import nanhuv5.ExceptionNO._
+import nanhuv5.backend.fu._
+import nanhuv5.backend.fu.fpu._
+import nanhuv5.backend.fu.vector._
+import nanhuv5.backend.issue._
+import nanhuv5.backend.fu.FuConfig
+import nanhuv5.backend.decode.{Imm, ImmUnion}
 
-package object xiangshan {
+package object nanhuv5 {
   object SrcType {
     def imm = "b0000".U
     def pc  = "b0000".U

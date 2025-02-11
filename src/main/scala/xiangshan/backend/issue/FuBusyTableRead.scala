@@ -1,9 +1,9 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import chisel3._
 import chisel3.util._
 import utils.MapUtils
-import xiangshan.backend.fu.FuType
+import nanhuv5.backend.fu.FuType
 
 class FuBusyTableRead(fuLatencyMap: Map[FuType.Value, Int])(implicit iqParams: IssueBlockParams) extends Module {
   private val numEntries = iqParams.numEntries

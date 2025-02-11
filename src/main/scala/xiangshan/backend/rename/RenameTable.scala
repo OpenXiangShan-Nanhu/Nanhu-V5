@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.rename
+package nanhuv5.backend.rename
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.{HasCircularQueuePtrHelper, ParallelPriorityMux, GatedValidRegNext, GatedRegNext}
 import xs.utils.perf.{XSError}
-import xiangshan._
+import nanhuv5._
 
 abstract class RegType
 case object Reg_I extends RegType

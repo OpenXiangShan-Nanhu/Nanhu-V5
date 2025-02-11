@@ -1,10 +1,10 @@
-package xiangshan.backend.fu.vector
+package nanhuv5.backend.fu.vector
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.backend.fu.vector.Bundles.{VSew, Vl}
-import xiangshan.backend.fu.vector.utils.{MaskExtractor, UIntToContLow0s, UIntToContLow1s}
+import nanhuv5.backend.fu.vector.Bundles.{VSew, Vl}
+import nanhuv5.backend.fu.vector.utils.{MaskExtractor, UIntToContLow0s, UIntToContLow1s}
 import xs.utils.perf.XSDebug
 import yunsuan.vector.SewOH
 import yunsuan.util.LookupTree

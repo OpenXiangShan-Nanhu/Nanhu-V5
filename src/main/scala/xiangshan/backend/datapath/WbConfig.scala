@@ -1,8 +1,8 @@
-package xiangshan.backend.datapath
+package nanhuv5.backend.datapath
 
 import chisel3.util.log2Up
-import xiangshan.backend.BackendParams
-import xiangshan.backend.datapath.DataConfig._
+import nanhuv5.backend.BackendParams
+import nanhuv5.backend.datapath.DataConfig._
 
 object WbConfig {
   sealed abstract class WbConfig() {

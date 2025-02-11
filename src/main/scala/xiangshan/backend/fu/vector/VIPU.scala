@@ -16,7 +16,7 @@
 // */
 //
 //
-//package xiangshan.backend.fu.vector
+//package nanhuv5.backend.fu.vector
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3._
@@ -26,7 +26,7 @@
 import xs.utils.perf._
 //import yunsuan.vector.alu.{VAluOpcode, VIAlu}
 //import yunsuan.{VectorElementFormat, VipuType}
-//import xiangshan.{SelImm, SrcType, UopSplitType, XSCoreParamsKey, XSModule,FuType}
+//import nanhuv5.{SelImm, SrcType, UopSplitType, XSCoreParamsKey, XSModule,FuType}
 //
 //import scala.collection.Seq
 //

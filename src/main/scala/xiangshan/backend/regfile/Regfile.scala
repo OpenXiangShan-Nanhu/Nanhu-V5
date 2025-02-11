@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.regfile
+package nanhuv5.backend.regfile
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.datapath.DataConfig._
-import xiangshan.backend.exu.ExeUnitParams
+import nanhuv5._
+import nanhuv5.backend.datapath.DataConfig._
+import nanhuv5.backend.exu.ExeUnitParams
 
 class RfReadPort(dataWidth: Int, addrWidth: Int) extends Bundle {
   val addr = Input(UInt(addrWidth.W))

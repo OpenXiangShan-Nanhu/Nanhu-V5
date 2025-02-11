@@ -14,7 +14,7 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan
+package nanhuv5
 
 import chisel3._
 import chisel3.util._
@@ -33,8 +33,8 @@ import top.BusPerfMonitor
 import xs.utils._
 import xs.utils.tl._
 import xs.utils.sram.SramBroadcastBundle
-import xiangshan.cache.mmu.TlbRequestIO
-import xiangshan.backend.fu.PMPRespBundle
+import nanhuv5.cache.mmu.TlbRequestIO
+import nanhuv5.backend.fu.PMPRespBundle
 import xs.utils.perf.{LogUtilsOptionsKey, PerfEvent, PerfCounterOptionsKey}
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle with HasSoCParameter {

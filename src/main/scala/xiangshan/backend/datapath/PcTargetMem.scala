@@ -1,4 +1,4 @@
-package xiangshan.backend
+package nanhuv5.backend
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -6,10 +6,10 @@ import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.datapath.DataConfig.VAddrData
-import xiangshan.frontend.{FtqPtr, FtqToCtrlIO, Ftq_RF_Components}
-import xiangshan.frontend.FtqRead
+import nanhuv5._
+import nanhuv5.backend.datapath.DataConfig.VAddrData
+import nanhuv5.frontend.{FtqPtr, FtqToCtrlIO, Ftq_RF_Components}
+import nanhuv5.frontend.FtqRead
 
 class PcTargetMem(params: BackendParams)(implicit p: Parameters) extends LazyModule {
   override def shouldBeInlined: Boolean = false

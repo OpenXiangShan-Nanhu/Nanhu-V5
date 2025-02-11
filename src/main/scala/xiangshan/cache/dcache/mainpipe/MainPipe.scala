@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -26,9 +26,9 @@ import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates, TLPermission
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
-import xiangshan.mem.prefetch._
-import xiangshan.mem.HasL1PrefetchSourceParameter
+import nanhuv5.{L1CacheErrorInfo, XSCoreParamsKey}
+import nanhuv5.mem.prefetch._
+import nanhuv5.mem.HasL1PrefetchSourceParameter
 
 class MainPipeReq(implicit p: Parameters) extends DCacheBundle {
   val miss = Bool() // only amo miss will refill in main pipe

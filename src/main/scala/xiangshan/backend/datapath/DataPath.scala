@@ -1,4 +1,4 @@
-package xiangshan.backend.datapath
+package nanhuv5.backend.datapath
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -9,18 +9,18 @@ import xs.utils._
 import xs.utils.perf._
 import utils.SeqUtils._
 import utils._
-import xiangshan._
-import xiangshan.backend.{BackendParams, ExcpModToVprf, PcToDataPathIO, VprfToExcpMod}
-import xiangshan.backend.Bundles._
-import xiangshan.backend.decode.ImmUnion
-import xiangshan.backend.datapath.DataConfig._
-import xiangshan.backend.datapath.RdConfig._
-import xiangshan.backend.issue.{FpScheduler, ImmExtractor, IntScheduler, MemScheduler, VfScheduler}
-import xiangshan.backend.issue.EntryBundles._
-import xiangshan.backend.regfile._
-import xiangshan.backend.regcache._
-import xiangshan.backend.fu.FuType.is0latency
-import xiangshan.mem.{LqPtr, SqPtr}
+import nanhuv5._
+import nanhuv5.backend.{BackendParams, ExcpModToVprf, PcToDataPathIO, VprfToExcpMod}
+import nanhuv5.backend.Bundles._
+import nanhuv5.backend.decode.ImmUnion
+import nanhuv5.backend.datapath.DataConfig._
+import nanhuv5.backend.datapath.RdConfig._
+import nanhuv5.backend.issue.{FpScheduler, ImmExtractor, IntScheduler, MemScheduler, VfScheduler}
+import nanhuv5.backend.issue.EntryBundles._
+import nanhuv5.backend.regfile._
+import nanhuv5.backend.regcache._
+import nanhuv5.backend.fu.FuType.is0latency
+import nanhuv5.mem.{LqPtr, SqPtr}
 
 class DataPath(params: BackendParams)(implicit p: Parameters) extends LazyModule {
   override def shouldBeInlined: Boolean = false

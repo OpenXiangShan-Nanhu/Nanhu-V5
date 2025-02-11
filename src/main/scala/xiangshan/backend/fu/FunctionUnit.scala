@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.perf.XSPerfAccumulate
-import xiangshan._
-import xiangshan.backend.fu.fpu._
+import nanhuv5._
+import nanhuv5.backend.fu.fpu._
 
 trait HasFuLatency {
   val latencyVal: Option[Int]

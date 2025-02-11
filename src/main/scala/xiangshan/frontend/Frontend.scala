@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.frontend
+package nanhuv5.frontend
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
@@ -23,10 +23,10 @@ import utils._
 import xs.utils._
 import xs.utils.mbist.{MbistInterface, MbistPipeline}
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
-import xiangshan._
-import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
-import xiangshan.cache.mmu._
-import xiangshan.frontend.icache._
+import nanhuv5._
+import nanhuv5.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
+import nanhuv5.cache.mmu._
+import nanhuv5.frontend.icache._
 import xs.utils.perf.{HasPerfEvents, HasPerfLogging, XSError, XSPerfAccumulate, PerfEvent, HPerfMonitor}
 
 class Frontend()(implicit p: Parameters) extends LazyModule with HasXSParameter {

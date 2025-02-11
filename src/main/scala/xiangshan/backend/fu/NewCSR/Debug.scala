@@ -1,12 +1,12 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.backend.fu.NewCSR.CSRBundles.PrivState
-import xiangshan.backend.fu.util.CSRConst
-import xiangshan.backend.fu.util.SdtrigExt
-import xiangshan._
+import nanhuv5.backend.fu.NewCSR.CSRBundles.PrivState
+import nanhuv5.backend.fu.util.CSRConst
+import nanhuv5.backend.fu.util.SdtrigExt
+import nanhuv5._
 
 class Debug(implicit val p: Parameters) extends Module with HasXSParameter {
   val io = IO(new DebugIO)

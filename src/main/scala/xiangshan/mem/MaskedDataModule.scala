@@ -14,15 +14,15 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.cache._
+import nanhuv5.cache._
 
 class MaskedSyncDataModuleTemplate[T <: Data](
   gen: T,

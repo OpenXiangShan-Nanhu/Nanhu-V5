@@ -15,7 +15,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package  xiangshan.frontend.icache
+package nanhuv5.frontend.icache
 
 import chisel3._
 import chisel3.util._
@@ -27,10 +27,10 @@ import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.cache._
-import xiangshan.cache.mmu.TlbRequestIO
-import xiangshan.frontend._
+import nanhuv5._
+import nanhuv5.cache._
+import nanhuv5.cache.mmu.TlbRequestIO
+import nanhuv5.frontend._
 
 
 class FIFOReg[T <: Data](

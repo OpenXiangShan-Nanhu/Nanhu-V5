@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import chisel3._
 import chisel3.util._
@@ -28,11 +28,11 @@ import freechips.rocketchip.tilelink._
 import huancun.{AliasKey, DirtyKey, PrefetchKey}
 import org.chipsalliance.cde.config.Parameters
 import utils._
-import xiangshan._
-import xiangshan.mem.AddPipelineReg
-import xiangshan.mem.prefetch._
-import xiangshan.mem.trace._
-import xiangshan.mem.LqPtr
+import nanhuv5._
+import nanhuv5.mem.AddPipelineReg
+import nanhuv5.mem.prefetch._
+import nanhuv5.mem.trace._
+import nanhuv5.mem.LqPtr
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.tl._

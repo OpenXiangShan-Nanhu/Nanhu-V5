@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.rename
+package nanhuv5.backend.rename
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,20 +22,20 @@ import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend.Bundles.{DecodedInst, DynInst}
-import xiangshan.backend.decode.{FusionDecodeInfo, ImmUnion, Imm_I, Imm_LUI_LOAD, Imm_U}
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.rename.freelist._
-import xiangshan.backend.rob.{RobEnqIO, RobPtr}
-import xiangshan.mem.mdp._
-import xiangshan.ExceptionNO._
-import xiangshan.backend.fu.FuType._
-import xiangshan.mem.{EewLog2, GenUSWholeEmul}
-import xiangshan.mem.GenRealFlowNum
-import xiangshan.backend.trace._
-import xiangshan.backend.decode.isa.bitfield.{OPCODE5Bit, XSInstBitFields}
-import xiangshan.backend.fu.util.CSRConst
+import nanhuv5._
+import nanhuv5.backend.Bundles.{DecodedInst, DynInst}
+import nanhuv5.backend.decode.{FusionDecodeInfo, ImmUnion, Imm_I, Imm_LUI_LOAD, Imm_U}
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.rename.freelist._
+import nanhuv5.backend.rob.{RobEnqIO, RobPtr}
+import nanhuv5.mem.mdp._
+import nanhuv5.ExceptionNO._
+import nanhuv5.backend.fu.FuType._
+import nanhuv5.mem.{EewLog2, GenUSWholeEmul}
+import nanhuv5.mem.GenRealFlowNum
+import nanhuv5.backend.trace._
+import nanhuv5.backend.decode.isa.bitfield.{OPCODE5Bit, XSInstBitFields}
+import nanhuv5.backend.fu.util.CSRConst
 
 class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper with HasPerfEvents {
 

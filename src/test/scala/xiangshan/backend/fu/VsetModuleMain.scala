@@ -1,12 +1,12 @@
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import chisel3._
 import chiseltest.{ChiselScalatestTester, _}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers
 import top.DefaultConfig
-import xiangshan.backend.fu.vector.Bundles.{VLmul, VSew}
-import xiangshan.{VSETOpType, XSCoreParameters, XSCoreParamsKey, XSTileKey}
+import nanhuv5.backend.fu.vector.Bundles.{VLmul, VSew}
+import nanhuv5.{VSETOpType, XSCoreParameters, XSCoreParamsKey, XSTileKey}
 
 class VsetModuleMain extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 

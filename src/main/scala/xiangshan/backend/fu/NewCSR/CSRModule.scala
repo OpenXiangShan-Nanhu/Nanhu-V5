@@ -1,9 +1,9 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util.Mux1H
-import xiangshan.backend.fu.NewCSR.CSRDefines._
-import xiangshan.backend.fu.NewCSR.CSRBundles._
+import nanhuv5.backend.fu.NewCSR.CSRDefines._
+import nanhuv5.backend.fu.NewCSR.CSRBundles._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import org.chipsalliance.cde.config.Parameters
 

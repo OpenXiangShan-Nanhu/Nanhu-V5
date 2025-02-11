@@ -1,15 +1,15 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.{HasCircularQueuePtrHelper}
 import xs.utils.perf.{XSError}
-import xiangshan._
-import xiangshan.backend.Bundles.TrapInstInfo
-import xiangshan.backend.decode.Imm_Z
-import xiangshan.frontend.FtqPtr
-import xiangshan.backend.decode.isa.bitfield.OPCODE5Bit
+import nanhuv5._
+import nanhuv5.backend.Bundles.TrapInstInfo
+import nanhuv5.backend.decode.Imm_Z
+import nanhuv5.frontend.FtqPtr
+import nanhuv5.backend.decode.isa.bitfield.OPCODE5Bit
 
 class FtqInfo(implicit p: Parameters) extends XSBundle {
   val ftqPtr = new FtqPtr()

@@ -1,9 +1,9 @@
-package xiangshan.backend
+package nanhuv5.backend
 
 import freechips.rocketchip.diplomacy.LazyModule
 import top.{ArgParser, BaseConfig, Generator}
-import xiangshan.backend.issue.Scheduler
-import xiangshan.{XSCoreParameters, XSCoreParamsKey}
+import nanhuv5.backend.issue.Scheduler
+import nanhuv5.{XSCoreParameters, XSCoreParamsKey}
 
 object SchedulerMain extends App {
   val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)

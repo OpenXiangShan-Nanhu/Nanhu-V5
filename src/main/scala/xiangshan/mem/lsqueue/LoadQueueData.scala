@@ -14,16 +14,16 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan._
-import xiangshan.cache._
-import xiangshan.cache.{DCacheWordIO, DCacheLineIO, MemoryOpConstants}
-import xiangshan.mem._
-import xiangshan.backend.rob.RobPtr
+import nanhuv5._
+import nanhuv5.cache._
+import nanhuv5.cache.{DCacheWordIO, DCacheLineIO, MemoryOpConstants}
+import nanhuv5.mem._
+import nanhuv5.backend.rob.RobPtr
 import utils._
 import xs.utils._
 import xs.utils.perf._

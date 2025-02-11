@@ -1,19 +1,19 @@
-package xiangshan.mem.prefetch
+package nanhuv5.mem.prefetch
 
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.util._
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils.{CircularQueuePtr, GatedValidRegNext, HasCircularQueuePtrHelper, RRArbiterInit, ValidPseudoLRU, ChiselDB}
 import xs.utils.perf._
 import xs.utils.tl._
-import xiangshan.cache.HasDCacheParameters
-import xiangshan.cache.mmu._
-import xiangshan.mem.{L1PrefetchReq, LdPrefetchTrainBundle}
-import xiangshan.mem.trace._
-import xiangshan.mem.L1PrefetchSource
+import nanhuv5.cache.HasDCacheParameters
+import nanhuv5.cache.mmu._
+import nanhuv5.mem.{L1PrefetchReq, LdPrefetchTrainBundle}
+import nanhuv5.mem.trace._
+import nanhuv5.mem.L1PrefetchSource
 
 trait HasL1PrefetchHelper extends HasCircularQueuePtrHelper with HasDCacheParameters {
   // region related

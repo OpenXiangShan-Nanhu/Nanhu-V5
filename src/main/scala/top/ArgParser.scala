@@ -19,7 +19,7 @@ package top
 
 import org.chipsalliance.cde.config.{Config, Parameters}
 import system.SoCParamsKey
-import xiangshan.{DebugOptionsKey, XSTileKey}
+import nanhuv5.{DebugOptionsKey, XSTileKey}
 import freechips.rocketchip.tile.MaxHartIdBits
 import difftest.DifftestModule
 

@@ -16,14 +16,14 @@
 // */
 //
 //
-//package xiangshan.backend.fu.vector
+//package nanhuv5.backend.fu.vector
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3._
 //import utils._
 //import yunsuan.vector.mac.VIMac
 //import yunsuan.VimacType
-//import xiangshan.{XSCoreParamsKey, FuType}
+//import nanhuv5.{XSCoreParamsKey, FuType}
 //
 //
 //

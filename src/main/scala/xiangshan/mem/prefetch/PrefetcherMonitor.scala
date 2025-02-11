@@ -1,10 +1,10 @@
-package xiangshan.mem.prefetch
+package nanhuv5.mem.prefetch
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan._
-import xiangshan.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
+import nanhuv5._
+import nanhuv5.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
 import utils._
 import xs.utils._
 import xs.utils.perf._

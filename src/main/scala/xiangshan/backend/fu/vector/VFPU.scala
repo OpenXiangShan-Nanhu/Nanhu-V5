@@ -16,7 +16,7 @@
 //  */
 //
 //
-//package xiangshan.backend.fu.vector
+//package nanhuv5.backend.fu.vector
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3.{Mux, _}
@@ -26,7 +26,7 @@
 import xs.utils.perf._
 //import yunsuan.vector.{VectorFloatAdder,VectorFloatFMA,VectorFloatDivider}
 //import yunsuan.VfpuType
-//import xiangshan.{FuType, XSCoreParamsKey}
+//import nanhuv5.{FuType, XSCoreParamsKey}
 //
 //class VFPU(implicit p: Parameters) extends VPUSubModule(p(XSCoreParamsKey).VLEN) {
 //  XSError(io.in.valid && io.in.bits.uop.ctrl.fuOpType === VfpuType.dummy, "VFPU OpType not supported")

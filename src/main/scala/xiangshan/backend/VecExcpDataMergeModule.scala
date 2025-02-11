@@ -1,12 +1,12 @@
-package xiangshan.backend
+package nanhuv5.backend
 
 import chisel3.util._
 import chisel3._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.fu.vector.Bundles._
+import nanhuv5._
+import nanhuv5.backend.fu.vector.Bundles._
 
 class VecExcpDataMergeModule(implicit p: Parameters) extends XSModule {
   private val MaxLMUL = 8

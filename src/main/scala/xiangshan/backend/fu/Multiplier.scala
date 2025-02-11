@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,8 +22,8 @@ import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend.fu.util.{C22, C32, C53}
+import nanhuv5._
+import nanhuv5.backend.fu.util.{C22, C32, C53}
 
 class MulDivCtrl extends Bundle{
   val sign = Bool()

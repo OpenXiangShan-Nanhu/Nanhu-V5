@@ -1,11 +1,11 @@
-package xiangshan.backend.fu.wrapper
+package nanhuv5.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import xs.utils.{LookupTree, SignExt, ZeroExt}
-import xiangshan.MULOpType
-import xiangshan.backend.fu.{ArrayMulDataModule, FuncUnit, HasPipelineReg, MulDivCtrl}
-import xiangshan.backend.fu.FuConfig
+import nanhuv5.MULOpType
+import nanhuv5.backend.fu.{ArrayMulDataModule, FuncUnit, HasPipelineReg, MulDivCtrl}
+import nanhuv5.backend.fu.FuConfig
 
 class MulUnit(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   with HasPipelineReg

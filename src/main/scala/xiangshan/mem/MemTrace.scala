@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem.trace
+package nanhuv5.mem.trace
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._

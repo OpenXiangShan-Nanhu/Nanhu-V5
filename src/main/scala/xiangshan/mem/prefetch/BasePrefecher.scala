@@ -14,16 +14,16 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.mem.prefetch
+package nanhuv5.mem.prefetch
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.tl.MemReqSource
-import xiangshan._
-import xiangshan.cache.mmu.TlbRequestIO
-import xiangshan.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
-import xiangshan.backend._
+import nanhuv5._
+import nanhuv5.cache.mmu.TlbRequestIO
+import nanhuv5.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
+import nanhuv5.backend._
 
 class L2PrefetchReq(implicit p: Parameters) extends XSBundle {
   val addr = UInt(PAddrBits.W)

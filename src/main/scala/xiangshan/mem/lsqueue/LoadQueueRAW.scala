@@ -14,20 +14,20 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config._
-import xiangshan._
-import xiangshan.backend.rob.RobPtr
-import xiangshan.cache._
-import xiangshan.frontend.FtqPtr
-import xiangshan.mem.mdp._
+import nanhuv5._
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.cache._
+import nanhuv5.frontend.FtqPtr
+import nanhuv5.mem.mdp._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.backend.Bundles.DynInst
+import nanhuv5.backend.Bundles.DynInst
 
 class LoadQueueRAW(implicit p: Parameters) extends XSModule
   with HasDCacheParameters

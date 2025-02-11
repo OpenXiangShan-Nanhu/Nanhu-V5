@@ -1,17 +1,17 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket.CSRs
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.ZeroExt
-import xiangshan.backend.fu.NewCSR.CSRBundles._
-import xiangshan.backend.fu.NewCSR.CSRConfig._
-import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW, _}
-import xiangshan.backend.fu.NewCSR.CSREnumTypeImplicitCast._
-import xiangshan.backend.fu.NewCSR.CSREvents.{SretEventSinkBundle, TrapEntryHSEventSinkBundle}
-import xiangshan.backend.fu.NewCSR.CSRFunc._
-import xiangshan.backend.fu.NewCSR.ChiselRecordForField._
+import nanhuv5.backend.fu.NewCSR.CSRBundles._
+import nanhuv5.backend.fu.NewCSR.CSRConfig._
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW, _}
+import nanhuv5.backend.fu.NewCSR.CSREnumTypeImplicitCast._
+import nanhuv5.backend.fu.NewCSR.CSREvents.{SretEventSinkBundle, TrapEntryHSEventSinkBundle}
+import nanhuv5.backend.fu.NewCSR.CSRFunc._
+import nanhuv5.backend.fu.NewCSR.ChiselRecordForField._
 
 import scala.collection.immutable.SeqMap
 

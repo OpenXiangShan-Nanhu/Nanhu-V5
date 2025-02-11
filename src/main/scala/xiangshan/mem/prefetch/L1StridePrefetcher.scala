@@ -1,16 +1,16 @@
-package xiangshan.mem.prefetch
+package nanhuv5.mem.prefetch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.cache.HasDCacheParameters
-import xiangshan.cache.mmu._
-import xiangshan.mem.{L1PrefetchReq, LdPrefetchTrainBundle}
-import xiangshan.mem.trace._
+import nanhuv5.cache.HasDCacheParameters
+import nanhuv5.cache.mmu._
+import nanhuv5.mem.{L1PrefetchReq, LdPrefetchTrainBundle}
+import nanhuv5.mem.trace._
 import scala.collection.SeqLike
 
 trait HasStridePrefetchHelper extends HasL1PrefetchHelper {

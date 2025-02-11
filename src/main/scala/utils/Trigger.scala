@@ -18,7 +18,7 @@ package utils
 
 import chisel3._
 import chisel3.util._
-import xiangshan.MatchTriggerIO
+import nanhuv5.MatchTriggerIO
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.perf._
 

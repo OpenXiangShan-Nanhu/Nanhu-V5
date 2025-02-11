@@ -1,11 +1,11 @@
-package xiangshan.utils
+package nanhuv5.utils
 
 import chisel3.emitVerilog
 import chisel3.util.ValidIO
 import top.ArgParser
 import utils.PipeWithFlush
-import xiangshan.{Redirect, XSCoreParamsKey, XSTileKey}
-import xiangshan.backend.Bundles.DynInst
+import nanhuv5.{Redirect, XSCoreParamsKey, XSTileKey}
+import nanhuv5.backend.Bundles.DynInst
 
 object GenPipeWithFlush extends App {
   println("Generating the VerilogPipeWithFlush hardware")

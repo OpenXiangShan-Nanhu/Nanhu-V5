@@ -1,7 +1,7 @@
-package xiangshan.backend.regfile
+package nanhuv5.backend.regfile
 
 import chisel3.util.log2Up
-import xiangshan.backend.datapath.DataConfig._
+import nanhuv5.backend.datapath.DataConfig._
 
 abstract class PregParams {
   val numEntries: Int

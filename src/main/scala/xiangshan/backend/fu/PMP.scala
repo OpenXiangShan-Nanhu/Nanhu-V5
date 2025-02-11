@@ -17,18 +17,18 @@
 
 // See LICENSE.SiFive for license details.
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.MaskedRegMap.WritableMask
-import xiangshan._
-import xiangshan.backend.fu.util.HasCSRConst
+import nanhuv5._
+import nanhuv5.backend.fu.util.HasCSRConst
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.cache.mmu.{TlbCmd, TlbExceptionBundle}
+import nanhuv5.cache.mmu.{TlbCmd, TlbExceptionBundle}
 
 trait PMPConst extends HasPMParameters {
   val PMPOffBits = 2 // minimal 4bytes

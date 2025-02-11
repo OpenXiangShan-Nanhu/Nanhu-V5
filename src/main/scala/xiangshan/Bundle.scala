@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan
+package nanhuv5
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -24,22 +24,22 @@ import chisel3.experimental.BundleLiterals._
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan.backend.decode.{ImmUnion, XDecode}
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.rob.RobPtr
-import xiangshan.frontend._
-import xiangshan.mem.{LqPtr, SqPtr}
-import xiangshan.backend.Bundles.{DynInst, UopIdx}
-import xiangshan.backend.fu.vector.Bundles.VType
-import xiangshan.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
-import xiangshan.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
-import xiangshan.cache.HasDCacheParameters
+import nanhuv5.backend.decode.{ImmUnion, XDecode}
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.frontend._
+import nanhuv5.mem.{LqPtr, SqPtr}
+import nanhuv5.backend.Bundles.{DynInst, UopIdx}
+import nanhuv5.backend.fu.vector.Bundles.VType
+import nanhuv5.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
+import nanhuv5.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
+import nanhuv5.cache.HasDCacheParameters
 
 import chisel3.util.experimental.decode.EspressoMinimizer
-import xiangshan.backend.CtrlToFtqIO
-import xiangshan.backend.fu.NewCSR.{Mcontrol6, Tdata1Bundle, Tdata2Bundle}
-import xiangshan.backend.fu.PMPEntry
-import xiangshan.backend.rob.RobBundles.RobCommitEntryBundle
+import nanhuv5.backend.CtrlToFtqIO
+import nanhuv5.backend.fu.NewCSR.{Mcontrol6, Tdata1Bundle, Tdata2Bundle}
+import nanhuv5.backend.fu.PMPEntry
+import nanhuv5.backend.rob.RobBundles.RobCommitEntryBundle
 
 class ValidUndirectioned[T <: Data](gen: T) extends Bundle {
   val valid = Bool()

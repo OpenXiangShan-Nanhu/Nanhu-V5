@@ -1,19 +1,19 @@
-package xiangshan.mem.prefetch
+package nanhuv5.mem.prefetch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils.{CircularQueuePtr, GatedValidRegNext, HasCircularQueuePtrHelper, RRArbiterInit, ChiselDB, OverrideableQueue, ReplacementPolicy}
 import xs.utils.perf._
 import xs.utils.sram._
 import xs.utils.tl._
-import xiangshan.cache.HasDCacheParameters
-import xiangshan.cache.mmu._
-import xiangshan.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
-import xiangshan.mem.trace._
-import xiangshan.mem.HasL1PrefetchSourceParameter
+import nanhuv5.cache.HasDCacheParameters
+import nanhuv5.cache.mmu._
+import nanhuv5.mem.{LdPrefetchTrainBundle, StPrefetchTrainBundle, L1PrefetchReq}
+import nanhuv5.mem.trace._
+import nanhuv5.mem.HasL1PrefetchSourceParameter
 
 case class SMSParams
 (

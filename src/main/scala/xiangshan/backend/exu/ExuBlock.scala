@@ -1,19 +1,19 @@
-package xiangshan.backend.exu
+package nanhuv5.backend.exu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import xiangshan.backend.fu.{CSRFileIO, FenceIO}
-import xiangshan.backend.Bundles._
-import xiangshan.backend.issue.SchdBlockParams
-import xiangshan.{HasXSParameter, Redirect, XSBundle}
+import nanhuv5.backend.fu.{CSRFileIO, FenceIO}
+import nanhuv5.backend.Bundles._
+import nanhuv5.backend.issue.SchdBlockParams
+import nanhuv5.{HasXSParameter, Redirect, XSBundle}
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.backend.fu.FuConfig.{AluCfg, BrhCfg}
-import xiangshan.backend.fu.vector.Bundles.{VType, Vxrm}
-import xiangshan.backend.fu.fpu.Bundles.Frm
-import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
+import nanhuv5.backend.fu.FuConfig.{AluCfg, BrhCfg}
+import nanhuv5.backend.fu.vector.Bundles.{VType, Vxrm}
+import nanhuv5.backend.fu.fpu.Bundles.Frm
+import nanhuv5.backend.fu.wrapper.{CSRInput, CSRToDecode}
 
 class ExuBlock(params: SchdBlockParams)(implicit p: Parameters) extends LazyModule with HasXSParameter {
   override def shouldBeInlined: Boolean = false

@@ -1,8 +1,8 @@
-package xiangshan.backend.fu.vector.utils
+package nanhuv5.backend.fu.vector.utils
 
 import chisel3._
 import chisel3.util._
-import xiangshan.backend.fu.vector.Bundles.VSew
+import nanhuv5.backend.fu.vector.Bundles.VSew
 
 class ScalaDupToVectorIO(vlen: Int) extends Bundle {
   val in = Input(new Bundle {

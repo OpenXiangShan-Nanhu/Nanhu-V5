@@ -14,20 +14,20 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache.mmu
+package nanhuv5.cache.mmu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import difftest._
 import freechips.rocketchip.util.SRAMAnnotation
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.backend.fu.{PMPChecker, PMPReqBundle, PMPConfig => XSPMPConfig}
-import xiangshan.backend.rob.RobPtr
-import xiangshan.backend.fu.util.HasCSRConst
+import nanhuv5.backend.fu.{PMPChecker, PMPReqBundle, PMPConfig => XSPMPConfig}
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.backend.fu.util.HasCSRConst
 import freechips.rocketchip.rocket.PMPConfig
 
 /** TLB module

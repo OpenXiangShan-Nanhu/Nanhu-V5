@@ -18,24 +18,24 @@ package top
 
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils._
 import system._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams}
-import xiangshan.frontend.icache.ICacheParameters
+import nanhuv5.frontend.icache.ICacheParameters
 import freechips.rocketchip.devices.debug._
 import freechips.rocketchip.tile.{MaxHartIdBits}
-import xiangshan.backend.dispatch.DispatchParameters
-import xiangshan.backend.regfile.{IntPregParams, FpPregParams, VfPregParams}
-import xiangshan.cache.DCacheParameters
-import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
+import nanhuv5.backend.dispatch.DispatchParameters
+import nanhuv5.backend.regfile.{IntPregParams, FpPregParams, VfPregParams}
+import nanhuv5.cache.DCacheParameters
+import nanhuv5.cache.mmu.{L2TLBParameters, TLBParameters}
 import device.{EnableJtag, XSDebugModuleParams}
 import huancun._
 import coupledL2._
 import coupledL2.prefetch._
-import xiangshan.frontend.icache.ICacheParameters
+import nanhuv5.frontend.icache.ICacheParameters
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64

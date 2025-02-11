@@ -1,8 +1,8 @@
-package xiangshan.backend.datapath
+package nanhuv5.backend.datapath
 
 import chisel3.util.log2Up
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.XSCoreParamsKey
+import nanhuv5.XSCoreParamsKey
 
 object DataConfig {
   sealed abstract class DataConfig (

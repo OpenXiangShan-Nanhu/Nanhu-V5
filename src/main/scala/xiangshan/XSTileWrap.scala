@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan
+package nanhuv5
 
 import chisel3._
 import chisel3.util._
@@ -26,7 +26,7 @@ import system.HasSoCParameter
 import device.{IMSICAsync, MsiInfoBundle}
 import coupledL2.tl2chi.{AsyncPortIO, CHIAsyncBridgeSource, PortIO}
 import xs.utils.{DFTResetSignals, IntBuffer, ResetGen}
-import xiangshan.backend.trace.TraceCoreInterface
+import nanhuv5.backend.trace.TraceCoreInterface
 
 // This module is used for XSNoCTop for async time domain and divide different
 // voltage domain. Everything in this module should be in the core clock domain

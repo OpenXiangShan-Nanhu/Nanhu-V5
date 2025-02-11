@@ -1,13 +1,13 @@
-package xiangshan
+package nanhuv5
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.log2Ceil
-import xiangshan.backend.ctrlblock.{DebugLsInfo}
-import xiangshan.cache.{DCacheBundle, HasDCacheParameters}
-import xiangshan.backend.fu.FuType
+import nanhuv5.backend.ctrlblock.{DebugLsInfo}
+import nanhuv5.cache.{DCacheBundle, HasDCacheParameters}
+import nanhuv5.backend.fu.FuType
 import xs.utils.tl.MemReqSource
-import xiangshan.mem.prefetch.HasL1PrefetchHelper
+import nanhuv5.mem.prefetch.HasL1PrefetchHelper
 
 /** Mem */
 class LoadMissEntry(implicit p: Parameters) extends DCacheBundle {

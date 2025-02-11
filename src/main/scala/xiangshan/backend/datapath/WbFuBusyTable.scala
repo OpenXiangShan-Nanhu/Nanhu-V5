@@ -1,4 +1,4 @@
-package xiangshan.backend.datapath
+package nanhuv5.backend.datapath
 
 import scala.collection.Seq
 import org.chipsalliance.cde.config.Parameters
@@ -8,11 +8,11 @@ import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
 import utils.OptionWrapper
-import xiangshan._
-import xiangshan.backend._
-import xiangshan.backend.datapath.WbConfig._
-import xiangshan.backend.exu.ExeUnitParams
-import xiangshan.backend.implicitCast._
+import nanhuv5._
+import nanhuv5.backend._
+import nanhuv5.backend.datapath.WbConfig._
+import nanhuv5.backend.exu.ExeUnitParams
+import nanhuv5.backend.implicitCast._
 
 class WbFuBusyTable(bp: BackendParams)(implicit  p: Parameters) extends LazyModule {
   override def shouldBeInlined: Boolean = false

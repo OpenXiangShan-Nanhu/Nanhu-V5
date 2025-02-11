@@ -16,12 +16,12 @@
 
 // See LICENSE.SiFive for license details.
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.{HasXSParameter, XSBundle, XSModule}
+import nanhuv5.{HasXSParameter, XSBundle, XSModule}
 
 // this file contains common building blocks that can be shared by ICache and DCache
 // this is the common parameter base for L1 ICache and L1 DCache

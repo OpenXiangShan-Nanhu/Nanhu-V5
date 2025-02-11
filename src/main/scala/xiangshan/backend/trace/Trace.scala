@@ -1,9 +1,9 @@
-package xiangshan.backend.trace
+package nanhuv5.backend.trace
 
 import chisel3._
 import chisel3.util.{RegEnable, ValidIO, log2Up}
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.HasXSParameter
+import nanhuv5.HasXSParameter
 
 class TraceParams(
   val HasEncoder     : Boolean,

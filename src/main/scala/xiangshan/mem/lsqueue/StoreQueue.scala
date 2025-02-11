@@ -15,7 +15,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import chisel3._
 import chisel3.util._
@@ -25,18 +25,18 @@ import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.cache._
-import xiangshan.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
-import xiangshan.backend._
-import xiangshan.backend.rob.{RobLsqIO, RobPtr}
-import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
-import xiangshan.backend.decode.isa.bitfield.{Riscv32BitInst, XSInstBitFields}
-import xiangshan.backend.fu.FuConfig._
-import xiangshan.backend.fu.FuType
-import xiangshan.ExceptionNO._
+import nanhuv5._
+import nanhuv5.cache._
+import nanhuv5.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
+import nanhuv5.backend._
+import nanhuv5.backend.rob.{RobLsqIO, RobPtr}
+import nanhuv5.backend.Bundles.{DynInst, MemExuOutput}
+import nanhuv5.backend.decode.isa.bitfield.{Riscv32BitInst, XSInstBitFields}
+import nanhuv5.backend.fu.FuConfig._
+import nanhuv5.backend.fu.FuType
+import nanhuv5.ExceptionNO._
 import coupledL2.{CMOReq, CMOResp}
-import xiangshan.mem.mdp.MDPResUpdateIO
+import nanhuv5.mem.mdp.MDPResUpdateIO
 
 class SqPtr(implicit p: Parameters) extends CircularQueuePtr[SqPtr](
   p => p(XSCoreParamsKey).StoreQueueSize

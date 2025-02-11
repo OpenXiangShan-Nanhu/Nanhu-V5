@@ -1,12 +1,12 @@
-//package xiangshan.backend.ctrlblock
+//package nanhuv5.backend.ctrlblock
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3.util.ValidIO
 //import chisel3._
-//import xiangshan.backend.BackendParams
-//import xiangshan.{CustomCSRCtrlIO, MemPredUpdateReq, Redirect, XSBundle, XSModule}
-//import xiangshan.mem.mdp.{DispatchLFSTIO, LFST, NewMDP, SSIT, SSITEntry, WaitTable}
-//import xiangshan.backend.Bundles.DynInst
+//import nanhuv5.backend.BackendParams
+//import nanhuv5.{CustomCSRCtrlIO, MemPredUpdateReq, Redirect, XSBundle, XSModule}
+//import nanhuv5.mem.mdp.{DispatchLFSTIO, LFST, NewMDP, SSIT, SSITEntry, WaitTable}
+//import nanhuv5.backend.Bundles.DynInst
 //
 //class MemCtrl(params: BackendParams)(implicit p: Parameters) extends XSModule {
 //  val io = IO(new MemCtrlIO(params))

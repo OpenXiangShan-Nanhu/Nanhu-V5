@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.dispatch
+package nanhuv5.backend.dispatch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,13 +22,13 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.rob.RobPtr
-import xiangshan.backend.Bundles.{DynInst, SimpleVPUCtrlSignals, UopIdx}
-import xiangshan.backend.fu.FuType
-import xiangshan.frontend.{FtqPtr, PreDecodeInfo}
-import xiangshan.mem.{LqPtr, SqPtr}
-import xiangshan.backend.fu.vector.Bundles.NumLsElem
+import nanhuv5._
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.backend.Bundles.{DynInst, SimpleVPUCtrlSignals, UopIdx}
+import nanhuv5.backend.fu.FuType
+import nanhuv5.frontend.{FtqPtr, PreDecodeInfo}
+import nanhuv5.mem.{LqPtr, SqPtr}
+import nanhuv5.backend.fu.vector.Bundles.NumLsElem
 
 // for dq datamodule
   class DqBundle(implicit p: Parameters) extends XSBundle {

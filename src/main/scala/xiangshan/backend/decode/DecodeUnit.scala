@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -26,15 +26,15 @@ import freechips.rocketchip.util.uintToBitPat
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan.ExceptionNO.{EX_II, breakPoint, illegalInstr, virtualInstr}
-import xiangshan._
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.Bundles.{DecodedInst, DynInst, StaticInst}
-import xiangshan.backend.decode.isa.PseudoInstructions
-import xiangshan.backend.decode.isa.bitfield.{InstVType, OPCODE5Bit, XSInstBitFields}
-import xiangshan.backend.fu.vector.Bundles.{VType, Vl}
-import xiangshan.backend.fu.wrapper.CSRToDecode
-import xiangshan.backend.decode.Zimop._
+import nanhuv5.ExceptionNO.{EX_II, breakPoint, illegalInstr, virtualInstr}
+import nanhuv5._
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.Bundles.{DecodedInst, DynInst, StaticInst}
+import nanhuv5.backend.decode.isa.PseudoInstructions
+import nanhuv5.backend.decode.isa.bitfield.{InstVType, OPCODE5Bit, XSInstBitFields}
+import nanhuv5.backend.fu.vector.Bundles.{VType, Vl}
+import nanhuv5.backend.fu.wrapper.CSRToDecode
+import nanhuv5.backend.decode.Zimop._
 import yunsuan.{VfaluType, VfcvtType}
 
 /**

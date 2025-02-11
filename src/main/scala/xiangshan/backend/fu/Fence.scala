@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.perf.XSDebug
-import xiangshan.ExceptionNO.{illegalInstr, virtualInstr}
-import xiangshan._
+import nanhuv5.ExceptionNO.{illegalInstr, virtualInstr}
+import nanhuv5._
 
 class FenceIO(implicit p: Parameters) extends XSBundle {
   val sfence = Output(new SfenceBundle)

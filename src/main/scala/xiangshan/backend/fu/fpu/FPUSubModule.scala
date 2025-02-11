@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.backend.fu.{FuncUnit, HasPipelineReg}
-import xiangshan.backend.fu.FuConfig
-import xiangshan.{FPUCtrlSignals, XSModule}
+import nanhuv5.backend.fu.{FuncUnit, HasPipelineReg}
+import nanhuv5.backend.fu.FuConfig
+import nanhuv5.{FPUCtrlSignals, XSModule}
 
 trait HasUIntToSIntHelper {
   implicit class UIntToSIntHelper(x: UInt){

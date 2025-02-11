@@ -26,8 +26,8 @@ import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util.AsyncResetSynchronizerShiftReg
 import device.XSDebugModuleParams
 import system.SoCParamsKey
-import xiangshan.XSCoreParamsKey
-import xiangshan.XSTileKey
+import nanhuv5.XSCoreParamsKey
+import nanhuv5.XSTileKey
 import device.DebugModule
 import xs.utils.{IntBuffer, RegNextN}
 

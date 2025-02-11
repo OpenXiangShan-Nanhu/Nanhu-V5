@@ -1,9 +1,9 @@
-package xiangshan.backend.dispatch
+package nanhuv5.backend.dispatch
 
 import chisel3._
 import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
 import top.{ArgParser, Generator, XSTop}
-import xiangshan.XSCoreParamsKey
+import nanhuv5.XSCoreParamsKey
 
 
 object Dispatch2IqMain extends App {

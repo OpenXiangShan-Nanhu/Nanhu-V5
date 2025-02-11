@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._

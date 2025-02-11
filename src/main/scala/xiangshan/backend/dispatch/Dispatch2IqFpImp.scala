@@ -1,4 +1,4 @@
-package xiangshan.backend.dispatch
+package nanhuv5.backend.dispatch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -7,14 +7,14 @@ import chisel3.util.experimental.decode._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils.{Constantin, PriorityMuxDefault, SelectOne}
 import xs.utils.perf.{XSPerfAccumulate}
-import xiangshan._
-import xiangshan.backend.fu.{FuConfig, FuType}
-import xiangshan.backend.rename.BusyTableReadIO
-import xiangshan.mem.LsqEnqIO
-import xiangshan.backend.Bundles.{DynInst, ExuOH}
-import xiangshan.backend.datapath.DataSource
-import xiangshan.backend.fu.FuType.{FuTypeOrR, falu}
-import xiangshan.backend.issue._
+import nanhuv5._
+import nanhuv5.backend.fu.{FuConfig, FuType}
+import nanhuv5.backend.rename.BusyTableReadIO
+import nanhuv5.mem.LsqEnqIO
+import nanhuv5.backend.Bundles.{DynInst, ExuOH}
+import nanhuv5.backend.datapath.DataSource
+import nanhuv5.backend.fu.FuType.{FuTypeOrR, falu}
+import nanhuv5.backend.issue._
 
 import scala.collection._
 

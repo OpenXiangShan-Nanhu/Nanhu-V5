@@ -14,18 +14,18 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket.DecodeLogic
 import freechips.rocketchip.rocket.Instructions._
-import xiangshan.backend.decode.isa.bitfield.XSInstBitFields
-import xiangshan.backend.fu.fpu.FPU
-import xiangshan.backend.fu.vector.Bundles.{VSew, VLmul}
-import xiangshan.backend.Bundles.VPUCtrlSignals
-import xiangshan.{FPUCtrlSignals, XSModule}
+import nanhuv5.backend.decode.isa.bitfield.XSInstBitFields
+import nanhuv5.backend.fu.fpu.FPU
+import nanhuv5.backend.fu.vector.Bundles.{VSew, VLmul}
+import nanhuv5.backend.Bundles.VPUCtrlSignals
+import nanhuv5.{FPUCtrlSignals, XSModule}
 
 class FPToVecDecoder(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle() {

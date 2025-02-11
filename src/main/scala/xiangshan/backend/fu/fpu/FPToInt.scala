@@ -17,14 +17,14 @@
 // See LICENSE.Berkeley for license details.
 // See LICENSE.SiFive for license details.
 
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import fudian.FCMP
 import xs.utils.SignExt
-import xiangshan.backend.fu.FuConfig
+import nanhuv5.backend.fu.FuConfig
 
 
 

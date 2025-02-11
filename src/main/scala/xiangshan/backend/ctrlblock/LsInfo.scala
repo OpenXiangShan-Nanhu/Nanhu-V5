@@ -1,10 +1,10 @@
-package xiangshan.backend.ctrlblock
+package nanhuv5.backend.ctrlblock
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.XSBundle
-import xiangshan.mem.LoadReplayCauses
+import nanhuv5.XSBundle
+import nanhuv5.mem.LoadReplayCauses
 
 class DebugLsInfo(implicit p: Parameters) extends XSBundle{
   val s1_isTlbFirstMiss = Bool() // in s1

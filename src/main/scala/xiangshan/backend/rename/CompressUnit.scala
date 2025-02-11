@@ -1,13 +1,13 @@
-package xiangshan.backend.rename
+package nanhuv5.backend.rename
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3.Bundle
-import xiangshan.backend.Bundles.DecodedInst
-import xiangshan.XSModule
+import nanhuv5.backend.Bundles.DecodedInst
+import nanhuv5.XSModule
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket.DecodeLogic
-import xiangshan._
+import nanhuv5._
 
 class CompressUnit(implicit p: Parameters) extends XSModule{
   val io = IO(new Bundle {

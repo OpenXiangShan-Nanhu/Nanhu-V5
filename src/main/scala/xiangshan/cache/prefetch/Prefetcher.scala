@@ -14,13 +14,13 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache.prefetch
+package nanhuv5.cache.prefetch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.cache._
+import nanhuv5._
+import nanhuv5.cache._
 import utils._
 import xs.utils._
 import xs.utils.perf._

@@ -1,11 +1,11 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.decode.TruthTable
 import freechips.rocketchip.rocket.CSRs
-import xiangshan.backend.fu.NewCSR.CSRBundles.{Counteren, PrivState}
-import xiangshan.backend.fu.NewCSR.CSRDefines._
+import nanhuv5.backend.fu.NewCSR.CSRBundles.{Counteren, PrivState}
+import nanhuv5.backend.fu.NewCSR.CSRDefines._
 
 class CSRPermitModule extends Module {
   val io = IO(new CSRPermitIO)

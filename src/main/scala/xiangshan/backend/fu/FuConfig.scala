@@ -1,20 +1,20 @@
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import utils.EnumUtils.OHEnumeration
-import xiangshan.ExceptionNO._
-import xiangshan.SelImm
-import xiangshan.backend.Std
-import xiangshan.backend.fu.fpu.{IntToFP, IntFPToVec}
-import xiangshan.backend.fu.wrapper._
-import xiangshan.backend.Bundles.ExuInput
-import xiangshan.backend.datapath.DataConfig._
+import nanhuv5.ExceptionNO._
+import nanhuv5.SelImm
+import nanhuv5.backend.Std
+import nanhuv5.backend.fu.fpu.{IntToFP, IntFPToVec}
+import nanhuv5.backend.fu.wrapper._
+import nanhuv5.backend.Bundles.ExuInput
+import nanhuv5.backend.datapath.DataConfig._
 
 /**
   *
   * @param name [[String]] name of fuConfig
-  * @param fuType [[Int]] type of func, select from [[xiangshan.backend.fu.FuType]]
+  * @param fuType [[Int]] type of func, select from [[v5.backend.fu.FuType]]
   * @param fuGen how to create $fu
   * @param srcData type of src data used by this $fu
   * @param piped if the $fu is pipelined

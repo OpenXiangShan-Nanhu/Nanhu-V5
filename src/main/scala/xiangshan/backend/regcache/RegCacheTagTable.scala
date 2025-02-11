@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.regcache
+package nanhuv5.backend.regcache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,10 +22,10 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.Bundles._
-import xiangshan.backend.BackendParams
-import xiangshan.backend.issue.SchdBlockParams
+import nanhuv5._
+import nanhuv5.backend.Bundles._
+import nanhuv5.backend.BackendParams
+import nanhuv5.backend.issue.SchdBlockParams
 import freechips.rocketchip.util.SeqToAugmentedSeq
 
 class RegCacheTagTable(numReadPorts: Int)(implicit p: Parameters, schdParams: SchdBlockParams) extends XSModule {

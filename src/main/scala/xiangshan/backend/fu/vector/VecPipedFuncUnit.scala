@@ -1,13 +1,13 @@
-package xiangshan.backend.fu.vector
+package nanhuv5.backend.fu.vector
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.fu.FuConfig.VialuCfg
-import xiangshan.backend.fu.vector.Bundles.VConfig
-import xiangshan.backend.fu.vector.utils.ScalaDupToVector
-import xiangshan.backend.fu.{FuConfig, FuncUnit, HasPipelineReg}
+import nanhuv5._
+import nanhuv5.backend.fu.FuConfig.VialuCfg
+import nanhuv5.backend.fu.vector.Bundles.VConfig
+import nanhuv5.backend.fu.vector.utils.ScalaDupToVector
+import nanhuv5.backend.fu.{FuConfig, FuncUnit, HasPipelineReg}
 import yunsuan.VialuFixType
 
 trait VecFuncUnitAlias { this: FuncUnit =>

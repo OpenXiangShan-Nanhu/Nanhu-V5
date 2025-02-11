@@ -1,10 +1,10 @@
-package xiangshan.cache.wpu
+package nanhuv5.cache.wpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.{Fill, log2Up}
-import xiangshan._
-import xiangshan.cache.HasDCacheParameters
+import nanhuv5._
+import nanhuv5.cache.HasDCacheParameters
 
 case class VictimList(nSets: Int, width: Int = 2) {
   val victim_vec = RegInit(VecInit(Seq.fill(nSets)(0.U(width.W))))

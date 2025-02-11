@@ -1,12 +1,12 @@
-package xiangshan.backend.fu.vector
+package nanhuv5.backend.fu.vector
 
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers
 import top.DefaultConfig
-import xiangshan.backend.fu.vector.Bundles.VSew
-import xiangshan.{XSCoreParameters, XSCoreParamsKey}
+import nanhuv5.backend.fu.vector.Bundles.VSew
+import nanhuv5.{XSCoreParameters, XSCoreParamsKey}
 
 class ByteMaskTailGenTest extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 

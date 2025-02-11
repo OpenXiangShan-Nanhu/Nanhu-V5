@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.perf.{XSDebug, XSInfo}
-import xiangshan._
-import xiangshan.cache.{DCacheLineIO, DCacheWordReq, MemoryOpConstants, DCacheWordReqWithVaddr}
+import nanhuv5._
+import nanhuv5.cache.{DCacheLineIO, DCacheWordReq, MemoryOpConstants, DCacheWordReqWithVaddr}
 
 // Fake Store buffer for XiangShan Out of Order LSU
 //

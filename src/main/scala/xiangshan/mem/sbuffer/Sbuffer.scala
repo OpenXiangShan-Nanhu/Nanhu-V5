@@ -15,21 +15,21 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils.{Constantin, GatedValidRegNext, GetEvenBits, GetOddBits, PriorityEncoderWithFlag, ValidPseudoLRU, ZeroExt, MaskExpand, ParallelOR}
 import xs.utils.perf._
-import xiangshan.cache._
-import xiangshan.mem._
-import xiangshan.backend.Bundles.DynInst
+import nanhuv5.cache._
+import nanhuv5.mem._
+import nanhuv5.backend.Bundles.DynInst
 import difftest._
 import freechips.rocketchip.util._
-import xiangshan.backend.fu.FuType._
+import nanhuv5.backend.fu.FuType._
 
 class SbufferFlushBundle extends Bundle {
   val valid = Output(Bool())

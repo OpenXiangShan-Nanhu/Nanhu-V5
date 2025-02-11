@@ -18,7 +18,7 @@ package top
 
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils._
 import xs.utils.perf._

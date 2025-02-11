@@ -1,12 +1,12 @@
-package xiangshan.backend.fu.vector
+package nanhuv5.backend.fu.vector
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.XSBundle
-import xiangshan.XSCoreParamsKey
-import xiangshan.backend.decode.isa.bitfield.InstVType
-import xiangshan.backend.fu.VtypeStruct
+import nanhuv5.XSBundle
+import nanhuv5.XSCoreParamsKey
+import nanhuv5.backend.decode.isa.bitfield.InstVType
+import nanhuv5.backend.fu.VtypeStruct
 import _root_.utils.NamedUInt
 import xs.utils.ZeroExt
 

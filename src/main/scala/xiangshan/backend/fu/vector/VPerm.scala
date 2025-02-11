@@ -16,14 +16,14 @@
 // */
 //
 //
-//package xiangshan.backend.fu.vector
+//package nanhuv5.backend.fu.vector
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3._
 //import chisel3.util.log2Up
 //import utils._
 //import yunsuan.VpermType
-//import xiangshan.{FuType, SrcType, XSCoreParamsKey}
+//import nanhuv5.{FuType, SrcType, XSCoreParamsKey}
 //import yunsuan.vector.perm.Permutation
 //import yunsuan.vector.{FToSModule, Vfslide1upModule}
 //import chisel3.dontTouch

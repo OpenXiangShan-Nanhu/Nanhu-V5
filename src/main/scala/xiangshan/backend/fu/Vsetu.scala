@@ -14,13 +14,13 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.fu.vector.Bundles.{VConfig, VType, Vl, VSew, VLmul, VsetVType}
+import nanhuv5._
+import nanhuv5.backend.fu.vector.Bundles.{VConfig, VType, Vl, VSew, VLmul, VsetVType}
 
 class VsetModuleIO(implicit p: Parameters) extends XSBundle {
   private val vlWidth = p(XSCoreParamsKey).vlWidth

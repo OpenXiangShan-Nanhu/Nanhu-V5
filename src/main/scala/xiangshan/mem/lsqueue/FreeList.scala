@@ -13,7 +13,7 @@
 *
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -21,7 +21,7 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
+import nanhuv5._
 
 class FreeList(size: Int, allocWidth: Int, freeWidth: Int, enablePreAlloc: Boolean = false, moduleName: String = "")(implicit p: Parameters) extends XSModule
   with HasCircularQueuePtrHelper

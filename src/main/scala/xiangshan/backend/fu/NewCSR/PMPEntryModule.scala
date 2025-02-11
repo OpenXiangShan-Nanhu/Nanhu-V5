@@ -1,10 +1,10 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.HasPMParameters
+import nanhuv5.HasPMParameters
 
 trait PMPConst extends HasPMParameters {
   val PMPOffBits = 2 // minimal 4bytes

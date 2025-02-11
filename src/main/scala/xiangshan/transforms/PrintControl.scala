@@ -15,7 +15,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.transforms
+package nanhuv5.transforms
 
 case class DisablePrintfAnnotation(m: String) extends firrtl.annotations.NoTargetAnnotation
 object DisablePrintfAnnotation extends firrtl.options.HasShellOptions{
@@ -81,7 +81,7 @@ class PrintControl extends firrtl.options.Phase {
 
   override def transform(annotations: firrtl.AnnotationSeq): firrtl.AnnotationSeq = {
 
-    import xiangshan.transforms.Helpers._
+    import nanhuv5.transforms.Helpers._
 
     val disableList = annotations.collect {
       case DisablePrintfAnnotation(m) => m

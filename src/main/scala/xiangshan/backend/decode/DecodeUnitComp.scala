@@ -15,7 +15,7 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -25,14 +25,14 @@ import freechips.rocketchip.util.uintToBitPat
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.ExceptionNO.illegalInstr
-import xiangshan._
-import xiangshan.backend.fu.fpu.FPU
-import xiangshan.backend.fu.FuType
+import nanhuv5.ExceptionNO.illegalInstr
+import nanhuv5._
+import nanhuv5.backend.fu.fpu.FPU
+import nanhuv5.backend.fu.FuType
 import freechips.rocketchip.rocket.Instructions._
-import xiangshan.backend.Bundles.{DecodedInst, StaticInst}
-import xiangshan.backend.decode.isa.bitfield.XSInstBitFields
-import xiangshan.backend.fu.vector.Bundles.{VSew, VType, VLmul}
+import nanhuv5.backend.Bundles.{DecodedInst, StaticInst}
+import nanhuv5.backend.decode.isa.bitfield.XSInstBitFields
+import nanhuv5.backend.fu.vector.Bundles.{VSew, VType, VLmul}
 import yunsuan.VpermType
 import chisel3.util.experimental.decode.{QMCMinimizer, TruthTable, decoder}
 

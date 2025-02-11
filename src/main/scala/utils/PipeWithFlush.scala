@@ -2,8 +2,8 @@ package utils
 
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.Bundles.ExuInput
+import nanhuv5._
+import nanhuv5.backend.Bundles.ExuInput
 
 /** Pipeline module generator parameterized by data type and latency.
   *

@@ -1,4 +1,4 @@
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -8,12 +8,12 @@ import freechips.rocketchip.util.uintToBitPat
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend.Bundles.{DecodedInst, DynInst, StaticInst}
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.fu.vector.Bundles._
-import xiangshan.backend.decode.isa.bitfield.{InstVType, XSInstBitFields, OPCODE7Bit}
-import xiangshan.backend.decode.Zvbb._
+import nanhuv5._
+import nanhuv5.backend.Bundles.{DecodedInst, DynInst, StaticInst}
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.fu.vector.Bundles._
+import nanhuv5.backend.decode.isa.bitfield.{InstVType, XSInstBitFields, OPCODE7Bit}
+import nanhuv5.backend.decode.Zvbb._
 
 object RegNumNotAlign {
   def apply(reg: UInt, emul: UInt): Bool = {

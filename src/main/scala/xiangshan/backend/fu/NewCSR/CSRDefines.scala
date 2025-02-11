@@ -1,7 +1,7 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
-import xiangshan.backend.fu.NewCSR.CSRFunc._
+import nanhuv5.backend.fu.NewCSR.CSRFunc._
 
 import scala.language.experimental.macros
 import scala.reflect.runtime.{universe => ru}

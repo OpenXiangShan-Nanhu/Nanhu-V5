@@ -1,8 +1,8 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
-import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW}
-import xiangshan.backend.fu.NewCSR.CSRBundles.PrivState
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW}
+import nanhuv5.backend.fu.NewCSR.CSRBundles.PrivState
 
 
 class SstateenBundle0 extends CSRBundle {

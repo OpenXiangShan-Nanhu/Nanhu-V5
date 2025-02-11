@@ -1,9 +1,9 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import chisel3._
 import freechips.rocketchip.diplomacy.DisableMonitors
 import top.{ArgParser, BaseConfig, Generator}
-import xiangshan.{XSCoreParameters, XSCoreParamsKey}
+import nanhuv5.{XSCoreParameters, XSCoreParamsKey}
 
 object DataArrayMain extends App {
   val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)

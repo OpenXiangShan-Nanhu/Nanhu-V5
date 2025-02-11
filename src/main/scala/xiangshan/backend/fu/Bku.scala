@@ -14,15 +14,15 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.{LookupTreeDefault, ParallelMux, ParallelXOR, SignExt, ZeroExt}
 import xs.utils.perf.{XSDebug, XSError}
-import xiangshan._
-import xiangshan.backend.fu.util._
+import nanhuv5._
+import nanhuv5.backend.fu.util._
 
 class CountModule(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle() {

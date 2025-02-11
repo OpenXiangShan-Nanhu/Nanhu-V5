@@ -14,22 +14,22 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache.mmu
+package nanhuv5.cache.mmu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.experimental.ExtModule
 import chisel3.util._
-import xiangshan._
-import xiangshan.cache.{HasDCacheParameters, MemoryOpConstants}
+import nanhuv5._
+import nanhuv5.cache.{HasDCacheParameters, MemoryOpConstants}
 import utils._
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.tl._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink._
-import xiangshan.backend.fu.{PMP, PMPChecker, PMPReqBundle, PMPRespBundle}
-import xiangshan.backend.fu.util.HasCSRConst
+import nanhuv5.backend.fu.{PMP, PMPChecker, PMPReqBundle, PMPRespBundle}
+import nanhuv5.backend.fu.util.HasCSRConst
 import difftest._
 
 class L2TLB()(implicit p: Parameters) extends LazyModule with HasPtwConst {

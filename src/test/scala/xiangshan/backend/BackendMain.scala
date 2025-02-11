@@ -1,9 +1,9 @@
-package xiangshan.backend
+package nanhuv5.backend
 
 import freechips.rocketchip.diplomacy.LazyModule
 import top.{ArgParser, BaseConfig, Generator}
-import xiangshan.backend.regfile.IntPregParams
-import xiangshan.{XSCoreParameters, XSCoreParamsKey, XSTileKey}
+import nanhuv5.backend.regfile.IntPregParams
+import nanhuv5.{XSCoreParameters, XSCoreParamsKey, XSTileKey}
 
 object BackendMain extends App {
   val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(

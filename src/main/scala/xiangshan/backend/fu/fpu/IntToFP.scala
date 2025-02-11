@@ -17,13 +17,13 @@
 // See LICENSE.Berkeley for license details.
 // See LICENSE.SiFive for license details.
 
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.{SignExt, ZeroExt}
-import xiangshan.backend.fu.FuConfig
+import nanhuv5.backend.fu.FuConfig
 
 class IntToFPDataModule(latency: Int)(implicit p: Parameters) extends FPUDataModule {
   val regEnables = IO(Input(Vec(latency, Bool())))

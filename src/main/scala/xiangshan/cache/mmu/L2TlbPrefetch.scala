@@ -13,12 +13,12 @@
 *
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-package xiangshan.cache.mmu
+package nanhuv5.cache.mmu
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.{SfenceBundle, XSModule}
+import nanhuv5.{SfenceBundle, XSModule}
 import utils._
 import xs.utils._
 import xs.utils.perf._

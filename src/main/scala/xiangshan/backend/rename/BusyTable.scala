@@ -14,19 +14,19 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.rename
+package nanhuv5.backend.rename
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
+import nanhuv5._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.backend.Bundles._
-import xiangshan.backend.datapath.WbConfig._
-import xiangshan.backend.issue.SchdBlockParams
-import xiangshan.backend.datapath.{DataSource}
+import nanhuv5.backend.Bundles._
+import nanhuv5.backend.datapath.WbConfig._
+import nanhuv5.backend.issue.SchdBlockParams
+import nanhuv5.backend.datapath.{DataSource}
 
 class BusyTableReadIO(implicit p: Parameters) extends XSBundle {
   val req = Input(UInt(PhyRegIdxWidth.W))

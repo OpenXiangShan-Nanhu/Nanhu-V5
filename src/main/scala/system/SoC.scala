@@ -31,11 +31,11 @@ import freechips.rocketchip.util.AsyncQueueParams
 import huancun._
 import top.BusPerfMonitor
 import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
-import xiangshan.backend.fu.PMAConst
-import xiangshan.{DebugOptionsKey, XSTileKey}
+import nanhuv5.backend.fu.PMAConst
+import nanhuv5.{DebugOptionsKey, XSTileKey}
 import coupledL2.EnableCHI
 import coupledL2.tl2chi.CHIIssue
-import xiangshan.PMParameKey
+import nanhuv5.PMParameKey
 
 case object SoCParamsKey extends Field[SoCParameters]
 

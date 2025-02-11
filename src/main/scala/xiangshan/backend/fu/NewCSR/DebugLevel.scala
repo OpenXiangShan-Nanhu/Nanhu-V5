@@ -1,4 +1,4 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import freechips.rocketchip.devices.debug.DebugModuleKey
 import org.chipsalliance.cde.config.Parameters
@@ -6,18 +6,18 @@ import freechips.rocketchip.rocket.CSRs
 import chisel3._
 import chisel3.util._
 import utils.ConsecutiveOnes
-import xiangshan.backend.fu.NewCSR.CSRDefines._
-import xiangshan.backend.fu.NewCSR.CSRDefines.{
+import nanhuv5.backend.fu.NewCSR.CSRDefines._
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{
   CSRWARLField => WARL,
   CSRRWField => RW,
   CSRROField => RO,
 }
-import xiangshan.backend.fu.NewCSR.CSRFunc._
-import xiangshan.backend.fu.NewCSR.CSREvents._
-import xiangshan.backend.fu.NewCSR.CSRBundles._
+import nanhuv5.backend.fu.NewCSR.CSRFunc._
+import nanhuv5.backend.fu.NewCSR.CSREvents._
+import nanhuv5.backend.fu.NewCSR.CSRBundles._
 import CSRConfig._
 import xs.utils.SignExt
-import xiangshan.TriggerAction
+import nanhuv5.TriggerAction
 
 import scala.collection.immutable.SeqMap
 

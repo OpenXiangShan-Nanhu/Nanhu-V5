@@ -1,14 +1,14 @@
-package xiangshan.backend.fu.NewCSR.CSREvents
+package nanhuv5.backend.fu.NewCSR.CSREvents
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.{SignExt, ZeroExt}
-import xiangshan.HasXSParameter
-import xiangshan.backend.fu.NewCSR.CSRBundles.{CauseBundle, PrivState}
-import xiangshan.backend.fu.NewCSR.CSRConfig._
-import xiangshan.backend.fu.NewCSR.CSRDefines.{HgatpMode, SatpMode}
-import xiangshan.backend.fu.NewCSR._
+import nanhuv5.HasXSParameter
+import nanhuv5.backend.fu.NewCSR.CSRBundles.{CauseBundle, PrivState}
+import nanhuv5.backend.fu.NewCSR.CSRConfig._
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{HgatpMode, SatpMode}
+import nanhuv5.backend.fu.NewCSR._
 
 trait CSREvents { self: NewCSR =>
   val trapEntryDEvent = Module(new TrapEntryDEventModule)

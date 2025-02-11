@@ -1,13 +1,13 @@
-package xiangshan.backend.ctrlblock
+package nanhuv5.backend.ctrlblock
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3.util._
 import chisel3._
 import xs.utils.{HasCircularQueuePtrHelper, XORFold, GatedValidRegNext}
-import xiangshan.frontend.{FtqRead, PreDecodeInfo, Ftq_RF_Components}
-import xiangshan.frontend.{FtqRead, PreDecodeInfo}
-import xiangshan.mem.mdp.MDPPCFold
-import xiangshan.{MemPredUpdateReq, Redirect, XSBundle, XSModule}
+import nanhuv5.frontend.{FtqRead, PreDecodeInfo, Ftq_RF_Components}
+import nanhuv5.frontend.{FtqRead, PreDecodeInfo}
+import nanhuv5.mem.mdp.MDPPCFold
+import nanhuv5.{MemPredUpdateReq, Redirect, XSBundle, XSModule}
 
 class RedirectGenerator(implicit p: Parameters) extends XSModule
   with HasCircularQueuePtrHelper {

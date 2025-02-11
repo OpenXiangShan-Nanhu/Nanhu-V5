@@ -1,10 +1,10 @@
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.DataHoldBypass
-import xiangshan.backend.fu.{FuConfig, FuncUnit}
+import nanhuv5.backend.fu.{FuConfig, FuncUnit}
 
 class FpNonPipedFuncUnit(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   with FpFuncUnitAlias

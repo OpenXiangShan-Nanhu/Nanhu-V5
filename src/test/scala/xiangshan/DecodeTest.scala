@@ -1,4 +1,4 @@
-package xiangshan
+package nanhuv5
 
 import chisel3._
 import chisel3.stage.ChiselGeneratorAnnotation
@@ -6,11 +6,11 @@ import chiseltest._
 import chiseltest.VerilatorBackendAnnotation
 import chiseltest.simulator.VerilatorFlags
 import top.ArgParser
-import xiangshan.backend.decode.DecodeUnit
-import xiangshan.backend.regfile.IntPregParams
+import nanhuv5.backend.decode.DecodeUnit
+import nanhuv5.backend.regfile.IntPregParams
 import circt.stage.ChiselStage
 import firrtl2.options.TargetDirAnnotation
-import xiangshan.transforms.PrintModuleName
+import nanhuv5.transforms.PrintModuleName
 
 object DecodeMain extends App {
   val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)

@@ -1,4 +1,4 @@
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -7,11 +7,11 @@ import chisel3.util._
 import freechips.rocketchip.util.uintToBitPat
 import freechips.rocketchip.rocket.Instructions._
 import utils._
-import xiangshan.ExceptionNO.illegalInstr
-import xiangshan.backend.fu.FuType
-import xiangshan._
+import nanhuv5.ExceptionNO.illegalInstr
+import nanhuv5.backend.fu.FuType
+import nanhuv5._
 import yunsuan.{VfpuType, VipuType, VimacType, VpermType, VialuFixType, VfaluType, VfmaType, VfdivType, VfcvtType, VidivType}
-import xiangshan.backend.decode.Zvbb._
+import nanhuv5.backend.decode.Zvbb._
 
 abstract class VecDecode extends XSDecodeBase {
   def generate() : List[BitPat]

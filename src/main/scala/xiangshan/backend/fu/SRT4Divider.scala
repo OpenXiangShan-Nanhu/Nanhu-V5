@@ -19,13 +19,13 @@
 // https://github.com/OpenXiangShan/XS-Verilog-Library/tree/main/int_div_radix_4_v1
 // Email of original author: hyf_sysu@qq.com
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.SignExt
-import xiangshan.backend.fu.util.CSA3_2
+import nanhuv5.backend.fu.util.CSA3_2
 
 /** A Radix-4 SRT Integer Divider
   *

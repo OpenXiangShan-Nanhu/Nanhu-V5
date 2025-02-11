@@ -1,9 +1,9 @@
-package xiangshan.backend.fu.vector
+package nanhuv5.backend.fu.vector
 
 import chisel3._
 import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util.{BitPat, Mux1H}
-import xiangshan.backend.fu.vector.Bundles.VSew
+import nanhuv5.backend.fu.vector.Bundles.VSew
 
 object Utils {
   def VecDataToMaskDataVec(vecData: UInt, vsew: UInt): Vec[UInt] = {

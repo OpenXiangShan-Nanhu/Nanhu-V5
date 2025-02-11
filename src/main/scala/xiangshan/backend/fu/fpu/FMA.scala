@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import _root_.utils._
 import org.chipsalliance.cde.config.Parameters
@@ -24,9 +24,9 @@ import fudian._
 import fudian.utils.Multiplier
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.rob.RobPtr
-import xiangshan.backend.fu.FuConfig
+import nanhuv5._
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.backend.fu.FuConfig
 
 
 class MulToAddIO(val ftypes: Seq[FPU.FType])(implicit p: Parameters) extends XSBundle {

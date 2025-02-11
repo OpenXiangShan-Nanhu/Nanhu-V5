@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,15 +22,15 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.fu.FuConfig._
-import xiangshan.backend.fu.fpu.FPU
-import xiangshan.backend.rob.RobLsqIO
-import xiangshan.cache._
-import xiangshan.frontend.FtqPtr
-import xiangshan.ExceptionNO._
-import xiangshan.cache.wpu.ReplayCarry
-import xiangshan.backend.rob.RobPtr
+import nanhuv5._
+import nanhuv5.backend.fu.FuConfig._
+import nanhuv5.backend.fu.fpu.FPU
+import nanhuv5.backend.rob.RobLsqIO
+import nanhuv5.cache._
+import nanhuv5.frontend.FtqPtr
+import nanhuv5.ExceptionNO._
+import nanhuv5.cache.wpu.ReplayCarry
+import nanhuv5.backend.rob.RobPtr
 
 class LqExceptionBuffer(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper {
   val enqPortNum = LoadPipelineWidth + VecLoadPipelineWidth + 1 // 1 for mmio bus non-data error

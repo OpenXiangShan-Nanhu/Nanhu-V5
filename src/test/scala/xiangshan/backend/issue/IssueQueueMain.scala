@@ -1,8 +1,8 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import freechips.rocketchip.diplomacy.LazyModule
 import top.{ArgParser, BaseConfig, Generator}
-import xiangshan.{XSCoreParameters, XSCoreParamsKey}
+import nanhuv5.{XSCoreParameters, XSCoreParamsKey}
 
 object IssueQueueMain extends App {
   val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)

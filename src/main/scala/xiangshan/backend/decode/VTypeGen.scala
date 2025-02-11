@@ -1,12 +1,12 @@
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.fu.vector.Bundles.{VType, VsetVType}
-import xiangshan.backend.decode.isa.bitfield.{InstVType, Riscv32BitInst, XSInstBitFields}
-import xiangshan.backend.fu.VsetModule
+import nanhuv5._
+import nanhuv5.backend.fu.vector.Bundles.{VType, VsetVType}
+import nanhuv5.backend.decode.isa.bitfield.{InstVType, Riscv32BitInst, XSInstBitFields}
+import nanhuv5.backend.fu.VsetModule
 
 class VTypeGen(implicit p: Parameters) extends XSModule{
   val io = IO(new Bundle {

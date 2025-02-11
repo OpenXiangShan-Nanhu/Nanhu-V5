@@ -15,7 +15,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 
 import org.chipsalliance.cde.config.Parameters
@@ -24,13 +24,13 @@ import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend.Bundles.{DynInst, MemExuInput}
-import xiangshan.backend.rob.RobPtr
-import xiangshan.cache._
-import xiangshan.backend.fu.FenceToSbuffer
-import xiangshan.cache.wpu.ReplayCarry
-import xiangshan.mem.prefetch.PrefetchReqBundle
+import nanhuv5._
+import nanhuv5.backend.Bundles.{DynInst, MemExuInput}
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.cache._
+import nanhuv5.backend.fu.FenceToSbuffer
+import nanhuv5.cache.wpu.ReplayCarry
+import nanhuv5.mem.prefetch.PrefetchReqBundle
 import math._
 
 object genWmask {

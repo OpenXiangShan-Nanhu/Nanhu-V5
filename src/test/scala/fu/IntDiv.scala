@@ -24,9 +24,9 @@ import chiseltest.VerilatorBackendAnnotation
 import chiseltest.simulator.VerilatorFlags
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers
-import xiangshan.transforms.PrintModuleName
+import nanhuv5.transforms.PrintModuleName
 
-import xiangshan.backend.fu._
+import nanhuv5.backend.fu._
 
 import scala.util.Random
 

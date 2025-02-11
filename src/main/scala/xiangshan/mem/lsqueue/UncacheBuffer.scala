@@ -13,21 +13,21 @@
 *
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-package xiangshan.mem
+package nanhuv5.mem
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config._
-import xiangshan._
-import xiangshan.backend.rob.{RobPtr, RobLsqIO}
-import xiangshan.ExceptionNO._
-import xiangshan.cache._
+import nanhuv5._
+import nanhuv5.backend.rob.{RobPtr, RobLsqIO}
+import nanhuv5.ExceptionNO._
+import nanhuv5.cache._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.backend.Bundles
-import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
-import xiangshan.backend.fu.FuConfig.LduCfg
+import nanhuv5.backend.Bundles
+import nanhuv5.backend.Bundles.{DynInst, MemExuOutput}
+import nanhuv5.backend.fu.FuConfig.LduCfg
 
 class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
   with HasCircularQueuePtrHelper

@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,17 +22,17 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
-import xiangshan.cache._
-import xiangshan.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
-import xiangshan.cache.mmu.{TlbHintIO, TlbRequestIO}
-import xiangshan.mem._
-import xiangshan.backend._
-import xiangshan.backend.rob.RobLsqIO
+import nanhuv5._
+import nanhuv5.backend.Bundles.{DynInst, MemExuOutput}
+import nanhuv5.cache._
+import nanhuv5.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
+import nanhuv5.cache.mmu.{TlbHintIO, TlbRequestIO}
+import nanhuv5.mem._
+import nanhuv5.backend._
+import nanhuv5.backend.rob.RobLsqIO
 import coupledL2.{CMOReq, CMOResp}
-import xiangshan.backend.fu.FuType
-import xiangshan.mem.mdp.MDPResUpdateIO
+import nanhuv5.backend.fu.FuType
+import nanhuv5.mem.mdp.MDPResUpdateIO
 
 class ExceptionAddrIO(implicit p: Parameters) extends XSBundle {
   val isStore = Input(Bool())

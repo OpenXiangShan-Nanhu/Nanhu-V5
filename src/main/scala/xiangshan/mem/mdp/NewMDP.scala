@@ -1,13 +1,13 @@
-package xiangshan.mem.mdp
+package nanhuv5.mem.mdp
 
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.util.{OH1ToUInt, PseudoLRU, ReplacementPolicy}
 import org.chipsalliance.cde.config.Parameters
 import utility.XORFold
-import xiangshan.backend.rob.RobPtr
-import xiangshan.mem.SqPtr
-import xiangshan.{CustomCSRCtrlIO, XSBundle, XSModule}
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.mem.SqPtr
+import nanhuv5.{CustomCSRCtrlIO, XSBundle, XSModule}
 
 trait HasMDPParameters {
   val mdpSize = 32

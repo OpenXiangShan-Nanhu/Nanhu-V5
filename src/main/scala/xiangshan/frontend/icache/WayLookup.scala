@@ -14,15 +14,15 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.frontend.icache
+package nanhuv5.frontend.icache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.frontend.ExceptionType
-import xiangshan.cache.mmu.Pbmt
+import nanhuv5.frontend.ExceptionType
+import nanhuv5.cache.mmu.Pbmt
 
 /* WayLookupEntry is for internal storage, while WayLookupInfo is for interface
  * Notes:

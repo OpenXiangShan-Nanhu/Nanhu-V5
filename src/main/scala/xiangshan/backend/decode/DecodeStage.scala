@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,16 +22,16 @@ import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend.rename.RatReadPort
-import xiangshan.backend.Bundles._
-import xiangshan.backend.fu.vector.Bundles.{VType, Vl}
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.fu.wrapper.CSRToDecode
+import nanhuv5._
+import nanhuv5.backend.rename.RatReadPort
+import nanhuv5.backend.Bundles._
+import nanhuv5.backend.fu.vector.Bundles.{VType, Vl}
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.fu.wrapper.CSRToDecode
 import yunsuan.VpermType
-import xiangshan.ExceptionNO.{illegalInstr, virtualInstr}
-import xiangshan.frontend.FtqPtr
-import xiangshan.ExceptionNO.illegalInstr
+import nanhuv5.ExceptionNO.{illegalInstr, virtualInstr}
+import nanhuv5.frontend.FtqPtr
+import nanhuv5.ExceptionNO.illegalInstr
 
 class DecodeStage(implicit p: Parameters) extends XSModule
   with HasPerfEvents

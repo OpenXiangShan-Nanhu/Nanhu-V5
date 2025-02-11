@@ -19,7 +19,7 @@ package utils
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.cache._
+import nanhuv5.cache._
 
 object ArbiterCtrl {
   def apply(request: Seq[Bool]): Seq[Bool] = request.length match {

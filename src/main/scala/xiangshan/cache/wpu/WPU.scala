@@ -1,11 +1,11 @@
-package xiangshan.cache.wpu
+package nanhuv5.cache.wpu
 
 import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel3._
 import chisel3.util._
 import xs.utils.perf.XSPerfAccumulate
-import xiangshan.cache.{HasL1CacheParameters, L1CacheParameters}
-import xiangshan.{XSBundle, XSModule}
+import nanhuv5.cache.{HasL1CacheParameters, L1CacheParameters}
+import nanhuv5.{XSBundle, XSModule}
 
 /*
 // TODO: need to learn the specific grammar

@@ -17,7 +17,7 @@
  */
 
 
-package xiangshan.backend.fu.wrapper
+package nanhuv5.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -25,12 +25,12 @@ import chisel3.util._
 import freechips.rocketchip.rocket.DecodeLogic
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.{SelImm, SrcType, UopSplitType, XSCoreParamsKey, XSModule}
-import xiangshan.backend.fu.FuConfig
-import xiangshan.backend.fu.vector.Bundles.VSew
-import xiangshan.backend.fu.vector.utils.VecDataSplitModule
-import xiangshan.backend.fu.vector.{Mgu, Utils, VecPipedFuncUnit, VecSrcTypeModule}
-import xiangshan.SrcType
+import nanhuv5.{SelImm, SrcType, UopSplitType, XSCoreParamsKey, XSModule}
+import nanhuv5.backend.fu.FuConfig
+import nanhuv5.backend.fu.vector.Bundles.VSew
+import nanhuv5.backend.fu.vector.utils.VecDataSplitModule
+import nanhuv5.backend.fu.vector.{Mgu, Utils, VecPipedFuncUnit, VecSrcTypeModule}
+import nanhuv5.SrcType
 import yunsuan.vector.alu.{VAluOpcode, VIAlu}
 import yunsuan.{OpType, VipuType}
 

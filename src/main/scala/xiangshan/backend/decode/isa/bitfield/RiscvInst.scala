@@ -1,4 +1,4 @@
-package xiangshan.backend.decode.isa.bitfield
+package nanhuv5.backend.decode.isa.bitfield
 
 import chisel3._
 
@@ -82,37 +82,37 @@ trait BitFieldsVec { this: Riscv32BitInst =>
   }
 
   def isOPIVV = {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b000".U
   }
 
   def isOPFVV = {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b001".U
   }
 
   def isOPMVV = {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b010".U
   }
 
   def isOPIVI= {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b011".U
   }
 
   def isOPIVX = {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b100".U
   }
 
   def isOPFVF = {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b101".U
   }
 
   def isOPMVX = {
-    this.OPCODE === xiangshan.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
+    this.OPCODE === nanhuv5.backend.decode.isa.bitfield.OPCODE7Bit.VECTOR_ARITH &&
       this.FUNCT3 === "b110".U
   }
 }

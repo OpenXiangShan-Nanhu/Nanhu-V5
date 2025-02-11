@@ -1,13 +1,13 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import utils.MapUtils
-import xiangshan._
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.fu.vector.Utils
-import xiangshan.backend.issue.EntryBundles.RespType
+import nanhuv5._
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.fu.vector.Utils
+import nanhuv5.backend.issue.EntryBundles.RespType
 
 class FuBusyTableWrite(fuLatencyMap: Map[FuType.Value, Int]) (implicit p: Parameters, iqParams: IssueBlockParams) extends XSModule {
   private val latencyValMax: Int = fuLatencyMap.values.fold(0)(_ max _)

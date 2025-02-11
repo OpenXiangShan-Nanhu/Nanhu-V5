@@ -14,13 +14,13 @@
 //* See the Mulan PSL v2 for more details.
 //***************************************************************************************/
 //
-//package xiangshan.backend.fu.vector
+//package nanhuv5.backend.fu.vector
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3._
 //import chisel3.util.{Mux1H, _}
-//import xiangshan.backend.fu.FunctionUnit
-//import xiangshan.{SelImm, SrcType}
+//import nanhuv5.backend.fu.FunctionUnit
+//import nanhuv5.{SelImm, SrcType}
 //import xs.utils._
 import xs.utils.perf._
 //

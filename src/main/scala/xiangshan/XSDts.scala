@@ -16,7 +16,7 @@
 
 // See LICENSE.SiFive for license details.
 
-package xiangshan
+package nanhuv5
 
 import freechips.rocketchip.resources._
 

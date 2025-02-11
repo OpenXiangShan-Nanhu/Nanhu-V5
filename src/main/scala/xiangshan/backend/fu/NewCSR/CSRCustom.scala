@@ -1,11 +1,11 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRRWField => RW}
-import xiangshan.HasXSParameter
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{CSRRWField => RW}
+import nanhuv5.HasXSParameter
 
 import scala.collection.immutable.SeqMap
 

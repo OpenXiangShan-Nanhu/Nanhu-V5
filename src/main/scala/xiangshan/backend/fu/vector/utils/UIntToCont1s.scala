@@ -1,11 +1,11 @@
-package xiangshan.backend.fu.vector.utils
+package nanhuv5.backend.fu.vector.utils
 
 import chisel3._
 import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers
-import xiangshan.backend.fu.vector.Utils.{NOnes, NZeros}
+import nanhuv5.backend.fu.vector.Utils.{NOnes, NZeros}
 
 class UIntToContLow1s(uintWidth: Int) extends Module {
   private val outWidth = (1 << uintWidth) - 1 // 2^n - 1

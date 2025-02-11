@@ -1,9 +1,9 @@
-package xiangshan.backend.fu.wrapper
+package nanhuv5.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import xiangshan.backend.fu.{AluDataModule, PipedFuncUnit}
-import xiangshan.backend.fu.FuConfig
+import nanhuv5.backend.fu.{AluDataModule, PipedFuncUnit}
+import nanhuv5.backend.fu.FuConfig
 
 class Alu(cfg: FuConfig)(implicit p: Parameters) extends PipedFuncUnit(cfg) {
   private val aluModule = Module(new AluDataModule)

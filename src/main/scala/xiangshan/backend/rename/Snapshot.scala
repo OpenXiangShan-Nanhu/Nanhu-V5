@@ -1,4 +1,4 @@
-package xiangshan.backend.rename
+package nanhuv5.backend.rename
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -6,7 +6,7 @@ import chisel3.util._
 
 import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
 import xs.utils.perf.XSError
-import xiangshan.{XSCoreParamsKey, XSModule}
+import nanhuv5.{XSCoreParamsKey, XSModule}
 
 
 class SnapshotPtr(implicit p: Parameters) extends CircularQueuePtr[SnapshotPtr](

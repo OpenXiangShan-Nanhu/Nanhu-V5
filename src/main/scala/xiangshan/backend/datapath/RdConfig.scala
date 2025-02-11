@@ -1,6 +1,6 @@
-package xiangshan.backend.datapath
+package nanhuv5.backend.datapath
 
-import xiangshan.backend.datapath.DataConfig._
+import nanhuv5.backend.datapath.DataConfig._
 
 object RdConfig {
   sealed abstract class RdConfig() {

@@ -1,10 +1,10 @@
-package xiangshan.backend.issue
+package nanhuv5.backend.issue
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.SelectOne
-import xiangshan.XSModule
+import nanhuv5.XSModule
 
 class DeqPolicyIO(implicit p: IssueBlockParams) extends Bundle {
   val request = Input(UInt(p.numEntries.W))

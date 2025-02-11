@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.decode
+package nanhuv5.backend.decode
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -23,10 +23,10 @@ import freechips.rocketchip.rocket.Instructions
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.Bundles.DecodedInst
-import xiangshan.backend.decode.isa.bitfield.XSInstBitFields
+import nanhuv5._
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.Bundles.DecodedInst
+import nanhuv5.backend.decode.isa.bitfield.XSInstBitFields
 
 abstract class BaseFusionCase(pair: Seq[Valid[UInt]])(implicit p: Parameters)
   extends DecodeUnitConstants {

@@ -14,7 +14,7 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,16 +22,16 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.backend.rob.RobPtr
-import xiangshan.backend.Bundles._
-import xiangshan.ExceptionNO._
-import xiangshan.mem._
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.fu.FuConfig._
-import xiangshan.backend.datapath.NewPipelineConnect
+import nanhuv5._
+import nanhuv5.backend.rob.RobPtr
+import nanhuv5.backend.Bundles._
+import nanhuv5.ExceptionNO._
+import nanhuv5.mem._
+import nanhuv5.backend.fu.FuType
+import nanhuv5.backend.fu.FuConfig._
+import nanhuv5.backend.datapath.NewPipelineConnect
 import freechips.rocketchip.diplomacy.BufferParams
-import xiangshan.backend.fu.vector.Bundles.VType
+import nanhuv5.backend.fu.vector.Bundles.VType
 
 class MBufferBundle(implicit p: Parameters) extends VLSUBundle{
   val data             = UInt(VLEN.W)

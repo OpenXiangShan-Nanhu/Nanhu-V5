@@ -1,12 +1,12 @@
-package xiangshan.backend
+package nanhuv5.backend
 
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.SyncDataModuleTemplate
-import xiangshan.HasXSParameter
-import xiangshan.frontend.{FtqPtr, IfuToBackendIO}
+import nanhuv5.HasXSParameter
+import nanhuv5.frontend.{FtqPtr, IfuToBackendIO}
 
 class GPAMem(implicit p: Parameters) extends LazyModule {
   override def shouldBeInlined: Boolean = false

@@ -14,18 +14,18 @@
 *
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-package xiangshan.frontend
+package nanhuv5.frontend
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.frontend.icache._
+import nanhuv5._
+import nanhuv5.frontend.icache._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.cache.mmu.TlbResp
-import xiangshan.backend.fu.PMPRespBundle
+import nanhuv5.cache.mmu.TlbResp
+import nanhuv5.backend.fu.PMPRespBundle
 
 import scala.math._
 import java.util.ResourceBundle.Control

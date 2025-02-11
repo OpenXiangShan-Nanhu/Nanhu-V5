@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem.prefetch
+package nanhuv5.mem.prefetch
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -23,15 +23,15 @@ import freechips.rocketchip.tilelink.ClientStates._
 import freechips.rocketchip.tilelink.MemoryOpCategories._
 import freechips.rocketchip.tilelink.TLPermissions._
 import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates, TLPermissions}
-import xiangshan.backend.rob.RobDebugRollingIO
+import nanhuv5.backend.rob.RobDebugRollingIO
 import utils._
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.{CircularQueuePtr}
-import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
-import xiangshan.mem.HasL1PrefetchSourceParameter
-import xiangshan.cache._
-import xiangshan.{XSBundle, XSModule}
+import nanhuv5.{L1CacheErrorInfo, XSCoreParamsKey}
+import nanhuv5.mem.HasL1PrefetchSourceParameter
+import nanhuv5.cache._
+import nanhuv5.{XSBundle, XSModule}
 
 //----------------------------------------
 // Feedback Direct Prefetching

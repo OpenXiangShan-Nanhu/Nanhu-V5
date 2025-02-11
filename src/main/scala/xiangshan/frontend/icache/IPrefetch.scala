@@ -14,7 +14,7 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.frontend.icache
+package nanhuv5.frontend.icache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,12 +22,12 @@ import chisel3.util._
 import difftest._
 import freechips.rocketchip.tilelink._
 import utils._
-import xiangshan.cache.mmu._
-import xiangshan.frontend._
-import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
+import nanhuv5.cache.mmu._
+import nanhuv5.frontend._
+import nanhuv5.backend.fu.{PMPReqBundle, PMPRespBundle}
 import huancun.PreferCacheKey
-import xiangshan.XSCoreParamsKey
-import xiangshan.SoftIfetchPrefetchBundle
+import nanhuv5.XSCoreParamsKey
+import nanhuv5.SoftIfetchPrefetchBundle
 import xs.utils._
 import xs.utils.perf._
 

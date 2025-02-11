@@ -16,11 +16,11 @@
 
 // See LICENSE.Berkeley for license details.
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import chisel3._
 import chisel3.util._
-import xiangshan.XSBundle
+import nanhuv5.XSBundle
 
 trait MemoryOpConstants {
   val NUM_XA_OPS = 9

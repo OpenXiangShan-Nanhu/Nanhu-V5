@@ -19,7 +19,7 @@ package top
 
 import circt.stage._
 import chisel3.stage.ChiselGeneratorAnnotation
-import xiangshan.transforms._
+import nanhuv5.transforms._
 
 object Generator {
   def execute(args: Array[String], mod: => chisel3.RawModule, firtoolOpts: Array[String]) = {

@@ -1,12 +1,12 @@
-package xiangshan.backend.fu.NewCSR.CSREvents
+package nanhuv5.backend.fu.NewCSR.CSREvents
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.backend.fu.NewCSR.CSRConfig.VaddrMaxWidth
-import xiangshan.backend.fu.NewCSR.CSRDefines.{HgatpMode, PrivMode, SatpMode}
-import xiangshan.backend.fu.NewCSR._
-import xiangshan.AddrTransType
+import nanhuv5.backend.fu.NewCSR.CSRConfig.VaddrMaxWidth
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{HgatpMode, PrivMode, SatpMode}
+import nanhuv5.backend.fu.NewCSR._
+import nanhuv5.AddrTransType
 
 
 class DretEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase {

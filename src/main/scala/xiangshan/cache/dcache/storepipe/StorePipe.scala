@@ -14,14 +14,14 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates}
 import xs.utils.perf.{HasPerfEvents, XSDebug, XSPerfAccumulate}
-import xiangshan.L1CacheErrorInfo
+import nanhuv5.L1CacheErrorInfo
 
 class DcacheStoreRequestIO(implicit p: Parameters) extends DCacheBundle {
   val cmd = UInt(M_SZ.W)

@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.frontend
+package nanhuv5.frontend
 
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.rocket.{RVCDecoder, ExpandedInstruction}
@@ -23,12 +23,12 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.frontend.icache._
-import xiangshan.backend.decode.isa.predecode.PreDecodeInst
-import xiangshan.backend.fu.NewCSR.TriggerUtil
+import nanhuv5._
+import nanhuv5.frontend.icache._
+import nanhuv5.backend.decode.isa.predecode.PreDecodeInst
+import nanhuv5.backend.fu.NewCSR.TriggerUtil
 import java.lang.reflect.Parameter
-import xiangshan.backend.fu.util.SdtrigExt
+import nanhuv5.backend.fu.util.SdtrigExt
 
 trait HasPdConst extends HasXSParameter with HasICacheParameters with HasIFUConst{
   def isRVC(inst: UInt) = (inst(1,0) =/= 3.U)

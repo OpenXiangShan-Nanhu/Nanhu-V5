@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,7 +22,7 @@ import chisel3.experimental.hierarchy.{Definition, Instance, instantiable, publi
 import chisel3.util._
 import fudian.FDIV
 import xs.utils.{MaskExpand, RegNextWithEnable}
-import xiangshan.backend.fu.FuConfig
+import nanhuv5.backend.fu.FuConfig
 
 import scala.collection.mutable
 

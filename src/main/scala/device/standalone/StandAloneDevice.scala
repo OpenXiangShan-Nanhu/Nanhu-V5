@@ -30,7 +30,7 @@ import top.Generator
 import system.SoCParamsKey
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
 import scala.annotation.tailrec
-import xiangshan.XSTileKey
+import nanhuv5.XSTileKey
 import utils.VerilogAXI4Record
 
 trait HasMasterInterface { this: StandAloneDevice =>

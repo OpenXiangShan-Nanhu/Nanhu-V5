@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan
+package nanhuv5
 
 import org.chipsalliance.cde.config
 import org.chipsalliance.cde.config.Parameters
@@ -28,15 +28,15 @@ import xs.utils._
 import xs.utils.perf._
 import xs.utils.mbist.{MbistInterface, MbistPipeline}
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
-import xiangshan.backend._
-import xiangshan.backend.fu.PMPRespBundle
-import xiangshan.backend.trace.TraceCoreInterface
-import xiangshan.cache.mmu._
-import xiangshan.frontend._
-import xiangshan.mem.L1PrefetchFuzzer
+import nanhuv5.backend._
+import nanhuv5.backend.fu.PMPRespBundle
+import nanhuv5.backend.trace.TraceCoreInterface
+import nanhuv5.cache.mmu._
+import nanhuv5.frontend._
+import nanhuv5.mem.L1PrefetchFuzzer
 
 import scala.collection.mutable.ListBuffer
-import xiangshan.cache.mmu.TlbRequestIO
+import nanhuv5.cache.mmu.TlbRequestIO
 
 abstract class XSModule(implicit val p: Parameters) extends Module
   with HasXSParameter

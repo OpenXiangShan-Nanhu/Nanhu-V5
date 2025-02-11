@@ -1,12 +1,12 @@
-package xiangshan.backend.fu.wrapper
+package nanhuv5.backend.fu.wrapper
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.RegEnable
 import xs.utils.{SignExt, ZeroExt}
-import xiangshan.DIVOpType
-import xiangshan.backend.fu.{FuncUnit, MulDivCtrl, SRT16DividerDataModule}
-import xiangshan.backend.fu.FuConfig
+import nanhuv5.DIVOpType
+import nanhuv5.backend.fu.{FuncUnit, MulDivCtrl, SRT16DividerDataModule}
+import nanhuv5.backend.fu.FuConfig
 
 class DivUnit(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg) {
 

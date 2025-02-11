@@ -17,15 +17,15 @@
 // See LICENSE.Berkeley for license details.
 // See LICENSE.SiFive for license details.
 
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xs.utils.{SignExt, ZeroExt}
-import xiangshan.backend.fu.{FuConfig, FuncUnit, PipedFuncUnit}
-import xiangshan.backend.fu.vector.Bundles.VSew
-import xiangshan.IF2VectorType
+import nanhuv5.backend.fu.{FuConfig, FuncUnit, PipedFuncUnit}
+import nanhuv5.backend.fu.vector.Bundles.VSew
+import nanhuv5.IF2VectorType
 
 class IntFPToVec(cfg: FuConfig)(implicit p: Parameters) extends PipedFuncUnit(cfg) {
   protected val in = io.in.bits

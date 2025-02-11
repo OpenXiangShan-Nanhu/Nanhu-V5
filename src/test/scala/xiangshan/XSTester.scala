@@ -1,4 +1,4 @@
-package xiangshan
+package nanhuv5
 
 import chisel3._
 import chiseltest._
@@ -8,7 +8,7 @@ import firrtl2.AnnotationSeq
 import org.scalatest.flatspec._
 import org.scalatest.matchers.should._
 import top.{ArgParser, DefaultConfig}
-import xiangshan.backend.regfile.IntPregParams
+import nanhuv5.backend.regfile.IntPregParams
 
 abstract class XSTester extends AnyFlatSpec with ChiselScalatestTester with Matchers with HasTestAnnos {
   behavior of "XiangShan Module"

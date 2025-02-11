@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan
+package nanhuv5
 
 import org.chipsalliance.cde.config.{Config, Parameters}
 import chisel3._
@@ -32,7 +32,7 @@ import coupledL2.tl2chi.PortIO
 import xs.utils._
 import xs.utils.tl._
 import xs.utils.sram._
-import xiangshan.backend.trace.TraceCoreInterface
+import nanhuv5.backend.trace.TraceCoreInterface
 class XSTile()(implicit p: Parameters) extends LazyModule
   with HasXSParameter
   with HasSoCParameter

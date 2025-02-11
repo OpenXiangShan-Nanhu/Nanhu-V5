@@ -14,13 +14,13 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import chisel3._
 import chisel3.util.RegEnable
 import difftest.common.DifftestMem
 import org.chipsalliance.cde.config.Parameters
-import xiangshan._
+import nanhuv5._
 
 class FakeDCache()(implicit p: Parameters) extends XSModule with HasDCacheParameters {
   val io = IO(new DCacheIO)

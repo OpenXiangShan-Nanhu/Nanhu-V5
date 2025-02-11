@@ -14,14 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import freechips.rocketchip.tilelink.ClientMetadata
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan.L1CacheErrorInfo
-import xiangshan.cache.CacheInstrucion._
+import nanhuv5.L1CacheErrorInfo
+import nanhuv5.cache.CacheInstrucion._
 
 class Meta(implicit p: Parameters) extends DCacheBundle {
   val coh = new ClientMetadata

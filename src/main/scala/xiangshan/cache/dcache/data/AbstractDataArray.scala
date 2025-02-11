@@ -15,7 +15,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -24,7 +24,7 @@ import freechips.rocketchip.tilelink.{ClientMetadata, TLClientParameters, TLEdge
 import xs.utils.{Code, ParallelOR, ReplacementPolicy}
 import xs.utils.sram._
 import xs.utils.perf.{XSDebug}
-import xiangshan.L1CacheErrorInfo
+import nanhuv5.L1CacheErrorInfo
 
 import scala.math.max
 

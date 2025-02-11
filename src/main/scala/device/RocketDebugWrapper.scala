@@ -17,7 +17,7 @@
 package device
 
 import chisel3._
-import xiangshan._
+import nanhuv5._
 import chisel3.experimental.{ExtModule, IntParam, noPrefix}
 import chisel3.util._
 import chisel3.util.HasExtModuleResource

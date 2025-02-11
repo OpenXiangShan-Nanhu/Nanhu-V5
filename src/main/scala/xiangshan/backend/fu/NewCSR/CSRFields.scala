@@ -1,8 +1,8 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util.Fill
-import xiangshan.backend.fu.NewCSR.CSRFunc._
+import nanhuv5.backend.fu.NewCSR.CSRFunc._
 import scala.collection.mutable
 
 import scala.language.implicitConversions

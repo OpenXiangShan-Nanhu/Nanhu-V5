@@ -1,6 +1,6 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
-import xiangshan.backend.fu.NewCSR.CSRDefines.{
+import nanhuv5.backend.fu.NewCSR.CSRDefines.{
   CSRRWField => RW,
 }
 

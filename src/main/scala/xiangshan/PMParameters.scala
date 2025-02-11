@@ -14,12 +14,12 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan
+package nanhuv5
 
 import chisel3.util.log2Ceil
 import org.chipsalliance.cde.config.{Field, Parameters}
 import system.SoCParamsKey
-import xiangshan.backend.fu.{MMPMAConfig, MMPMAMethod}
+import nanhuv5.backend.fu.{MMPMAConfig, MMPMAMethod}
 
 case object PMParameKey extends Field[PMParameters]
 

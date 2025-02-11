@@ -1,11 +1,11 @@
-package xiangshan.backend.trace
+package nanhuv5.backend.trace
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import utils.NamedUInt
-import xiangshan.HasXSParameter
-import xiangshan.frontend.{BrType, FtqPtr, PreDecodeInfo}
+import nanhuv5.HasXSParameter
+import nanhuv5.frontend.{BrType, FtqPtr, PreDecodeInfo}
 
 class TraceTrap(implicit val p: Parameters) extends Bundle with HasXSParameter {
   val cause = UInt(CauseWidth.W)

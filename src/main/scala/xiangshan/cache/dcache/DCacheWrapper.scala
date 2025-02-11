@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.cache
+package nanhuv5.cache
 
 import chisel3._
 import chisel3.experimental.ExtModule
@@ -29,13 +29,13 @@ import huancun.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.LazyModuleImp
 import utils._
-import xiangshan._
-import xiangshan.backend.Bundles.DynInst
-import xiangshan.backend.rob.RobDebugRollingIO
-import xiangshan.cache.wpu._
-import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
-import xiangshan.mem.prefetch._
-import xiangshan.mem.LqPtr
+import nanhuv5._
+import nanhuv5.backend.Bundles.DynInst
+import nanhuv5.backend.rob.RobDebugRollingIO
+import nanhuv5.cache.wpu._
+import nanhuv5.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
+import nanhuv5.mem.prefetch._
+import nanhuv5.mem.LqPtr
 import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ReplacementPolicy, SRAMQueue}
 import xs.utils.perf._
 import xs.utils.tl._

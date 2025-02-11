@@ -14,13 +14,13 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.rename.freelist
+package nanhuv5.backend.rename.freelist
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.rename.SnapshotGenerator
+import nanhuv5._
+import nanhuv5.backend.rename.SnapshotGenerator
 import utils._
 import xs.utils._
 import xs.utils.perf._

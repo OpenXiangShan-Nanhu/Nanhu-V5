@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.mem
+package nanhuv5.mem
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,15 +22,15 @@ import chisel3.util._
 import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan._
-import xiangshan.cache.{AtomicWordIO, HasDCacheParameters, MemoryOpConstants}
-import xiangshan.cache.mmu.{TlbCmd, TlbRequestIO}
+import nanhuv5._
+import nanhuv5.cache.{AtomicWordIO, HasDCacheParameters, MemoryOpConstants}
+import nanhuv5.cache.mmu.{TlbCmd, TlbRequestIO}
 import difftest._
-import xiangshan.ExceptionNO._
-import xiangshan.backend.fu.PMPRespBundle
-import xiangshan.backend.Bundles.{MemExuInput, MemExuOutput}
-import xiangshan.backend.fu.NewCSR.TriggerUtil
-import xiangshan.backend.fu.util.SdtrigExt
+import nanhuv5.ExceptionNO._
+import nanhuv5.backend.fu.PMPRespBundle
+import nanhuv5.backend.Bundles.{MemExuInput, MemExuOutput}
+import nanhuv5.backend.fu.NewCSR.TriggerUtil
+import nanhuv5.backend.fu.util.SdtrigExt
 
 class AtomicsUnit(implicit p: Parameters) extends XSModule
   with MemoryOpConstants

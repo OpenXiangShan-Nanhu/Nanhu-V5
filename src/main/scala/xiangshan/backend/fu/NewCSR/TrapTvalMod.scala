@@ -1,12 +1,12 @@
-package xiangshan.backend.fu.NewCSR
+package nanhuv5.backend.fu.NewCSR
 
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.HasCircularQueuePtrHelper
-import xiangshan._
-import xiangshan.backend.fu.NewCSR.CSREvents.TargetPCBundle
-import xiangshan.backend.rob.RobPtr
+import nanhuv5._
+import nanhuv5.backend.fu.NewCSR.CSREvents.TargetPCBundle
+import nanhuv5.backend.rob.RobPtr
 
 class TrapTvalMod(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper {
   val io = IO(new Bundle {

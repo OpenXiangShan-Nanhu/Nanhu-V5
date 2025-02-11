@@ -15,7 +15,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.transforms
+package nanhuv5.transforms
 
 class PrintModuleName extends firrtl.options.Phase {
 
@@ -23,7 +23,7 @@ class PrintModuleName extends firrtl.options.Phase {
 
   override def transform(annotations: firrtl.AnnotationSeq): firrtl.AnnotationSeq = {
 
-    import xiangshan.transforms.Helpers._
+    import nanhuv5.transforms.Helpers._
 
     val (Seq(circuitAnno: firrtl.stage.FirrtlCircuitAnnotation), otherAnnos) = annotations.partition {
       case _: firrtl.stage.FirrtlCircuitAnnotation => true

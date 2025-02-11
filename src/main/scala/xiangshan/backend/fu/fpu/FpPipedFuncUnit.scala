@@ -1,10 +1,10 @@
-package xiangshan.backend.fu.fpu
+package nanhuv5.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.backend.fu.{FuConfig, FuncUnit, HasPipelineReg}
+import nanhuv5._
+import nanhuv5.backend.fu.{FuConfig, FuncUnit, HasPipelineReg}
 
 trait FpFuncUnitAlias { this: FuncUnit =>
   protected val inCtrl  = io.in.bits.ctrl

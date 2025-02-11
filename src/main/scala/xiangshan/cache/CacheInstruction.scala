@@ -1,13 +1,13 @@
-package xiangshan.cache
+package nanhuv5.cache
 
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import xiangshan.frontend.icache._
+import nanhuv5._
+import nanhuv5.frontend.icache._
 import xs.utils._
 import xs.utils.perf._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.backend.fu.util.HasCSRConst
+import nanhuv5.backend.fu.util.HasCSRConst
 
 object CacheOpMap{
   def apply(opcode: String, optype: String,  name: String ): Map[String, String] = {

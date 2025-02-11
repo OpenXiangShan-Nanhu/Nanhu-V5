@@ -14,7 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.fu
+package nanhuv5.backend.fu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
@@ -22,10 +22,10 @@ import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
 import utils._
-import xiangshan._
-import xiangshan.backend._
-import xiangshan.backend.decode.ImmUnion
-import xiangshan.backend.decode.isa._
+import nanhuv5._
+import nanhuv5.backend._
+import nanhuv5.backend.decode.ImmUnion
+import nanhuv5.backend.decode.isa._
 
 trait HasRedirectOut { this: XSModule =>
   val redirectOutValid = IO(Output(Bool()))

@@ -14,16 +14,16 @@
 //* See the Mulan PSL v2 for more details.
 //***************************************************************************************/
 //
-//package xiangshan.mem.mdp
+//package nanhuv5.mem.mdp
 //
 //import org.chipsalliance.cde.config.Parameters
 //import chisel3._
 //import chisel3.util._
-//import xiangshan._
+//import nanhuv5._
 //import utils._
 //import utility._
-//import xiangshan.backend.rob.RobPtr
-//import xiangshan.backend.Bundles.DynInst
+//import nanhuv5.backend.rob.RobPtr
+//import nanhuv5.backend.Bundles.DynInst
 //
 //// store set load violation predictor
 //// See "Memory Dependence Prediction using Store Sets" for details

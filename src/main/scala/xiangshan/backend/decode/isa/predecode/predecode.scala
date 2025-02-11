@@ -14,10 +14,10 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan.backend.decode.isa.predecode
+package nanhuv5.backend.decode.isa.predecode
 
 import chisel3.util._
-import xiangshan.frontend.BrType
+import nanhuv5.frontend.BrType
 
 object PreDecodeInst {
   // def C_JAL     = BitPat("b????????????????_?01_?_??_???_??_???_01") // RV32C

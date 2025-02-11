@@ -494,12 +494,12 @@ case class XSCoreParameters
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("VLSU0",  Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg),
-                                Seq(VfWB(2, 1), V0WB(2, 1), VlWB(2, 0)),
+                                Seq(VfWB(8, 0), V0WB(6, 0), VlWB(2, 0)),
                                 Seq(Seq(VfRD(3, 1)), Seq(VfRD(4, 1)), Seq(VfRD(5, 1)), Seq(V0RD(1, 1)), Seq(VlRD(1, 1)))),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
         ExeUnitParams("VLSU1",  Seq(VlduCfg, VstuCfg),
-                                Seq(VfWB(3, 1), V0WB(3, 1), VlWB(3, 0)),
+                                Seq(VfWB(9, 0), V0WB(7, 0), VlWB(3, 0)),
                                 Seq(Seq(VfRD(6, 1)), Seq(VfRD(7, 1)), Seq(VfRD(8, 1)), Seq(V0RD(2, 1)), Seq(VlRD(2, 1)))),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(

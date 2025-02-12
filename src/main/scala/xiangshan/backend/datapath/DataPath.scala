@@ -621,6 +621,8 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   val isVfScheduler = VecInit(exuParamsNoLoad.map(x => x._2.schdType.isInstanceOf[VfScheduler].B))
   val og0_cancel_delay_for_mem = VecInit(og0_cancel_delay.zip(isVfScheduler).map(x => x._1 && !x._2))
 
+  val isSharedVfIQ = fromIQ.map(x => x.map(xx => xx.bits.exuParams.isSharedVf).reduce(_ || _))
+
   for (i <- fromIQ.indices) {
     for (j <- fromIQ(i).indices) {
       // IQ(s0) --[Ctrl]--> s1Reg ---------- begin
@@ -657,7 +659,18 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
         s1_data.fromIssueBundle(s0.bits) // no src data here
         s1_addrOH := s0.bits.addrOH
       }
-      s0.ready := notBlock && !s0_cancel
+      if(isSharedVfIQ(i)) {
+        if(j == 0) {
+          s0.ready := notBlock && !s0_cancel
+        } else {
+          val issPort0 = fromIQ(i)(0)
+          s0.ready := notBlock && !s0_cancel && !(issPort0.valid && !issPort0.ready &&
+                                                  (issPort0.bits.common.vecWen.get || issPort0.bits.common.v0Wen.get) &&
+                                                  !issPort0.bits.common.vpu.get.fpu.isFpToVecInst)
+        }
+      } else {
+        s0.ready := notBlock && !s0_cancel
+      }
       // IQ(s0) --[Ctrl]--> s1Reg ---------- end
     }
   }

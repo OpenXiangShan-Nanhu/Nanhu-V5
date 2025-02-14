@@ -751,7 +751,19 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
             Seq(None)
             :+
             OptionWrapper(s1_v0PregRData(i)(j).isDefinedAt(k) && srcDataTypeSet.intersect(V0RegSrcDataSet).nonEmpty, 
-              (SrcType.isV0(s1_srcType(i)(j)(k)) -> s1_v0PregRData(i)(j)(k)))
+              (SrcType.isV0(s1_srcType(i)(j)(k)) -> {
+                val src = Wire(UInt(128.W))
+                if(iqBlkParams(i).sharedVf) {
+                  if(j == 0) {
+                    src := s1_v0PregRData(i)(j)(k)
+                  } else {
+                    src := Mux(sinkData.vpu.get.fpu.isFpToVecInst, s1_v0PregRData(i)(j)(k), s1_v0PregRData(i)(j-1)(k))
+                  }
+                } else {
+                  src := s1_v0PregRData(i)(j)(k)
+                }
+                src
+              }))
           )}
           else if (k == 4) {(
             Seq(None)

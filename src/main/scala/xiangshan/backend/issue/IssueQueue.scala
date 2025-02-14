@@ -1059,13 +1059,14 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
       deqDelay(0).bits.common.vfWenL.foreach(_ := true.B)
       deqDelay(0).bits.common.v0WenH.foreach(_ := false.B)
       deqDelay(0).bits.common.v0WenL.foreach(_ := true.B)
+      wakeUpQueues(0).foreach(wq => wq.io.enq.valid := true.B)
 
       deqDelay(1).valid := true.B
       deqDelay(1).bits.common.vfWenH.foreach(_ := true.B)
       deqDelay(1).bits.common.vfWenL.foreach(_ := false.B)
       deqDelay(1).bits.common.v0WenH.foreach(_ := true.B)
       deqDelay(1).bits.common.v0WenL.foreach(_ := false.B)
-      
+      wakeUpQueues(1).foreach(wq => wq.io.enq.valid := false.B)
     }.otherwise {
       deqDelay.zip(deqBeforeDly).foreach { case (deqDly, deq) =>
         deqDly.valid := deq.valid
@@ -1078,6 +1079,8 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
         }
         // deqBeforeDly.ready is always true
         deq.ready := true.B
+        wakeUpQueues(0).foreach(wq => wq.io.enq.valid := deqBeforeDly(0).valid)
+        wakeUpQueues(1).foreach(wq => wq.io.enq.valid := deqBeforeDly(1).valid)
       }
     }
   } else {

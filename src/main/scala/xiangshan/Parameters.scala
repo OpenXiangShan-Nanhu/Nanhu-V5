@@ -181,11 +181,11 @@ case class XSCoreParameters
   IssueQueueCompEntrySize: Int = 12,
   dpParams: DispatchParameters = DispatchParameters(
     IntDqSize = 8,
-    FpDqSize = 8,
+    FpDqSize = 12,
     LsDqSize = 12,
     IntDqDeqWidth = 8,
     FpDqDeqWidth = 6,
-    VecDqDeqWidth = 6,
+    VecDqDeqWidth = 8,
     LsDqDeqWidth = 6,
   ),
   intPreg: PregParams = IntPregParams(
@@ -199,7 +199,7 @@ case class XSCoreParameters
     numWrite = None,
   ),
   vfPreg: VfPregParams = VfPregParams(
-    numEntries = 192,
+    numEntries = 160,
     numRead = None,
     numWrite = None,
   ),

@@ -30,17 +30,19 @@ import freechips.rocketchip.util.SeqToAugmentedSeq
 
 class RegCacheTagTable(numReadPorts: Int)(implicit p: Parameters, schdParams: SchdBlockParams) extends XSModule {
 
+  private val backendParam = schdParams.backendParam
+
   val io = IO(new RegCacheTagTableIO(numReadPorts))
 
   println(s"[RegCacheTagTable] readPorts: ${numReadPorts}, " +
-    s"writePorts: ${backendParams.getIntExuRCWriteSize} + ${backendParams.getMemExuRCWriteSize}")
+    s"writePorts: ${backendParam.getIntExuRCWriteSize} + ${backendParam.getMemExuRCWriteSize}")
 
   println(s"[RegCacheTagTable] addrWidth: ${RegCacheIdxWidth}, tagWidth: ${schdParams.pregIdxWidth}")
 
   private val IntRegCacheReadSize = numReadPorts
-  private val IntRegCacheWriteSize = backendParams.getIntExuRCWriteSize
+  private val IntRegCacheWriteSize = backendParam.getIntExuRCWriteSize
   private val MemRegCacheReadSize = numReadPorts
-  private val MemRegCacheWriteSize = backendParams.getMemExuRCWriteSize
+  private val MemRegCacheWriteSize = backendParam.getMemExuRCWriteSize
 
   val IntRCTagTable = Module(new RegCacheTagModule("IntRCTagTable", IntRegCacheSize, IntRegCacheReadSize, IntRegCacheWriteSize, 
                                                    RegCacheIdxWidth - 1, schdParams.pregIdxWidth))
@@ -69,7 +71,7 @@ class RegCacheTagTable(numReadPorts: Int)(implicit p: Parameters, schdParams: Sc
   shiftLoadDependency.zip(wakeupFromIQNeedWriteRC.map(_.bits.loadDependency)).zip(schdParams.wakeUpInExuSources.map(_.name)).foreach {
     case ((deps, originalDeps), name) => deps.zip(originalDeps).zipWithIndex.foreach {
       case ((dep, originalDep), deqPortIdx) =>
-        if (backendParams.getLdExuIdx(backendParams.allExuParams.find(_.name == name).get) == deqPortIdx)
+        if (backendParam.getLdExuIdx(backendParam.allExuParams.find(_.name == name).get) == deqPortIdx)
           dep := 1.U
         else
           dep := originalDep << 1
@@ -122,5 +124,5 @@ class RegCacheTagTableIO(numReadPorts: Int)(implicit p: Parameters, schdParams: 
   val og0Cancel = Input(ExuVec())
 
   // cancelFromMem
-  val ldCancel = Vec(backendParams.LdExuCnt, Flipped(new LoadCancelIO))
+  val ldCancel = Vec(schdParams.backendParam.LdExuCnt, Flipped(new LoadCancelIO))
 }

@@ -50,22 +50,22 @@ case class L2TLBParameters
 (
   name: String = "l2tlb",
   // l3
-  l3Size: Int = 16,
+  l3Size: Int = 4,
   l3Associative: String = "fa",
   l3Replacer: Option[String] = Some("plru"),
   // l2
-  l2Size: Int = 16,
+  l2Size: Int = 8,
   l2Associative: String = "fa",
   l2Replacer: Option[String] = Some("plru"),
   // l1
   l1nSets: Int = 8,
-  l1nWays: Int = 4,
+  l1nWays: Int = 2,
   l1ReservedBits: Int = 10,
   l1Replacer: Option[String] = Some("setplru"),
   // l0
-  l0nSets: Int = 32,
-  l0nWays: Int = 8,
-  l0ReservedBits: Int = 3,
+  l0nSets: Int = 64,
+  l0nWays: Int = 4,
+  l0ReservedBits: Int = 0,
   l0Replacer: Option[String] = Some("setplru"),
   // sp
   spSize: Int = 16,

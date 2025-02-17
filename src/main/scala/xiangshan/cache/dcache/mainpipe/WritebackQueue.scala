@@ -388,9 +388,9 @@ class WritebackQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
     io.req.bits.dump()
   }
 
-  when(io.mem_release.fire){
-    io.mem_grant.bits.dump
-  }
+//   when(io.mem_release.fire){
+//     io.mem_grant.bits.dump
+//   }
 
   // when (io.miss_req.valid) {
   //   XSDebug("miss_req: addr: %x\n", io.miss_req.bits)

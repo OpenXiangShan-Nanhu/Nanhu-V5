@@ -232,10 +232,10 @@ class ProbeQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule w
   }
 
   // debug output
-  when (io.mem_probe.fire) {
-    XSDebug("mem_probe: ")
-    io.mem_probe.bits.dump
-  }
+  // when (io.mem_probe.fire) {
+  //   XSDebug("mem_probe: ")
+  //   io.mem_probe.bits.dump
+  // }
 
 //  when (io.pipe_req.fire) {
 //    io.pipe_req.bits.dump()

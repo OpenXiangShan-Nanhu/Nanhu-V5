@@ -27,7 +27,7 @@ import freechips.rocketchip.amba.axi4.AXI4Bundle
 import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
 import freechips.rocketchip.util.HeterogeneousBag
 import xs.utils.{ChiselDB, Constantin, FileRegisters, GTimer}
-import xiangshan.DebugOptionsKey
+import xs.utils.perf.DebugOptionsKey
 import system.SoCParamsKey
 
 class SimTop(implicit p: Parameters) extends Module {

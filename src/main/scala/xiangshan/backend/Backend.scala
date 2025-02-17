@@ -42,12 +42,13 @@ import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend.{FtqPtr, FtqRead, PreDecodeInfo}
 import xiangshan.mem.{LqPtr, LsqEnqIO, SqPtr}
 
+
 import scala.collection.mutable
 
 import xs.utils._
 import xs.utils.tl._
 import xs.utils.sram._
-import xs.utils.perf.{HPerfMonitor, PerfEvent, HasPerfEvents}
+import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, PerfEvent, HasPerfEvents}
 
 class Backend(val params: BackendParams)(implicit p: Parameters) extends LazyModule
   with HasXSParameter {
@@ -113,6 +114,7 @@ class BackendInlined(val params: BackendParams)(implicit p: Parameters) extends 
       s"${exuCfg.name}: " +
       (if (exuCfg.fakeUnit) "fake, " else "") +
       (if (exuCfg.hasLoadFu || exuCfg.hasHyldaFu) s"LdExuIdx(${backendParams.getLdExuIdx(exuCfg)})" else "") +
+      s"exuCfg wakeup ${exuCfg.iqWakeUpSourcePairs}" +
       s"${fuConfigs.map(_.name).mkString("fu(s): {", ",", "}")}, " +
       s"${wbPortConfigs.mkString("wb: {", ",", "}")}, " +
       s"${immType.map(SelImm.mkString(_)).mkString("imm: {", ",", "}")}, " +
@@ -868,7 +870,7 @@ class BackendToTopBundle extends Bundle {
   val cpuHalted = Output(Bool())
 }
 
-class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle with HasSoCParameter {
+class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle {
   val fromTop = Flipped(new TopToBackendBundle)
 
   val toTop = new BackendToTopBundle

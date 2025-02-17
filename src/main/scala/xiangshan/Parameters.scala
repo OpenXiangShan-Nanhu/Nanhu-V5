@@ -47,6 +47,8 @@ import coupledL2._
 import coupledL2.tl2chi._
 import xiangshan.backend.datapath.WakeUpConfig
 import xiangshan.mem.prefetch.{PrefetcherParams, SMSParams}
+import xs.utils.perf.DebugOptionsKey
+
 
 import scala.math.{max, min}
 
@@ -110,11 +112,7 @@ case class XSCoreParameters
         ( 2048,   32,    8),
         ( 2048,  119,    8)),
   ITTageTableInfos: Seq[Tuple3[Int,Int,Int]] =
-  //      Sets  Hist   Tag
-    Seq(( 256,    4,    9),
-        ( 256,    8,    9),
-        ( 512,   13,    9),
-        ( 512,   16,    9),
+    Seq(( 256,    8,    9),
         ( 512,   32,    9)),
   SCNRows: Int = 512,
   SCNTables: Int = 4,
@@ -145,17 +143,17 @@ case class XSCoreParameters
   },
   ICacheForceMetaECCError: Boolean = false,
   ICacheForceDataECCError: Boolean = false,
-  IBufSize: Int = 48,
-  IBufNBank: Int = 6, // IBuffer bank amount, should divide IBufSize
-  DecodeWidth: Int = 6,
-  RenameWidth: Int = 6,
+  IBufSize: Int = 32,
+  IBufNBank: Int = 4, // IBuffer bank amount, should divide IBufSize
+  DecodeWidth: Int = 4,
+  RenameWidth: Int = 4,
   CommitWidth: Int = 8,
   RobCommitWidth: Int = 8,
   RabCommitWidth: Int = 6,
   MaxUopSize: Int = 65,
   EnableRenameSnapshot: Boolean = true,
-  RenameSnapshotNum: Int = 4,
-  FtqSize: Int = 64,
+  RenameSnapshotNum: Int = 3,
+  FtqSize: Int = 48,
   EnableLoadFastWakeUp: Boolean = true, // NOTE: not supported now, make it false
   IntLogicRegs: Int = 32,
   FpLogicRegs: Int = 32 + 1 + 1, // 1: I2F, 1: stride
@@ -164,34 +162,39 @@ case class XSCoreParameters
   VlLogicRegs: Int = 1, // Vl
   V0_IDX: Int = 0,
   Vl_IDX: Int = 0,
-  NRPhyRegs: Int = 192,
-  VirtualLoadQueueSize: Int = 72,
-  LoadQueueRAWSize: Int = 64, // NOTE: make sure that LoadQueueRAWSize is power of 2.
+  NRPhyRegs: Int = 128,
+  VirtualLoadQueueSize: Int = 56,
+  LoadQueueRAWSize: Int = 24, // NOTE: make sure that LoadQueueRAWSize is power of 2.
   RollbackGroupSize: Int = 8,
-  LoadQueueReplaySize: Int = 72,
-  LoadUncacheBufferSize: Int = 20,
-  LoadQueueNWriteBanks: Int = 8, // NOTE: make sure that LoadQueueRARSize/LoadQueueRAWSize is divided by LoadQueueNWriteBanks
-  StoreQueueSize: Int = 64,
+  LoadQueueReplaySize: Int = 32,
+  LoadUncacheBufferSize: Int = 8,
+  LoadQueueNWriteBanks: Int = 4, // NOTE: make sure that LoadQueueRARSize/LoadQueueRAWSize is divided by LoadQueueNWriteBanks
+  StoreQueueSize: Int = 32,
   StoreQueueNWriteBanks: Int = 8, // NOTE: make sure that StoreQueueSize is divided by StoreQueueNWriteBanks
   StoreQueueForwardWithMask: Boolean = true,
   VlsQueueSize: Int = 8,
-  RobSize: Int = 160,
-  RabSize: Int = 256,
-  VTypeBufferSize: Int = 64, // used to reorder vtype
+  RobSize: Int = 96,
+  RabSize: Int = 96,
+  VTypeBufferSize: Int = 24, // used to reorder vtype
   WaitTableSize: Int = 1024,
-  IssueQueueSize: Int = 24,
-  IssueQueueCompEntrySize: Int = 16,
+  IssueQueueSize: Int = 16,
+  IssueQueueCompEntrySize: Int = 12,
   dpParams: DispatchParameters = DispatchParameters(
-    IntDqSize = 16,
-    FpDqSize = 16,
-    LsDqSize = 18,
+    IntDqSize = 8,
+    FpDqSize = 8,
+    LsDqSize = 12,
     IntDqDeqWidth = 8,
     FpDqDeqWidth = 6,
     VecDqDeqWidth = 6,
     LsDqDeqWidth = 6,
   ),
   intPreg: PregParams = IntPregParams(
-    numEntries = 224,
+    numEntries = 128,
+    numRead = None,
+    numWrite = None,
+  ),
+  fpPreg: PregParams = FpPregParams(
+    numEntries = 128,
     numRead = None,
     numWrite = None,
   ),
@@ -214,17 +217,17 @@ case class XSCoreParameters
   MemRegCacheSize: Int = 12,
   prefetcher: Option[PrefetcherParams] = Some(SMSParams()),
   IfuRedirectNum: Int = 1,
-  LoadPipelineWidth: Int = 3,
-  StorePipelineWidth: Int = 2,
+  LoadPipelineWidth: Int = 2,
+  StorePipelineWidth: Int = 1,
   VecLoadPipelineWidth: Int = 2,
-  VecStorePipelineWidth: Int = 2,
+  VecStorePipelineWidth: Int = 1,
   VecMemSrcInWidth: Int = 2,
   VecMemInstWbWidth: Int = 1,
   VecMemDispatchWidth: Int = 1,
   VecMemDispatchMaxNumber: Int = 16,
   VecMemUnitStrideMaxFlowNum: Int = 2,
   VecMemLSQEnqIteratorNumberSeq: Seq[Int] = Seq(16, 2, 2, 2, 2, 2),
-  StoreBufferSize: Int = 16,
+  StoreBufferSize: Int = 8,
   StoreBufferThreshold: Int = 7,
   EnsbufferWidth: Int = 2,
   LoadDependencyWidth: Int = 2,
@@ -553,33 +556,17 @@ case class XSCoreParameters
   )
 }
 
-case object DebugOptionsKey extends Field[DebugOptions]
-
-case class DebugOptions
-(
-  FPGAPlatform:     Boolean = false,
-  ResetGen:         Boolean = false,
-  EnableDifftest:   Boolean = false,
-  AlwaysBasicDiff:  Boolean = false,
-  EnableDebug:      Boolean = false,
-  EnablePerfDebug:  Boolean = true,
-  UseDRAMSim:       Boolean = false,
-  EnableConstantin: Boolean = false,
-  EnableChiselDB:   Boolean = false,
-  AlwaysBasicDB:    Boolean = false,
-  EnableRollingDB:  Boolean = false
-)
-
 trait HasXSParameter {
 
   implicit val p: Parameters
 
-  def PAddrBits = p(SoCParamsKey).PAddrBits // PAddrBits is Phyical Memory addr bits
-  def PmemRanges = p(SoCParamsKey).PmemRanges
+  def PAddrBits = 48// p(SoCParamsKey).PAddrBits // PAddrBits is Phyical Memory addr bits
+  def PmemRanges = Seq((0x80000000L, 0x80000000000L)) // p(SoCParamsKey).PmemRanges
   def PmemLowBounds = PmemRanges.unzip._1
   def PmemHighBounds = PmemRanges.unzip._2
   final val PageOffsetWidth = 12
-  def NodeIDWidth = p(SoCParamsKey).NodeIDWidthList(p(CHIIssue)) // NodeID width among NoC
+  def NodeIDWidth = 11 // p(SoCParamsKey).NodeIDWidthList(p(CHIIssue)) // NodeID width among NoC
+  def L3notEmpty = true// p(SoCParamsKey).L3CacheParamsOpt.nonEmpty
 
   def coreParams = p(XSCoreParamsKey)
   def env = p(DebugOptionsKey)
@@ -590,7 +577,7 @@ trait HasXSParameter {
   def HSXLEN = coreParams.HSXLEN
   val minFLen = 32
   val fLen = 64
-  def hartIdLen = p(MaxHartIdBits)
+  def hartIdLen = 6// p(MaxHartIdBits)
   val xLen = XLEN
 
   def HasMExtension = coreParams.HasMExtension

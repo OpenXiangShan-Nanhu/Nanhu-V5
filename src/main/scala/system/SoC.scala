@@ -32,7 +32,9 @@ import huancun._
 import top.BusPerfMonitor
 import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
 import xiangshan.backend.fu.PMAConst
-import xiangshan.{DebugOptionsKey, XSTileKey}
+import xiangshan.XSTileKey
+import xs.utils.perf.DebugOptionsKey
+
 import coupledL2.EnableCHI
 import coupledL2.tl2chi.CHIIssue
 import xiangshan.PMParameKey

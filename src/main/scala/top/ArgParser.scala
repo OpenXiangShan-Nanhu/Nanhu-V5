@@ -19,7 +19,9 @@ package top
 
 import org.chipsalliance.cde.config.{Config, Parameters}
 import system.SoCParamsKey
-import xiangshan.{DebugOptionsKey, XSTileKey}
+import xiangshan.XSTileKey
+import xs.utils.perf.DebugOptionsKey
+
 import freechips.rocketchip.tile.MaxHartIdBits
 import difftest.DifftestModule
 

@@ -35,7 +35,8 @@ import xs.utils.tl._
 import xs.utils.sram.SramBroadcastBundle
 import xiangshan.cache.mmu.TlbRequestIO
 import xiangshan.backend.fu.PMPRespBundle
-import xs.utils.perf.{LogUtilsOptionsKey, PerfEvent, PerfCounterOptionsKey}
+import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfEvent, PerfCounterOptionsKey}
+
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle with HasSoCParameter {
   val ecc_error = Valid(UInt(soc.PAddrBits.W))

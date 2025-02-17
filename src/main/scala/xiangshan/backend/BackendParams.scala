@@ -27,7 +27,9 @@ import xiangshan.backend.datapath.{WakeUpConfig, WbArbiterParams}
 import xiangshan.backend.exu.ExeUnitParams
 import xiangshan.backend.issue._
 import xiangshan.backend.regfile._
-import xiangshan.{DebugOptionsKey, XSCoreParamsKey}
+import xiangshan.XSCoreParamsKey
+import xs.utils.perf.DebugOptionsKey
+
 
 import scala.collection.mutable
 import scala.reflect.{ClassTag, classTag}

@@ -50,7 +50,7 @@ import xs.utils._
 import xs.utils.mbist.{MbistInterface, MbistPipeline}
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xs.utils.perf.{PerfEvent, XSDebug, XSPerfAccumulate, HasPerfLogging, HasPerfEvents, XSError}
-import xs.utils.perf.{HPerfMonitor, XSPerfHistogram}
+import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
 
 trait HasMemBlockParameters extends HasXSParameter {
   // number of memory units

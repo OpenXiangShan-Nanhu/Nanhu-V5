@@ -40,7 +40,7 @@ import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.jtag.JTAGIO
 import chisel3.experimental.{annotate, ChiselAnnotation}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
-import xs.utils.perf.{LogUtilsOptionsKey, PerfCounterOptionsKey}
+import xs.utils.perf.{LogUtilsOptionsKey, PerfCounterOptionsKey, DebugOptionsKey, DebugOptions}
 
 abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
   with BindingScope

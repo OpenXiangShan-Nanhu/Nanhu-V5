@@ -21,6 +21,7 @@ import chisel3.util._
 import xiangshan._
 import utils._
 import xs.utils._
+import xs.utils.perf.{DebugOptionsKey, DebugOptions}
 import system._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams}
@@ -416,6 +417,22 @@ class DefaultConfig(n: Int = 1) extends Config(
     ++ new WithNKBL1D(64, ways = 8)
     ++ new BaseConfig(n)
 )
+
+
+/** Nanhu V5.3 Config
+ *  WithNanhuV5_3Config (resize queue, l2tlb)
+ *  32KB L1i + 32KB L1d
+ *  128KB L2
+ *  4096KB L3
+ */
+class NanhuV5_3Config(n: Int = 1) extends Config(
+  new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
+    ++ new WithNKBL2(128, inclusive = true, banks = 2, ways = 8)
+    ++ new WithNKBL1I(32, ways = 4)
+    ++ new WithNKBL1D(32, ways = 4)
+    ++ new BaseConfig(n)
+)
+
 
 class WithCHI extends Config((_, _, _) => {
   case EnableCHI => true

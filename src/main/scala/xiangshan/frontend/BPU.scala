@@ -452,21 +452,29 @@ class Predictor(implicit p: Parameters) extends XSModule
   val full_pred_diff_stage = WireInit(0.U)
   val full_pred_diff_offset = WireInit(0.U)
   for (i <- 0 until numDup - 1) {
-    when (io.bpu_to_ftq.resp.valid &&
-      ((io.bpu_to_ftq.resp.bits.s1.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s1.full_pred(i+1).asTypeOf(UInt()) && io.bpu_to_ftq.resp.bits.s1.full_pred(i).hit) ||
-          (io.bpu_to_ftq.resp.bits.s2.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s2.full_pred(i+1).asTypeOf(UInt()) && io.bpu_to_ftq.resp.bits.s2.full_pred(i).hit) ||
-          (io.bpu_to_ftq.resp.bits.s3.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s3.full_pred(i+1).asTypeOf(UInt()) && io.bpu_to_ftq.resp.bits.s3.full_pred(i).hit))) {
+    when (io.bpu_to_ftq.resp.bits.s1.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s1.full_pred(i+1).asTypeOf(UInt()) &&
+          io.bpu_to_ftq.resp.bits.s1.full_pred(i).hit &&
+          s1_valid_dup(2) && s2_components_ready_dup(2) && s2_ready_dup(2)) {
       full_pred_diff := true.B
       full_pred_diff_offset := i.U
-      when (io.bpu_to_ftq.resp.bits.s1.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s1.full_pred(i+1).asTypeOf(UInt())) {
-        full_pred_diff_stage := 1.U
-      } .elsewhen (io.bpu_to_ftq.resp.bits.s2.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s2.full_pred(i+1).asTypeOf(UInt())) {
-        full_pred_diff_stage := 2.U
-      } .otherwise {
-        full_pred_diff_stage := 3.U
-      }
+      full_pred_diff_stage := 1.U
+    } .elsewhen (io.bpu_to_ftq.resp.bits.s2.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s2.full_pred(i+1).asTypeOf(UInt()) &&
+                 io.bpu_to_ftq.resp.bits.s2.full_pred(i).hit &&
+                 s2_fire_dup(2) && s2_redirect_dup(2)) {
+      full_pred_diff := true.B
+      full_pred_diff_offset := i.U
+      full_pred_diff_stage := 2.U
+    } .elsewhen (io.bpu_to_ftq.resp.bits.s3.full_pred(i).asTypeOf(UInt()) =/= io.bpu_to_ftq.resp.bits.s3.full_pred(i+1).asTypeOf(UInt()) &&
+                 io.bpu_to_ftq.resp.bits.s3.full_pred(i).hit &&
+                 s3_fire_dup(2) && s3_redirect_dup(2)) {
+      full_pred_diff := true.B
+      full_pred_diff_offset := i.U
+      full_pred_diff_stage := 3.U
     }
   }
+  dontTouch(full_pred_diff)
+  dontTouch(full_pred_diff_stage)
+  dontTouch(full_pred_diff_offset)
   XSError(full_pred_diff, "Full prediction difference detected!")
 
   // s0_stall should be exclusive with any other PC source

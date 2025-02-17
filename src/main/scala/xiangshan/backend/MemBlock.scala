@@ -240,7 +240,7 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
   val l2_pf_sender_opt = coreParams.prefetcher.map(_ =>
     BundleBridgeSource(() => new PrefetchRecv)
   )
-  val l3_pf_sender_opt = if (p(SoCParamsKey).L3CacheParamsOpt.nonEmpty) coreParams.prefetcher.map(_ =>
+  val l3_pf_sender_opt = if (L3notEmpty) coreParams.prefetcher.map(_ =>
     BundleBridgeSource(() => new huancun.PrefetchRecv)
   ) else None
   val cmo_sender  = if (HasCMO) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None

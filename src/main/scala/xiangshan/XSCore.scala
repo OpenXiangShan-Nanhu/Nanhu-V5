@@ -78,8 +78,7 @@ class XSCore()(implicit p: config.Parameters) extends XSCoreBase
 }
 
 class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
-  with HasXSParameter
-  with HasSoCParameter {
+  with HasXSParameter {
   val io = IO(new Bundle {
     val hartId = Input(UInt(hartIdLen.W))
     val msiInfo = Input(ValidIO(new MsiInfoBundle))
@@ -258,7 +257,11 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     backend.cgen.get := memBlock.dft_out.get.cgen
   }
 
-  if (debugOpts.ResetGen) {
+//  if (debugOpts.ResetGen) {
+//    backend.reset := memBlock.io.reset_backend
+//    frontend.reset := backend.io.frontendReset
+//  }
+  if (p(DebugOptionsKey).ResetGen) {
     backend.reset := memBlock.io.reset_backend
     frontend.reset := backend.io.frontendReset
   }

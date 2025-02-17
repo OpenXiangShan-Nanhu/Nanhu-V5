@@ -360,7 +360,7 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   csrToDecode := csrMod.io.toDecode
 }
 
-class CSRInput(implicit p: Parameters) extends XSBundle with HasSoCParameter{
+class CSRInput(implicit p: Parameters) extends XSBundle {
   val hartId = Input(UInt(8.W))
   val msiInfo = Input(ValidIO(new MsiInfoBundle))
   val clintTime = Input(ValidIO(UInt(64.W)))

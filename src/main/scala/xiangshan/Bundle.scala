@@ -681,6 +681,10 @@ object AddrTransType {
   }
 }
 
+class BusErrorUnitInfo(implicit p: Parameters) extends Bundle {
+  val ecc_error = Valid(UInt(64.W))
+}
+
 class L1CacheErrorInfo(implicit p: Parameters) extends XSBundle {
   // L1CacheErrorInfo is also used to encode customized CACHE_ERROR CSR
   val source = Output(new Bundle() {

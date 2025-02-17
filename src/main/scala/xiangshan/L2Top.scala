@@ -38,8 +38,8 @@ import xiangshan.backend.fu.PMPRespBundle
 import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfEvent, PerfCounterOptionsKey}
 
 
-class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle with HasSoCParameter {
-  val ecc_error = Valid(UInt(soc.PAddrBits.W))
+class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
+  val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
 }
 
 class XSL1BusErrors()(implicit val p: Parameters) extends BusErrors {

@@ -41,8 +41,8 @@ case class PMParameters
 trait HasPMParameters {
   implicit val p: Parameters
 
-  def PMPAddrBits = p(SoCParamsKey).PAddrBits
-  def PMPPmemRanges = p(SoCParamsKey).PmemRanges
+  def PMPAddrBits = 48 //p(SoCParamsKey).PAddrBits
+  def PMPPmemRanges = Seq((0x80000000L, 0x80000000000L)) //p(SoCParamsKey).PmemRanges
   def PMPPmemLowBounds = PMPPmemRanges.unzip._1
   def PMPPmemHighBounds = PMPPmemRanges.unzip._2
   def PMXLEN = p(XLen)

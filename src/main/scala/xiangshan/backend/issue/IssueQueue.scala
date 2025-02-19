@@ -358,15 +358,7 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     }
     for(deqIdx <- 0 until params.numDeq) {
       entriesIO.deqReady(deqIdx)                                := deqBeforeDly(deqIdx).ready
-      if(params.sharedVf) {
-        // port0-v              ->  b'10
-        // port0-fp, port1-fp   ->  b'11
-        // port0-fp, port1-v    ->  b'10
-        entriesIO.deqSelOH(0).valid := deqSelValidVec(0)
-        entriesIO.deqSelOH(1).valid := deqSelValidVec(1) && entriesIO.deqEntry(1).bits.payload.vpu.fpu.isFpToVecInst && entriesIO.deqEntry(0).bits.payload.vpu.fpu.isFpToVecInst
-      } else {
-        entriesIO.deqSelOH(deqIdx).valid := deqSelValidVec(deqIdx)
-      }
+      entriesIO.deqSelOH(deqIdx).valid := deqSelValidVec(deqIdx)
       entriesIO.deqSelOH(deqIdx).bits                           := deqSelOHVec(deqIdx)
       entriesIO.enqEntryOldestSel(deqIdx)                       := enqEntryOldestSel(deqIdx)
       entriesIO.simpEntryOldestSel.foreach(_(deqIdx)            := simpEntryOldestSel.get(deqIdx))
@@ -493,16 +485,18 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
       subDeqSelValidVec.get := subDeqPolicy.io.deqSelOHVec.map(oh => oh.valid)
       subDeqSelOHVec.get := subDeqPolicy.io.deqSelOHVec.map(oh => Reverse(oh.bits))
     }
+
     if(params.sharedVf) {
       subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W)) & fpToVfVec
     } else {
       subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W))
     }
+
+    val deq0SelOH = Mux(othersEntryOldestSel(0).valid, Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W)), subDeqSelOHVec.get(1))
+    val deq0SelFp = Mux1H(deq0SelOH, fpToVfVec)
     deqSelValidVec(0) := othersEntryOldestSel(0).valid || subDeqSelValidVec.get(1)
-    deqSelValidVec(1) := subDeqSelValidVec.get(0)
-    deqSelOHVec(0) := Mux(othersEntryOldestSel(0).valid,
-                          Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W)),
-                          subDeqSelOHVec.get(1)) & canIssueMergeAllBusy(0)
+    deqSelValidVec(1) := subDeqSelValidVec.get(0) && !(deqSelValidVec(0) && !deq0SelFp)
+    deqSelOHVec(0) := deq0SelOH & canIssueMergeAllBusy(0) & Mux(!deq0SelFp, canIssueMergeAllBusy(1), ~(0.U(params.numEntries.W)))
     deqSelOHVec(1) := subDeqSelOHVec.get(0) & canIssueMergeAllBusy(1)
 
     finalDeqSelValidVec.zip(finalDeqSelOHVec).zip(deqSelValidVec).zip(deqSelOHVec).zipWithIndex.foreach {

@@ -157,6 +157,13 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
   private val outNarrowVd = Wire(UInt(64.W))
   outNarrowVd := 0.U(32.W) ## resultDataUInt(31, 0)
 
+  val result_fmv = Mux1H(Seq(
+    (sew === VSew.e8)  -> SignExt(inData.src(0)(7, 0) , XLEN),
+    (sew === VSew.e16) -> SignExt(inData.src(0)(15, 0), XLEN),
+    (sew === VSew.e32) -> SignExt(inData.src(0)(31, 0), XLEN),
+    (sew === VSew.e64) -> SignExt(inData.src(0)       , XLEN),
+  ))
+
   mguOpt match {
     case Some(mgu) =>{
       mgu.io.in.vd := Mux(narrow, outNarrowVd, resultDataUInt)
@@ -178,7 +185,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
       // for scalar f2i cvt inst
       val isFp2VecForInt = outVecCtrl.fpu.isFpToVecInst && outIs32bits && outIsInt
       // for f2i mv inst
-      val result = Mux(outIsMvInst, RegNext(RegNext(vs2.tail(64))), mgu.io.out.vd)
+      val result = Mux(outIsMvInst, RegNext(RegNext(result_fmv)), mgu.io.out.vd)
       io.out.bits.res.data := Mux(isFp2VecForInt,
         Fill(32, result(31)) ## result(31, 0),
         result)
@@ -190,7 +197,7 @@ class VCVT64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
       val needBoxedSigle = outVecCtrl.fpu.isFpToVecInst && outIs32bits && !outIsInt
       val needBoxedHalf = outVecCtrl.fpu.isFpToVecInst && outIs16bits && !outIsInt
       // for f2i mv inst
-      val result = Mux(outIsMvInst, RegNext(RegNext(vs1.tail(64))), Mux(narrow, outNarrowVd, resultDataUInt))
+      val result = Mux(outIsMvInst, RegNext(RegNext(result_fmv)), Mux(narrow, outNarrowVd, resultDataUInt))
       when(isFp2VecForInt) {
         io.out.bits.res.data := Fill(32, result(31)) ## result(31, 0)
       }.elsewhen(needBoxedSigle) {

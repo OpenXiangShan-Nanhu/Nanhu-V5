@@ -193,11 +193,6 @@ case class XSCoreParameters
     numRead = None,
     numWrite = None,
   ),
-  fpPreg: PregParams = FpPregParams(
-    numEntries = 128,
-    numRead = None,
-    numWrite = None,
-  ),
   vfPreg: VfPregParams = VfPregParams(
     numEntries = 160,
     numRead = None,

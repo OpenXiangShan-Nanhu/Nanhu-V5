@@ -323,13 +323,14 @@ object xiangshan extends XiangShanModule with HasChisel {
     str
   }
 
+  val pwd = os.pwd
   def packDifftestResources(destDir: os.Path): Unit = {
     // package difftest source as resources, only git tracked files were collected
-    val difftest_srcs = os.proc("git", "ls-files").call(cwd = os.pwd / "difftest").out
+    val difftest_srcs = os.proc("git", "ls-files").call(cwd = pwd / "difftest").out
                           .text().split("\n").filter(_.nonEmpty).toSeq
                           .map(os.RelPath(_))
     difftest_srcs.foreach { f =>
-      os.copy(os.pwd / "difftest" / f, destDir / "difftest-src" / f, createFolders = true)
+      os.copy(pwd / "difftest" / f, destDir / "difftest-src" / f, createFolders = true)
     }
 
     // package ready-to-run binary as resources
@@ -337,7 +338,7 @@ object xiangshan extends XiangShanModule with HasChisel {
                            "riscv64-nemu-interpreter-so",
                            "riscv64-spike-so")
     ready_to_run.foreach { f =>
-      os.copy(os.pwd / "ready-to-run" / f, destDir / "ready-to-run" / f, createFolders = true)
+      os.copy(pwd / "ready-to-run" / f, destDir / "ready-to-run" / f, createFolders = true)
     }
   }
 

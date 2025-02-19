@@ -40,12 +40,6 @@ object FuType extends Enumeration {
   val fence = Value("fence")
   val bku = Value("bku")
 
-  // fp
-  val falu = Value("falu")
-  val fmac = Value("fmac")
-  val fcvt = Value("fcvt")
-  val fDivSqrt = Value("fDivSqrt")
-
   // ls
   val ldu = Value("ldu")
   val stu = Value("stu")
@@ -57,7 +51,6 @@ object FuType extends Enumeration {
   val vppu = Value("vppu")
   val vimac = Value("vimac")
   val vidiv = Value("vidiv")
-  val vfpu = Value("vfpu") // will be deleted
   val vfalu = Value("vfalu")
   val vfma = Value("vfma")
   val vfdiv = Value("vfdiv")
@@ -123,18 +116,19 @@ object FuType extends Enumeration {
     val fuTypes = FuConfig.allConfigs.filter(_.latency == CertainLatency(0)).map(_.fuType)
     FuTypeOrR(fuType, fuTypes)
   }
-  val fpArithAll = Seq(falu, fcvt, fmac, fDivSqrt, f2v)
+  val fpArithAll = Seq(f2v)
   val scalaMemAll = Seq(ldu, stu, mou)
   val vecOPI = Seq(vipu, vialuF, vppu, vimac, vidiv)
-  val vecOPF = Seq(vfpu, vfalu, vfma, vfdiv, vfcvt)
+  val vecOPF = Seq(vfalu, vfma, vfdiv, vfcvt)
   val vecVSET = Seq(vsetiwi, vsetiwf, vsetfwf)
   val vecArith = vecOPI ++ vecOPF
   val vecMem = Seq(vldu, vstu, vsegldu, vsegstu)
   val vecArithOrMem = vecArith ++ vecMem
   val vecAll = vecVSET ++ vecArithOrMem
   val fpOP = fpArithAll ++ Seq(i2f, i2v)
-  val scalaNeedFrm = Seq(i2f, fmac, fDivSqrt)
+  val scalaNeedFrm = Seq(i2f)
   val vectorNeedFrm = Seq(vfalu, vfma, vfdiv, vfcvt)
+  val sharedVf = Seq(vfalu, vfma, vfcvt)
 
   def num = this.values.size
 
@@ -202,7 +196,7 @@ object FuType extends Enumeration {
 
   def isVArithMem(fuType: UInt): Bool = FuTypeOrR(fuType, vecArithOrMem) // except vset
 
-  def isDivSqrt(fuType: UInt): Bool = FuTypeOrR(fuType, div, fDivSqrt)
+  def isDivSqrt(fuType: UInt): Bool = FuTypeOrR(fuType, div)
 
   def storeIsAMO(fuType: UInt): Bool = FuTypeOrR(fuType, mou)
 
@@ -242,8 +236,6 @@ object FuType extends Enumeration {
     div -> "div",
     fence -> "fence",
     bku -> "bku",
-    fmac -> "fmac",
-    fDivSqrt -> "fdiv_fsqrt",
     ldu -> "load",
     stu -> "store",
     mou -> "mou",
@@ -252,7 +244,6 @@ object FuType extends Enumeration {
     vsetfwf -> "vsetfwf",
     vipu -> "vipu",
     vialuF -> "vialuF",
-    vfpu -> "vfpu",
     vldu -> "vldu",
     vstu -> "vstu",
     vppu -> "vppu",

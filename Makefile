@@ -195,6 +195,7 @@ sim-verilog: $(SIM_TOP_V)
 clean:
 	$(MAKE) -C ./difftest clean
 	rm -rf $(BUILD_DIR)
+	rm -rf sim
 
 init:
 	git submodule update --init
@@ -232,7 +233,6 @@ emu_rtl-run:
 	$(shell if [ -e $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/emu ];then rm -f $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/emu; fi)
 	ln -s $(ABS_WORK_DIR)/sim/emu/comp/emu $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/emu
 	cd sim/emu/$(RUN_BIN) && (./emu $(EMU_RUN_OPTS) 2> assert.log | tee sim.log)
-
 
 # vcs simulation
 vcs-rtl:

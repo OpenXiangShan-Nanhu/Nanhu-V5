@@ -12,6 +12,7 @@ import xiangshan.backend.rob.RobPtr
 import xiangshan.ExceptionNO
 import yunsuan.VfpuType
 import yunsuan.vector.VectorFloatDivider
+import xiangshan.backend.fu.vector.VfMgu
 
 class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUnit(cfg) {
   XSError(io.in.valid && io.in.bits.ctrl.fuOpType === VfpuType.dummy, "Vfdiv OpType not supported")
@@ -29,7 +30,7 @@ class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUn
   private val vs2Split = Module(new VecDataSplitModule(dataWidth, dataWidthOfDataModule))
   private val vs1Split = Module(new VecDataSplitModule(dataWidth, dataWidthOfDataModule))
   private val oldVdSplit  = Module(new VecDataSplitModule(dataWidth, dataWidthOfDataModule))
-  private val mgu = Module(new Mgu(dataWidth))
+  private val mgu = Module(new Mgu(vlen = VLEN))
 
   /**
     * In connection of [[vs2Split]], [[vs1Split]] and [[oldVdSplit]]
@@ -56,7 +57,11 @@ class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUn
   }
   vfdivs.zipWithIndex.foreach {
     case (mod, i) =>
-      mod.io.start_valid_i  := io.in.valid
+      if(i == 0) {
+        mod.io.start_valid_i  := io.in.valid
+      } else {
+        mod.io.start_valid_i := Mux(vecCtrl.fpu.isFpToVecInst, false.B, io.in.valid)
+      }
       mod.io.finish_ready_i := io.out.ready & io.out.valid
       mod.io.flush_i        := thisRobIdx.needFlush(io.flush)
       mod.io.fp_format_i    := vsew
@@ -84,7 +89,7 @@ class VFDivSqrt(cfg: FuConfig)(implicit p: Parameters) extends VecNonPipedFuncUn
   }
 
   io.in.ready  := vfdivs.map(_.io.start_ready_o).reduce(_&_)
-  io.out.valid := vfdivs.map(_.io.finish_valid_o).reduce(_&_)
+  io.out.valid := Mux(outCtrl.vpu.get.fpu.isFpToVecInst, vfdivs.head.io.finish_valid_o, vfdivs.map(_.io.finish_valid_o).reduce(_&_))
   val outEew = outVecCtrl.vsew
   val outVuopidx = outVecCtrl.vuopIdx(2, 0)
   val vlMax = ((VLEN / 8).U >> outEew).asUInt

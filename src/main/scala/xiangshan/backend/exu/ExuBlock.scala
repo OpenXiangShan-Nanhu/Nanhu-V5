@@ -1,24 +1,26 @@
 package xiangshan.backend.exu
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import xiangshan.backend.fu.{CSRFileIO, FenceIO}
-import xiangshan.backend.Bundles._
-import xiangshan.backend.issue.SchdBlockParams
-import xiangshan.{HasXSParameter, Redirect, XSBundle}
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
+import xiangshan.{HasXSParameter, Redirect, XSBundle}
+import xiangshan.backend.Bundles._
+import xiangshan.backend.issue.SchdBlockParams
+import xiangshan.backend.fu.{CSRFileIO, FenceIO}
 import xiangshan.backend.fu.FuConfig.{AluCfg, BrhCfg}
 import xiangshan.backend.fu.vector.Bundles.{VType, Vxrm}
 import xiangshan.backend.fu.fpu.Bundles.Frm
 import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
+import scala.annotation.meta.param
 
 class ExuBlock(params: SchdBlockParams)(implicit p: Parameters) extends LazyModule with HasXSParameter {
   override def shouldBeInlined: Boolean = false
 
-  val exus: Seq[ExeUnit] = params.issueBlockParams.flatMap(_.exuBlockParams.map(x => LazyModule(x.genExuModule)))
+  val exeUnits: Seq[Seq[ExeUnit]] = params.issueBlockParams.map(_.exuBlockParams.map(x => LazyModule(x.genExuModule)))
+  val exus: Seq[ExeUnit] = exeUnits.flatten
 
   lazy val module = new ExuBlockImp(this)(p, params)
 }
@@ -34,6 +36,7 @@ class ExuBlockImp(
   override val desiredName = params.getExuBlockName
 
   private val exus = wrapper.exus.map(_.module)
+  private val exeUnits = wrapper.exeUnits.map(x => x.map(xx => xx.module))
 
   private val ins: collection.IndexedSeq[DecoupledIO[ExuInput]] = io.in.flatten
   private val outs: collection.IndexedSeq[DecoupledIO[ExuOutput]] = io.out.flatten
@@ -51,14 +54,25 @@ class ExuBlockImp(
     exu.io.in <> input
     output <> exu.io.out
     io.csrToDecode.foreach(toDecode => exu.io.csrToDecode.foreach(exuOut => toDecode := exuOut))
-//    if (exu.wrapper.exuParams.fuConfigs.contains(AluCfg) || exu.wrapper.exuParams.fuConfigs.contains(BrhCfg)){
-//      XSPerfAccumulate(s"${(exu.wrapper.exuParams.name)}_fire_cnt", PopCount(exu.io.in.fire))
-//    }
     XSPerfAccumulate(s"${(exu.wrapper.exuParams.name)}_fire_cnt", PopCount(exu.io.in.fire))
   }
   exus.find(_.io.csrio.nonEmpty).map(_.io.csrio.get).foreach { csrio =>
     exus.map(_.io.instrAddrTransType.foreach(_ := csrio.instrAddrTransType))
   }
+
+  exeUnits.zip(io.out).zip(params.issueBlockParams).foreach{
+    case ((exes, out), param) => {
+      if(param.sharedVf) {
+        val wbMguName = "WbMgu_" + param.getExuName
+        val wbMgu = Module(new SharedVfWbMgu(param.exuBlockParams.head, wbMguName).suggestName(wbMguName))
+        wbMgu.io.ins.head <> exes.head.io.out
+        wbMgu.io.ins.last <> exes.last.io.out
+        out.head <> wbMgu.io.outs.head
+        out.last <> wbMgu.io.outs.last
+      }
+    }
+  }
+
   val aluFireSeq = exus.filter(_.wrapper.exuParams.fuConfigs.contains(AluCfg)).map(_.io.in.fire)
   for (i <- 0 until (aluFireSeq.size + 1)){
     XSPerfAccumulate(s"alu_fire_${i}_cnt", PopCount(aluFireSeq) === i.U)

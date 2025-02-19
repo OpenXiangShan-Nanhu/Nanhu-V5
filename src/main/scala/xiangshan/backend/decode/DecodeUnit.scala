@@ -386,40 +386,28 @@ object ScalarCryptoDecode extends DecodeConstants {
  */
 object FpDecode extends DecodeConstants{
   val decodeArray: Array[(BitPat, XSDecodeBase)] = Array(
-    FLH     -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.ldu, LSUOpType.lh, selImm = SelImm.IMM_I, fWen = T),
-    FLW     -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.ldu, LSUOpType.lw, selImm = SelImm.IMM_I, fWen = T),
-    FLD     -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.ldu, LSUOpType.ld, selImm = SelImm.IMM_I, fWen = T),
+    FLH     -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.ldu, LSUOpType.lh, selImm = SelImm.IMM_I, fWen = T, vWen = T),
+    FLW     -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.ldu, LSUOpType.lw, selImm = SelImm.IMM_I, fWen = T, vWen = T),
+    FLD     -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.ldu, LSUOpType.ld, selImm = SelImm.IMM_I, fWen = T, vWen = T),
     FSH     -> FDecode(SrcType.reg, SrcType.fp,  SrcType.X, FuType.stu, LSUOpType.sh, selImm = SelImm.IMM_S          ),
     FSW     -> FDecode(SrcType.reg, SrcType.fp,  SrcType.X, FuType.stu, LSUOpType.sw, selImm = SelImm.IMM_S          ),
     FSD     -> FDecode(SrcType.reg, SrcType.fp,  SrcType.X, FuType.stu, LSUOpType.sd, selImm = SelImm.IMM_S          ),
 
-    FMV_D_X -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2v, IF2VectorType.FMX_D_X, fWen = T, canRobCompress = T),
-    FMV_W_X -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2v, IF2VectorType.FMX_W_X, fWen = T, canRobCompress = T),
-    FMV_H_X -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2v, IF2VectorType.FMX_H_X, fWen = T, canRobCompress = T),
+    FMV_D_X -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2v, IF2VectorType.FMX_D_X, fWen = T, vWen = T, canRobCompress = T),
+    FMV_W_X -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2v, IF2VectorType.FMX_W_X, fWen = T, vWen = T, canRobCompress = T),
+    FMV_H_X -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2v, IF2VectorType.FMX_H_X, fWen = T, vWen = T, canRobCompress = T),
 
     // Int to FP
-    FCVT_S_W  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
-    FCVT_S_WU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
-    FCVT_S_L  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
-    FCVT_S_LU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
+    FCVT_S_W  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FCVT_S_WU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FCVT_S_L  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FCVT_S_LU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
 
-    FCVT_D_W  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
-    FCVT_D_WU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
-    FCVT_D_L  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
-    FCVT_D_LU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, canRobCompress = T),
+    FCVT_D_W  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FCVT_D_WU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FCVT_D_L  -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FCVT_D_LU -> FDecode(SrcType.reg, SrcType.imm, SrcType.X, FuType.i2f, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
 
-  )
-}
-
-/**
- * FP Divide SquareRoot Constants
- */
-object FDivSqrtDecode extends DecodeConstants {
-  val decodeArray: Array[(BitPat, XSDecodeBase)] = Array(
-    FDIV_S  -> FDecode(SrcType.fp,  SrcType.fp,  SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, canRobCompress = T),
-    FDIV_D  -> FDecode(SrcType.fp,  SrcType.fp,  SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, canRobCompress = T),
-    FSQRT_S -> FDecode(SrcType.fp,  SrcType.imm, SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, canRobCompress = T),
-    FSQRT_D -> FDecode(SrcType.fp,  SrcType.imm, SrcType.X, FuType.fDivSqrt, FuOpType.X, fWen = T, canRobCompress = T),
   )
 }
 
@@ -520,28 +508,28 @@ object ZimopDecode extends DecodeConstants {
 
 object ZfaDecode extends DecodeConstants {
   override val decodeArray: Array[(BitPat, XSDecodeBase)] = Array(
-    FLI_H       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, canRobCompress = T),
-    FLI_S       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, canRobCompress = T),
-    FLI_D       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, canRobCompress = T),
-    FMINM_H     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fminm, fWen = T, canRobCompress = T),
-    FMINM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fminm, fWen = T, canRobCompress = T),
-    FMINM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fminm, fWen = T, canRobCompress = T),
-    FMAXM_H     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fmaxm, fWen = T, canRobCompress = T),
-    FMAXM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fmaxm, fWen = T, canRobCompress = T),
-    FMAXM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fmaxm, fWen = T, canRobCompress = T),
-    FROUND_H    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.fround,   fWen = T, canRobCompress = T),
-    FROUND_S    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.fround,   fWen = T, canRobCompress = T),
-    FROUND_D    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.fround,   fWen = T, canRobCompress = T),
-    FROUNDNX_H  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.froundnx, fWen = T, canRobCompress = T),
-    FROUNDNX_S  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.froundnx, fWen = T, canRobCompress = T),
-    FROUNDNX_D  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.froundnx, fWen = T, canRobCompress = T),
-    FCVTMOD_W_D -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.fcvt, VfcvtType.fcvtmod_w_d, xWen = T, canRobCompress = T),
-    FLEQ_H      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fleq, xWen = T, canRobCompress = T),
-    FLEQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fleq, xWen = T, canRobCompress = T),
-    FLEQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fleq, xWen = T, canRobCompress = T),
-    FLTQ_H      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fltq, xWen = T, canRobCompress = T),
-    FLTQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fltq, xWen = T, canRobCompress = T),
-    FLTQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.falu, VfaluType.fltq, xWen = T, canRobCompress = T),
+    FLI_H       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FLI_S       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FLI_D       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    FMINM_H     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
+    FMINM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
+    FMINM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
+    FMAXM_H     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
+    FMAXM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
+    FMAXM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
+    FROUND_H    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
+    FROUND_S    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
+    FROUND_D    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
+    FROUNDNX_H  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
+    FROUNDNX_S  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
+    FROUNDNX_D  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
+    FCVTMOD_W_D -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fcvtmod_w_d, xWen = T, canRobCompress = T),
+    FLEQ_H      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
+    FLEQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
+    FLEQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
+    FLTQ_H      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
+    FLTQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
+    FLTQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
   )
 }
 
@@ -788,7 +776,6 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
 
   val decode_table: Array[(BitPat, List[BitPat])] = XDecode.table ++
     FpDecode.table ++
-//    FDivSqrtDecode.table ++
     BitmanipDecode.table ++
     ScalarCryptoDecode.table ++
     XSTrapDecode.table ++
@@ -866,12 +853,12 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     io.fromCSR.illegalInst.hlsv       && FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu)   && (LSUOpType.isHlv(decodedInst.fuOpType) || LSUOpType.isHlvx(decodedInst.fuOpType)) ||
     io.fromCSR.illegalInst.hlsv       && FuType.FuTypeOrR(decodedInst.fuType, FuType.stu)   && LSUOpType.isHsv(decodedInst.fuOpType) ||
     io.fromCSR.illegalInst.fsIsOff    && (
-      FuType.FuTypeOrR(decodedInst.fuType, FuType.fpOP ++ Seq(FuType.f2v)) ||
+      decodedInst.vpu.fpu.isFpToVecInst || FuType.FuTypeOrR(decodedInst.fuType, FuType.fpOP ++ Seq(FuType.f2v)) ||
       (FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu) && (decodedInst.fuOpType === LSUOpType.lw || decodedInst.fuOpType === LSUOpType.ld) ||
       FuType.FuTypeOrR(decodedInst.fuType, FuType.stu) && (decodedInst.fuOpType === LSUOpType.sw || decodedInst.fuOpType === LSUOpType.sd)) && decodedInst.instr(2) ||
       inst.isOPFVF || inst.isOPFVV
     ) ||
-    io.fromCSR.illegalInst.vsIsOff    && FuType.FuTypeOrR(decodedInst.fuType, FuType.vecAll) ||
+    io.fromCSR.illegalInst.vsIsOff    && !decodedInst.vpu.fpu.isFpToVecInst && FuType.FuTypeOrR(decodedInst.fuType, FuType.vecAll) ||
     io.fromCSR.illegalInst.wfi        && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr)   && CSROpType.isWfi(decodedInst.fuOpType) ||
     (decodedInst.needFrm.scalaNeedFrm || FuType.isScalaNeedFrm(decodedInst.fuType)) && (((decodedInst.fpu.rm === 5.U) || (decodedInst.fpu.rm === 6.U)) || ((decodedInst.fpu.rm === 7.U) && io.fromCSR.illegalInst.frm)) ||
     (decodedInst.needFrm.vectorNeedFrm || FuType.isVectorNeedFrm(decodedInst.fuType)) && io.fromCSR.illegalInst.frm ||
@@ -919,8 +906,35 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   private val needReverseInsts = Seq(VRSUB_VI, VRSUB_VX, VFRDIV_VF, VFRSUB_VF, VFMV_F_S)
   private val vextInsts = Seq(VZEXT_VF2, VZEXT_VF4, VZEXT_VF8, VSEXT_VF2, VSEXT_VF4, VSEXT_VF8)
   private val narrowInsts = Seq(
+    // Narrowing Int Right Shift
     VNSRA_WV, VNSRA_WX, VNSRA_WI, VNSRL_WV, VNSRL_WX, VNSRL_WI,
+    // Narrowing Fp Clip
     VNCLIP_WV, VNCLIP_WX, VNCLIP_WI, VNCLIPU_WV, VNCLIPU_WX, VNCLIPU_WI,
+    // Narrowing Fp-Int Convert
+    VFNCVT_F_F_W, VFNCVT_F_X_W, VFNCVT_F_XU_W, VFNCVT_X_F_W, VFNCVT_XU_F_W,
+    VFNCVT_ROD_F_F_W, VFNCVT_RTZ_X_F_W, VFNCVT_RTZ_XU_F_W
+  )
+  private val widenInsts = Seq(
+    // Widening Int Add and Sub
+    VWADD_VV, VWADD_VX, VWADD_WV, VWADD_WX, VWADDU_VV, VWADDU_VX, VWADDU_WV, VWADDU_WX,
+    VWSUB_VV, VWSUB_VX, VWSUB_WV, VWSUB_WX, VWSUBU_VV, VWSUBU_VX, VWSUBU_WV, VWSUBU_WX,
+    // Widening Fp Add and Sub
+    VFWADD_VF, VFWADD_VV, VFWADD_WF, VFWADD_WV,
+    VFWSUB_VF, VFWSUB_VV, VFWSUB_WF, VFWSUB_WV,
+    // Widening Int Multiply
+    VWMUL_VV, VWMUL_VX, VWMULSU_VV, VWMULSU_VX, VWMULU_VV, VWMULU_VX,
+    // Widening Int Multiply-Add
+    VWMACC_VV, VWMACC_VX, VWMACCSU_VV, VWMACCSU_VX, VWMACCU_VV, VWMACCU_VX, VWMACCUS_VX,
+    // Widening Fp Multiply
+    VFWMUL_VF, VFWMUL_VV,
+    // Widening Fp Fused Multiply-Add
+    VFWMACC_VF, VFWMACC_VV, VFWMSAC_VF, VFWMSAC_VV,
+    VFWNMACC_VF, VFWNMACC_VV, VFWNMSAC_VF, VFWNMSAC_VV,
+    // Widening Fp-Int Convert
+    VFWCVT_F_F_V, VFWCVT_F_X_V, VFWCVT_F_XU_V, VFWCVT_X_F_V, VFWCVT_XU_F_V,
+    VFWCVT_RTZ_X_F_V, VFWCVT_RTZ_XU_F_V,
+    // Widening Int/Fp Reduction
+    VWREDSUM_VS, VWREDSUMU_VS, VFWREDOSUM_VS, VFWREDUSUM_VS
   )
   private val maskDstInsts = Seq(
     VMADC_VV, VMADC_VX,  VMADC_VI,  VMADC_VVM, VMADC_VXM, VMADC_VIM,
@@ -1016,6 +1030,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     decodedInst.vpu.isReverse := needReverseInsts.map(_ === inst.ALL).reduce(_ || _)
     decodedInst.vpu.isExt := vextInsts.map(_ === inst.ALL).reduce(_ || _)
     val isNarrow = narrowInsts.map(_ === inst.ALL).reduce(_ || _)
+    val isWiden = widenInsts.map(_ === inst.ALL).reduce(_ || _)
     val isDstMask = maskDstInsts.map(_ === inst.ALL).reduce(_ || _)
     val isOpMask = maskOpInsts.map(_ === inst.ALL).reduce(_ || _)
     val isVlx = decodedInst.fuOpType === VlduType.vloxe || decodedInst.fuOpType === VlduType.vluxe
@@ -1025,8 +1040,10 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     val isVma = vmaInsts.map(_ === inst.ALL).reduce(_ || _)
     val emulIsFrac = Cat(~decodedInst.vpu.vlmul(2), decodedInst.vpu.vlmul(1, 0)) +& decodedInst.vpu.veew < 4.U +& decodedInst.vpu.vsew
     decodedInst.vpu.isNarrow := isNarrow
+    decodedInst.vpu.isWiden := isWiden
     decodedInst.vpu.isDstMask := isDstMask
     decodedInst.vpu.isOpMask := isOpMask
+    decodedInst.vpu.isVFCmp := false.B
     decodedInst.vpu.isDependOldvd := isVppu || isVecOPF || isVStore || (isDstMask && !isOpMask) || isNarrow || isVlx || isVma
     decodedInst.vpu.isWritePartVd := isWritePartVd || isVlm || isVle && emulIsFrac
     decodedInst.vpu.vstart := io.enq.vstart

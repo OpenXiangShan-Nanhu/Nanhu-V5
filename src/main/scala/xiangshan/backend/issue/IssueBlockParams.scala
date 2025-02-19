@@ -8,6 +8,7 @@ import xiangshan.backend.BackendParams
 import xiangshan.backend.Bundles._
 import xiangshan.backend.datapath.DataConfig.DataConfig
 import xiangshan.backend.datapath.WbConfig._
+import xiangshan.backend.datapath.RdConfig._
 import xiangshan.backend.datapath.{WakeUpConfig, WakeUpSource}
 import xiangshan.backend.exu.{ExeUnit, ExeUnitParams}
 import xiangshan.backend.fu.{FuConfig, FuType}
@@ -26,15 +27,39 @@ case class IssueBlockParams(
   VLEN                 : Int = 128,
   // calculate in scheduler
   var idxInSchBlk      : Int = 0,
-)(
-  implicit
-  val schdType: SchedulerType,
-) {
+  val sharedVf         : Boolean = false
+)(implicit val schdType: SchedulerType) {
   var backendParam: BackendParams = null
 
   val exuBlockParams: Seq[ExeUnitParams] = exuParams.filterNot(_.fakeUnit)
 
   val allExuParams = exuParams
+
+  def vfalu64Cnt = exuBlockParams.count(exu => exu.hasVfalu64)
+
+  def vfma64Cnt = exuBlockParams.count(exu => exu.hasVfma64)
+
+  def vfdiv64Cnt = exuBlockParams.count(exu => exu.hasVfdiv64)
+
+  def vfcvt64Cnt = exuBlockParams.count(exu => exu.hasVfcvt64)
+
+  require(!sharedVf || (sharedVf && (vfalu64Cnt != 0 || vfma64Cnt != 0 || vfdiv64Cnt != 0 || vfcvt64Cnt != 0)))
+
+  /* 
+    sharedVf && needSplit:  vf and fp can issue but only one fu
+    sharedVf && !needSplit: 2 issue and two fu
+    !sharedVf: TODO
+  */
+
+  def vfaluNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfalu64) == 1
+
+  def vfmaNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfma64) == 1
+
+  def vfdivNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfma64) == 1
+  
+  def vfcvtNeedSplit = sharedVf && exuBlockParams.length == 2 && exuBlockParams.count(exu => exu.hasVfcvt64) == 1
+
+  def vfNeedSplit = vfaluNeedSplit || vfmaNeedSplit || vfdivNeedSplit || vfcvtNeedSplit
 
   def updateIdx(idx: Int): Unit = {
     this.idxInSchBlk = idx
@@ -70,7 +95,7 @@ case class IssueBlockParams(
 
   def numIntSrc: Int = exuBlockParams.map(_.numIntSrc).max
 
-  def numFpSrc: Int = exuBlockParams.map(_.numFpSrc).max
+  // def numFpSrc: Int = exuBlockParams.map(_.numFpSrc).max
 
   def numVecSrc: Int = exuBlockParams.map(_.numVecSrc).max
 
@@ -86,7 +111,7 @@ case class IssueBlockParams(
 
   def readIntRf: Boolean = numIntSrc > 0
 
-  def readFpRf: Boolean = numFpSrc > 0
+  // def readFpRf: Boolean = numFpSrc > 0
 
   def readVecRf: Boolean = numVecSrc > 0
 
@@ -172,10 +197,6 @@ case class IssueBlockParams(
 
   def VsetCnt: Int = exuBlockParams.map(_.fuConfigs.count(x => x.fuType == FuType.vsetiwi || x.fuType == FuType.vsetiwf || x.fuType == FuType.vsetfwf)).sum
 
-  def FmacCnt: Int = exuBlockParams.map(_.fuConfigs.count(_.fuType == FuType.fmac)).sum
-
-  def fDivSqrtCnt: Int = exuBlockParams.map(_.fuConfigs.count(_.fuType == FuType.fDivSqrt)).sum
-
   def LduCnt: Int = exuBlockParams.count(x => x.hasLoadFu && !x.hasStoreAddrFu)
 
   def StaCnt: Int = exuBlockParams.count(x => !x.hasLoadFu && x.hasStoreAddrFu)
@@ -189,8 +210,6 @@ case class IssueBlockParams(
   def LdExuCnt = LduCnt + HyuCnt
 
   def VipuCnt: Int = exuBlockParams.map(_.fuConfigs.count(_.fuType == FuType.vipu)).sum
-
-  def VfpuCnt: Int = exuBlockParams.map(_.fuConfigs.count(_.fuType == FuType.vfpu)).sum
 
   def VlduCnt: Int = exuBlockParams.map(_.fuConfigs.count(_.fuType == FuType.vldu)).sum
 
@@ -213,12 +232,12 @@ case class IssueBlockParams(
   /**
     * Get the regfile type that this issue queue need to read
     */
-  def pregReadSet: Set[DataConfig] = exuBlockParams.map(_.pregRdDataCfgSet).fold(Set())(_ union _)
+  def pregReadSet: Set[RdConfig] = exuBlockParams.map(_.pregRdCfgSet).fold(Set())(_ union _)
 
   /**
     * Get the regfile type that this issue queue need to read
     */
-  def pregWriteSet: Set[DataConfig] = exuBlockParams.map(_.pregWbDataCfgSet).fold(Set())(_ union _)
+  def pregWriteSet: Set[PregWB] = exuBlockParams.map(_.pregWbCfgSet).fold(Set())(_ union _)
 
   /**
     * Get the max width of psrc
@@ -272,14 +291,14 @@ case class IssueBlockParams(
 
   def numWakeupFromWB = {
     val pregSet = this.pregReadSet
-    pregSet.map(cfg => backendParam.getRfWriteSize(cfg)).sum
+    pregSet.map(cfg => backendParam.getRfWriteSize(backendParam.getPregParams(cfg))).sum
   }
 
   def hasIQWakeUp: Boolean = numWakeupFromIQ > 0 && numRegSrc > 0
 
   def needWakeupFromIntWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readIntRf).groupBy(x => x.getIntWBPort.getOrElse(IntWB(port = -1)).port).filter(_._1 != -1)
 
-  def needWakeupFromFpWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readFpRf).groupBy(x => x.getFpWBPort.getOrElse(FpWB(port = -1)).port).filter(_._1 != -1)
+  // def needWakeupFromFpWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readFpRf).groupBy(x => x.getFpWBPort.getOrElse(FpWB(port = -1)).port).filter(_._1 != -1)
 
   def needWakeupFromVfWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readVecRf).groupBy(x => x.getVfWBPort.getOrElse(VfWB(port = -1)).port).filter(_._1 != -1)
 
@@ -359,23 +378,19 @@ case class IssueBlockParams(
       case IntScheduler() | MemScheduler() => needWakeupFromIntWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val fpBundle = schdType match {
-      case FpScheduler() | MemScheduler() => needWakeupFromFpWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
-      case _ => Seq()
-    }
-    val vfBundle = schdType match {
+    val vfBundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
       case VfScheduler() | MemScheduler() => needWakeupFromVfWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val v0Bundle = schdType match {
+    val v0Bundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
       case VfScheduler() | MemScheduler() => needWakeupFromV0WBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    val vlBundle = schdType match {
+    val vlBundle: Seq[ValidIO[IssueQueueWBWakeUpBundle]] = schdType match {
       case VfScheduler() | MemScheduler() => needWakeupFromVlWBPort.map(x => ValidIO(new IssueQueueWBWakeUpBundle(x._2.map(_.exuIdx), backendParam))).toSeq
       case _ => Seq()
     }
-    MixedVec(intBundle ++ fpBundle ++ vfBundle ++ v0Bundle ++ vlBundle)
+    MixedVec(intBundle ++ vfBundle ++ v0Bundle ++ vlBundle)
   }
 
   def genIQWakeUpSourceValidBundle(implicit p: Parameters): MixedVec[ValidIO[IssueQueueIQWakeUpBundle]] = {
@@ -421,5 +436,9 @@ case class IssueBlockParams(
 
   def getEntryName = {
     "Entries" ++ getFuCfgs.map(_.name).distinct.map(_.capitalize).reduce(_ ++ _)
+  }
+
+  def getExuName = {
+    getFuCfgs.map(_.name).distinct.map(_.capitalize).reduce(_ ++ _)
   }
 }

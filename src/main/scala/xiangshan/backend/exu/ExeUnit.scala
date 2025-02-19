@@ -62,6 +62,8 @@ class ExeUnitImp(
   private val fuCfgs = exuParams.fuConfigs
 
   override val desiredName = "Exu" + fuCfgs.map(_.name.capitalize).reduce(_ + _)
+  suggestName(desiredName)
+  println(s"[ExeUnits]: ExeUnits ${this.getClass.getSimpleName} desiredName: $desiredName")
 
   val io = IO(new ExeUnitIO(exuParams))
 
@@ -148,8 +150,6 @@ class ExeUnitImp(
     x => x match {
       case IntWB(port, priority) => assert(priority >= 0 && priority <= 2,
         s"${exuParams.name}: WbPort must priority=0 or priority=1")
-      case FpWB(port, priority) => assert(priority >= 0 && priority <= 2,
-        s"${exuParams.name}: WbPort must priority=0 or priority=1")
       case VfWB (port, priority) => assert(priority >= 0 && priority <= 2,
         s"${exuParams.name}: WbPort must priority=0 or priority=1")
       case _ =>
@@ -166,24 +166,6 @@ class ExeUnitImp(
           case IntWB(port, priority) => {
             if (!samePort.latencyCertain) assert(priority == sameIntPortExuParam.size - 1,
               s"${samePort.name}: IntWbPort $port must latencyCertain priority=0 or latencyUnCertain priority=max(${sameIntPortExuParam.size - 1})")
-            // Certain latency can be handled by WbBusyTable, so there is no need to limit the exu's WB priority
-          }
-          case _ =>
-        }
-      )
-    )
-  }
-  val fpWbPort = exuParams.getFpWBPort
-  if (fpWbPort.isDefined) {
-    val sameFpPortExuParam = backendParams.allExuParams.filter(_.getFpWBPort.isDefined)
-      .filter(_.getFpWBPort.get.port == fpWbPort.get.port)
-    val samePortOneCertainOneUncertain = sameFpPortExuParam.map(_.latencyCertain).contains(true) && sameFpPortExuParam.map(_.latencyCertain).contains(false)
-    if (samePortOneCertainOneUncertain) sameFpPortExuParam.map(samePort =>
-      samePort.wbPortConfigs.map(
-        x => x match {
-          case FpWB(port, priority) => {
-            if (!samePort.latencyCertain) assert(priority == sameFpPortExuParam.size - 1,
-              s"${samePort.name}: FpWbPort $port must latencyCertain priority=0 or latencyUnCertain priority=max(${sameFpPortExuParam.size - 1})")
             // Certain latency can be handled by WbBusyTable, so there is no need to limit the exu's WB priority
           }
           case _ =>
@@ -243,7 +225,11 @@ class ExeUnitImp(
       sink.bits.ctrl.rfWen       .foreach(x => x := source.bits.rfWen.get)
       sink.bits.ctrl.fpWen       .foreach(x => x := source.bits.fpWen.get)
       sink.bits.ctrl.vecWen      .foreach(x => x := source.bits.vecWen.get)
+      sink.bits.ctrl.vfWenH.foreach(x => x := source.bits.vfWenH.get)
+      sink.bits.ctrl.vfWenL.foreach(x => x := source.bits.vfWenL.get)
       sink.bits.ctrl.v0Wen       .foreach(x => x := source.bits.v0Wen.get)
+      sink.bits.ctrl.v0WenH.foreach(x => x := source.bits.v0WenH.get)
+      sink.bits.ctrl.v0WenL.foreach(x => x := source.bits.v0WenL.get)
       sink.bits.ctrl.vlWen       .foreach(x => x := source.bits.vlWen.get)
       sink.bits.ctrl.flushPipe   .foreach(x => x := source.bits.flushPipe.get)
       sink.bits.ctrl.preDecode   .foreach(x => x := source.bits.preDecode.get)
@@ -252,9 +238,9 @@ class ExeUnitImp(
       sink.bits.ctrl.predictInfo .foreach(x => x := source.bits.predictInfo.get)
       sink.bits.ctrl.fpu         .foreach(x => x := source.bits.fpu.get)
       sink.bits.ctrl.vpu         .foreach(x => x := source.bits.vpu.get)
-      sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFpToVecInst := 0.U)
-      sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFP32Instr   := 0.U)
-      sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFP64Instr   := 0.U)
+      // sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFpToVecInst := 0.U)
+      // sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFP32Instr   := 0.U)
+      // sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFP64Instr   := 0.U)
       sink.bits.perfDebugInfo    := source.bits.perfDebugInfo
   }
 
@@ -279,7 +265,11 @@ class ExeUnitImp(
   private val fuIntWenVec = funcUnits.map(x => x.cfg.needIntWen.B && x.io.out.bits.ctrl.rfWen.getOrElse(false.B))
   private val fuFpWenVec  = funcUnits.map( x => x.cfg.needFpWen.B  && x.io.out.bits.ctrl.fpWen.getOrElse(false.B))
   private val fuVecWenVec = funcUnits.map(x => x.cfg.needVecWen.B && x.io.out.bits.ctrl.vecWen.getOrElse(false.B))
+  private val fuVfWenHVec = funcUnits.map(x => x.cfg.needVecWen.B && x.io.out.bits.ctrl.vfWenH.getOrElse(false.B))
+  private val fuVfWenLVec = funcUnits.map(x => x.cfg.needVecWen.B && x.io.out.bits.ctrl.vfWenL.getOrElse(false.B))
   private val fuV0WenVec = funcUnits.map(x => x.cfg.needV0Wen.B && x.io.out.bits.ctrl.v0Wen.getOrElse(false.B))
+  private val fuV0WenHVec = funcUnits.map(x => x.cfg.needV0Wen.B && x.io.out.bits.ctrl.v0WenH.getOrElse(false.B))
+  private val fuV0WenLVec = funcUnits.map(x => x.cfg.needV0Wen.B && x.io.out.bits.ctrl.v0WenL.getOrElse(false.B))
   private val fuVlWenVec = funcUnits.map(x => x.cfg.needVlWen.B && x.io.out.bits.ctrl.vlWen.getOrElse(false.B))
   // FunctionUnits <---> ExeUnit.out
 
@@ -320,7 +310,11 @@ class ExeUnitImp(
   io.out.bits.intWen.foreach(x => x := Mux1H(fuOutValidOH, fuIntWenVec))
   io.out.bits.fpWen.foreach(x => x := Mux1H(fuOutValidOH, fuFpWenVec))
   io.out.bits.vecWen.foreach(x => x := Mux1H(fuOutValidOH, fuVecWenVec))
+  io.out.bits.vfWenH.foreach(x => x := Mux1H(fuOutValidOH, fuVfWenHVec))
+  io.out.bits.vfWenL.foreach(x => x := Mux1H(fuOutValidOH, fuVfWenLVec))
   io.out.bits.v0Wen.foreach(x => x := Mux1H(fuOutValidOH, fuV0WenVec))
+  io.out.bits.v0WenH.foreach(x => x := Mux1H(fuOutValidOH, fuV0WenHVec))
+  io.out.bits.v0WenL.foreach(x => x := Mux1H(fuOutValidOH, fuV0WenLVec))
   io.out.bits.vlWen.foreach(x => x := Mux1H(fuOutValidOH, fuVlWenVec))
   io.out.bits.redirect.foreach(x => x := Mux1H((fuOutValidOH zip fuRedirectVec).filter(_._2.isDefined).map(x => (x._1, x._2.get))))
   io.out.bits.fflags.foreach(x => x := Mux1H(fuOutValidOH, fuOutresVec.map(_.fflags.getOrElse(0.U.asTypeOf(io.out.bits.fflags.get)))))
@@ -330,6 +324,9 @@ class ExeUnitImp(
   io.out.bits.flushPipe.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.flushPipe.getOrElse(0.U.asTypeOf(io.out.bits.flushPipe.get)))))
   io.out.bits.replay.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.replay.getOrElse(0.U.asTypeOf(io.out.bits.replay.get)))))
   io.out.bits.predecodeInfo.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.preDecode.getOrElse(0.U.asTypeOf(io.out.bits.predecodeInfo.get)))))
+  io.out.bits.shareVpuCtrl.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.vpu.getOrElse(0.U.asTypeOf(io.out.bits.shareVpuCtrl.get)))))
+  io.out.bits.oldVd.foreach(x => x := Mux1H(fuOutValidOH, fuOutBitsVec.map(_.ctrl.oldVd.getOrElse(0.U.asTypeOf(io.out.bits.oldVd.get)))))
+  io.out.bits.mguEew.foreach(x => x := funcUnits.head.io.mguEew.getOrElse(0.U.asTypeOf(io.out.bits.mguEew.get)))
 
   io.csrio.foreach(exuio => funcUnits.foreach(fu => fu.io.csrio.foreach{
     fuio =>

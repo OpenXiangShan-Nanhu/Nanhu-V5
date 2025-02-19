@@ -16,6 +16,7 @@ import xiangshan.backend.fu.FuType
 import xiangshan.backend.fu.fpu.Bundles.Frm
 import xiangshan.backend.fu.vector.Bundles._
 import xiangshan.backend.issue.{IssueBlockParams, IssueQueueDeqRespBundle, SchedulerType}
+import xiangshan.backend.issue.{IntScheduler, MemScheduler, VfScheduler}
 import xiangshan.backend.issue.EntryBundles._
 import xiangshan.backend.regfile.{RfReadPortWithConfig, RfWritePortWithConfig}
 import xiangshan.backend.rob.RobPtr
@@ -431,14 +432,20 @@ object Bundles {
     val isReverse = Bool() // vrsub, vrdiv
     val isExt     = Bool()
     val isNarrow  = Bool()
+    val isWiden   = Bool()
     val isDstMask = Bool() // vvm, vvvm, mmm
     val isOpMask  = Bool() // vmand, vmnand
     val isMove    = Bool() // vmv.s.x, vmv.v.v, vmv.v.x, vmv.v.i
+    val isVFCmp   = Bool()
 
     val isDependOldvd = Bool() // some instruction's computation depends on oldvd
     val isWritePartVd = Bool() // some instruction's computation writes part of vd, such as vredsum
 
     val isVleff = Bool() // vleff
+
+    val is_reduction = Bool()
+    val is_vfredosum = Bool()
+    val is_fold = Bool()
 
     def vtype: VType = {
       val res = Wire(VType())
@@ -517,6 +524,7 @@ object Bundles {
     val isReverse = Bool() // vrsub, vrdiv
     val isExt     = Bool()
     val isNarrow  = Bool()
+    val isWiden   = Bool()
     val isDstMask = Bool() // vvm, vvvm, mmm
     val isOpMask  = Bool() // vmand, vmnand
     val isMove    = Bool() // vmv.s.x, vmv.v.v, vmv.v.x, vmv.v.i
@@ -583,7 +591,7 @@ object Bundles {
 
     val rf: MixedVec[MixedVec[RfReadPortWithConfig]] = Flipped(MixedVec(
       rfReadDataCfgSet.map((set: Set[DataConfig]) =>
-        MixedVec(set.map((x: DataConfig) => new RfReadPortWithConfig(x, exuParams.rdPregIdxWidth)).toSeq)
+        MixedVec(set.map((x: DataConfig) => new RfReadPortWithConfig(exuParams.rdPregIdxWidth)).toSeq)
       )
     ))
 
@@ -612,7 +620,6 @@ object Bundles {
 
   class WbFuBusyTableWriteBundle(val params: ExeUnitParams)(implicit p: Parameters) extends XSBundle {
     private val intCertainLat = params.intLatencyCertain
-    private val fpCertainLat = params.fpLatencyCertain
     private val vfCertainLat = params.vfLatencyCertain
     private val v0CertainLat = params.v0LatencyCertain
     private val vlCertainLat = params.vlLatencyCertain
@@ -623,12 +630,10 @@ object Bundles {
     private val vlLat = params.vlLatencyValMax
 
     val intWbBusyTable = OptionWrapper(intCertainLat, UInt((intLat + 1).W))
-    val fpWbBusyTable = OptionWrapper(fpCertainLat, UInt((fpLat + 1).W))
     val vfWbBusyTable = OptionWrapper(vfCertainLat, UInt((vfLat + 1).W))
     val v0WbBusyTable = OptionWrapper(v0CertainLat, UInt((v0Lat + 1).W))
     val vlWbBusyTable = OptionWrapper(vlCertainLat, UInt((vlLat + 1).W))
     val intDeqRespSet = OptionWrapper(intCertainLat, UInt((intLat + 1).W))
-    val fpDeqRespSet = OptionWrapper(fpCertainLat, UInt((fpLat + 1).W))
     val vfDeqRespSet = OptionWrapper(vfCertainLat, UInt((vfLat + 1).W))
     val v0DeqRespSet = OptionWrapper(v0CertainLat, UInt((v0Lat + 1).W))
     val vlDeqRespSet = OptionWrapper(vlCertainLat, UInt((vlLat + 1).W))
@@ -636,7 +641,6 @@ object Bundles {
 
   class WbFuBusyTableReadBundle(val params: ExeUnitParams)(implicit p: Parameters) extends XSBundle {
     private val intCertainLat = params.intLatencyCertain
-    private val fpCertainLat = params.fpLatencyCertain
     private val vfCertainLat = params.vfLatencyCertain
     private val v0CertainLat = params.v0LatencyCertain
     private val vlCertainLat = params.vlLatencyCertain
@@ -647,7 +651,6 @@ object Bundles {
     private val vlLat = params.vlLatencyValMax
 
     val intWbBusyTable = OptionWrapper(intCertainLat, UInt((intLat + 1).W))
-    val fpWbBusyTable = OptionWrapper(fpCertainLat, UInt((fpLat + 1).W))
     val vfWbBusyTable = OptionWrapper(vfCertainLat, UInt((vfLat + 1).W))
     val v0WbBusyTable = OptionWrapper(v0CertainLat, UInt((v0Lat + 1).W))
     val vlWbBusyTable = OptionWrapper(vlCertainLat, UInt((vlLat + 1).W))
@@ -655,13 +658,11 @@ object Bundles {
 
   class WbConflictBundle(val params: ExeUnitParams)(implicit p: Parameters) extends XSBundle {
     private val intCertainLat = params.intLatencyCertain
-    private val fpCertainLat = params.fpLatencyCertain
     private val vfCertainLat = params.vfLatencyCertain
     private val v0CertainLat = params.v0LatencyCertain
     private val vlCertainLat = params.vlLatencyCertain
 
     val intConflict = OptionWrapper(intCertainLat, Bool())
-    val fpConflict = OptionWrapper(fpCertainLat, Bool())
     val vfConflict = OptionWrapper(vfCertainLat, Bool())
     val v0Conflict = OptionWrapper(v0CertainLat, Bool())
     val vlConflict = OptionWrapper(vlCertainLat, Bool())
@@ -690,9 +691,13 @@ object Bundles {
     val loadDependencyCopy = OptionWrapper(copyWakeupOut && params.isIQWakeUpSink, Vec(copyNum, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W))))
     val pdest         = UInt(params.wbPregIdxWidth.W)
     val rfWen         = if (params.needIntWen)    Some(Bool())                        else None
-    val fpWen         = if (params.needFpWen)     Some(Bool())                        else None
+    val fpWen         = if (params.needVecWen)    Some(Bool())                        else None
     val vecWen        = if (params.needVecWen)    Some(Bool())                        else None
+    val vfWenH        = if (params.needVecWen)    Some(Bool())                        else None
+    val vfWenL        = if (params.needVecWen)    Some(Bool())                        else None
     val v0Wen         = if (params.needV0Wen)     Some(Bool())                        else None
+    val v0WenH        = if (params.needV0Wen)     Some(Bool())                        else None
+    val v0WenL        = if (params.needV0Wen)     Some(Bool())                        else None
     val vlWen         = if (params.needVlWen)     Some(Bool())                        else None
     val fpu           = if (params.writeFflags)   Some(new FPUCtrlSignals)            else None
     val vpu           = if (params.needVPUCtrl)   Some(new VPUCtrlSignals)            else None
@@ -752,7 +757,11 @@ object Bundles {
       this.rfWen         .foreach(_ := source.common.rfWen.get)
       this.fpWen         .foreach(_ := source.common.fpWen.get)
       this.vecWen        .foreach(_ := source.common.vecWen.get)
+      this.vfWenH        .foreach(_ := source.common.vfWenH.get)
+      this.vfWenL        .foreach(_ := source.common.vfWenL.get)
       this.v0Wen         .foreach(_ := source.common.v0Wen.get)
+      this.v0WenH        .foreach(_ := source.common.v0WenH.get)
+      this.v0WenL        .foreach(_ := source.common.v0WenL.get)
       this.vlWen         .foreach(_ := source.common.vlWen.get)
       this.fpu           .foreach(_ := source.common.fpu.get)
       this.vpu           .foreach(_ := source.common.vpu.get)
@@ -777,27 +786,36 @@ object Bundles {
   )(implicit
     val p: Parameters
   ) extends Bundle with BundleSource with HasXSParameter {
-    val data         = Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
-    val pdest        = UInt(params.wbPregIdxWidth.W)
-    val robIdx       = new RobPtr
-    val intWen       = if (params.needIntWen)   Some(Bool())                  else None
-    val fpWen        = if (params.needFpWen)    Some(Bool())                  else None
-    val vecWen       = if (params.needVecWen)   Some(Bool())                  else None
-    val v0Wen        = if (params.needV0Wen)    Some(Bool())                  else None
-    val vlWen        = if (params.needVlWen)    Some(Bool())                  else None
-    val redirect     = if (params.hasRedirect)  Some(ValidIO(new Redirect))   else None
-    val fflags       = if (params.writeFflags)  Some(UInt(5.W))               else None
-    val wflags       = if (params.writeFflags)  Some(Bool())                  else None
-    val vxsat        = if (params.writeVxsat)   Some(Bool())                  else None
-    val exceptionVec = if (params.exceptionOut.nonEmpty) Some(ExceptionVec()) else None
-    val flushPipe    = if (params.flushPipe)    Some(Bool())                  else None
-    val replay       = if (params.replayInst)   Some(Bool())                  else None
-    val lqIdx        = if (params.hasLoadFu)    Some(new LqPtr())             else None
-    val sqIdx        = if (params.hasStoreAddrFu || params.hasStdFu)
-                                                Some(new SqPtr())             else None
-    val trigger      = if (params.trigger)      Some(TriggerAction())           else None
+    val data          = if(params.schdType == VfScheduler()) Vec(params.wbPathNum, UInt(128.W)) else Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
+    val pdest         = UInt(params.wbPregIdxWidth.W)
+    val robIdx        = new RobPtr
+    val intWen        = if (params.needIntWen)    Some(Bool())                  else None
+    val fpWen         = if (params.needVecWen)    Some(Bool())                  else None
+    val vecWen        = if (params.needVecWen)    Some(Bool())                  else None
+    val vfWenH        = if (params.needVecWen)    Some(Bool())                  else None
+    val vfWenL        = if (params.needVecWen)    Some(Bool())                  else None
+    val v0Wen         = if (params.needV0Wen)     Some(Bool())                  else None
+    val v0WenH        = if (params.needV0Wen)     Some(Bool())                  else None
+    val v0WenL        = if (params.needV0Wen)     Some(Bool())                  else None
+    val vlWen         = if (params.needVlWen)     Some(Bool())                  else None
+    val shareVpuCtrl  = if (params.isSharedVf)    Some(new VPUCtrlSignals)      else None // shareVF ctrl signal to mgu
+    val mguEew        = if (params.isSharedVf)    Some(VSew())                  else None // for share mgu
+    val oldVd         = if (params.isSharedVf)    Some(UInt(VLEN.W))            else None // shareVF ctrl signal to mgu
+    // val oldVdForWbMgu = if (params.isShareVf)     Some(UInt(VLEN.W))            else None
+    val redirect      = if (params.hasRedirect)   Some(ValidIO(new Redirect))   else None
+    val fflags        = if (params.writeFflags)   Some(UInt(5.W))               else None
+    val wflags        = if (params.writeFflags)   Some(Bool())                  else None
+    val vxsat         = if (params.writeVxsat)    Some(Bool())                  else None
+    val exceptionVec  = if (params.exceptionOut.nonEmpty)
+                                                  Some(ExceptionVec())          else None
+    val flushPipe     = if (params.flushPipe)     Some(Bool())                  else None
+    val replay        = if (params.replayInst)    Some(Bool())                  else None
+    val lqIdx         = if (params.hasLoadFu)     Some(new LqPtr())             else None
+    val sqIdx         = if (params.hasStoreAddrFu || params.hasStdFu)
+                                                  Some(new SqPtr())             else None
+    val trigger       = if (params.trigger)       Some(TriggerAction())         else None
     // uop info
-    val predecodeInfo = if(params.hasPredecode) Some(new PreDecodeInfo) else None
+    val predecodeInfo = if(params.hasPredecode)   Some(new PreDecodeInfo)       else None
     // vldu used only
     val vls = OptionWrapper(params.hasVLoadFu, new Bundle {
       val vpu = new VPUCtrlSignals
@@ -820,7 +838,11 @@ object Bundles {
     val rfWen = Bool()
     val fpWen = Bool()
     val vecWen = Bool()
+    val vfWenH = Bool()
+    val vfWenL = Bool()
     val v0Wen = Bool()
+    val v0WenH = Bool()
+    val v0WenL = Bool()
     val vlWen = Bool()
     val pdest = UInt(params.pregIdxWidth(backendParams).W)
     val data = UInt(params.dataWidth.W)
@@ -841,7 +863,11 @@ object Bundles {
       this.rfWen  := source.intWen.getOrElse(false.B)
       this.fpWen  := source.fpWen.getOrElse(false.B)
       this.vecWen := source.vecWen.getOrElse(false.B)
+      this.vfWenH := source.vfWenH.getOrElse(false.B)
+      this.vfWenL := source.vfWenL.getOrElse(false.B)
       this.v0Wen  := source.v0Wen.getOrElse(false.B)
+      this.v0WenH := source.v0WenH.getOrElse(false.B)
+      this.v0WenL := source.v0WenL.getOrElse(false.B)
       this.vlWen  := source.vlWen.getOrElse(false.B)
       this.pdest  := source.pdest
       this.data   := source.data(source.params.wbIndex(typeMap(wbType)))
@@ -857,46 +883,41 @@ object Bundles {
     }
 
     def asIntRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(IntData()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.intPregParams)))
       rfWrite.wen := this.rfWen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
       rfWrite.intWen := this.rfWen
       rfWrite.fpWen := false.B
       rfWrite.vecWen := false.B
+      rfWrite.vfWenH := false.B
+      rfWrite.vfWenL := false.B
       rfWrite.v0Wen := false.B
-      rfWrite.vlWen := false.B
-      rfWrite
-    }
-
-    def asFpRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(FpData()).addrWidth)))
-      rfWrite.wen := this.fpWen && fire
-      rfWrite.addr := this.pdest
-      rfWrite.data := this.data
-      rfWrite.intWen := false.B
-      rfWrite.fpWen := this.fpWen
-      rfWrite.vecWen := false.B
-      rfWrite.v0Wen := false.B
+      rfWrite.v0WenH := false.B
+      rfWrite.v0WenL := false.B
       rfWrite.vlWen := false.B
       rfWrite
     }
 
     def asVfRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(VecData()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.vfPregParams)))
       rfWrite.wen := this.vecWen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
       rfWrite.intWen := false.B
       rfWrite.fpWen := false.B
       rfWrite.vecWen := this.vecWen
+      rfWrite.vfWenH := this.vfWenH
+      rfWrite.vfWenL := this.vfWenL
       rfWrite.v0Wen := false.B
+      rfWrite.v0WenH := false.B
+      rfWrite.v0WenL := false.B
       rfWrite.vlWen := false.B
       rfWrite
     }
 
     def asV0RfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(V0Data()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.v0PregParams)))
       rfWrite.wen := this.v0Wen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
@@ -904,12 +925,16 @@ object Bundles {
       rfWrite.fpWen := false.B
       rfWrite.vecWen := false.B
       rfWrite.v0Wen := this.v0Wen
+      rfWrite.vfWenH := false.B
+      rfWrite.vfWenL := false.B
+      rfWrite.v0WenH := this.v0WenH
+      rfWrite.v0WenL := this.v0WenL
       rfWrite.vlWen := false.B
       rfWrite
     }
 
     def asVlRfWriteBundle(fire: Bool): RfWritePortWithConfig = {
-      val rfWrite = Wire(Output(new RfWritePortWithConfig(this.params.dataCfg, backendParams.getPregParams(VlData()).addrWidth)))
+      val rfWrite = Wire(Output(new RfWritePortWithConfig(backendParams.vlPregParams)))
       rfWrite.wen := this.vlWen && fire
       rfWrite.addr := this.pdest
       rfWrite.data := this.data
@@ -917,6 +942,10 @@ object Bundles {
       rfWrite.fpWen := false.B
       rfWrite.vecWen := false.B
       rfWrite.v0Wen := false.B
+      rfWrite.vfWenH := false.B
+      rfWrite.vfWenL := false.B
+      rfWrite.v0WenH := false.B
+      rfWrite.v0WenL := false.B
       rfWrite.vlWen := this.vlWen
       rfWrite
     }
@@ -929,7 +958,7 @@ object Bundles {
     val params: ExeUnitParams,
   )(implicit p: Parameters) extends XSBundle {
     val intWen = Bool()
-    val data   = UInt(params.destDataBitsMax.W)
+    val data   = if(params.schdType == VfScheduler()) UInt(VLEN.W) else UInt(params.destDataBitsMax.W)
     val pdest  = UInt(params.wbPregIdxWidth.W)
   }
 

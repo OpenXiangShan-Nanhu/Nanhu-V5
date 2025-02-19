@@ -79,6 +79,7 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
   val robIdxVec           = Wire(Vec(params.numEntries, new RobPtr))
   val validVec            = Wire(Vec(params.numEntries, Bool()))
   val issuedVec           = Wire(Vec(params.numEntries, Bool()))
+  val fpToVfVec           = OptionWrapper(params.sharedVf, Wire(Vec(params.numEntries, Bool())))
   val validForTrans       = VecInit(validVec.zip(issuedVec).map(x => x._1 && !x._2))
   val canIssueVec         = Wire(Vec(params.numEntries, Bool()))
   val fuTypeVec           = Wire(Vec(params.numEntries, FuType()))
@@ -281,8 +282,7 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
       respAfterDatapath.valid := hitRespsVec.reduce(_ | _)
       respAfterDatapath.bits  := (if (memEtyResps.size == 1) memEtyResps.head.bits
                                   else Mux1H(hitRespsVec, memEtyResps.map(_.bits).toSeq))
-      issueResp := (if (!params.isVecMemIQ) Mux(issueTimer(1), respAfterDatapath, respInDatapath)
-                    else Mux(issueTimer === "b11".U, respAfterDatapath, respInDatapath))
+      issueResp := Mux(issueTimer(1), respAfterDatapath, respInDatapath)
     }
   }
   else {
@@ -388,6 +388,7 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
   io.valid                          := validVec.asUInt
   io.issued                         := issuedVec.asUInt
   io.canIssue                       := canIssueVec.asUInt
+  io.fpToVec.foreach(_              := fpToVfVec.get.asUInt)
   io.fuType                         := fuTypeVec
   io.dataSources                    := dataSourceVec
   io.srcWakeUpL1ExuOH.foreach(_     := srcWakeUpL1ExuOHVec.get)
@@ -422,6 +423,9 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
     validVec(entryIdx)          := out.valid
     issuedVec(entryIdx)         := out.issued
     canIssueVec(entryIdx)       := out.canIssue
+    if(params.sharedVf) {
+      fpToVfVec.get(entryIdx)   := out.entry.bits.payload.vpu.fpu.isFpToVecInst
+    }
     fuTypeVec(entryIdx)         := out.fuType
     robIdxVec(entryIdx)         := out.robIdx
     dataSourceVec(entryIdx)     := out.dataSource
@@ -547,6 +551,7 @@ class EntriesIO(implicit p: Parameters, params: IssueBlockParams) extends XSBund
   val valid               = Output(UInt(params.numEntries.W))
   val issued              = Output(UInt(params.numEntries.W))
   val canIssue            = Output(UInt(params.numEntries.W))
+  val fpToVec             = OptionWrapper(params.sharedVf, Output(UInt(params.numEntries.W)))
   val fuType              = Vec(params.numEntries, Output(FuType()))
   val dataSources         = Vec(params.numEntries, Vec(params.numRegSrc, Output(DataSource())))
   val loadDependency      = Vec(params.numEntries, Vec(LoadPipelineWidth, UInt(LoadDependencyWidth.W)))

@@ -285,10 +285,25 @@ class VectorFloatAdder() extends Module {
   val res_is_f32 = fp_format_reg === 2.U
   val res_is_f64 = fp_format_reg === 3.U
 
+  val scalar_is_fadd   = !io.is_vec && (io.op_code === VfaddOpCode.fadd)
+  val scalar_is_fsub   = !io.is_vec && (io.op_code === VfaddOpCode.fsub)
+  val scalar_is_fmin   = !io.is_vec && (io.op_code === VfaddOpCode.fmin)
+  val scalar_is_fmax   = !io.is_vec && (io.op_code === VfaddOpCode.fmax)
+  val scalar_is_fsgnj  = !io.is_vec && (io.op_code === VfaddOpCode.fsgnj)
+  val scalar_is_fsgnjn = !io.is_vec && (io.op_code === VfaddOpCode.fsgnjn)
+  val scalar_is_fsgnjx = !io.is_vec && (io.op_code === VfaddOpCode.fsgnjx)
+
+  val needBoxed = RegEnable(scalar_is_fadd || scalar_is_fsub || scalar_is_fmin || scalar_is_fmax || scalar_is_fsgnj || scalar_is_fsgnjn || scalar_is_fsgnjx, fire)
+
   val fp_f64_result = U_F64_Widen_0_result
-  val fp_f32_result = Cat(Fill(32, is_vec_reg) & U_F32_1_result, U_F32_0_result)
-  val fp_f16_result = Cat(Fill(16, is_vec_reg) & U_F16_3_result, Fill(16, is_vec_reg) & U_F16_2_result,
-                          Fill(16, is_vec_reg) & U_F16_1_result, U_F16_0_result)
+  
+  val fp_f32_result = Cat(Fill(32, needBoxed) | U_F32_1_result,
+                                                U_F32_0_result)
+
+  val fp_f16_result = Cat(Fill(16, needBoxed) | U_F16_3_result,
+                          Fill(16, needBoxed) | U_F16_2_result,
+                          Fill(16, needBoxed) | U_F16_1_result,
+                                                U_F16_0_result)
 
   io.fp_result := Mux1H(
     Seq(

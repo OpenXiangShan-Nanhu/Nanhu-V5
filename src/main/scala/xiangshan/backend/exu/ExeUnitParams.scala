@@ -34,7 +34,6 @@ case class ExeUnitParams(
   var backendParam: BackendParams = null
 
   val numIntSrc: Int = fuConfigs.map(_.numIntSrc).max
-  val numFpSrc: Int = fuConfigs.map(_.numFpSrc).max
   val numVecSrc: Int = fuConfigs.map(_.numVecSrc).max
   val numVfSrc: Int = fuConfigs.map(_.numVfSrc).max
   val numV0Src: Int = fuConfigs.map(_.numV0Src).max
@@ -44,10 +43,10 @@ case class ExeUnitParams(
   val destDataBitsMax: Int = fuConfigs.map(_.destDataBits).max
   val srcDataBitsMax: Int = fuConfigs.map(x => x.srcDataBits.getOrElse(x.destDataBits)).max
   val readIntRf: Boolean = numIntSrc > 0
-  val readFpRf: Boolean = numFpSrc > 0
   val readVecRf: Boolean = numVecSrc > 0
   val readVfRf: Boolean = numVfSrc > 0
   val readVlRf: Boolean = numVlSrc > 0
+  val readV0Rf: Boolean = numV0Src > 0
   val writeIntRf: Boolean = fuConfigs.map(_.writeIntRf).reduce(_ || _)
   val writeFpRf: Boolean = fuConfigs.map(_.writeFpRf).reduce(_ || _)
   val writeVecRf: Boolean = fuConfigs.map(_.writeVecRf).reduce(_ || _)
@@ -62,6 +61,7 @@ case class ExeUnitParams(
   val writeVfRf: Boolean = writeVecRf
   val writeFflags: Boolean = fuConfigs.map(_.writeFflags).reduce(_ || _)
   val writeVxsat: Boolean = fuConfigs.map(_.writeVxsat).reduce(_ || _)
+  val isSharedVf: Boolean = fuConfigs.map(_.isSharedVf).reduce(_ || _)
   val hasNoDataWB: Boolean = fuConfigs.map(_.hasNoDataWB).reduce(_ && _)
   val hasRedirect: Boolean = fuConfigs.map(_.hasRedirect).reduce(_ || _)
   val hasPredecode: Boolean = fuConfigs.map(_.hasPredecode).reduce(_ || _)
@@ -126,15 +126,15 @@ case class ExeUnitParams(
         }
       }
     }
-    println(s"[Backend] exuIdx ${exuIdx} numWakeupIQ ${setIQ.size}")
+    println(s"[Backend] exuIdx ${exuIdx}:${name} numWakeupIQ ${setIQ.size}")
     1 + setIQ.size / copyDistance
   }
   def rdPregIdxWidth: Int = {
-    this.pregRdDataCfgSet.map(dataCfg => backendParam.getPregParams(dataCfg).addrWidth).fold(0)(_ max _)
+    this.pregRdCfgSet.map(rdCfg => backendParam.getPregParams(rdCfg).addrWidth).fold(0)(_ max _)
   }
 
   def wbPregIdxWidth: Int = {
-    this.pregWbDataCfgSet.map(dataCfg => backendParam.getPregParams(dataCfg).addrWidth).fold(0)(_ max _)
+    this.pregWbCfgSet.map(wbCfg => backendParam.getPregParams(wbCfg).addrWidth).fold(0)(_ max _)
   }
 
   val writeIntFuConfigs: Seq[FuConfig] = fuConfigs.filter(x => x.writeIntRf)
@@ -269,6 +269,14 @@ case class ExeUnitParams(
 
   def hasVecLsFu = fuConfigs.map(x => FuType.FuTypeOrR(x.fuType, Seq(FuType.vldu, FuType.vstu))).reduce(_ || _)
 
+  def hasVfalu64: Boolean = fuConfigs.map(_.name == "vfalu64").reduce(_ || _)
+
+  def hasVfma64: Boolean = fuConfigs.map(_.name == "vfma64").reduce(_ || _)
+
+  def hasVfdiv64: Boolean = fuConfigs.map(_.name == "vfdiv64").reduce(_ || _)
+
+  def hasVfcvt64 = fuConfigs.map(_.name == "vfcvt64").reduce(_ || _)
+
   def hasStoreAddrFu = fuConfigs.map(_.name == "sta").reduce(_ || _)
 
   def hasStdFu = fuConfigs.map(_.name == "std").reduce(_ || _)
@@ -282,8 +290,6 @@ case class ExeUnitParams(
   def hasLoadExu = hasLoadFu || hasHyldaFu
 
   def hasStoreAddrExu = hasStoreAddrFu || hasHystaFu
-
-  def hasVecFu = fuConfigs.map(x => FuConfig.VecArithFuConfigs.contains(x)).reduce(_ || _)
 
   def CanCompress = !hasBrhFu || (hasBrhFu && hasi2vFu)
 
@@ -342,11 +348,11 @@ case class ExeUnitParams(
     }
   }
 
-  def getFpWBPort = {
-    wbPortConfigs.collectFirst {
-      case x: FpWB => x
-    }
-  }
+  // def getFpWBPort = {
+  //   wbPortConfigs.collectFirst {
+  //     case x: FpWB => x
+  //   }
+  // }
 
   def getVfWBPort = {
     wbPortConfigs.collectFirst {
@@ -369,15 +375,15 @@ case class ExeUnitParams(
   /**
     * Get the [[DataConfig]] that this exu need to read
     */
-  def pregRdDataCfgSet: Set[DataConfig] = {
-    this.rfrPortConfigs.flatten.map(_.getDataConfig).toSet
+  def pregRdCfgSet: Set[RdConfig] = {
+    this.rfrPortConfigs.flatten.toSet
   }
 
   /**
     * Get the [[DataConfig]] that this exu need to write
     */
-  def pregWbDataCfgSet: Set[DataConfig] = {
-    this.wbPortConfigs.map(_.dataCfg).toSet
+  def pregWbCfgSet: Set[PregWB] = {
+    this.wbPortConfigs.toSet
   }
 
   def getRfReadDataCfgSet: Seq[Set[DataConfig]] = {
@@ -417,8 +423,12 @@ case class ExeUnitParams(
     }.toMap
   }
 
+  def getFuName = {
+    "exu" ++ fuConfigs.flatMap(_.name.capitalize).distinct.mkString
+  }
+
   def genExuModule(implicit p: Parameters): ExeUnit = {
-    new ExeUnit(this)
+    new ExeUnit(this).suggestName(this.getFuName)
   }
 
   def genExuInputBundle(implicit p: Parameters): ExuInput = {

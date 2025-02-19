@@ -12,7 +12,7 @@ import xiangshan.frontend.{FtqPtr, PreDecodeInfo}
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.fu.vector.Bundles.Vxsat
 import xiangshan.ExceptionNO.illegalInstr
-import xiangshan.backend.fu.vector.Bundles.VType
+import xiangshan.backend.fu.vector.Bundles.{VType, VSew}
 import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
 
 class FuncUnitCtrlInput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle {
@@ -22,7 +22,11 @@ class FuncUnitCtrlInput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle 
   val rfWen       = OptionWrapper(cfg.needIntWen, Bool())
   val fpWen       = OptionWrapper(cfg.needFpWen,  Bool())
   val vecWen      = OptionWrapper(cfg.needVecWen, Bool())
+  val vfWenH        = OptionWrapper(cfg.needVecWen, Bool())
+  val vfWenL        = OptionWrapper(cfg.needVecWen, Bool())
   val v0Wen       = OptionWrapper(cfg.needV0Wen, Bool())
+  val v0WenH        = OptionWrapper(cfg.needVecWen, Bool())
+  val v0WenL        = OptionWrapper(cfg.needVecWen, Bool())
   val vlWen       = OptionWrapper(cfg.needVlWen, Bool())
   val flushPipe   = OptionWrapper(cfg.flushPipe,  Bool())
   val preDecode   = OptionWrapper(cfg.hasPredecode, new PreDecodeInfo)
@@ -42,7 +46,11 @@ class FuncUnitCtrlOutput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle
   val rfWen         = OptionWrapper(cfg.needIntWen, Bool())
   val fpWen         = OptionWrapper(cfg.needFpWen,  Bool())
   val vecWen        = OptionWrapper(cfg.needVecWen, Bool())
+  val vfWenH        = OptionWrapper(cfg.needVecWen, Bool())
+  val vfWenL        = OptionWrapper(cfg.needVecWen, Bool())
   val v0Wen         = OptionWrapper(cfg.needV0Wen, Bool())
+  val v0WenH        = OptionWrapper(cfg.needV0Wen, Bool())
+  val v0WenL        = OptionWrapper(cfg.needV0Wen, Bool())
   val vlWen         = OptionWrapper(cfg.needVlWen, Bool())
   val exceptionVec  = OptionWrapper(cfg.exceptionOut.nonEmpty, ExceptionVec())
   val flushPipe     = OptionWrapper(cfg.flushPipe,  Bool())
@@ -50,6 +58,7 @@ class FuncUnitCtrlOutput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle
   val preDecode     = OptionWrapper(cfg.hasPredecode, new PreDecodeInfo)
   val fpu           = OptionWrapper(cfg.writeFflags, new FPUCtrlSignals)
   val vpu           = OptionWrapper(cfg.needVecCtrl, new VPUCtrlSignals)
+  val oldVd         = OptionWrapper(cfg.isSharedVf, UInt(VLEN.W))
 }
 
 class FuncUnitDataInput(cfg: FuConfig)(implicit p: Parameters) extends XSBundle {
@@ -95,6 +104,7 @@ class FuncUnitIO(cfg: FuConfig)(implicit p: Parameters) extends XSBundle {
   val vlIsZero = OptionWrapper(cfg.writeVlRf, Output(Bool()))
   val vlIsVlmax = OptionWrapper(cfg.writeVlRf, Output(Bool()))
   val instrAddrTransType = Option.when(cfg.isJmp || cfg.isBrh)(Input(new AddrTransType))
+  val mguEew = OptionWrapper(cfg.VecNeedSharedMgu, Output(VSew()))
 }
 
 abstract class FuncUnit(val cfg: FuConfig)(implicit p: Parameters) extends XSModule {
@@ -107,7 +117,11 @@ abstract class FuncUnit(val cfg: FuConfig)(implicit p: Parameters) extends XSMod
     io.out.bits.ctrl.rfWen  .foreach(_ := RegEnable(io.in.bits.ctrl.rfWen.get, io.in.fire))
     io.out.bits.ctrl.fpWen  .foreach(_ := RegEnable(io.in.bits.ctrl.fpWen.get, io.in.fire))
     io.out.bits.ctrl.vecWen .foreach(_ := RegEnable(io.in.bits.ctrl.vecWen.get, io.in.fire))
+    io.out.bits.ctrl.vfWenH.foreach(_ := RegEnable(io.in.bits.ctrl.vfWenH.get, io.in.fire))
+    io.out.bits.ctrl.vfWenL.foreach(_ := RegEnable(io.in.bits.ctrl.vfWenL.get, io.in.fire))
     io.out.bits.ctrl.v0Wen .foreach(_ := RegEnable(io.in.bits.ctrl.v0Wen.get, io.in.fire))
+    io.out.bits.ctrl.v0WenH.foreach(_ := RegEnable(io.in.bits.ctrl.v0WenH.get, io.in.fire))
+    io.out.bits.ctrl.v0WenL.foreach(_ := RegEnable(io.in.bits.ctrl.v0WenL.get, io.in.fire))
     io.out.bits.ctrl.vlWen .foreach(_ := RegEnable(io.in.bits.ctrl.vlWen.get, io.in.fire))
     // io.out.bits.ctrl.flushPipe should be connected in fu
     io.out.bits.ctrl.preDecode.foreach(_ := RegEnable(io.in.bits.ctrl.preDecode.get, io.in.fire))
@@ -227,7 +241,11 @@ trait HasPipelineReg { this: FuncUnit =>
   io.out.bits.ctrl.rfWen.foreach(_ := fixCtrlVec.last.rfWen.get)
   io.out.bits.ctrl.fpWen.foreach(_ := fixCtrlVec.last.fpWen.get)
   io.out.bits.ctrl.vecWen.foreach(_ := fixCtrlVec.last.vecWen.get)
+  io.out.bits.ctrl.vfWenH.foreach(_ := fixCtrlVec.last.vfWenH.get)
+  io.out.bits.ctrl.vfWenL.foreach(_ := fixCtrlVec.last.vfWenL.get)
   io.out.bits.ctrl.v0Wen.foreach(_ := fixCtrlVec.last.v0Wen.get)
+  io.out.bits.ctrl.v0WenH.foreach(_ := fixCtrlVec.last.v0WenH.get)
+  io.out.bits.ctrl.v0WenL.foreach(_ := fixCtrlVec.last.v0WenL.get)
   io.out.bits.ctrl.vlWen.foreach(_ := fixCtrlVec.last.vlWen.get)
   io.out.bits.ctrl.fpu.foreach(_ := fixCtrlVec.last.fpu.get)
   io.out.bits.ctrl.vpu.foreach(_ := fixCtrlVec.last.vpu.get)

@@ -149,7 +149,7 @@ object xsutils extends HasChisel {
 
 object yunsuan extends HasChisel {
 
-  override def millSourcePath = os.pwd / "yunsuan"
+  override def millSourcePath = os.pwd / "YunSuan"
 
 }
 

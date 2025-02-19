@@ -25,3 +25,6 @@
 [submodule "huancun"]
 	path = huancun
 	url = https://github.com/OpenXiangShan-Nanhu/HuanCun.git
+[submodule "YunSuan"]
+	path = YunSuan
+	url = https://github.com/OpenXiangShan-Nanhu/YunSuan.git

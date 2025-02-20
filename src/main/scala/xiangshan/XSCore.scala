@@ -23,19 +23,14 @@ import chisel3.util._
 import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tile.HasFPUParameters
-import system.HasSoCParameter
+import xiangshan.XSL1BusErrors
 import xs.utils._
 import xs.utils.perf._
-import xs.utils.mbist.{MbistInterface, MbistPipeline}
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xiangshan.backend._
 import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface
-import xiangshan.cache.mmu._
 import xiangshan.frontend._
-import xiangshan.mem.L1PrefetchFuzzer
-
-import scala.collection.mutable.ListBuffer
 import xiangshan.cache.mmu.TlbRequestIO
 
 abstract class XSModule(implicit val p: Parameters) extends Module

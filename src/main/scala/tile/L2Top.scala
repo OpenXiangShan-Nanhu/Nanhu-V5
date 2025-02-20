@@ -14,29 +14,27 @@
   * See the Mulan PSL v2 for more details.
   ***************************************************************************************/
 
-package xiangshan
+package tile
 
 import chisel3._
 import chisel3.util._
-import org.chipsalliance.cde.config._
-import chisel3.util.{Valid, ValidIO}
+import coupledL2.tl2chi.{CHIIssue, PortIO, TL2CHICoupledL2}
+import coupledL2.tl2tl.TL2TLCoupledL2
+import coupledL2.{L2Param, L2ParamKey}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams, BusErrors, MaxHartIdBits}
 import freechips.rocketchip.tilelink._
-import coupledL2.{L2ParamKey, EnableCHI}
-import coupledL2.tl2tl.TL2TLCoupledL2
-import coupledL2.tl2chi.{TL2CHICoupledL2, PortIO, CHIIssue}
 import huancun.BankBitsKey
+import org.chipsalliance.cde.config._
 import system.HasSoCParameter
 import top.BusPerfMonitor
-import xs.utils._
-import xs.utils.tl._
-import xs.utils.sram.SramBroadcastBundle
-import xiangshan.cache.mmu.TlbRequestIO
 import xiangshan.backend.fu.PMPRespBundle
-import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfEvent, PerfCounterOptionsKey}
-
+import xiangshan.cache.mmu.TlbRequestIO
+import xiangshan._
+import xs.utils._
+import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey, PerfEvent}
+import xs.utils.tl._
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
   val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
@@ -72,7 +70,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
     val node = buffers.map(_.node.asInstanceOf[TLNode]).reduce(_ :*=* _)
     (buffers, node)
   }
-  val enableL2 = coreParams.L2CacheParamsOpt.isDefined
+  val enableL2 = true
   // =========== Components ============
   val l1_xbar = TLXbar()
   val mmio_xbar = TLXbar()
@@ -106,7 +104,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
   println(s"enableCHI: ${enableCHI}")
   val l2cache = if (enableL2) {
     val config = new Config((_, _, _) => {
-      case L2ParamKey => coreParams.L2CacheParamsOpt.get.copy(
+      case L2ParamKey => p(L2ParamKey).copy(
         hartId = p(XSCoreParamsKey).HartId,
         FPGAPlatform = debugOpts.FPGAPlatform//,
         //hasMbist = hasMbist
@@ -121,18 +119,18 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
     if (enableCHI) Some(LazyModule(new TL2CHICoupledL2()(new Config(config))))
     else Some(LazyModule(new TL2TLCoupledL2()(new Config(config))))
   } else None
-  val l2_binder = coreParams.L2CacheParamsOpt.map(_ => BankBinder(coreParams.L2NBanks, 64))
+  val l2_binder = BankBinder(coreParams.L2NBanks, 64)
 
   // =========== Connection ============
   // l2 to l2_binder, then to memory_port
   l2cache match {
     case Some(l2) =>
-      l2_binder.get :*= l2.node :*= xbar_l2_buffer :*= l1_xbar :=* misc_l2_pmu
+      l2_binder :*= l2.node :*= xbar_l2_buffer :*= l1_xbar :=* misc_l2_pmu
       l2 match {
         case l2: TL2TLCoupledL2 =>
-          memory_port.get := l2_l3_pmu := TLClientsMerger() := TLXbar() :=* l2_binder.get
+          memory_port.get := l2_l3_pmu := TLClientsMerger() := TLXbar() :=* l2_binder
         case l2: TL2CHICoupledL2 =>
-          l2.managerNode := TLXbar() :=* l2_binder.get
+          l2.managerNode := TLXbar() :=* l2_binder
           l2.mmioNode := mmio_port
       }
     case None =>

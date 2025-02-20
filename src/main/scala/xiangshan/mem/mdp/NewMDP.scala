@@ -4,8 +4,7 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.util.{OH1ToUInt, PseudoLRU, ReplacementPolicy}
 import org.chipsalliance.cde.config.Parameters
-import utility.XORFold
-import xiangshan.backend.rob.RobPtr
+import xs.utils.XORFold
 import xiangshan.mem.SqPtr
 import xiangshan.{CustomCSRCtrlIO, XSBundle, XSModule}
 

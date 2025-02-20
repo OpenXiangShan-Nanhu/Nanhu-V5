@@ -4,19 +4,14 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils._
-import xs.utils.perf._
 import xiangshan._
 import xiangshan.backend.fu.NewCSR._
 import xiangshan.backend.fu.util._
 import xiangshan.backend.fu.{FuConfig, FuncUnit}
 import device._
-import system.HasSoCParameter
 import xiangshan.ExceptionNO._
 import xiangshan.backend.Bundles.TrapInstInfo
 import xiangshan.backend.decode.Imm_Z
-import xiangshan.backend.fu.NewCSR.CSRBundles.PrivState
-import xiangshan.backend.fu.NewCSR.CSRDefines.PrivMode
-import xiangshan.frontend.FtqPtr
 
 class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   with HasCircularQueuePtrHelper

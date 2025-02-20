@@ -19,18 +19,15 @@ package xiangshan.mem
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import utils._
 import xs.utils._
 import xs.utils.perf._
+import xs.utils.common._
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
 import xiangshan.cache._
-import xiangshan.cache.{DCacheLineIO, DCacheWordIO, MemoryOpConstants}
 import xiangshan.cache.mmu.{TlbHintIO, TlbRequestIO}
-import xiangshan.mem._
 import xiangshan.backend._
 import xiangshan.backend.rob.RobLsqIO
-import coupledL2.{CMOReq, CMOResp}
 import xiangshan.backend.fu.FuType
 import xiangshan.mem.mdp.MDPResUpdateIO
 

@@ -24,6 +24,7 @@ import difftest.common.DifftestMem
 import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
+import xs.utils.common._
 import utils._
 import xiangshan._
 import xiangshan.cache._
@@ -35,7 +36,6 @@ import xiangshan.backend.decode.isa.bitfield.{Riscv32BitInst, XSInstBitFields}
 import xiangshan.backend.fu.FuConfig._
 import xiangshan.backend.fu.FuType
 import xiangshan.ExceptionNO._
-import coupledL2.{CMOReq, CMOResp}
 import xiangshan.mem.mdp.MDPResUpdateIO
 
 class SqPtr(implicit p: Parameters) extends CircularQueuePtr[SqPtr](

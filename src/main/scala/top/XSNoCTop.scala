@@ -29,11 +29,12 @@ import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.tilelink._
-import coupledL2.tl2chi.{PortIO, CHIAsyncBridgeSink}
+import coupledL2.tl2chi.{CHIAsyncBridgeSink, PortIO}
 import freechips.rocketchip.tile.MaxHartIdBits
-import freechips.rocketchip.util.{AsyncQueueSource, AsyncQueueParams}
-import chisel3.experimental.{annotate, ChiselAnnotation}
+import freechips.rocketchip.util.{AsyncQueueParams, AsyncQueueSource}
+import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
+import tile.XSTileWrap
 
 class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
 {

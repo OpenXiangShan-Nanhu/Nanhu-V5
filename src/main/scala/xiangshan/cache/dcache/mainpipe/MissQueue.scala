@@ -18,19 +18,11 @@ package xiangshan.cache
 
 import chisel3._
 import chisel3.util._
-import coupledL2.VaddrKey
-import coupledL2.IsKeywordKey
 import difftest._
-import freechips.rocketchip.tilelink.ClientStates._
-import freechips.rocketchip.tilelink.MemoryOpCategories._
-import freechips.rocketchip.tilelink.TLPermissions._
 import freechips.rocketchip.tilelink._
-import huancun.{AliasKey, DirtyKey, PrefetchKey}
+import xiangshan.cache.{AliasKey, DirtyKey, PrefetchKey}
 import org.chipsalliance.cde.config.Parameters
-import utils._
 import xiangshan._
-import xiangshan.mem.AddPipelineReg
-import xiangshan.mem.prefetch._
 import xiangshan.mem.trace._
 import xiangshan.mem.LqPtr
 import xs.utils._

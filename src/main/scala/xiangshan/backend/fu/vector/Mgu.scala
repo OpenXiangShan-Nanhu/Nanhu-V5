@@ -25,7 +25,6 @@ import chiseltest._
 import chiseltest.ChiselScalatestTester
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers
-import top.{ArgParser, BaseConfig, DefaultConfig}
 import xiangshan._
 import xiangshan.backend.fu.vector.Bundles.{VSew, Vl}
 import xiangshan.backend.fu.vector.Utils.VecDataToMaskDataVec
@@ -202,44 +201,47 @@ class VecInfo(implicit p: Parameters) extends Bundle {
   val dstMask = Bool()
 }
 
-object VerilogMgu extends App {
-  println("Generating the Mgu hardware")
-  val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)
-  val p = config.alterPartial({case XSCoreParamsKey => config(XSTileKey).head})
 
-  emitVerilog(new Mgu(128)(p), Array("--target-dir", "build/vifu", "--full-stacktrace"))
-}
-
-class MguTest extends AnyFlatSpec with ChiselScalatestTester with Matchers {
-
-  val defaultConfig = (new DefaultConfig).alterPartial({
-    case XSCoreParamsKey => XSCoreParameters()
-  })
-
-  println("test start")
-
-  behavior of "Mgu"
-  it should "run" in {
-    test(new Mgu(128)(defaultConfig)).withAnnotations(Seq(VerilatorBackendAnnotation)) {
-      m: Mgu =>
-        m.io.in.vd.poke("h8765_4321_8765_4321_8765_4321_8765_4321".U)
-        m.io.in.oldVd.poke("h7777_7777_7777_7777_7777_7777_7777_7777".U)
-        m.io.in.mask.poke("h0000_0000_0000_0000_0000_0000_ffff_0000".U)
-        m.io.in.info.ta.poke(true.B)
-        m.io.in.info.ma.poke(false.B)
-        m.io.in.info.vl.poke((16 + 7).U)
-        m.io.in.info.vstart.poke((16 + 2).U)
-        m.io.in.info.eew.poke(VSew.e8)
-        m.io.in.info.vdIdx.poke(1.U)
-
-        println("out.vd: " + m.io.out.vd.peek().litValue.toString(16))
-        println("debugOnly.vstartMapVdIdx: " + m.io.debugOnly.vstartMapVdIdx.peek().litValue.toString(16))
-        println("debugOnly.vlMapVdIdx: "     + m.io.debugOnly.vlMapVdIdx.peek().litValue.toString(16))
-        println("debugOnly.begin: "          + m.io.debugOnly.begin.peek().litValue)
-        println("debugOnly.end: "            + m.io.debugOnly.end.peek().litValue)
-        println("debugOnly.activeEn: "         + m.io.debugOnly.activeEn.peek().litValue.toString(2))
-        println("debugOnly.agnosticEn: "     + m.io.debugOnly.agnosticEn.peek().litValue.toString(2))
-    }
-    println("test done")
-  }
-}
+//import top.{ArgParser, BaseConfig, DefaultConfig}
+//
+//object VerilogMgu extends App {
+//  println("Generating the Mgu hardware")
+//  val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(args)
+//  val p = config.alterPartial({case XSCoreParamsKey => config(XSTileKey).head})
+//
+//  emitVerilog(new Mgu(128)(p), Array("--target-dir", "build/vifu", "--full-stacktrace"))
+//}
+//
+//class MguTest extends AnyFlatSpec with ChiselScalatestTester with Matchers {
+//
+//  val defaultConfig = (new DefaultConfig).alterPartial({
+//    case XSCoreParamsKey => XSCoreParameters()
+//  })
+//
+//  println("test start")
+//
+//  behavior of "Mgu"
+//  it should "run" in {
+//    test(new Mgu(128)(defaultConfig)).withAnnotations(Seq(VerilatorBackendAnnotation)) {
+//      m: Mgu =>
+//        m.io.in.vd.poke("h8765_4321_8765_4321_8765_4321_8765_4321".U)
+//        m.io.in.oldVd.poke("h7777_7777_7777_7777_7777_7777_7777_7777".U)
+//        m.io.in.mask.poke("h0000_0000_0000_0000_0000_0000_ffff_0000".U)
+//        m.io.in.info.ta.poke(true.B)
+//        m.io.in.info.ma.poke(false.B)
+//        m.io.in.info.vl.poke((16 + 7).U)
+//        m.io.in.info.vstart.poke((16 + 2).U)
+//        m.io.in.info.eew.poke(VSew.e8)
+//        m.io.in.info.vdIdx.poke(1.U)
+//
+//        println("out.vd: " + m.io.out.vd.peek().litValue.toString(16))
+//        println("debugOnly.vstartMapVdIdx: " + m.io.debugOnly.vstartMapVdIdx.peek().litValue.toString(16))
+//        println("debugOnly.vlMapVdIdx: "     + m.io.debugOnly.vlMapVdIdx.peek().litValue.toString(16))
+//        println("debugOnly.begin: "          + m.io.debugOnly.begin.peek().litValue)
+//        println("debugOnly.end: "            + m.io.debugOnly.end.peek().litValue)
+//        println("debugOnly.activeEn: "         + m.io.debugOnly.activeEn.peek().litValue.toString(2))
+//        println("debugOnly.agnosticEn: "     + m.io.debugOnly.agnosticEn.peek().litValue.toString(2))
+//    }
+//    println("test done")
+//  }
+//}

@@ -21,8 +21,6 @@ import chisel3._
 import chisel3.util._
 import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import system.HasSoCParameter
-//import utils.{HPerfMonitor, HasPerfEvents, PerfEvent}
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, IssueQueueIQWakeUpBundle, LoadShouldCancel, MemExuInput, MemExuOutput, VPUCtrlSignals}
 import xiangshan.backend.ctrlblock.{DebugLSIO, LsTopdownInfo}

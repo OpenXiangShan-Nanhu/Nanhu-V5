@@ -3,7 +3,7 @@ package xiangshan.backend.trace
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
-import utility.{CircularQueuePtr, HasCircularQueuePtrHelper}
+import xs.utils.{CircularQueuePtr, HasCircularQueuePtrHelper}
 import xiangshan.{HasXSParameter, XSCoreParamsKey}
 
 class TraceBuffer(implicit val p: Parameters) extends Module

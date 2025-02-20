@@ -19,8 +19,6 @@ package xiangshan
 import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel3._
 import chisel3.util._
-import huancun._
-import system.SoCParamsKey
 import xiangshan.backend.datapath.RdConfig._
 import xiangshan.backend.datapath.WbConfig._
 import xiangshan.backend.dispatch.DispatchParameters
@@ -31,20 +29,10 @@ import xiangshan.backend.regfile._
 import xiangshan.backend.BackendParams
 import xiangshan.backend.trace._
 import xiangshan.cache.DCacheParameters
-import xiangshan.cache.prefetch._
-import xiangshan.frontend.{BasePredictor, BranchPredictionResp, FTB, FakePredictor, RAS, Tage, ITTage, Tage_SC, FauFTB}
+import xiangshan.frontend.{BasePredictor, BranchPredictionResp, FTB, RAS, ITTage, Tage_SC, FauFTB}
 import xiangshan.frontend.icache.ICacheParameters
 import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
-import xiangshan.frontend._
-import xiangshan.frontend.icache.ICacheParameters
-import freechips.rocketchip.diplomacy.AddressSet
-import freechips.rocketchip.tile.MaxHartIdBits
-import system.SoCParamsKey
-import huancun._
-import huancun.debug._
 import xiangshan.cache.wpu.WPUParameters
-import coupledL2._
-import coupledL2.tl2chi._
 import xiangshan.backend.datapath.WakeUpConfig
 import xiangshan.mem.prefetch.{PrefetcherParams, SMSParams}
 import xs.utils.perf.DebugOptionsKey
@@ -57,6 +45,8 @@ case object XLen extends Field[Int]
 case object XSTileKey extends Field[Seq[XSCoreParameters]]
 
 case object XSCoreParamsKey extends Field[XSCoreParameters]
+
+case object EnableCHI extends Field[Boolean](false)
 
 case class XSCoreParameters
 (
@@ -330,13 +320,6 @@ case class XSCoreParameters
     nProbeEntries = 8,
     nReleaseEntries = 18,
     nMaxPrefetchEntry = 6,
-  )),
-  L2CacheParamsOpt: Option[L2Param] = Some(L2Param(
-    name = "l2",
-    ways = 8,
-    sets = 1024, // default 512KB L2
-    prefetch = Seq(coupledL2.prefetch.PrefetchReceiverParams(), coupledL2.prefetch.BOPParameters(),
-      coupledL2.prefetch.TPParameters()),
   )),
   L2NBanks: Int = 1,
   usePTWRepeater: Boolean = false,

@@ -2,13 +2,7 @@ package xiangshan.backend.fu.vector
 
 import chisel3._
 import chisel3.util._
-import chiseltest._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers
 import org.chipsalliance.cde.config.Parameters
-import top.{ArgParser, BaseConfig, DefaultConfig}
-import xiangshan._
-import xiangshan.backend.fu.vector.Bundles.{VSew, Vl}
 import xiangshan.backend.fu.vector.Utils.VecDataToMaskDataVec
 import yunsuan.vector._
 

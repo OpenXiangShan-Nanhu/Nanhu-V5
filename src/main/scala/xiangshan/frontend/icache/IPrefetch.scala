@@ -25,7 +25,6 @@ import utils._
 import xiangshan.cache.mmu._
 import xiangshan.frontend._
 import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
-import huancun.PreferCacheKey
 import xiangshan.XSCoreParamsKey
 import xiangshan.SoftIfetchPrefetchBundle
 import xs.utils._

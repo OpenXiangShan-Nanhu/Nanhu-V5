@@ -35,7 +35,7 @@ import xiangshan.backend.fu.PMAConst
 import xiangshan.XSTileKey
 import xs.utils.perf.DebugOptionsKey
 
-import coupledL2.EnableCHI
+import xiangshan.EnableCHI
 import coupledL2.tl2chi.CHIIssue
 import xiangshan.PMParameKey
 

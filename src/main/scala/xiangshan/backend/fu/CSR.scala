@@ -19,21 +19,13 @@ package xiangshan.backend.fu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import difftest._
-import freechips.rocketchip.util._
-import xs.utils.MaskedRegMap.WritableMask
-import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.ExceptionNO._
 import xiangshan._
 import xiangshan.backend.fu.util._
-import xiangshan.cache._
 import xiangshan.backend.Bundles.{ExceptionInfo, TrapInstInfo}
 import xiangshan.backend.fu.NewCSR.CSREvents.TargetPCBundle
-import xiangshan.backend.fu.NewCSR.CSRNamedConstant.ContextStatus
 import xiangshan.backend.rob.RobPtr
-import utils.MathUtils.{BigIntGenMask, BigIntNot}
 import xiangshan.backend.trace._
 
 class FpuCsrIO extends Bundle {

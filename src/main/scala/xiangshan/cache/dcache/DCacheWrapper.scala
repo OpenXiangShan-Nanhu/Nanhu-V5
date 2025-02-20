@@ -19,18 +19,14 @@ package xiangshan.cache
 import chisel3._
 import chisel3.experimental.ExtModule
 import chisel3.util._
-import coupledL2.VaddrField
-import coupledL2.IsKeywordField
-import coupledL2.IsKeywordKey
+
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, TransferSizes}
 import freechips.rocketchip.tilelink.{TLBundleD, _}
 import freechips.rocketchip.util.BundleFieldBase
-import huancun.{AliasField, PrefetchField}
+import xiangshan.cache.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.LazyModuleImp
-import utils._
 import xiangshan._
-import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.rob.RobDebugRollingIO
 import xiangshan.cache.wpu._
 import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
@@ -39,7 +35,6 @@ import xiangshan.mem.LqPtr
 import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ReplacementPolicy, SRAMQueue}
 import xs.utils.perf._
 import xs.utils.tl._
-import xs.utils.sram._
 
 // DCache specific parameters
 case class DCacheParameters

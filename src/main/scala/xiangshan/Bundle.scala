@@ -21,24 +21,19 @@ import chisel3._
 import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
+import freechips.rocketchip.tile.BusErrors
 import xs.utils._
-import xs.utils.perf._
 import utils._
-import xiangshan.backend.decode.{ImmUnion, XDecode}
+import xiangshan.backend.decode.XDecode
 import xiangshan.backend.fu.FuType
 import xiangshan.backend.rob.RobPtr
-import xiangshan.frontend._
 import xiangshan.mem.{LqPtr, SqPtr}
 import xiangshan.backend.Bundles.{DynInst, UopIdx}
-import xiangshan.backend.fu.vector.Bundles.VType
 import xiangshan.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
 import xiangshan.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
 import xiangshan.cache.HasDCacheParameters
-
-import chisel3.util.experimental.decode.EspressoMinimizer
 import xiangshan.backend.CtrlToFtqIO
 import xiangshan.backend.fu.NewCSR.{Mcontrol6, Tdata1Bundle, Tdata2Bundle}
-import xiangshan.backend.fu.PMPEntry
 import xiangshan.backend.rob.RobBundles.RobCommitEntryBundle
 
 class ValidUndirectioned[T <: Data](gen: T) extends Bundle {
@@ -786,5 +781,22 @@ class StallReasonIO(width: Int) extends Bundle {
 class L2ToL1Hint(implicit p: Parameters) extends XSBundle with HasDCacheParameters {
   val sourceId = UInt(log2Up(cfg.nMissEntries).W)    // tilelink sourceID -> mshr id
   val isKeyword = Bool()                             // miss entry keyword -> L1 load queue replay
+}
+
+class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
+  val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
+}
+
+class XSL1BusErrors()(implicit val p: Parameters) extends BusErrors {
+  val icache = new L1BusErrorUnitInfo
+  val dcache = new L1BusErrorUnitInfo
+  val l2 = new L1BusErrorUnitInfo
+
+  override def toErrorList: List[Option[(ValidIO[UInt], String, String)]] =
+    List(
+      Some(icache.ecc_error, "I_ECC", "Icache ecc error"),
+      Some(dcache.ecc_error, "D_ECC", "Dcache ecc error"),
+      Some(l2.ecc_error, "L2_ECC", "L2Cache ecc error")
+    )
 }
 

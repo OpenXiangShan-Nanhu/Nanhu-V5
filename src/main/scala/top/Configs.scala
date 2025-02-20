@@ -44,6 +44,7 @@ class BaseConfig(n: Int) extends Config((site, here, up) => {
   case SoCParamsKey => SoCParameters()
   case PMParameKey => PMParameters()
   case XSTileKey => Seq.tabulate(n){ i => XSCoreParameters(HartId = i, hasMbist = true) }
+  case L2ParamKey => L2Param()
   case ExportDebug => DebugAttachParams(protocols = Set(JTAG))
   case DebugModuleKey => Some(XSDebugModuleParams(site(XLen)))
   case JtagDTMKey => JtagDTMKey
@@ -200,33 +201,34 @@ class MinimalConfig(n: Int = 1) extends Config(
           l0ReservedBits = 0,
           spSize = 4,
         ),
-        L2CacheParamsOpt = Some(L2Param(
-          name = "L2",
-          ways = 8,
-          sets = 128,
-          echoField = Seq(huancun.DirtyField()),
-          prefetch = Nil,
-          clientCaches = Seq(L1Param(
-            "dcache",
-            isKeywordBitsOpt = p.dcacheParametersOpt.get.isKeywordBitsOpt
-          )),
-          hasCMO = p.HasCMO && site(EnableCHI),
-        )),
         L2NBanks = 2,
         prefetcher = None // if L2 pf_recv_node does not exist, disable SMS prefetcher
       )
     )
+    case L2ParamKey =>
+      val core = site(XSTileKey).head
+      up(L2ParamKey).copy(
+        sets = 128,
+        echoField = Seq(huancun.DirtyField()),
+        prefetch = Nil,
+        clientCaches = Seq(L1Param(
+          "dcache",
+          isKeywordBitsOpt = core.dcacheParametersOpt.get.isKeywordBitsOpt
+        )),
+        hasCMO = core.HasCMO && site(EnableCHI),
+      )
     case SoCParamsKey =>
       val tiles = site(XSTileKey)
+      val l2 = site(L2ParamKey)
       up(SoCParamsKey).copy(
         L3CacheParamsOpt = Some(up(SoCParamsKey).L3CacheParamsOpt.get.copy(
           sets = 1024,
           inclusive = false,
           clientCaches = tiles.map{ core =>
             val clientDirBytes = tiles.map{ t =>
-              t.L2NBanks * t.L2CacheParamsOpt.map(_.toCacheParams.capacity).getOrElse(0)
+              t.L2NBanks * l2.toCacheParams.capacity
             }.sum
-            val l2params = core.L2CacheParamsOpt.get.toCacheParams
+            val l2params = l2.toCacheParams
             l2params.copy(sets = 2 * clientDirBytes / core.L2NBanks / l2params.ways / 64)
           },
           simulation = !site(DebugOptionsKey).FPGAPlatform,
@@ -291,34 +293,36 @@ class WithNKBL2
   banks: Int = 1,
   tp: Boolean = true
 ) extends Config((site, here, up) => {
-  case XSTileKey =>
+  case L2ParamKey =>
     require(inclusive, "L2 must be inclusive")
-    val upParams = up(XSTileKey)
+    val core = site(XSTileKey).head
     val l2sets = n * 1024 / banks / ways / 64
-    upParams.map(p => p.copy(
-      L2CacheParamsOpt = Some(L2Param(
-        name = "L2",
-        ways = ways,
-        sets = l2sets,
-        clientCaches = Seq(L1Param(
-          "dcache",
-          sets = 2 * p.dcacheParametersOpt.get.nSets / banks,
-          ways = p.dcacheParametersOpt.get.nWays + 2,
-          aliasBitsOpt = p.dcacheParametersOpt.get.aliasBitsOpt,
-          vaddrBitsOpt = Some(p.GPAddrBitsSv48x4 - log2Up(p.dcacheParametersOpt.get.blockBytes)),
-          isKeywordBitsOpt = p.dcacheParametersOpt.get.isKeywordBitsOpt
-        )),
-        reqField = Seq(utility.ReqSourceField()),
-        echoField = Seq(huancun.DirtyField()),
-        prefetch = Seq(BOPParameters()) ++
-          (if (tp) Seq(TPParameters()) else Nil) ++
-          (if (p.prefetcher.nonEmpty) Seq(PrefetchReceiverParams()) else Nil),
-        hasCMO = p.HasCMO && site(EnableCHI),
-        enablePerf = !site(DebugOptionsKey).FPGAPlatform && site(DebugOptionsKey).EnablePerfDebug,
-        enableRollingDB = site(DebugOptionsKey).EnableRollingDB,
-        enableMonitor = site(DebugOptionsKey).AlwaysBasicDB,
-        elaboratedTopDown = !site(DebugOptionsKey).FPGAPlatform
+    up(L2ParamKey).copy(
+      name = "L2",
+      ways = ways,
+      sets = l2sets,
+      clientCaches = Seq(L1Param(
+        "dcache",
+        sets = 2 * core.dcacheParametersOpt.get.nSets / banks,
+        ways = core.dcacheParametersOpt.get.nWays + 2,
+        aliasBitsOpt = core.dcacheParametersOpt.get.aliasBitsOpt,
+        vaddrBitsOpt = Some(core.GPAddrBitsSv48x4 - log2Up(core.dcacheParametersOpt.get.blockBytes)),
+        isKeywordBitsOpt = core.dcacheParametersOpt.get.isKeywordBitsOpt
       )),
+      reqField = Seq(utility.ReqSourceField()),
+      echoField = Seq(huancun.DirtyField()),
+      prefetch = Seq(BOPParameters()) ++
+        (if (tp) Seq(TPParameters()) else Nil) ++
+        (if (core.prefetcher.nonEmpty) Seq(PrefetchReceiverParams()) else Nil),
+      hasCMO = core.HasCMO && site(EnableCHI),
+      enablePerf = !site(DebugOptionsKey).FPGAPlatform && site(DebugOptionsKey).EnablePerfDebug,
+      enableRollingDB = site(DebugOptionsKey).EnableRollingDB,
+      enableMonitor = site(DebugOptionsKey).AlwaysBasicDB,
+      elaboratedTopDown = !site(DebugOptionsKey).FPGAPlatform,
+      enableCHI = site(EnableCHI)
+    )
+  case XSTileKey =>
+    up(XSTileKey).map(p => p.copy(
       L2NBanks = banks
     ))
 })
@@ -327,8 +331,9 @@ class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1
   case SoCParamsKey =>
     val sets = n * 1024 / banks / ways / 64
     val tiles = site(XSTileKey)
+    val l2 = site(L2ParamKey)
     val clientDirBytes = tiles.map{ t =>
-      t.L2NBanks * t.L2CacheParamsOpt.map(_.toCacheParams.capacity).getOrElse(0)
+      t.L2NBanks * l2.toCacheParams.capacity
     }.sum
     up(SoCParamsKey).copy(
       L3NBanks = banks,
@@ -339,7 +344,7 @@ class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1
         sets = sets,
         inclusive = inclusive,
         clientCaches = tiles.map{ core =>
-          val l2params = core.L2CacheParamsOpt.get.toCacheParams
+          val l2params = l2.toCacheParams
           l2params.copy(sets = 2 * clientDirBytes / core.L2NBanks / l2params.ways / 64, ways = l2params.ways + 2)
         },
         enablePerf = !site(DebugOptionsKey).FPGAPlatform && site(DebugOptionsKey).EnablePerfDebug,
@@ -363,14 +368,6 @@ class WithL3DebugConfig extends Config(
   new WithNKBL3(256, inclusive = false) ++ new WithNKBL2(64)
 )
 
-class MinimalL3DebugConfig(n: Int = 1) extends Config(
-  new WithL3DebugConfig ++ new MinimalConfig(n)
-)
-
-class DefaultL3DebugConfig(n: Int = 1) extends Config(
-  new WithL3DebugConfig ++ new BaseConfig(n)
-)
-
 class WithFuzzer extends Config((site, here, up) => {
   case DebugOptionsKey => up(DebugOptionsKey).copy(
     EnablePerfDebug = false,
@@ -380,13 +377,9 @@ class WithFuzzer extends Config((site, here, up) => {
       enablePerf = false,
     )),
   )
-  case XSTileKey => up(XSTileKey).zipWithIndex.map{ case (p, i) =>
-    p.copy(
-      L2CacheParamsOpt = Some(up(XSTileKey)(i).L2CacheParamsOpt.get.copy(
-        enablePerf = false,
-      )),
-    )
-  }
+  case L2ParamKey => up(L2ParamKey).copy(
+    enablePerf = false,
+  )
 })
 
 class MinimalAliasDebugConfig(n: Int = 1) extends Config(

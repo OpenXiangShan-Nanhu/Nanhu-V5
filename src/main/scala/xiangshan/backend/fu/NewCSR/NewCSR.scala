@@ -5,7 +5,6 @@ import chisel3.util._
 import difftest._
 import freechips.rocketchip.rocket.CSRs
 import org.chipsalliance.cde.config.Parameters
-import top.{ArgParser, Generator}
 import xs.utils.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt}
 import xs.utils.perf.{PerfEvent, HPerfMonitor}
 import utils.OptionWrapper
@@ -1434,20 +1433,22 @@ trait IpIeAliasConnect {
   sie.fromVSie := vsie.toSie
 }
 
-object NewCSRMain extends App {
-  val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(
-    args :+ "--disable-always-basic-diff" :+ "--dump-fir" :+ "--fpga-platform" :+ "--target" :+ "verilog")
+//import top.{ArgParser, Generator}
 
-  val defaultConfig = config.alterPartial({
-    // Get XSCoreParams and pass it to the "small module"
-    case XSCoreParamsKey => config(XSTileKey).head
-  })
-
-  Generator.execute(
-    firrtlOpts :+ "--full-stacktrace" :+ "--target-dir" :+ "backend",
-    new NewCSR()(defaultConfig),
-    firtoolOpts
-  )
-
-  println("done")
-}
+//object NewCSRMain extends App {
+//  val (config, firrtlOpts, firtoolOpts) = ArgParser.parse(
+//    args :+ "--disable-always-basic-diff" :+ "--dump-fir" :+ "--fpga-platform" :+ "--target" :+ "verilog")
+//
+//  val defaultConfig = config.alterPartial({
+//    // Get XSCoreParams and pass it to the "small module"
+//    case XSCoreParamsKey => config(XSTileKey).head
+//  })
+//
+//  Generator.execute(
+//    firrtlOpts :+ "--full-stacktrace" :+ "--target-dir" :+ "backend",
+//    new NewCSR()(defaultConfig),
+//    firtoolOpts
+//  )
+//
+//  println("done")
+//}

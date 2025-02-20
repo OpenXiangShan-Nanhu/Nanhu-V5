@@ -14,25 +14,20 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan
+package tile
 
-import org.chipsalliance.cde.config.{Config, Parameters}
 import chisel3._
-import chisel3.util.{Valid, ValidIO, log2Up}
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.interrupts._
-import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams, BusErrors}
-import freechips.rocketchip.tilelink._
-import freechips.rocketchip.amba.axi4._
-import device.MsiInfoBundle
-import system.HasSoCParameter
-import top.{ArgParser, BusPerfMonitor, Generator}
-import coupledL2.EnableCHI
+import chisel3.util.{Valid, ValidIO}
+import coupledL2.L2ParamKey
 import coupledL2.tl2chi.PortIO
-import xs.utils._
-import xs.utils.tl._
-import xs.utils.sram._
+import device.MsiInfoBundle
+import freechips.rocketchip.diplomacy._
+import org.chipsalliance.cde.config.Parameters
+import system.HasSoCParameter
 import xiangshan.backend.trace.TraceCoreInterface
+import xiangshan.{HasXSParameter, XSCore}
+import xs.utils._
+import xs.utils.sram._
 class XSTile()(implicit p: Parameters) extends LazyModule
   with HasXSParameter
   with HasSoCParameter
@@ -41,7 +36,7 @@ class XSTile()(implicit p: Parameters) extends LazyModule
   val core = LazyModule(new XSCore())
   val l2top = LazyModule(new L2Top())
 
-  val enableL2 = coreParams.L2CacheParamsOpt.isDefined
+  val enableL2 = true // p(L2ParamKey).isDefined
   // =========== Public Ports ============
   val memBlock = core.memBlock.inner
   val core_l3_pf_port = memBlock.l3_pf_sender_opt

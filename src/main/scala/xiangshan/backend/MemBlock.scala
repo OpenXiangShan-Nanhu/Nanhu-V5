@@ -24,7 +24,6 @@ import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModul
 import freechips.rocketchip.interrupts.{IntSinkNode, IntSinkPortSimple}
 import freechips.rocketchip.tile.HasFPUParameters
 import freechips.rocketchip.tilelink._
-import coupledL2.{CMOReq, CMOResp, PrefetchRecv}
 import device.MsiInfoBundle
 import utils._
 import xiangshan._
@@ -42,14 +41,11 @@ import xiangshan.mem.mdp._
 import xiangshan.frontend.HasInstrMMIOConst
 import xiangshan.mem.prefetch.{BasePrefecher, L1Prefetcher, SMSParams, SMSPrefetcher}
 import xiangshan.backend.datapath.NewPipelineConnect
-import system.SoCParamsKey
-import xiangshan.backend.fu.NewCSR.TriggerUtil
-import xiangshan.ExceptionNO._
-
 import xs.utils._
+import xs.utils.common._
 import xs.utils.mbist.{MbistInterface, MbistPipeline}
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
-import xs.utils.perf.{PerfEvent, XSDebug, XSPerfAccumulate, HasPerfLogging, HasPerfEvents, XSError}
+import xs.utils.perf.{HasPerfEvents, HasPerfLogging, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
 
 trait HasMemBlockParameters extends HasXSParameter {
@@ -241,7 +237,7 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
     BundleBridgeSource(() => new PrefetchRecv)
   )
   val l3_pf_sender_opt = if (L3notEmpty) coreParams.prefetcher.map(_ =>
-    BundleBridgeSource(() => new huancun.PrefetchRecv)
+    BundleBridgeSource(() => new PrefetchRecv)
   ) else None
   val cmo_sender  = if (HasCMO) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None
   val cmo_reciver = if (HasCMO) Some(BundleBridgeSink(Some(() => DecoupledIO(new CMOResp)))) else None

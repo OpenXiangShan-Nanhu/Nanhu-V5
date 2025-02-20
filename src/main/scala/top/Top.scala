@@ -23,8 +23,7 @@ import chisel3.experimental.dataview._
 import difftest.DifftestModule
 import xiangshan._
 import utils._
-import huancun.{HCCacheParameters, HCCacheParamsKey, HuanCun, PrefetchRecv, TPmetaResp}
-import coupledL2.EnableCHI
+import huancun.{HCCacheParameters, HCCacheParamsKey, HuanCun, TPmetaResp}
 import openLLC.DummyLLC
 import xs.utils._
 import system._
@@ -38,9 +37,11 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.jtag.JTAGIO
-import chisel3.experimental.{annotate, ChiselAnnotation}
+import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
-import xs.utils.perf.{LogUtilsOptionsKey, PerfCounterOptionsKey, DebugOptionsKey, DebugOptions}
+import tile.XSTile
+import xs.utils.common._
+import xs.utils.perf.{DebugOptions, DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey}
 
 abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
   with BindingScope

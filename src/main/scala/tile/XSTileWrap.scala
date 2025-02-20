@@ -14,19 +14,20 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
-package xiangshan
+package tile
 
 import chisel3._
 import chisel3.util._
-import org.chipsalliance.cde.config._
+import coupledL2.tl2chi.{AsyncPortIO, CHIAsyncBridgeSource, PortIO}
+import device.{IMSICAsync, MsiInfoBundle}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util._
+import org.chipsalliance.cde.config._
 import system.HasSoCParameter
-import device.{IMSICAsync, MsiInfoBundle}
-import coupledL2.tl2chi.{AsyncPortIO, CHIAsyncBridgeSource, PortIO}
-import xs.utils.{DFTResetSignals, IntBuffer, ResetGen}
+import xiangshan.HasXSParameter
 import xiangshan.backend.trace.TraceCoreInterface
+import xs.utils.{IntBuffer, ResetGen}
 
 // This module is used for XSNoCTop for async time domain and divide different
 // voltage domain. Everything in this module should be in the core clock domain

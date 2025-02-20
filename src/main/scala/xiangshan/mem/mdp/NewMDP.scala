@@ -131,7 +131,7 @@ class NewMDP(implicit p: Parameters) extends XSModule with HasMDPParameters{
   //S1
   val s1_reqV = io.ldReq.map(r => RegNext(r.valid, false.B))
   val s1_reqB = io.ldReq.map(r => RegEnable(r.bits, r.valid))
-  val s1_reqHitVec = s0_reqHitVec.zip(io.ldReq).map({ case (hit, q) => RegEnable(hit, q.valid)})
+  val s1_reqHitVec = s0_reqHitVec.zip(io.ldReq).map({ case (hit, q) => RegEnable(hit, WireInit(VecInit.fill(mdpSize)(false.B)), q.valid)})
   val s1_reqHitIdx = s1_reqHitVec.map(OHToUInt(_))
   val s1_reqHit = s1_reqHitVec.map(_.reduce(_|_))
 

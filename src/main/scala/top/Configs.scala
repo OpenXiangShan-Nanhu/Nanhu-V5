@@ -85,8 +85,6 @@ class MinimalConfig(n: Int = 1) extends Config(
         IBufNBank = 6,
         StoreBufferSize = 4,
         StoreBufferThreshold = 3,
-        IssueQueueSize = 10,
-        IssueQueueCompEntrySize = 4,
         dpParams = DispatchParameters(
           IntDqSize = 12,
           FpDqSize = 12,
@@ -124,7 +122,6 @@ class MinimalConfig(n: Int = 1) extends Config(
           nMaxPrefetchEntry = 2,
         )),
         // ============ BPU ===============
-        EnableLoop = false,
         EnableGHistDiff = false,
         FtbSize = 256,
         FtbWays = 2,

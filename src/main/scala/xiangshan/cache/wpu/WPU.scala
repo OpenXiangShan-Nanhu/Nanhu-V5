@@ -16,7 +16,6 @@ abstract class WPUBaseModule[T <: Data](implicit P: Parameters) extends XSModule
 }
 */
 
-case object WPUParamsKey extends Field[WPUParameters]
 case class WPUParameters
 (
   enWPU: Boolean = true,

@@ -60,39 +60,24 @@ case object XSCoreParamsKey extends Field[XSCoreParameters]
 
 case class XSCoreParameters
 (
-  HasPrefetch: Boolean = false,
   HartId: Int = 0,
   XLEN: Int = 64,
   VLEN: Int = 128,
   ELEN: Int = 64,
   HSXLEN: Int = 64,
-  HasMExtension: Boolean = true,
   HasCExtension: Boolean = true,
   HasHExtension: Boolean = true,
-  HasDiv: Boolean = true,
-  HasICache: Boolean = true,
-  HasDCache: Boolean = true,
   AddrBits: Int = 64,
   VAddrBitsSv39: Int = 39,
   GPAddrBitsSv39x4: Int = 41,
   VAddrBitsSv48: Int = 48,
   GPAddrBitsSv48x4: Int = 50,
-  HasFPU: Boolean = true,
-  HasVPU: Boolean = true,
-  HasCustomCSRCacheOp: Boolean = true,
   FetchWidth: Int = 8,
   AsidLength: Int = 16,
-  VmidLength: Int = 14,
-  EnableBPU: Boolean = true,
-  EnableBPD: Boolean = true,
-  EnableRAS: Boolean = true,
-  EnableLB: Boolean = false,
-  EnableLoop: Boolean = true,
   EnableSC: Boolean = false,
   EnbaleTlbDebug: Boolean = false,
   EnableClockGate: Boolean = true,
   EnableJal: Boolean = false,
-  EnableFauFTB: Boolean = true,
   EnableSv48: Boolean = true,
   UbtbGHRLength: Int = 4,
   // HistoryLength: Int = 512,
@@ -177,8 +162,6 @@ case class XSCoreParameters
   RabSize: Int = 96,
   VTypeBufferSize: Int = 24, // used to reorder vtype
   WaitTableSize: Int = 1024,
-  IssueQueueSize: Int = 16,
-  IssueQueueCompEntrySize: Int = 12,
   dpParams: DispatchParameters = DispatchParameters(
     IntDqSize = 8,
     FpDqSize = 12,
@@ -575,13 +558,9 @@ trait HasXSParameter {
   def hartIdLen = 6// p(MaxHartIdBits)
   val xLen = XLEN
 
-  def HasMExtension = coreParams.HasMExtension
   def HasCExtension = coreParams.HasCExtension
   def HasHExtension = coreParams.HasHExtension
   def EnableSv48 = coreParams.EnableSv48
-  def HasDiv = coreParams.HasDiv
-  def HasIcache = coreParams.HasICache
-  def HasDcache = coreParams.HasDCache
   def AddrBits = coreParams.AddrBits // AddrBits is used in some cases
   def GPAddrBitsSv39x4 = coreParams.GPAddrBitsSv39x4
   def GPAddrBitsSv48x4 = coreParams.GPAddrBitsSv48x4
@@ -614,22 +593,13 @@ trait HasXSParameter {
   }
 
   def AsidLength = coreParams.AsidLength
-  def VmidLength = coreParams.VmidLength
   def ReSelectLen = coreParams.ReSelectLen
   def AddrBytes = AddrBits / 8 // unused
   def DataBits = XLEN
   def DataBytes = DataBits / 8
   def VDataBytes = VLEN / 8
-  def HasFPU = coreParams.HasFPU
-  def HasVPU = coreParams.HasVPU
-  def HasCustomCSRCacheOp = coreParams.HasCustomCSRCacheOp
   def FetchWidth = coreParams.FetchWidth
   def PredictWidth = FetchWidth * (if (HasCExtension) 2 else 1)
-  def EnableBPU = coreParams.EnableBPU
-  def EnableBPD = coreParams.EnableBPD // enable backing predictor(like Tage) in BPUStage3
-  def EnableRAS = coreParams.EnableRAS
-  def EnableLB = coreParams.EnableLB
-  def EnableLoop = coreParams.EnableLoop
   def EnableSC = coreParams.EnableSC
   def EnbaleTlbDebug = coreParams.EnbaleTlbDebug
   def HistoryLength = coreParams.HistoryLength
@@ -638,7 +608,6 @@ trait HasXSParameter {
   def EnableClockGate = coreParams.EnableClockGate
   def UbtbGHRLength = coreParams.UbtbGHRLength
   def UbtbSize = coreParams.UbtbSize
-  def EnableFauFTB = coreParams.EnableFauFTB
   def FtbSize = coreParams.FtbSize
   def FtbWays = coreParams.FtbWays
   def RasSize = coreParams.RasSize

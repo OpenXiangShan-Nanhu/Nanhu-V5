@@ -32,7 +32,7 @@ class MDPEntry(implicit p: Parameters) extends XSBundle with HasMDPParameters{
 
 
   def confidenceValid : Bool = {
-    this.confidence >= 0.U
+    this.confidence > 0.U
   }
 
   def writeConFull() = {

@@ -35,7 +35,7 @@ MEM_GEN = ./scripts/vlsi_mem_gen
 MEM_GEN_SEP = ./scripts/gen_sep_mem.sh
 ABS_WORK_DIR := $(shell pwd)
 
-CONFIG ?= DefaultConfig
+CONFIG ?= NanhuV5_3Config
 NUM_CORES ?= 1
 ISSUE ?= E.b
 

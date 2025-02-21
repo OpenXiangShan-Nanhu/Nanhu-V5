@@ -258,8 +258,6 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   io.replace_way.set.bits := get_idx(s1_vaddr)
   io.replace_way.dmWay := get_direct_map_way(s1_vaddr)
   val s1_invalid_vec = wayMap(w => !meta_resp(w).isValid())
-  val s1_have_invalid_way = s1_invalid_vec.asUInt.orR
-  val s1_invalid_way_en = ParallelPriorityMux(s1_invalid_vec.zipWithIndex.map(x => x._1 -> UIntToOH(x._2.U(nWays.W))))
 
   val s1_need_replacement = !s1_tag_match_dup_dc
 

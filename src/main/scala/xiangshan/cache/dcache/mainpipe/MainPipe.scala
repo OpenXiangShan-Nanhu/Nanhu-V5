@@ -324,8 +324,6 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
 
   // replacement policy
   val s1_invalid_vec = wayMap(w => !meta_resp(w).asTypeOf(new ClientMetadata).isValid())
-  val s1_have_invalid_way = s1_invalid_vec.asUInt.orR
-  val s1_invalid_way_en = ParallelPriorityMux(s1_invalid_vec.zipWithIndex.map(x => x._1 -> UIntToOH(x._2.U(nWays.W))))
   val s1_repl_way_en = WireInit(0.U(nWays.W))
   s1_repl_way_en := Mux(
     GatedValidRegNext(s0_fire),

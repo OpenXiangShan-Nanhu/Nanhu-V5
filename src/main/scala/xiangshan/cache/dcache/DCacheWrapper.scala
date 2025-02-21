@@ -23,7 +23,7 @@ import chisel3.util._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, TransferSizes}
 import freechips.rocketchip.tilelink.{TLBundleD, _}
 import freechips.rocketchip.util.BundleFieldBase
-import xiangshan.cache.{AliasField, PrefetchField}
+import xs.utils.common._
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.LazyModuleImp
 import xiangshan._

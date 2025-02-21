@@ -22,14 +22,13 @@ import chisel3.util._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.BundleFieldBase
-import xiangshan.cache.{AliasField, PrefetchField}
+import xs.utils.common.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.sram._
 import xs.utils.mbist.MbistPipeline
-import utils._
 import xiangshan._
 import xiangshan.cache._
 import xiangshan.cache.mmu.TlbRequestIO

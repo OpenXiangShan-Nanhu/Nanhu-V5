@@ -20,7 +20,6 @@ import chisel3._
 import chisel3.util._
 import difftest._
 import freechips.rocketchip.tilelink._
-import xiangshan.cache.{AliasKey, DirtyKey, PrefetchKey}
 import org.chipsalliance.cde.config.Parameters
 import xiangshan._
 import xiangshan.mem.trace._
@@ -28,6 +27,8 @@ import xiangshan.mem.LqPtr
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.tl._
+import xs.utils.common._
+
 
 class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   val source = UInt(sourceTypeWidth.W)

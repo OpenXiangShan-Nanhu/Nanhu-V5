@@ -19,13 +19,8 @@ package xiangshan.frontend.icache
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import difftest._
-import freechips.rocketchip.tilelink._
-import utils._
 import xiangshan.cache.mmu._
 import xiangshan.frontend._
-import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
-import xiangshan.XSCoreParamsKey
 import xiangshan.SoftIfetchPrefetchBundle
 import xs.utils._
 import xs.utils.perf._

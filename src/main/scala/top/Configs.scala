@@ -20,7 +20,7 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import xs.utils._
+import xs.utils.common._
 import xs.utils.perf.{DebugOptionsKey, DebugOptions}
 import system._
 import org.chipsalliance.cde.config._
@@ -209,7 +209,7 @@ class MinimalConfig(n: Int = 1) extends Config(
       val core = site(XSTileKey).head
       up(L2ParamKey).copy(
         sets = 128,
-        echoField = Seq(huancun.DirtyField()),
+        echoField = Seq(DirtyField()),
         prefetch = Nil,
         clientCaches = Seq(L1Param(
           "dcache",
@@ -293,11 +293,15 @@ class WithNKBL2
   banks: Int = 1,
   tp: Boolean = true
 ) extends Config((site, here, up) => {
+  case XSTileKey =>
+    up(XSTileKey).map(p => p.copy(
+      L2NBanks = banks
+    ))
   case L2ParamKey =>
     require(inclusive, "L2 must be inclusive")
     val core = site(XSTileKey).head
     val l2sets = n * 1024 / banks / ways / 64
-    up(L2ParamKey).copy(
+    L2Param(
       name = "L2",
       ways = ways,
       sets = l2sets,
@@ -310,7 +314,7 @@ class WithNKBL2
         isKeywordBitsOpt = core.dcacheParametersOpt.get.isKeywordBitsOpt
       )),
       reqField = Seq(utility.ReqSourceField()),
-      echoField = Seq(huancun.DirtyField()),
+      echoField = Seq(DirtyField()),
       prefetch = Seq(BOPParameters()) ++
         (if (tp) Seq(TPParameters()) else Nil) ++
         (if (core.prefetcher.nonEmpty) Seq(PrefetchReceiverParams()) else Nil),
@@ -321,10 +325,6 @@ class WithNKBL2
       elaboratedTopDown = !site(DebugOptionsKey).FPGAPlatform,
       enableCHI = site(EnableCHI)
     )
-  case XSTileKey =>
-    up(XSTileKey).map(p => p.copy(
-      L2NBanks = banks
-    ))
 })
 
 class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1) extends Config((site, here, up) => {

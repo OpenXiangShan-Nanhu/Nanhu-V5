@@ -235,5 +235,7 @@ class NewMDP(implicit p: Parameters) extends XSModule with HasMDPParameters{
 
   XSPerfAccumulate("MDP_allocate_num_greaterThan_16", PopCount(allocated) > 16.U)
   XSPerfAccumulate("MDP_allocate_full", PopCount(allocated) === mdpSize.U)
-
+  for (i <- 0 until io.ldReq.length) {
+    XSPerfAccumulate(s"mdp_req_${i}", io.ldReq(i).valid)
+  }
 }

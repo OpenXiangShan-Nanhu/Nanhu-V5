@@ -33,7 +33,7 @@ class MDPEntry(implicit p: Parameters) extends XSBundle with HasMDPParameters{
 
 
   def confidenceValid(replayQNum: UInt = 0.U) : Bool = {
-    this.confidence / Cat(Fill(counterWidth,1.U)) > replayQNum / LoadQueueReplaySize.U
+    this.confidence > replayQNum / 4.U
   }
 
   def writeConFull() = {

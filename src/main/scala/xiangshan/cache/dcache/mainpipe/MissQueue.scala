@@ -254,6 +254,14 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
 
     // trigger prefetch
     acquire.user.lift(PrefetchKey).foreach(_ := Mux(l2_pf_store_only, req.isFromStore, true.B))
+
+    // for nhl2 user field
+    acquire.user.lift(TLNanhuBusKey).foreach { field =>
+      field.alias.foreach(_ := req.vaddr(13, 12))
+      field.vaddr.foreach(_ := req.vaddr(VAddrBits - 1, blockOffBits))
+      field.pfHint := Mux(l2_pf_store_only, req.isFromStore, true.B)
+    }
+
     // req source
     when(req.isFromLoad) {
       acquire.user.lift(ReqSourceKey).foreach(_ := MemReqSource.CPULoadData.id.U)

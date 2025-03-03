@@ -908,7 +908,7 @@ class DCache()(implicit p: Parameters) extends LazyModule with HasDCacheParamete
       sourceId = IdRange(0, nEntries + 1),
       supportsProbe = TransferSizes(cfg.blockBytes)
     )),
-    requestFields = reqFields,
+    requestFields = reqFields :+ TLNanhuBusField(),
     echoFields = echoFields
   )
 

@@ -179,6 +179,16 @@ object coupledL2 extends millbuild.coupledL2.common.CoupledL2Module with HasChis
 
 }
 
+object openNCB extends SbtModule with HasChisel {
+
+  override def millSourcePath = os.pwd / "openLLC" / "openNCB"
+
+  override def moduleDeps = super.moduleDeps ++ Seq(
+    rocketchip
+  )
+
+}
+
 object openLLC extends millbuild.openLLC.common.OpenLLCModule with HasChisel {
 
   override def millSourcePath = os.pwd / "openLLC"
@@ -188,6 +198,8 @@ object openLLC extends millbuild.openLLC.common.OpenLLCModule with HasChisel {
   def rocketModule: ScalaModule = rocketchip
 
   def utilityModule: ScalaModule = utility
+
+  def openNCBModule: ScalaModule = openNCB
 }
 
 object difftest extends HasChisel {

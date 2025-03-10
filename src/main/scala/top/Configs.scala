@@ -408,6 +408,9 @@ class DefaultConfig(n: Int = 1) extends Config(
     ++ new BaseConfig(n)
 )
 
+class WithCHI extends Config((_, _, _) => {
+  case EnableCHI => true
+})
 
 /** Nanhu V5.3 Config
  *  WithNanhuV5_3Config (resize queue, l2tlb)
@@ -423,17 +426,16 @@ class NanhuV5_3Config(n: Int = 1) extends Config(
     ++ new BaseConfig(n)
 )
 
-class NactConfig(n: Int = 1) extends Config(
-  new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
+class NanhuV5CHIConfig(n: Int = 1) extends Config(
+  new WithCHI
+    ++ new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
     ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8)
-    ++ new WithNKBL1I(64, ways = 8)
-    ++ new WithNKBL1D(64, ways = 8)
+    ++ new WithNKBL1I(32, ways = 4)
+    ++ new WithNKBL1D(32, ways = 4)
     ++ new BaseConfig(n)
 )
 
-class WithCHI extends Config((_, _, _) => {
-  case EnableCHI => true
-})
+
 
 class KunminghuV2Config(n: Int = 1) extends Config(
   new WithCHI

@@ -33,8 +33,9 @@ import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.cache.mmu.TlbRequestIO
 import xiangshan._
 import xs.utils._
-import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey, PerfEvent}
+import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfEvent}
 import xs.utils.tl._
+import utility.PerfCounterOptionsKey
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
   val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))

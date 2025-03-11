@@ -20,7 +20,7 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import xs.utils.common._
+//import xs.utils.common._
 import xs.utils.perf.{DebugOptionsKey, DebugOptions}
 import system._
 import org.chipsalliance.cde.config._
@@ -215,7 +215,6 @@ class MinimalConfig(n: Int = 1) extends Config(
           "dcache",
           isKeywordBitsOpt = core.dcacheParametersOpt.get.isKeywordBitsOpt
         )),
-        hasCMO = core.HasCMO && site(EnableCHI),
       )
     case SoCParamsKey =>
       val tiles = site(XSTileKey)
@@ -318,12 +317,10 @@ class WithNKBL2
       prefetch = Seq(BOPParameters()) ++
         (if (tp) Seq(TPParameters()) else Nil) ++
         (if (core.prefetcher.nonEmpty) Seq(PrefetchReceiverParams()) else Nil),
-      hasCMO = core.HasCMO && site(EnableCHI),
       enablePerf = !site(DebugOptionsKey).FPGAPlatform && site(DebugOptionsKey).EnablePerfDebug,
       enableRollingDB = site(DebugOptionsKey).EnableRollingDB,
       enableMonitor = site(DebugOptionsKey).AlwaysBasicDB,
       elaboratedTopDown = !site(DebugOptionsKey).FPGAPlatform,
-      enableCHI = site(EnableCHI)
     )
 })
 
@@ -408,10 +405,6 @@ class DefaultConfig(n: Int = 1) extends Config(
     ++ new BaseConfig(n)
 )
 
-class WithCHI extends Config((_, _, _) => {
-  case EnableCHI => true
-})
-
 /** Nanhu V5.3 Config
  *  WithNanhuV5_3Config (resize queue, l2tlb)
  *  32KB L1i + 32KB L1d
@@ -427,7 +420,10 @@ class NanhuV5_3Config(n: Int = 1) extends Config(
 )
 
 class NanhuV5CHIConfig(n: Int = 1) extends Config(
-  new WithCHI
+  new Config((site, here, up) => {
+    case xiangshan.EnableCHI => true
+    case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCTop = true, L3CacheParamsOpt = None)
+  })
     ++ new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
     ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8)
     ++ new WithNKBL1I(32, ways = 4)
@@ -438,8 +434,7 @@ class NanhuV5CHIConfig(n: Int = 1) extends Config(
 
 
 class KunminghuV2Config(n: Int = 1) extends Config(
-  new WithCHI
-    ++ new Config((site, here, up) => {
+   new Config((site, here, up) => {
       case SoCParamsKey => up(SoCParamsKey).copy(L3CacheParamsOpt = None) // There will be no L3
     })
     ++ new WithNKBL2(2 * 512, inclusive = true, banks = 4, tp = false)

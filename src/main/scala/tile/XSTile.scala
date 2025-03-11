@@ -77,16 +77,16 @@ class XSTile()(implicit p: Parameters) extends LazyModule
   }
 
   // CMO
-  l2top.inner.l2cache match {
-    case Some(l2) =>
-      l2.cmo_sink_node.foreach(recv => {
-        recv := memBlock.cmo_sender.get
-      })
-      l2.cmo_source_node.foreach(resp => {
-        memBlock.cmo_reciver.get := resp
-      })
-    case None =>
-  }
+//  l2top.inner.l2cache match {
+//    case Some(l2) =>
+//      l2.cmo_sink_node.foreach(recv => {
+//        recv := memBlock.cmo_sender.get
+//      })
+//      l2.cmo_source_node.foreach(resp => {
+//        memBlock.cmo_reciver.get := resp
+//      })
+//    case None =>
+//  }
 
   val core_l3_tpmeta_source_port = l2top.inner.l2cache match {
     case Some(l2) => l2.tpmeta_source_node

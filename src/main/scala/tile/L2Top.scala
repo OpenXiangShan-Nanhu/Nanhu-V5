@@ -35,7 +35,7 @@ import xiangshan._
 import xs.utils._
 import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfEvent}
 import xs.utils.tl._
-import utility.PerfCounterOptionsKey
+import xs.utils.perf._
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
   val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
@@ -110,7 +110,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
         FPGAPlatform = debugOpts.FPGAPlatform//,
         //hasMbist = hasMbist
       )
-      case EnableCHI => p(EnableCHI)
+      case coupledL2.EnableCHI => p(EnableCHI)
       case CHIIssue => p(CHIIssue)
       case BankBitsKey => log2Ceil(coreParams.L2NBanks)
       case MaxHartIdBits => p(MaxHartIdBits)

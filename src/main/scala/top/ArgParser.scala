@@ -165,6 +165,7 @@ object ArgParser {
       case PerfCounterOptionsKey => PerfCounterOptions(
         here(DebugOptionsKey).EnablePerfDebug && !here(DebugOptionsKey).FPGAPlatform,
         here(DebugOptionsKey).EnableRollingDB && !here(DebugOptionsKey).FPGAPlatform,
+        XSPerfLevel.withName("VERBOSE"),
         0
       )
     })

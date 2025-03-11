@@ -424,8 +424,7 @@ class NanhuV5CHIConfig(n: Int = 1) extends Config(
     case xiangshan.EnableCHI => true
     case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCTop = true, L3CacheParamsOpt = None)
   })
-    ++ new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
-    ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8)
+    ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8, tp = false)
     ++ new WithNKBL1I(32, ways = 4)
     ++ new WithNKBL1D(32, ways = 4)
     ++ new BaseConfig(n)

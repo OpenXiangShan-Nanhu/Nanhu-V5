@@ -46,7 +46,7 @@ case object XSTileKey extends Field[Seq[XSCoreParameters]]
 
 case object XSCoreParamsKey extends Field[XSCoreParameters]
 
-case object EnableCHI extends Field[Boolean](false)
+case object EnableCHI extends Field[Boolean](true)
 
 case class XSCoreParameters
 (

@@ -224,7 +224,7 @@ case class XSCoreParameters
   EnableAtCommitMissTrigger: Boolean = true,
   EnableStorePrefetchSMS: Boolean = false,
   EnableStorePrefetchSPB: Boolean = false,
-  HasCMO: Boolean = true,
+  HasCMO: Boolean = false,
   MMUAsidLen: Int = 16, // max is 16, 0 is not supported now
   MMUVmidLen: Int = 14,
   ReSelectLen: Int = 7, // load replay queue replay select counter len
@@ -532,7 +532,7 @@ trait HasXSParameter {
   def PmemHighBounds = PmemRanges.unzip._2
   final val PageOffsetWidth = 12
   def NodeIDWidth = 11 // p(SoCParamsKey).NodeIDWidthList(p(CHIIssue)) // NodeID width among NoC
-  def L3notEmpty = true// p(SoCParamsKey).L3CacheParamsOpt.nonEmpty
+  def L3notEmpty = false// p(SoCParamsKey).L3CacheParamsOpt.nonEmpty
 
   def coreParams = p(XSCoreParamsKey)
   def env = p(DebugOptionsKey)

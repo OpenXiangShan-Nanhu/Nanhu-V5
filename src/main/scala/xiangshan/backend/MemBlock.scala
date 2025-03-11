@@ -234,10 +234,10 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
   val l1d_to_l2_buffer = if (coreParams.dcacheParametersOpt.nonEmpty) LazyModule(new TLBuffer) else null
   val dcache_port = TLNameNode("dcache_client") // to keep dcache-L2 port name
   val l2_pf_sender_opt = coreParams.prefetcher.map(_ =>
-    BundleBridgeSource(() => new PrefetchRecv)
+    BundleBridgeSource(() => new coupledL2.PrefetchRecv)
   )
   val l3_pf_sender_opt = if (L3notEmpty) coreParams.prefetcher.map(_ =>
-    BundleBridgeSource(() => new PrefetchRecv)
+    BundleBridgeSource(() => new huancun.PrefetchRecv)
   ) else None
   val cmo_sender  = if (HasCMO) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None
   val cmo_reciver = if (HasCMO) Some(BundleBridgeSink(Some(() => DecoupledIO(new CMOResp)))) else None

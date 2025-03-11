@@ -40,8 +40,10 @@ import freechips.rocketchip.jtag.JTAGIO
 import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
 import tile.XSTile
-import xs.utils.common._
-import xs.utils.perf.{DebugOptions, DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey}
+//import xs.utils.common._
+import huancun.PrefetchRecv
+import xs.utils.perf.{DebugOptions, DebugOptionsKey, LogUtilsOptionsKey}
+import utility.PerfCounterOptionsKey
 
 abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
   with BindingScope
@@ -343,6 +345,8 @@ object TopMain extends App {
   val enableConstantin = config(DebugOptionsKey).EnableConstantin
   Constantin.init(enableConstantin && !envInFPGA)
   ChiselDB.init(enableChiselDB && !envInFPGA)
+
+  println("config(SoCParamsKey).UseXSNoCTop" + config(SoCParamsKey).UseXSNoCTop)
 
   val soc = if (config(SoCParamsKey).UseXSNoCTop)
     DisableMonitors(p => LazyModule(new XSNoCTop()(p)))(config)

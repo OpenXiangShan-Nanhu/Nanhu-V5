@@ -203,6 +203,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
     if (l2cache.isDefined) {
       val l2 = l2cache.get.module
       io.l2_hint := l2.io.l2_hint
+      l2.io.pfCtrlFromCore := DontCare
       l2.io.debugTopDown.robHeadPaddr := DontCare
       l2.io.hartId := io.hartId.fromTile
       l2.io.debugTopDown.robHeadPaddr := io.debugTopDown.robHeadPaddr

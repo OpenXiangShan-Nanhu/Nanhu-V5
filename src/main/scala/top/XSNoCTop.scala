@@ -22,6 +22,7 @@ import xiangshan._
 import utils._
 import xs.utils._
 import xs.utils.perf._
+import xs.utils.sram._
 import system._
 import device._
 import org.chipsalliance.cde.config._
@@ -92,6 +93,7 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
   core_with_l2.tile.core_reset_sink := core_rst_node
 
   class XSNoCTopImp(wrapper: XSNoCTop) extends LazyRawModuleImp(wrapper) {
+    override def provideImplicitClockToLazyChildren = true
     soc.XSTopPrefix.foreach { prefix =>
       val mod = this.toNamed
       annotate(new ChiselAnnotation {
@@ -115,6 +117,7 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
       val clintTime = Input(ValidIO(UInt(64.W)))
     })
     val dft_reset = IO(Input(new DFTResetSignals()))
+    val dft = IO(Input(core_with_l2.tile.module.dft.get.cloneType))
     // imsic axi4lite io
     val imsic_axi4lite = wrapper.u_imsic_bus_top.module.axi4lite.map(x => IO(chiselTypeOf(x)))
     // imsic tl io
@@ -138,6 +141,7 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
     // input
     dontTouch(io)
 
+    core_with_l2.module.io.traceCoreInterface.fromEncoder := DontCare
     core_with_l2.module.clock := clock
     core_with_l2.module.reset := reset
     core_with_l2.module.noc_reset.foreach(_ := noc_reset.get)
@@ -177,11 +181,8 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
     core_rst_node.out.head._1 := false.B.asAsyncReset
 
     core_with_l2.module.io.debugTopDown.l3MissMatch := false.B
-    core_with_l2.tile.module.dft_reset := dft_reset
-    val dft = if(core_with_l2.tile.module.dft.isDefined) Some(IO(Input(core_with_l2.tile.module.dft.get.cloneType))) else None
-    if(dft.isDefined) {
-      core_with_l2.tile.module.dft.get := dft.get
-    }
+    core_with_l2.module.dft_reset := dft_reset
+    core_with_l2.module.dft := dft
 
 //    withClockAndReset(clock, noc_reset_sync) {
 //      // Modules are reset one by one

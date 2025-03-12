@@ -27,7 +27,8 @@ import org.chipsalliance.cde.config._
 import system.HasSoCParameter
 import xiangshan.HasXSParameter
 import xiangshan.backend.trace.TraceCoreInterface
-import xs.utils.{IntBuffer, ResetGen}
+import xs.utils.sram.SramBroadcastBundle
+import xs.utils.{DFTResetSignals, IntBuffer, ResetGen}
 
 // This module is used for XSNoCTop for async time domain and divide different
 // voltage domain. Everything in this module should be in the core clock domain
@@ -52,6 +53,7 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
   tile.nmi_int_node := IntBuffer(3, cdc = true) := nmiIntNode
   beuIntNode := IntBuffer() := tile.beu_int_source
   class XSTileWrapImp(wrapper: LazyModule) extends LazyRawModuleImp(wrapper) {
+    override def provideImplicitClockToLazyChildren = true
     val clock = IO(Input(Clock()))
     val reset = IO(Input(AsyncReset()))
     val noc_reset = EnableCHIAsyncBridge.map(_ => IO(Input(AsyncReset())))
@@ -77,7 +79,8 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
         case None => Input(ValidIO(UInt(64.W)))
       }
     })
-
+    val dft = IO(Input(new SramBroadcastBundle))
+    val dft_reset = IO(Input(new DFTResetSignals()))
     val reset_sync = withClockAndReset(clock, reset)(ResetGen(2, None))
     val noc_reset_sync = EnableCHIAsyncBridge.map(_ => withClockAndReset(clock, noc_reset.get)(ResetGen(2, None)))
     val soc_reset_sync = withClockAndReset(clock, soc_reset)(ResetGen(2, None))
@@ -92,6 +95,8 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
     tile.module.io.hartId := io.hartId
     tile.module.io.msiInfo := imsicAsync.o.msiInfo
     tile.module.io.reset_vector := io.reset_vector
+    tile.module.dft_reset := dft_reset
+    tile.module.dft.get := dft
     io.cpu_halt := tile.module.io.cpu_halt 
     io.hartIsInReset := tile.module.io.hartIsInReset
     io.traceCoreInterface <> tile.module.io.traceCoreInterface

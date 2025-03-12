@@ -281,6 +281,63 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
   }
 }
 
+class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
+   val io = IO(new Bundle() {
+     val req = Flipped(DecoupledIO(new CMOReq))
+     val req_chanA = DecoupledIO(new TLBundleA(edge.bundle))
+     val resp_chanD = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
+     val resp_to_lsq = DecoupledIO(new CMOResp)
+   })
+ 
+   val s_idle :: s_sreq :: s_wresp :: s_lsq_resp :: Nil = Enum(4)
+   val state = RegInit(s_idle)
+   val state_next = WireInit(state)
+   val req = RegEnable(io.req.bits, io.req.fire)
+ 
+   state := state_next
+ 
+   switch (state) {
+     is(s_idle) {
+       when (io.req.fire) {
+         state_next := s_sreq
+       }
+     }
+     is(s_sreq) {
+       when (io.req_chanA.fire) {
+         state_next := s_wresp
+       }
+     }
+     is(s_wresp) {
+       when (io.resp_chanD.fire) {
+         state_next := s_lsq_resp
+       }
+     }
+     is(s_lsq_resp) {
+       when (io.resp_to_lsq.fire) {
+         state_next := s_idle
+       }
+     }
+   }
+ 
+   io.req.ready := state === s_idle
+ 
+   io.req_chanA.valid := state === s_sreq
+   io.req_chanA.bits := edge.CacheBlockOperation(
+     fromSource = (cfg.nMissEntries + 1).U,
+     toAddress = req.address,
+     lgSize = (log2Up(cfg.blockBytes)).U,
+     opcode = req.opcode
+   )._2
+ 
+   io.resp_chanD.ready := state === s_wresp
+ 
+   io.resp_to_lsq.valid := state === s_lsq_resp
+   io.resp_to_lsq.bits.address := req.address
+ 
+   assert(!(state =/= s_idle && io.req.valid))
+   assert(!(state =/= s_wresp && io.resp_chanD.valid))
+ }
+
 class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DCacheModule 
   with HasCircularQueuePtrHelper
  {
@@ -848,12 +905,17 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     val mq_enq_cancel = Output(Bool())
 
+    // CMO
+    val cmoOpReq  = Flipped(DecoupledIO(new CMOReq))
+    val cmoOpResp = DecoupledIO(new CMOResp)
+    
     val debugTopDown = new DCacheTopDownIO
   })
 
   // 128KBL1: FIXME: provide vaddr for l2
 
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
+  val cmo_unit = Module(new CMOUnit(edge))
   val dataBuffer = Module(new dataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
 
@@ -1059,6 +1121,14 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
         e.io.l2_hint.bits := DontCare
       }
   }
+  cmo_unit.io.req <> io.cmoOpReq
+  io.cmoOpResp <> cmo_unit.io.resp_to_lsq
+  when (io.mem_grant.valid && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
+    cmo_unit.io.resp_chanD <> io.mem_grant
+  } .otherwise {
+    cmo_unit.io.resp_chanD.valid := false.B
+    cmo_unit.io.resp_chanD.bits := DontCare
+  }
 
   io.req.ready := accept
   io.mq_enq_cancel := io.req.bits.cancel
@@ -1081,7 +1151,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   XSPerfAccumulate("acquire_fire_from_pipereg", acquire_from_pipereg.fire)
   XSPerfAccumulate("pipereg_valid", miss_req_pipe_reg.reg_valid())
 
-  val acquire_sources = Seq(acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
+  val acquire_sources = Seq(cmo_unit.io.req_chanA, acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
   TLArbiter.lowest(edge, io.mem_acquire, acquire_sources:_*)
   TLArbiter.lowest(edge, io.mem_finish, entries.map(_.io.mem_finish):_*)
 

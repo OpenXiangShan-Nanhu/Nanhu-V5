@@ -801,6 +801,9 @@ class DCacheIO(implicit p: Parameters) extends DCacheBundle {
   val debugTopDown = new DCacheTopDownIO
   val debugRolling = Flipped(new RobDebugRollingIO)
   val l2_hint = Input(Valid(new L2ToL1Hint()))
+  // CMO
+  val cmoOpReq  = Flipped(DecoupledIO(new CMOReq))
+  val cmoOpResp = DecoupledIO(new CMOResp)
 }
 
 private object ArbiterCtrl {
@@ -1422,6 +1425,8 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
 
   missReqArb.io.out <> missQueue.io.req
   missReadyGen.io.queryMQ <> missQueue.io.queryMQ
+  io.cmoOpReq <> missQueue.io.cmoOpReq
+  io.cmoOpResp <> missQueue.io.cmoOpResp
 
   for (w <- 0 until LoadPipelineWidth) { ldu(w).io.mq_enq_cancel := missQueue.io.mq_enq_cancel }
 

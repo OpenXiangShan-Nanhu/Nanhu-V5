@@ -526,9 +526,15 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := mgu.io.out.illegal
 		}
 		case None =>{
+			val resultFpMask = Wire(UInt(VLEN.W))
+			val fpCmpFuOpType = Seq(VfaluType.vfeq, VfaluType.vflt, VfaluType.vfle)
+			val isCmp = outVecCtrl.fpu.isFpToVecInst && (fpCmpFuOpType.map(_ === outCtrl.fuOpType).reduce(_|_))
+			val isFclass = outVecCtrl.fpu.isFpToVecInst && (outCtrl.fuOpType === VfaluType.vfclass)
+			resultFpMask := Mux(isFclass || isCmp, Fill(16, 1.U(1.W)), Fill(VLEN, 1.U(1.W)))
+
 			io.out.bits.res.data := Mux(notModifyVd, outOldVd,
 				Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResult.asUInt),
-					resultDataUInt))
+					resultDataUInt)) & resultFpMask
 			io.mguEew.foreach(x => x:= outEew)
 			io.out.bits.ctrl.exceptionVec.get(ExceptionNO.illegalInstr) := false.B
 			io.out.bits.ctrl.vpu.foreach(_.vmask := maskToMgu)

@@ -365,7 +365,7 @@ def create_verilog(files, top_module, config, try_prefix=None, ignore_modules=No
     today = date.today()
     directory = f'{top_module}-Release-{config}-{today.strftime("%b-%d-%Y")}'
     success = collection.dump_to_file(top_module, os.path.join(directory, top_module), try_prefix=try_prefix, ignore_modules=ignore_modules)
-    collection.dump_negedge_modules_to_file(top_module, directory, try_prefix=try_prefix)
+    #collection.dump_negedge_modules_to_file(top_module, directory, try_prefix=try_prefix)
     if not success:
         return None, None
     return collection, os.path.realpath(directory)

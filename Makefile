@@ -119,6 +119,7 @@ DEBUG_ARGS   += --enable-difftest
 PLDM_ARGS    += --fpga-platform --enable-difftest
 ifeq ($(RELEASE),1)
 override SIM_ARGS += $(RELEASE_ARGS)
+RELEASE_ARGS += --enable-difftest
 else ifeq ($(PLDM),1)
 override SIM_ARGS += $(PLDM_ARGS)
 else

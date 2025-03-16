@@ -390,7 +390,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // The number of vector load/store units is decoupled with the number of load/store units
   val vlSplit = Seq.fill(VlduCnt)(Module(new VLSplitImp))
   val vsSplit = Seq.fill(VstuCnt)(Module(new VSSplitImp))
-  require(VstuCnt == 1)
   require(StaCnt == 1)
 
   val vlMergeBuffer = Module(new VLMergeBufferImp)
@@ -1053,7 +1052,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
     // vector
     if (i < VstuCnt) {
-      stu.io.vecstin <> vsSplit(i).io.out
+      stu.io.vecstin <> DontCare
       // vsFlowQueue.io.pipeFeedback(i) <> stu.io.vec_feedback_slow // need connect
     } else {
       stu.io.vecstin.valid := false.B

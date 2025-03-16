@@ -1257,4 +1257,6 @@ class IssueQueueVecMemImp(override val wrapper: IssueQueue)(implicit p: Paramete
   }
 
   io.vecLoadIssueResp.foreach(dontTouch(_))
+
+  io <> DontCare
 }

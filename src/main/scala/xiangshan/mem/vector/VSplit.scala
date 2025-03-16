@@ -482,44 +482,47 @@ class VLSplitPipelineImp(implicit p: Parameters) extends VSplitPipeline(isVStore
 
 class VLSplitImp(implicit p: Parameters) extends VLSUModule{
   val io = IO(new VSplitIO(isVStore=false))
-  val splitPipeline = Module(new VLSplitPipelineImp())
-  val splitBuffer = Module(new VLSplitBufferImp())
-  // Split Pipeline
-  splitPipeline.io.in <> io.in
-  splitPipeline.io.redirect <> io.redirect
-  io.toMergeBuffer <> splitPipeline.io.toMergeBuffer
-
-  // skid buffer
-  skidBuffer(splitPipeline.io.out, splitBuffer.io.in,
-    Mux(splitPipeline.io.out.fire,
-      splitPipeline.io.out.bits.uop.robIdx.needFlush(io.redirect),
-      splitBuffer.io.in.bits.uop.robIdx.needFlush(io.redirect)),
-    "VSSplitSkidBuffer")
-
-  // Split Buffer
-  splitBuffer.io.redirect <> io.redirect
-  io.out <> splitBuffer.io.out
+//  val splitPipeline = Module(new VLSplitPipelineImp())
+//  val splitBuffer = Module(new VLSplitBufferImp())
+//  // Split Pipeline
+//  splitPipeline.io.in <> io.in
+//  splitPipeline.io.redirect <> io.redirect
+//  io.toMergeBuffer <> splitPipeline.io.toMergeBuffer
+//
+//  // skid buffer
+//  skidBuffer(splitPipeline.io.out, splitBuffer.io.in,
+//    Mux(splitPipeline.io.out.fire,
+//      splitPipeline.io.out.bits.uop.robIdx.needFlush(io.redirect),
+//      splitBuffer.io.in.bits.uop.robIdx.needFlush(io.redirect)),
+//    "VSSplitSkidBuffer")
+//
+//  // Split Buffer
+//  splitBuffer.io.redirect <> io.redirect
+//  io.out <> splitBuffer.io.out
+  io <> DontCare
 }
 
 class VSSplitImp(implicit p: Parameters) extends VLSUModule{
   val io = IO(new VSplitIO(isVStore=true))
-  val splitPipeline = Module(new VSSplitPipelineImp())
-  val splitBuffer = Module(new VSSplitBufferImp())
-  // Split Pipeline
-  splitPipeline.io.in <> io.in
-  splitPipeline.io.redirect <> io.redirect
-  io.toMergeBuffer <> splitPipeline.io.toMergeBuffer
+//  val splitPipeline = Module(new VSSplitPipelineImp())
+//  val splitBuffer = Module(new VSSplitBufferImp())
+//  // Split Pipeline
+//  splitPipeline.io.in <> io.in
+//  splitPipeline.io.redirect <> io.redirect
+//  io.toMergeBuffer <> splitPipeline.io.toMergeBuffer
+//
+//  // skid buffer
+//  skidBuffer(splitPipeline.io.out, splitBuffer.io.in,
+//    Mux(splitPipeline.io.out.fire,
+//      splitPipeline.io.out.bits.uop.robIdx.needFlush(io.redirect),
+//      splitBuffer.io.in.bits.uop.robIdx.needFlush(io.redirect)),
+//    "VSSplitSkidBuffer")
+//
+//  // Split Buffer
+//  splitBuffer.io.redirect <> io.redirect
+//  io.out <> splitBuffer.io.out
+//  io.vstd.get <> splitBuffer.io.vstd.get
 
-  // skid buffer
-  skidBuffer(splitPipeline.io.out, splitBuffer.io.in,
-    Mux(splitPipeline.io.out.fire,
-      splitPipeline.io.out.bits.uop.robIdx.needFlush(io.redirect),
-      splitBuffer.io.in.bits.uop.robIdx.needFlush(io.redirect)),
-    "VSSplitSkidBuffer")
-
-  // Split Buffer
-  splitBuffer.io.redirect <> io.redirect
-  io.out <> splitBuffer.io.out
-  io.vstd.get <> splitBuffer.io.vstd.get
+  io <> DontCare
 }
 

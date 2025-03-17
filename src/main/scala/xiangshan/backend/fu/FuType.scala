@@ -126,7 +126,6 @@ object FuType extends Enumeration {
   val vecArithOrMem = vecArith ++ vecMem
   val vecAll = vecVSET ++ vecArithOrMem
   val fpOP = fpArithAll ++ Seq(i2f, i2v)
-  val scalaNeedFrm = Seq(i2f)
   val vectorNeedFrm = Seq(vfalu, vfma, vfdiv, vfcvt)
   val sharedVf = Seq(vfalu, vfma, vfcvt)
 
@@ -201,8 +200,6 @@ object FuType extends Enumeration {
   def storeIsAMO(fuType: UInt): Bool = FuTypeOrR(fuType, mou)
 
   def isVppu(fuType: UInt): Bool = FuTypeOrR(fuType, vppu)
-
-  def isScalaNeedFrm(fuType: UInt): Bool = FuTypeOrR(fuType, scalaNeedFrm)
 
   def isVectorNeedFrm(fuType: UInt): Bool = FuTypeOrR(fuType, vectorNeedFrm)
 

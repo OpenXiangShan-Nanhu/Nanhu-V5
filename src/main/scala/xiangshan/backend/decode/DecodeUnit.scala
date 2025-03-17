@@ -860,7 +860,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     ) ||
     io.fromCSR.illegalInst.vsIsOff    && !decodedInst.vpu.fpu.isFpToVecInst && FuType.FuTypeOrR(decodedInst.fuType, FuType.vecAll) ||
     io.fromCSR.illegalInst.wfi        && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr)   && CSROpType.isWfi(decodedInst.fuOpType) ||
-    (decodedInst.needFrm.scalaNeedFrm || FuType.isScalaNeedFrm(decodedInst.fuType)) && (((decodedInst.fpu.rm === 5.U) || (decodedInst.fpu.rm === 6.U)) || ((decodedInst.fpu.rm === 7.U) && io.fromCSR.illegalInst.frm)) ||
+    (decodedInst.needFrm.scalaNeedFrm) && (((decodedInst.fpu.rm === 5.U) || (decodedInst.fpu.rm === 6.U)) || ((decodedInst.fpu.rm === 7.U) && io.fromCSR.illegalInst.frm)) ||
     (decodedInst.needFrm.vectorNeedFrm || FuType.isVectorNeedFrm(decodedInst.fuType)) && io.fromCSR.illegalInst.frm ||
     io.fromCSR.illegalInst.cboZ       && isCboZero ||
     io.fromCSR.illegalInst.cboCF      && (isCboClean || isCboFlush) ||
@@ -999,9 +999,17 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   )
 
   private val scalaNeedFrmInsts = Seq(
-    FADD_S, FSUB_S, FADD_D, FSUB_D,
+    FADD_S, FADD_D,
+    FSUB_S, FSUB_D,
+    FMUL_S, FMUL_D,
+    FDIV_S, FDIV_D,
+    FSQRT_S, FSQRT_D,
+    FMADD_S, FMSUB_S, FNMADD_S, FNMSUB_S,
+    FMADD_D, FMSUB_D, FNMADD_D, FNMSUB_D,
     FCVT_W_S, FCVT_WU_S, FCVT_L_S, FCVT_LU_S,
     FCVT_W_D, FCVT_WU_D, FCVT_L_D, FCVT_LU_D, FCVT_S_D, FCVT_D_S,
+    FCVT_S_W, FCVT_S_WU, FCVT_S_L, FCVT_S_LU,
+    FCVT_D_W, FCVT_D_WU, FCVT_D_L, FCVT_D_LU,
     FROUND_H, FROUND_S, FROUND_D, FROUNDNX_H, FROUNDNX_S, FROUNDNX_D,
   )
 

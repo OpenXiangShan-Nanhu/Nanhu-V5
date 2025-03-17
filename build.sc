@@ -21,9 +21,6 @@ import $file.`rocket-chip`.common
 import $file.`rocket-chip`.dependencies.cde.common
 import $file.`rocket-chip`.dependencies.hardfloat.common
 import $file.`rocket-chip`.dependencies.diplomacy.common
-import $file.huancun.common
-import $file.coupledL2.common
-import $file.openLLC.common
 
 /* for publishVersion */
 import $ivy.`de.tototec::de.tobiasroeser.mill.vcs.version::0.4.0`
@@ -127,16 +124,6 @@ object rocketchip
   }
 }
 
-object utility extends HasChisel {
-
-  override def millSourcePath = os.pwd / "utility"
-
-  override def moduleDeps = super.moduleDeps ++ Seq(
-    rocketchip
-  )
-
-}
-
 object xsutils extends HasChisel {
 
   override def millSourcePath = os.pwd / "xs-utils"
@@ -150,55 +137,11 @@ object xsutils extends HasChisel {
 object yunsuan extends HasChisel {
 
   override def millSourcePath = os.pwd / "YunSuan"
-
-}
-
-object huancun extends millbuild.huancun.common.HuanCunModule with HasChisel {
-
-  override def millSourcePath = os.pwd / "huancun"
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
-
-  def xsutilsModule: ScalaModule = xsutils
-
-}
-
-object coupledL2 extends millbuild.coupledL2.common.CoupledL2Module with HasChisel {
-
-  override def millSourcePath = os.pwd / "coupledL2"
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
-
-  def huancunModule: ScalaModule = huancun
-
-  def xsutilsModule: ScalaModule = xsutils
-
-}
-
-object openLLC extends millbuild.openLLC.common.OpenLLCModule with HasChisel {
-
-  override def millSourcePath = os.pwd / "openLLC"
-
-  def coupledL2Module: ScalaModule = coupledL2
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
 }
 
 object difftest extends HasChisel {
 
   override def millSourcePath = os.pwd / "difftest"
-
-}
-
-object fudian extends HasChisel {
-
-  override def millSourcePath = os.pwd / "fudian"
 
 }
 
@@ -220,16 +163,6 @@ trait XiangShanModule extends ScalaModule {
 
   def difftestModule: ScalaModule
 
-  def huancunModule: ScalaModule
-
-  def coupledL2Module: ScalaModule
-
-  def openLLCModule: ScalaModule
-
-  def fudianModule: ScalaModule
-
-  def utilityModule: ScalaModule
-
   def xsutilsModule: ScalaModule
 
   def yunsuanModule: ScalaModule
@@ -239,12 +172,7 @@ trait XiangShanModule extends ScalaModule {
   override def moduleDeps = super.moduleDeps ++ Seq(
     rocketModule,
     difftestModule,
-    huancunModule,
-    coupledL2Module,
-    openLLCModule,
     yunsuanModule,
-    fudianModule,
-    utilityModule,
     xsutilsModule,
     macrosModule,
   )
@@ -263,16 +191,6 @@ object xiangshan extends XiangShanModule with HasChisel {
 
   def difftestModule = difftest
 
-  def huancunModule = huancun
-
-  def coupledL2Module = coupledL2
-
-  def openLLCModule = openLLC
-
-  def fudianModule = fudian
-
-  def utilityModule = utility
-
   def xsutilsModule = xsutils
 
   def yunsuanModule = yunsuan
@@ -283,6 +201,7 @@ object xiangshan extends XiangShanModule with HasChisel {
 
   override def ivyDeps = super.ivyDeps() ++ Agg(
     defaultVersions("chiseltest"),
+    ivy"org.chipsalliance:llvm-firtool:1.62.1"
   )
 
   override def scalacOptions = super.scalacOptions() ++ Agg("-deprecation", "-feature")
@@ -332,14 +251,6 @@ object xiangshan extends XiangShanModule with HasChisel {
     difftest_srcs.foreach { f =>
       os.copy(pwd / "difftest" / f, destDir / "difftest-src" / f, createFolders = true)
     }
-
-    // package ready-to-run binary as resources
-    val ready_to_run = Seq("riscv64-nemu-interpreter-dual-so",
-                           "riscv64-nemu-interpreter-so",
-                           "riscv64-spike-so")
-    ready_to_run.foreach { f =>
-      os.copy(pwd / "ready-to-run" / f, destDir / "ready-to-run" / f, createFolders = true)
-    }
   }
 
   override def resources = T.sources {
@@ -348,20 +259,5 @@ object xiangshan extends XiangShanModule with HasChisel {
     os.write(T.dest / "gitModules", os.proc("git", "submodule", "status").call().out.text())
     packDifftestResources(T.dest)
     super.resources() ++ Seq(PathRef(T.dest))
-  }
-
-  object test extends SbtModuleTests with TestModule.ScalaTest {
-    override def forkArgs = Seq("-Xmx40G", "-Xss256m")
-
-    override def ivyDeps = super.ivyDeps() ++ Agg(
-      defaultVersions("chiseltest")
-    )
-
-    override def scalacOptions = super.scalacOptions() ++ Agg("-deprecation", "-feature")
-
-    val resourcesPATH = os.pwd.toString() + "/src/main/resources"
-    val envPATH = sys.env("PATH") + ":" + resourcesPATH
-
-    override def forkEnv = Map("PATH" -> envPATH)
   }
 }

@@ -23,7 +23,7 @@ import xiangshan._
 import utils._
 import xs.utils._
 import xiangshan.ExceptionNO._
-import xs.utils.perf.{HasPerfEvents, HasPerfLogging, XSDebug, XSError}
+import xs.utils.perf.{HasPerfEvents, XSDebug, XSError}
 import xs.utils.perf._
 
 class IBufPtr(implicit p: Parameters) extends CircularQueuePtr[IBufPtr](

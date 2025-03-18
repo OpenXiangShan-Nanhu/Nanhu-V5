@@ -333,20 +333,20 @@ case class XSCoreParameters
   /**
    * the minimum element length of vector elements
    */
-  val minVecElen: Int = 8
+  lazy val minVecElen: Int = 8
 
   /**
    * the maximum number of elements in vector register
    */
-  val maxElemPerVreg: Int = VLEN / minVecElen
+  lazy val maxElemPerVreg: Int = VLEN / minVecElen
 
-  val allHistLens = SCHistLens ++ ITTageTableInfos.map(_._2) ++ TageTableInfos.map(_._2) :+ UbtbGHRLength
-  val HistoryLength = allHistLens.max + numBr * FtqSize + 9 // 256 for the predictor configs now
+  lazy val allHistLens = SCHistLens ++ ITTageTableInfos.map(_._2) ++ TageTableInfos.map(_._2) :+ UbtbGHRLength
+  lazy val HistoryLength = allHistLens.max + numBr * FtqSize + 9 // 256 for the predictor configs now
 
-  val RegCacheSize = IntRegCacheSize + MemRegCacheSize
-  val RegCacheIdxWidth = log2Up(RegCacheSize)
+  lazy val RegCacheSize = IntRegCacheSize + MemRegCacheSize
+  lazy val RegCacheIdxWidth = log2Up(RegCacheSize)
 
-  val intSchdParams = {
+  lazy val intSchdParams = {
     implicit val schdType: SchedulerType = IntScheduler()
     SchdBlockParams(Seq(
       IssueBlockParams(Seq(
@@ -394,7 +394,7 @@ case class XSCoreParameters
     )
   }
 
-  val vfSchdParams = {
+  lazy val vfSchdParams = {
     implicit val schdType: SchedulerType = VfScheduler()
     SchdBlockParams(Seq(
       IssueBlockParams(Seq(
@@ -439,7 +439,7 @@ case class XSCoreParameters
     )
   }
 
-  val memSchdParams = {
+  lazy val memSchdParams = {
     implicit val schdType: SchedulerType = MemScheduler()
     val rfDataWidth = 64
 
@@ -487,26 +487,31 @@ case class XSCoreParameters
 
   def fakeIntPreg = FakeIntPregParams(intPreg.numEntries, intPreg.numRead, intPreg.numWrite)
 
-  val backendParams: BackendParams = backend.BackendParams(
-    Map(
-      IntScheduler() -> intSchdParams,
-      // FpScheduler() -> fpSchdParams,
-      VfScheduler() -> vfSchdParams,
-      MemScheduler() -> memSchdParams,
-    ),
-    Seq(
-      intPreg,
-      vfPreg,
-      v0Preg,
-      vlPreg,
-      fakeIntPreg
-    ),
-    iqWakeUpParams,
-  )
+  lazy val backendParams: BackendParams = {
+    val res = backend.BackendParams(
+      Map(
+        IntScheduler() -> intSchdParams,
+        // FpScheduler() -> fpSchdParams,
+        VfScheduler() -> vfSchdParams,
+        MemScheduler() -> memSchdParams,
+      ),
+      Seq(
+        intPreg,
+        vfPreg,
+        v0Preg,
+        vlPreg,
+        fakeIntPreg
+      ),
+      iqWakeUpParams,
+    )
+    require(LoadPipelineWidth == res.LdExuCnt, "LoadPipelineWidth must be equal exuParameters.LduCnt!")
+    require(StorePipelineWidth == res.StaCnt, "StorePipelineWidth must be equal exuParameters.StuCnt!")
+    res
+  }
 
   // Parameters for trace extension.
   // Trace parameters is useful for XSTOP.
-  val traceParams: TraceParams = new TraceParams(
+  lazy val traceParams: TraceParams = new TraceParams(
     HasEncoder     = true,
     TraceEnable    = true,
     TraceGroupNum  = 4,
@@ -753,8 +758,7 @@ trait HasXSParameter {
   def EnableStorePrefetchSMS = coreParams.EnableStorePrefetchSMS
   def EnableStorePrefetchSPB = coreParams.EnableStorePrefetchSPB
   def HasCMO = coreParams.HasCMO && p(EnableCHI)
-  require(LoadPipelineWidth == backendParams.LdExuCnt, "LoadPipelineWidth must be equal exuParameters.LduCnt!")
-  require(StorePipelineWidth == backendParams.StaCnt, "StorePipelineWidth must be equal exuParameters.StuCnt!")
+
   def Enable3Load3Store = (LoadPipelineWidth == 3 && StorePipelineWidth == 3)
   def asidLen = coreParams.MMUAsidLen
   def vmidLen = coreParams.MMUVmidLen

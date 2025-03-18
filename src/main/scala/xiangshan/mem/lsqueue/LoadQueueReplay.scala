@@ -217,6 +217,12 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     // rob: uncache commit
     val rob = Flipped(new RobLsqIO)
 
+    // read paddr from virtualqueue
+    val mmioLqIdx = new Bundle {
+      val lqIdx = Valid(Output(new LqPtr))
+      val paddr = Input(UInt(PAddrBits.W))
+    }
+
     // uncache io
     val uncache = new UncacheWordIO
 
@@ -242,9 +248,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val uop = Reg(Vec(LoadQueueReplaySize, new DynInst))
   val vecReplay = Reg(Vec(LoadQueueReplaySize, new VecReplayInfo))
   val addrModule = Module(new LqVAddrModule(
-    gen = UInt((VAddrBits.max(PAddrBits)).W),
+    gen = UInt(VAddrBits.W),
     numEntries = LoadQueueReplaySize,
-    numRead = LoadPipelineWidth + 1,  // last is for mmio read
+    numRead = LoadPipelineWidth,
     numWrite = LoadPipelineWidth,
     numWBank = LoadQueueNWriteBanks,
     numWDelay = 1,
@@ -287,6 +293,11 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val dataInLastBeatReg = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   //  LoadQueueReplay deallocate
   val freeMaskVec = Wire(Vec(LoadQueueReplaySize, Bool()))
+    // idx to lookup paddr in virtualQueue
+  val MMIOEntryinReplayQ_s0 = Wire(Valid(new Bundle() {
+    val lqIdx     =   new LqPtr                    // idx to lookup paddr in virtualQueue
+    val entryIdx  =   UInt(log2Up(LoadQueueReplaySize).W) // idx to lookup uop
+  }))
 
   /**
    * Enqueue
@@ -487,6 +498,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   s0_oldestSel := VecInit((0 until LoadPipelineWidth).map(rport => {
     // select enqueue earlest inst
     val ageOldest = AgeDetector(LoadQueueReplaySize / LoadPipelineWidth, s0_remEnqSelVec(rport), s0_remFreeSelVec(rport), s0_remPriorityReplaySelVec(rport))
+    dontTouch(ageOldest)
     assert(!(ageOldest.valid && PopCount(ageOldest.bits) > 1.U), "oldest index must be one-hot!")
     val ageOldestValid = ageOldest.valid
     val ageOldestIndexOH = ageOldest.bits
@@ -510,6 +522,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     oldest.bits := oldestBitsVec.asUInt
     oldest
   }))
+  dontTouch(s0_oldestSel)
 
   // stage2: send replay request to load unit
   // replay cold down
@@ -547,8 +560,13 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     s2_oldestSel(i).valid := RegEnable(Mux(s1_can_go(i), s1_oldestSelV, false.B), false.B, (s1_can_go(i) || replay_req(i).fire))
     s2_oldestSel(i).bits  := RegEnable(s1_oldestSel(i).bits, s1_can_go(i))
 
-    addrModule.io.ren(i) := s1_oldestSel(i).valid && s1_can_go(i)
-    addrModule.io.raddr(i) := s1_oldestSel(i).bits
+    if(i == 0){
+      addrModule.io.ren(i) := (s1_oldestSel(i).valid && s1_can_go(i)) | MMIOEntryinReplayQ_s0.valid 
+      addrModule.io.raddr(i) := s1_oldestSel(i).bits | MMIOEntryinReplayQ_s0.bits.entryIdx
+    } else {
+      addrModule.io.ren(i) := s1_oldestSel(i).valid && s1_can_go(i)
+      addrModule.io.raddr(i) := s1_oldestSel(i).bits
+    }
   }
 
   for (i <- 0 until LoadPipelineWidth) {
@@ -681,7 +699,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
       addrModule.io.wen(w)   := true.B
       addrModule.io.waddr(w) := enqIndex
-      addrModule.io.wdata(w) := Mux(!enq.bits.mmio, enq.bits.vaddr, enq.bits.paddr)
+      addrModule.io.wdata(w) := enq.bits.vaddr
       debug_vaddr(enqIndex)   := enq.bits.vaddr
       debug_paddr(enqIndex)   := enq.bits.paddr
       /**
@@ -788,7 +806,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   // s0: select head mmio
   // robhead is MMIO instr
-  val MMIOEntryinReplayQ_s0 = Wire(Valid(UInt(log2Up(LoadQueueReplaySize).W)))  // idx to lookup paddr in addrmodule
   val robheadMMIOOH = Wire(Vec(LoadQueueReplaySize, Bool()))
   (0 until LoadQueueReplaySize).map(i => {
     robheadMMIOOH(i) := allocated(i) && isMMIO(i) && !scheduled(i) && io.rob.pendingUncacheld && (io.rob.pendingPtr === uop(i).robIdx)
@@ -798,18 +815,20 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   }
 
   MMIOEntryinReplayQ_s0.valid := robheadMMIOOH.reduce(_|_)
-  MMIOEntryinReplayQ_s0.bits := OHToUInt(robheadMMIOOH)
-  addrModule.io.ren.last := MMIOEntryinReplayQ_s0.valid   // last port is for mmio
-  addrModule.io.raddr.last := MMIOEntryinReplayQ_s0.bits  // next cycle can get paddr
-  
+  MMIOEntryinReplayQ_s0.bits.entryIdx :=  OHToUInt(robheadMMIOOH)
+  MMIOEntryinReplayQ_s0.bits.lqIdx := uop(MMIOEntryinReplayQ_s0.bits.entryIdx).lqIdx
+  // send lqidx to virtualqueue to read paddr
+  io.mmioLqIdx.lqIdx.valid := MMIOEntryinReplayQ_s0.valid
+  io.mmioLqIdx.lqIdx.bits := MMIOEntryinReplayQ_s0.bits.lqIdx
+
   // s1: enq uncacheBuffer
   val MMIOReqinReplayQ = Wire(Valid(new LqWriteBundle))
   MMIOReqinReplayQ.valid := RegNext(MMIOEntryinReplayQ_s0.valid)
   MMIOReqinReplayQ.bits := DontCare
-  MMIOReqinReplayQ.bits.paddr := addrModule.io.rdata.last
-  MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ_s0.bits,MMIOEntryinReplayQ_s0.valid))
-  // TODO:
-  MMIOReqinReplayQ.bits.mask := genVWmask(addrModule.io.rdata.last, uop(RegEnable(MMIOEntryinReplayQ_s0.bits,MMIOEntryinReplayQ_s0.valid)).fuOpType(1,0))
+  MMIOReqinReplayQ.bits.vaddr := addrModule.io.rdata.head  // need provide vaddr to REG mtval when bus return nderr
+  MMIOReqinReplayQ.bits.paddr := io.mmioLqIdx.paddr   // get paddr a cycle after send lqidx
+  MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid))
+  MMIOReqinReplayQ.bits.mask := genVWmask(io.mmioLqIdx.paddr, uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid)).fuOpType(1,0))
 
   val mmioEnqUncacheBufferValid = mmioFromLdu_s0_canissue ++ Seq(MMIOReqinReplayQ.valid) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmioEnqUncacheBufferBits = VecInit(io.enq.map(_.bits)) ++ Seq(MMIOReqinReplayQ.bits) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
@@ -841,13 +860,13 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     uncacheBuffer.io.req.bits := Mux1H(mmiovalidMaskOH, mmioEnqUncacheBufferBits)
   }
 
-  val needFreeIdx = RegInit(0.U(MMIOEntryinReplayQ_s0.bits.getWidth.W))
+  val needFreeIdx = RegInit(0.U(MMIOEntryinReplayQ_s0.bits.entryIdx.getWidth.W))
   val needFree = RegInit(false.B)
   when( uncacheBuffer.io.req.fire ) {
     when ( MMIOEntryinReplayQ_s0.valid ) {
-      scheduled(MMIOEntryinReplayQ_s0.bits) := true.B
+      scheduled(MMIOEntryinReplayQ_s0.bits.entryIdx) := true.B
       needFree := true.B
-      needFreeIdx := MMIOEntryinReplayQ_s0.bits
+      needFreeIdx := MMIOEntryinReplayQ_s0.bits.entryIdx
     }
   }
 

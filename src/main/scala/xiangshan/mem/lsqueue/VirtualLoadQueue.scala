@@ -59,6 +59,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     // violation query
     val query = Vec(LoadPipelineWidth, Flipped(new LoadNukeQueryIO))
 
+    // replayq_mmio instr need read paddr from vqueue
+    val mmioLqIdx = new Bundle {
+      val lqIdx = Flipped(Valid(Output(new LqPtr)))
+      val paddr = Flipped(Input(UInt(PAddrBits.W)))
+    }
   })
 
   println("VirtualLoadQueue: size: " + VirtualLoadQueueSize)
@@ -111,6 +116,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   // st0 ld1 ld0 : ld1 src is totally from st0 forward, so if release occurs at ld0 is pseudo-RAR,
   // because even if the cache line was modified, st0's result is not changed, so don't need to report RAR vio;
   val isFromDCache = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(true.B)))
+
+  // LoadQueueReplay read MMIO instr's paddr when robhead is mmio
+  paddrModule.io.ren(0) := io.mmioLqIdx.lqIdx.valid
+  paddrModule.io.raddr(0) := io.mmioLqIdx.lqIdx.bits.value
+  io.mmioLqIdx.paddr := paddrModule.io.rdata(0)
 
   /**
    * RAR violation check logic needs to 2 extra regfile

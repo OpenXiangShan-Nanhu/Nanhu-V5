@@ -357,6 +357,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   loadQueueReplay.io.sqEmpty          <> io.sq.sqEmpty
   loadQueueReplay.io.lqFull           <> io.lq_rep_full
   loadQueueReplay.io.ldWbPtr          <> virtualLoadQueue.io.ldWbPtr
+  loadQueueReplay.io.mmioLqIdx        <> virtualLoadQueue.io.mmioLqIdx
 
   // loadQueueReplay.io.rarFull          <> virtualLoadQueue.io.lqFull
   loadQueueReplay.io.rawFull          <> loadQueueRAW.io.lqFull

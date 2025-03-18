@@ -1045,6 +1045,11 @@ object Bundles {
     val flag = UInt(1.W)
   }
 
+  // class MMIOLqIdxIO(implicit p: Parameters) extends XSBundle {
+  //   val lqIdx = Output(new LqPtr)
+  //   val paddr = Input(UInt(PAddrBits.W))
+  // }
+
   object LoadShouldCancel {
     def apply(loadDependency: Option[Seq[UInt]], ldCancel: Seq[LoadCancelIO]): Bool = {
       val ld1Cancel = loadDependency.map(_.zip(ldCancel.map(_.ld1Cancel)).map { case (dep, cancel) => cancel && dep(0)}.reduce(_ || _))

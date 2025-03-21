@@ -71,7 +71,7 @@ class TrapInstMod(implicit p: Parameters) extends Module with HasCircularQueuePt
     ) {
       trapInstInfo := newCSRInst
     }
-  }.elsewhen(newTrapInstInfo.valid && !valid) {
+  }.elsewhen(newTrapInstInfo.valid && !valid && !flush.valid) {
     valid := true.B
     trapInstInfo := newTrapInstInfo.bits
     trapInstInfo.instr := Mux(

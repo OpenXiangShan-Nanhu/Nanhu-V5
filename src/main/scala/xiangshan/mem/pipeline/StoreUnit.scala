@@ -487,9 +487,13 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s3_vecFeedback = RegEnable(s2_vecFeedback, s2_fire)
 
   // store misalign will not writeback to rob now
-  when (s2_fire) { s3_valid := (!s2_mmio || s2_exception) && !s2_out.isHWPrefetch && !s2_mis_align && !s2_frm_mabuf }
-  .elsewhen (s3_fire) { s3_valid := false.B }
-  .elsewhen (s3_kill) { s3_valid := false.B }
+  when (s2_fire) {
+    s3_valid := (!s2_mmio || s2_exception) && !s2_out.isHWPrefetch
+  } .elsewhen (s3_fire) {
+      s3_valid := false.B
+  } .elsewhen (s3_kill) {
+    s3_valid := false.B
+  }
 
   // wb: writeback
   val SelectGroupSize   = RollbackGroupSize

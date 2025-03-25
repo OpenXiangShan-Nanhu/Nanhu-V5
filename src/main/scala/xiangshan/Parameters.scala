@@ -217,8 +217,6 @@ case class XSCoreParameters
   EnableCacheErrorAfterReset: Boolean = true,
   EnableAccurateLoadError: Boolean = false,
   EnableUncacheWriteOutstanding: Boolean = false,
-  EnableHardwareStoreMisalign: Boolean = true,
-  EnableHardwareLoadMisalign: Boolean = true,
   EnableStorePrefetchAtIssue: Boolean = false,
   EnableStorePrefetchAtCommit: Boolean = false,
   EnableAtCommitMissTrigger: Boolean = true,
@@ -750,8 +748,6 @@ trait HasXSParameter {
   def EnableCacheErrorAfterReset = coreParams.EnableCacheErrorAfterReset
   def EnableAccurateLoadError = coreParams.EnableAccurateLoadError
   def EnableUncacheWriteOutstanding = coreParams.EnableUncacheWriteOutstanding
-  def EnableHardwareStoreMisalign = coreParams.EnableHardwareStoreMisalign
-  def EnableHardwareLoadMisalign = coreParams.EnableHardwareLoadMisalign
   def EnableStorePrefetchAtIssue = coreParams.EnableStorePrefetchAtIssue
   def EnableStorePrefetchAtCommit = coreParams.EnableStorePrefetchAtCommit
   def EnableAtCommitMissTrigger = coreParams.EnableAtCommitMissTrigger

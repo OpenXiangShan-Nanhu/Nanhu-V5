@@ -1112,8 +1112,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   }
   val s2_exception = s2_vecActive &&
                     (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_exception_vec, LduCfg).asUInt.orR)
-  val s2_mis_align = s2_valid && GatedValidRegNext(io.csrCtrl.hd_misalign_ld_enable) && !s2_in.isvec &&
-                     s2_exception_vec(loadAddrMisaligned) && !s2_exception_vec(breakPoint) && !s2_trigger_debug_mode
+//  val s2_mis_align = s2_valid && GatedValidRegNext(io.csrCtrl.hd_misalign_ld_enable) && !s2_in.isvec &&
+//                     s2_exception_vec(loadAddrMisaligned) && !s2_exception_vec(breakPoint) && !s2_trigger_debug_mode
   val (s2_fwd_frm_d_chan, s2_fwd_data_frm_d_chan) = io.tl_d_channel.forward(s1_valid && s1_out.forward_tlDchannel, s1_out.mshrid, s1_out.paddr)
   val (s2_fwd_data_valid, s2_fwd_frm_mshr, s2_fwd_data_frm_mshr) = io.forward_mshr.forward()
   val s2_fwd_frm_d_chan_or_mshr = s2_fwd_data_valid && (s2_fwd_frm_d_chan || s2_fwd_frm_mshr)
@@ -1212,7 +1212,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val s2_data_fwded = s2_dcache_miss && (s2_full_fwd || s2_cache_tag_error)
 
   val s2_vp_match_fail = (io.lsq.forward.matchInvalid || io.sbuffer.matchInvalid) && s2_troublem
-  val s2_safe_wakeup = !s2_out.rep_info.need_rep && !s2_mmio && !s2_mis_align && !s2_exception // don't need to replay and is not a mmio and misalign
+  val s2_safe_wakeup = !s2_out.rep_info.need_rep && !s2_mmio && !s2_exception // don't need to replay and is not a mmio and misalign
   val s2_safe_writeback = s2_exception || s2_safe_wakeup || s2_vp_match_fail
 
   // ld-ld violation require
@@ -1388,7 +1388,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val s3_safe_wakeup  = RegEnable(s2_safe_wakeup, s2_fire)
   val s3_safe_writeback = RegEnable(s2_safe_writeback, s2_fire) || s3_dly_ld_err
   val s3_exception = RegEnable(s2_exception, s2_fire)
-  val s3_mis_align = RegEnable(s2_mis_align, s2_fire)
+//  val s3_mis_align = RegEnable(s2_mis_align, s2_fire)
   val s3_trigger_debug_mode = RegEnable(s2_trigger_debug_mode, false.B, s2_fire)
   // TODO: Fix vector load merge buffer nack
   val s3_vec_mb_nack  = Wire(Bool())
@@ -1603,7 +1603,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.ldout.bits        := s3_ld_wb_meta
   io.ldout.bits.data   := Mux(s3_valid, s3_ld_data_frm_cache, s3_ld_data_frm_uncache)
   io.ldout.valid       := (s3_mmio.valid ||
-                          (s3_out.valid && !s3_vecout.isvec && !s3_mis_align && !s3_frm_mabuf))
+                          (s3_out.valid && !s3_vecout.isvec))
   io.ldout.bits.uop.exceptionVec := ExceptionNO.selectByFu(s3_ld_wb_meta.uop.exceptionVec, LduCfg)
   io.ldout.bits.isFromLoadUnit := true.B
 

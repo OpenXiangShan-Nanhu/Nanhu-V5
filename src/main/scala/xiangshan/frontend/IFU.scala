@@ -332,8 +332,8 @@ class NewIFU(implicit p: Parameters) extends XSModule
     val f1_pc_diff          = VecInit((0 until PredictWidth).map(i => f1_ftq_req.startAddr + (i * 2).U))
     val f1_half_snpc_diff   = VecInit((0 until PredictWidth).map(i => f1_ftq_req.startAddr + ((i+2) * 2).U))
 
-    XSError(f1_pc.zip(f1_pc_diff).map{ case (a,b) => a.asUInt =/= b.asUInt }.reduce(_||_), "f1_half_snpc adder cut fail")
-    XSError(f1_half_snpc.zip(f1_half_snpc_diff).map{ case (a,b) => a.asUInt =/= b.asUInt }.reduce(_||_),  "f1_half_snpc adder cut fail")
+    XSError(f1_valid && f1_pc.zip(f1_pc_diff).map{ case (a,b) => a.asUInt =/= b.asUInt }.reduce(_||_), "f1_half_snpc adder cut fail")
+    XSError(f1_valid && f1_half_snpc.zip(f1_half_snpc_diff).map{ case (a,b) => a.asUInt =/= b.asUInt }.reduce(_||_),  "f1_half_snpc adder cut fail")
   }
 
   val f1_cut_ptr            = if(HasCExtension)  VecInit((0 until PredictWidth + 1).map(i =>  Cat(0.U(2.W), f1_ftq_req.startAddr(blockOffBits-1, 1)) + i.U ))

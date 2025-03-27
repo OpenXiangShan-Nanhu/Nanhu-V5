@@ -51,7 +51,7 @@ class StandAloneCLINT (
       val time = Output(ValidIO(UInt(64.W)))
     })
     outer.clint.module.io.rtcTick := io.rtcTick
-    io.time := 0.U.asTypeOf(io.time) //outer.clint.module.io.time
+    io.time := outer.clint.module.io.time
   }
 
   override lazy val module = new StandAloneCLINTImp(this)

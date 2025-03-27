@@ -459,7 +459,7 @@ class MemMisc()(implicit p: Parameters) extends BaseSoC
     val pll_ctrl_regs = Seq.fill(6){ RegInit(0.U(32.W)) }
     val pll_lock = RegNext(next = pll0_lock, init = false.B)
 
-    clintTime := 0.U.asTypeOf(clintTime)//clint.module.io.time
+    clintTime := clint.module.io.time
 
     pll0_ctrl <> VecInit(pll_ctrl_regs)
 

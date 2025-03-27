@@ -357,9 +357,10 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   }
 
   val lsq     = Module(new LsqWrapper)
-  val mdp = Module(new NewMDP)
+  val mdp = Module(new MiniMDPWrapper)
   mdp.io.reUpdate.valid := io.memPredUpdate.valid
   mdp.io.reUpdate.bits.stIdx := io.memPredUpdate.stIdx
+  mdp.io.reUpdate.bits.distance := DontCare
   mdp.io.reUpdate.bits.ld_stIdx := io.memPredUpdate.ld_stIdx
   mdp.io.reUpdate.bits.ldFoldPc := io.memPredUpdate.ldFoldPc
   mdp.io.reUpdate.bits.stFoldPc := io.memPredUpdate.stFoldPc

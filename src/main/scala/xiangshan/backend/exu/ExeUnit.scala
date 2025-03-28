@@ -225,11 +225,11 @@ class ExeUnitImp(
       sink.bits.ctrl.rfWen       .foreach(x => x := source.bits.rfWen.get)
       sink.bits.ctrl.fpWen       .foreach(x => x := source.bits.fpWen.get)
       sink.bits.ctrl.vecWen      .foreach(x => x := source.bits.vecWen.get)
-      sink.bits.ctrl.vfWenH.foreach(x => x := source.bits.vfWenH.get)
-      sink.bits.ctrl.vfWenL.foreach(x => x := source.bits.vfWenL.get)
+      sink.bits.ctrl.vfWenH.foreach(x => x := true.B)
+      sink.bits.ctrl.vfWenL.foreach(x => x := false.B)
       sink.bits.ctrl.v0Wen       .foreach(x => x := source.bits.v0Wen.get)
-      sink.bits.ctrl.v0WenH.foreach(x => x := source.bits.v0WenH.get)
-      sink.bits.ctrl.v0WenL.foreach(x => x := source.bits.v0WenL.get)
+      sink.bits.ctrl.v0WenH.foreach(x => x := true.B)
+      sink.bits.ctrl.v0WenL.foreach(x => x := false.B)
       sink.bits.ctrl.vlWen       .foreach(x => x := source.bits.vlWen.get)
       sink.bits.ctrl.flushPipe   .foreach(x => x := source.bits.flushPipe.get)
       sink.bits.ctrl.preDecode   .foreach(x => x := source.bits.preDecode.get)
@@ -238,9 +238,6 @@ class ExeUnitImp(
       sink.bits.ctrl.predictInfo .foreach(x => x := source.bits.predictInfo.get)
       sink.bits.ctrl.fpu         .foreach(x => x := source.bits.fpu.get)
       sink.bits.ctrl.vpu         .foreach(x => x := source.bits.vpu.get)
-      // sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFpToVecInst := 0.U)
-      // sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFP32Instr   := 0.U)
-      // sink.bits.ctrl.vpu         .foreach(x => x.fpu.isFP64Instr   := 0.U)
       sink.bits.perfDebugInfo    := source.bits.perfDebugInfo
   }
 

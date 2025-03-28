@@ -19,12 +19,11 @@ import xiangshan.backend.fu.vector.Bundles.VSew
 import chisel3.util.experimental.decode.TruthTable
 import freechips.rocketchip.util.SeqToAugmentedSeq
 
-class SharedVfWbMgu(params: ExeUnitParams, name: String)(implicit p: Parameters) extends XSModule {
+class SharedVfWbMgu(params: ExeUnitParams)(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle {
     val ins = Vec(2, Flipped(DecoupledIO(new ExuOutput(params))))
     val outs = Vec(2, DecoupledIO(new ExuOutput(params)))
   })
-  override val desiredName = name
 
   val vpuCtrl = io.ins.head.bits.shareVpuCtrl.get
   val sharedNarrow = io.ins.head.valid && !vpuCtrl.fpu.isFpToVecInst && vpuCtrl.isNarrow

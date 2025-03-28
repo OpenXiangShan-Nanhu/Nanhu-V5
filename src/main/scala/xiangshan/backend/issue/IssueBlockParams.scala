@@ -27,7 +27,7 @@ case class IssueBlockParams(
   VLEN                 : Int = 128,
   // calculate in scheduler
   var idxInSchBlk      : Int = 0,
-  val sharedVf         : Boolean = false
+  val sharedVf         : Boolean = false,
 )(implicit val schdType: SchedulerType) {
   var backendParam: BackendParams = null
 

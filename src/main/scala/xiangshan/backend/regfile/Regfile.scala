@@ -23,6 +23,7 @@ import xiangshan._
 import xiangshan.backend.datapath.DataConfig._
 import xiangshan.backend.exu.ExeUnitParams
 import freechips.rocketchip.util.SeqToAugmentedSeq
+import xiangshan.backend.issue.IssueBlockParams
 
 class RfReadPort(dataWidth: Int, addrWidth: Int) extends Bundle {
   val addr = Input(UInt(addrWidth.W))
@@ -35,7 +36,7 @@ class RfWritePort(dataWidth: Int, addrWidth: Int) extends Bundle {
   val data = Input(UInt(dataWidth.W))
 }
 
-class RfReadPortWithConfig(addrWidth: Int) extends Bundle {
+class RfReadPortWithConfig(addrWidth: Int, val rfReadDataCfg: DataConfig) extends Bundle {
   val addr: UInt = Input(UInt(addrWidth.W))
   val srcType: UInt = Input(UInt(3.W))
 }

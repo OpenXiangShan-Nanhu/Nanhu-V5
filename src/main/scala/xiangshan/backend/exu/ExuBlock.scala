@@ -19,9 +19,9 @@ import scala.annotation.meta.param
 class ExuBlock(params: SchdBlockParams)(implicit p: Parameters) extends LazyModule with HasXSParameter {
   override def shouldBeInlined: Boolean = false
 
-  val exeUnits: Seq[Seq[ExeUnit]] = params.issueBlockParams.map(_.exuBlockParams.map(x => LazyModule(x.genExuModule)))
-  val exus: Seq[ExeUnit] = exeUnits.flatten
-
+  val sharedVfParams = params.issueBlockParams.filter(_.sharedVf).groupBy(_.exuBlockParams.head.crossMatrixIdx)
+  val exus: Seq[ExeUnit] = params.issueBlockParams.map(_.exuBlockParams.map(x => LazyModule(x.genExuModule))).flatten
+  val exuParams: Seq[ExeUnitParams] = params.issueBlockParams.map(_.exuBlockParams).flatten
   lazy val module = new ExuBlockImp(this)(p, params)
 }
 
@@ -36,7 +36,6 @@ class ExuBlockImp(
   override val desiredName = params.getExuBlockName
 
   private val exus = wrapper.exus.map(_.module)
-  private val exeUnits = wrapper.exeUnits.map(x => x.map(xx => xx.module))
 
   private val ins: collection.IndexedSeq[DecoupledIO[ExuInput]] = io.in.flatten
   private val outs: collection.IndexedSeq[DecoupledIO[ExuOutput]] = io.out.flatten
@@ -60,16 +59,15 @@ class ExuBlockImp(
     exus.map(_.io.instrAddrTransType.foreach(_ := csrio.instrAddrTransType))
   }
 
-  exeUnits.zip(io.out).zip(params.issueBlockParams).foreach{
-    case ((exes, out), param) => {
-      if(param.sharedVf) {
-        val wbMguName = "WbMgu_" + param.getExuName
-        val wbMgu = Module(new SharedVfWbMgu(param.exuBlockParams.head, wbMguName).suggestName(wbMguName))
-        wbMgu.io.ins.head <> exes.head.io.out
-        wbMgu.io.ins.last <> exes.last.io.out
-        out.head <> wbMgu.io.outs.head
-        out.last <> wbMgu.io.outs.last
-      }
+  require(exus.length == wrapper.exuParams.length)
+  val exuWithParam = exus.zip(wrapper.exuParams).zip(outs)
+  exuWithParam.filter(_._1._2.isSharedVf).groupBy(_._1._2.crossMatrixIdx).foreach {
+    case (idx, exus) => {
+      val wbMgu = Module(new SharedVfWbMgu(exus.head._1._2))
+      wbMgu.io.ins.head <> exus.head._1._1.io.out
+      wbMgu.io.ins.last <> exus.last._1._1.io.out
+      exus.head._2 <> wbMgu.io.outs.head
+      exus.last._2 <> wbMgu.io.outs.last
     }
   }
 

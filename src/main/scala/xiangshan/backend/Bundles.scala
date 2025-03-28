@@ -591,10 +591,10 @@ object Bundles {
 
     val rf: MixedVec[MixedVec[RfReadPortWithConfig]] = Flipped(MixedVec(
       rfReadDataCfgSet.map((set: Set[DataConfig]) =>
-        MixedVec(set.map((x: DataConfig) => new RfReadPortWithConfig(exuParams.rdPregIdxWidth)).toSeq)
+        MixedVec(set.map((x: DataConfig) => new RfReadPortWithConfig(exuParams.rdPregIdxWidth, x)).toSeq)
       )
     ))
-
+    val crossed = OptionWrapper(iqParams.sharedVf, Bool())
     val srcType = Vec(exuParams.numRegSrc, SrcType()) // used to select imm or reg data
     val rcIdx = OptionWrapper(exuParams.needReadRegCache, Vec(exuParams.numRegSrc, UInt(RegCacheIdxWidth.W))) // used to select regcache data
     val immType = SelImm()                         // used to select imm extractor
@@ -675,9 +675,10 @@ object Bundles {
 
   // DataPath --[ExuInput]--> Exu
   class ExuInput(val params: ExeUnitParams, copyWakeupOut:Boolean = false, copyNum:Int = 0)(implicit p: Parameters) extends XSBundle {
+    val srcWidth = if(params.isSharedVf) 64 else params.srcDataBitsMax
     val fuType        = FuType()
     val fuOpType      = FuOpType()
-    val src           = Vec(params.numRegSrc, UInt(params.srcDataBitsMax.W))
+    val src           = Vec(params.numRegSrc, UInt(srcWidth.W))
     val imm           = UInt(32.W)
     val robIdx        = new RobPtr
     val iqIdx         = UInt(log2Up(MemIQSizeMax).W)// Only used by store yet
@@ -693,11 +694,7 @@ object Bundles {
     val rfWen         = if (params.needIntWen)    Some(Bool())                        else None
     val fpWen         = if (params.needVecWen)    Some(Bool())                        else None
     val vecWen        = if (params.needVecWen)    Some(Bool())                        else None
-    val vfWenH        = if (params.needVecWen)    Some(Bool())                        else None
-    val vfWenL        = if (params.needVecWen)    Some(Bool())                        else None
     val v0Wen         = if (params.needV0Wen)     Some(Bool())                        else None
-    val v0WenH        = if (params.needV0Wen)     Some(Bool())                        else None
-    val v0WenL        = if (params.needV0Wen)     Some(Bool())                        else None
     val vlWen         = if (params.needVlWen)     Some(Bool())                        else None
     val fpu           = if (params.writeFflags)   Some(new FPUCtrlSignals)            else None
     val vpu           = if (params.needVPUCtrl)   Some(new VPUCtrlSignals)            else None
@@ -757,11 +754,11 @@ object Bundles {
       this.rfWen         .foreach(_ := source.common.rfWen.get)
       this.fpWen         .foreach(_ := source.common.fpWen.get)
       this.vecWen        .foreach(_ := source.common.vecWen.get)
-      this.vfWenH        .foreach(_ := source.common.vfWenH.get)
-      this.vfWenL        .foreach(_ := source.common.vfWenL.get)
+      // this.vfWenH        .foreach(_ := source.common.vfWenH.get)
+      // this.vfWenL        .foreach(_ := source.common.vfWenL.get)
       this.v0Wen         .foreach(_ := source.common.v0Wen.get)
-      this.v0WenH        .foreach(_ := source.common.v0WenH.get)
-      this.v0WenL        .foreach(_ := source.common.v0WenL.get)
+      // this.v0WenH        .foreach(_ := source.common.v0WenH.get)
+      // this.v0WenL        .foreach(_ := source.common.v0WenL.get)
       this.vlWen         .foreach(_ := source.common.vlWen.get)
       this.fpu           .foreach(_ := source.common.fpu.get)
       this.vpu           .foreach(_ := source.common.vpu.get)
@@ -786,7 +783,7 @@ object Bundles {
   )(implicit
     val p: Parameters
   ) extends Bundle with BundleSource with HasXSParameter {
-    val data          = if(params.schdType == VfScheduler()) Vec(params.wbPathNum, UInt(128.W)) else Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
+    val data          = if(params.isSharedVf) Vec(params.wbPathNum, UInt(64.W)) else Vec(params.wbPathNum, UInt(params.destDataBitsMax.W))
     val pdest         = UInt(params.wbPregIdxWidth.W)
     val robIdx        = new RobPtr
     val intWen        = if (params.needIntWen)    Some(Bool())                  else None

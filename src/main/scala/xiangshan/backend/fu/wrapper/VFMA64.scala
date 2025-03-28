@@ -118,7 +118,7 @@ class VFMA64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cfg
   val fflagsAll = Wire(Vec(4, UInt(5.W)))
   fflagsAll := vfma.io.fflags.asTypeOf(fflagsAll)
   val fflags = fflagsEn.zip(fflagsAll).map{case(en, fflag) => Mux(en, fflag, 0.U(5.W))}.reduce(_ | _)
-  io.out.bits.res.fflags.get := fflags
+  io.out.bits.res.fflags.get := Mux(outCtrl.vpu.get.fpu.isFpToVecInst, fflagsAll(0), fflags)
 
   val resultDataUInt = resultData.asUInt
   mguOpt match {

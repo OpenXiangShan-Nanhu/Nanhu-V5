@@ -493,7 +493,7 @@ class VFAlu64(cfg: FuConfig)(implicit p: Parameters) extends VecPipedFuncUnit(cf
 	// outVecCtrl.fpu.isFpToVecInst means the instruction is float instruction, not vector float instruction
 	val notUseVl = outVecCtrl.fpu.isFpToVecInst || (outCtrl.fuOpType === VfaluType.vfmv_f_s)
 	val notModifyVd = !notUseVl && (outVl === 0.U)
-	io.out.bits.res.fflags.get := Mux(notModifyVd, 0.U(5.W), outFFlags)
+	io.out.bits.res.fflags.get := Mux(outCtrl.vpu.get.fpu.isFpToVecInst, allFFlags(0), Mux(notModifyVd, 0.U(5.W), outFFlags))
 	mguOpt match {
 		case Some(mgu) =>{
 			mgu.io.in.vd := Mux(outVecCtrl.isDstMask, Cat(0.U((VLEN / 16 * 15).W), cmpResultForMgu.asUInt), resultDataUInt)

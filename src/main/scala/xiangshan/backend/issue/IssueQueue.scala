@@ -486,11 +486,7 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
       subDeqSelOHVec.get := subDeqPolicy.io.deqSelOHVec.map(oh => Reverse(oh.bits))
     }
 
-    if(params.sharedVf) {
-      subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W)) & fpToVfVec
-    } else {
-      subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W))
-    }
+    subDeqRequest.get := canIssueVec.asUInt & ~Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W))
 
     val deq0SelOH = Mux(othersEntryOldestSel(0).valid, Cat(othersEntryOldestSel(0).bits, 0.U((params.numEnq).W)), subDeqSelOHVec.get(1))
     val deq0SelFp = Mux1H(deq0SelOH, fpToVfVec)
@@ -734,10 +730,6 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     deq.bits.common.fpWen.foreach(_ := deqEntryVec(i).bits.payload.fpWen)
     deq.bits.common.vecWen.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
     deq.bits.common.v0Wen.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
-    deq.bits.common.vfWenH.foreach(_ := false.B)
-    deq.bits.common.vfWenL.foreach(_ := false.B)
-    deq.bits.common.v0WenH.foreach(_ := false.B)
-    deq.bits.common.v0WenL.foreach(_ := false.B)
     deq.bits.common.vlWen.foreach(_ := deqEntryVec(i).bits.payload.vlWen)
     deq.bits.common.flushPipe.foreach(_ := deqEntryVec(i).bits.payload.flushPipe)
     deq.bits.common.pdest := deqEntryVec(i).bits.payload.pdest
@@ -748,7 +740,7 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     deq.bits.common.l1ExuOH.foreach(_.zip(finalWakeUpL1ExuOH.get(i)).foreach { case (sink, source) => sink := source})
     deq.bits.common.srcTimer.foreach(_ := DontCare)
     deq.bits.common.loadDependency.foreach(_.zip(finalLoadDependency(i)).foreach { case (sink, source) => sink := source})
-    deq.bits.common.src := DontCare
+    deq.bits.common.src.foreach(_ := DontCare)
     deq.bits.common.preDecode.foreach(_ := deqEntryVec(i).bits.payload.preDecodeInfo)
 
     deq.bits.rf.zip(deqEntryVec(i).bits.status.srcStatus.map(_.psrc)).zip(deqEntryVec(i).bits.status.srcStatus.map(_.srcType)).foreach { case ((rf, psrc), srcType) =>
@@ -1015,11 +1007,7 @@ class IssueQueueIntImp(override val wrapper: IssueQueue)(implicit p: Parameters,
     deq.bits.common.sqIdx.foreach(_ := deqEntryVec(i).bits.payload.sqIdx)
     // for i2f
     deq.bits.common.fpu.foreach(_ := deqEntryVec(i).bits.payload.fpu)
-
-    deq.bits.common.vfWenH.foreach(_ := deqEntryVec(i).bits.payload.vecWen & FuType.FuTypeOrR(deqEntryVec(i).bits.payload.fuType, FuType.i2v))
-    deq.bits.common.vfWenL.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
-    deq.bits.common.v0WenH.foreach(_ := deqEntryVec(i).bits.payload.v0Wen & FuType.FuTypeOrR(deqEntryVec(i).bits.payload.fuType, FuType.i2v))
-    deq.bits.common.v0WenL.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
+    deq.bits.crossed.foreach(_ := DontCare)
   }}
 }
 
@@ -1035,74 +1023,8 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
     deq.bits.common.vpu.foreach(_.is_fold := DontCare)
     deq.bits.common.vpu.foreach(_.is_reduction := DontCare)
     deq.bits.common.vpu.foreach(_.isVFCmp := false.B)
+    deq.bits.crossed.foreach(_ := DontCare)
   }}
-  if(iqParams.sharedVf) {
-    when(deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst) {
-      deqDelay.zip(deqBeforeDly).foreach { case (deqDly, deq) =>
-        deqDly.valid := deq.valid
-        when(validVec.asUInt.orR) {
-          deqDly.bits := deq.bits
-        }
-        // deqBeforeDly.ready is always true
-        deq.ready := true.B
-      }
-      deqDelay(1).bits := deqBeforeDly(0).bits
-
-      deqDelay(0).valid := true.B
-      deqDelay(0).bits.common.vfWenH.foreach(_ := false.B)
-      deqDelay(0).bits.common.vfWenL.foreach(_ := true.B)
-      deqDelay(0).bits.common.v0WenH.foreach(_ := false.B)
-      deqDelay(0).bits.common.v0WenL.foreach(_ := true.B)
-      wakeUpQueues(0).foreach(wq => wq.io.enq.valid := true.B)
-
-      deqDelay(1).valid := true.B
-      deqDelay(1).bits.common.vfWenH.foreach(_ := true.B)
-      deqDelay(1).bits.common.vfWenL.foreach(_ := false.B)
-      deqDelay(1).bits.common.v0WenH.foreach(_ := true.B)
-      deqDelay(1).bits.common.v0WenL.foreach(_ := false.B)
-      wakeUpQueues(1).foreach(wq => wq.io.enq.valid := false.B)
-    }.otherwise {
-      deqDelay.zip(deqBeforeDly).foreach { case (deqDly, deq) =>
-        deqDly.valid := deq.valid
-        when(validVec.asUInt.orR) {
-          deqDly.bits := deq.bits
-          deqDly.bits.common.vfWenL.foreach(_ := deq.bits.common.vecWen.get)
-          deqDly.bits.common.v0WenL.foreach(_ := deq.bits.common.v0Wen.get)
-          deqDly.bits.common.vfWenH.foreach(_ := false.B)
-          deqDly.bits.common.v0WenH.foreach(_ := false.B)
-        }
-        // deqBeforeDly.ready is always true
-        deq.ready := true.B
-        wakeUpQueues(0).foreach(wq => wq.io.enq.valid := deqBeforeDly(0).valid)
-        wakeUpQueues(1).foreach(wq => wq.io.enq.valid := deqBeforeDly(1).valid)
-      }
-    }
-  } else {
-    deqDelay.zip(deqBeforeDly).foreach { case (deqDly, deq) =>
-      deqDly.valid := deq.valid
-      when(validVec.asUInt.orR) {
-        deqDly.bits := deq.bits
-        deqDly.bits.common.vfWenL.foreach(_ := deq.bits.common.vecWen.get)
-        deqDly.bits.common.vfWenH.foreach(_ := deq.bits.common.vecWen.get && !deq.bits.common.vpu.get.fpu.isFpToVecInst)
-        deqDly.bits.common.v0WenL.foreach(_ := deq.bits.common.v0Wen.get)
-        deqDly.bits.common.v0WenH.foreach(_ := deq.bits.common.v0Wen.get && !deq.bits.common.vpu.get.fpu.isFpToVecInst)
-      }
-      // deqBeforeDly.ready is always true
-      deq.ready := true.B
-    }
-  }
-
-  if(iqParams.sharedVf && iqParams.backendParam.assertEn) {
-    val vfNeedSplit = BoolSequence(deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst)
-    val issuePort_0_1_robSame = deqDelay.map(_.valid).reduce(_ && _) && (deqDelay(0).bits.common.robIdx === deqDelay(1).bits.common.robIdx)
-    val issuePort_0_1_wenDiff = (deqDelay(0).bits.common.vfWenL.get === true.B && deqDelay(0).bits.common.vfWenH.get === false.B) &&
-                                                  (deqDelay(0).bits.common.v0WenL.get === true.B && deqDelay(0).bits.common.v0WenH.get === false.B) &&
-                                                  (deqDelay(1).bits.common.vfWenL.get === false.B && deqDelay(1).bits.common.vfWenH.get === true.B) && 
-                                                  (deqDelay(1).bits.common.v0WenL.get === false.B && deqDelay(1).bits.common.v0WenH.get === true.B)
-    val issuePort_0_1_uopIdxSame = (deqDelay(0).bits.common.vpu.get.vuopIdx === deqDelay(1).bits.common.vpu.get.vuopIdx)
-    val issuePort_property = BoolSequence(issuePort_0_1_robSame && issuePort_0_1_uopIdxSame && issuePort_0_1_wenDiff)
-    AssertProperty(Sequence(vfNeedSplit, Delay(), issuePort_property))
-  }
 }
 
 class IssueQueueMemBundle(implicit p: Parameters, params: IssueBlockParams) extends Bundle {
@@ -1258,10 +1180,7 @@ class IssueQueueVecMemImp(override val wrapper: IssueQueue)(implicit p: Paramete
     deq.bits.common.vpu.foreach(_.vuopIdx := deqEntryVec(i).bits.payload.uopIdx)
     deq.bits.common.vpu.foreach(_.lastUop := deqEntryVec(i).bits.payload.lastUop)
     deq.bits.common.vpu.foreach(_.isVFCmp := false.B)
-    deq.bits.common.vfWenH.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
-    deq.bits.common.vfWenL.foreach(_ := deqEntryVec(i).bits.payload.vecWen)
-    deq.bits.common.v0WenH.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
-    deq.bits.common.v0WenL.foreach(_ := deqEntryVec(i).bits.payload.v0Wen)
+    deq.bits.crossed.foreach(_ := DontCare)
     deq.bits.common.vpu.foreach(_.is_vfredosum := DontCare)
     deq.bits.common.vpu.foreach(_.is_fold := DontCare)
     deq.bits.common.vpu.foreach(_.is_reduction := DontCare)

@@ -359,7 +359,7 @@ class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1
         dataECC = Some("secded"),
         simulation = !site(DebugOptionsKey).FPGAPlatform,
         prefetch = Some(huancun.prefetch.L3PrefetchReceiverParams()),
-        tpmeta = Some(huancun.prefetch.DefaultTPmetaParameters())
+        tpmeta = None
       ))
     )
 })
@@ -417,7 +417,7 @@ class DefaultConfig(n: Int = 1) extends Config(
  */
 class NanhuV5_3Config(n: Int = 1) extends Config(
   new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
-    ++ new WithNKBL2(128, inclusive = true, banks = 2, ways = 8)
+    ++ new WithNKBL2(128, inclusive = true, banks = 2, ways = 8, tp = false)
     ++ new WithNKBL1I(32, ways = 4)
     ++ new WithNKBL1D(32, ways = 4)
     ++ new BaseConfig(n)

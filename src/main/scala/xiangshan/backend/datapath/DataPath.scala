@@ -123,7 +123,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val vfIssueBlockParams  = params.schdParams(VfScheduler()).issueBlockParams
   private val memIssueBlockParams = params.schdParams(MemScheduler()).issueBlockParams
 
-  private val vfCrossMatrixNum = vfIssueBlockParams.filter(x => x.sharedVf).map(x => x.exuBlockParams.map(_.crossMatrixIdx)).flatten.distinct.length
+  private val vfCrossMatrixNum = params.schdParams(VfScheduler()).numVfCrossMatrix
   println(s"[DataPath] vfCrossMatrixNum(${vfCrossMatrixNum})")
   
   private val vfCrossMatrixIqBlkParams = vfIssueBlockParams.filter(x => x.sharedVf).groupBy(_.exuBlockParams.head.crossMatrixIdx).map(_._2.head)
@@ -320,7 +320,9 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   
   private val vfRfWen = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
   private val vfRfWaddr = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W)))
-  private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
+  // private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
+  private val vfRfWHdata = Wire(Vec(io.fromVfWb.length, UInt(64.W)))
+  private val vfRfWLdata = Wire(Vec(io.fromVfWb.length, UInt(64.W)))
 
   private val v0RfSplitNum = VLEN / XLEN
   private val v0RfRaddr = Wire(Vec(params.numPregRd(params.v0PregParams), UInt(log2Up(V0PhyRegs).W)))
@@ -395,8 +397,8 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   VfRegFile128("VfRegFile", vfSchdParams.numPregs,
                 vfRfRHaddr, vfRfRHdata,
                 vfRfRLaddr, vfRfRLdata,
-                vfRfWen.head, vfRfWaddr, vfRfWdata.map(_(127, 64)),
-                vfRfWen.last, vfRfWaddr, vfRfWdata.map(_(63, 0)),
+                vfRfWen.head, vfRfWaddr, vfRfWHdata,
+                vfRfWen.last, vfRfWaddr, vfRfWLdata,
                 vecdebugReadAddr = vfDiffRead.map(_._1),
                 vecdebugReadData = vfDiffRead.map(_._2),
                 fpdebugReadAddr = fpDiffRead.map(_._1),
@@ -439,8 +441,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   }
 
   vfRfWaddr := io.fromVfWb.map(x => RegEnable(x.addr, x.wen)).toSeq
-  vfRfWdata := io.fromVfWb.map(x => RegEnable(x.data, x.wen)).toSeq
-  vfRfWen.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.wen))).foreach { case (wenSink, wenSource) => wenSink := wenSource } )
+  // vfRfWdata := io.fromVfWb.map(x => RegEnable(x.data, x.wen)).toSeq
+  vfRfWLdata := io.fromVfWb.map(x => RegEnable(x.data.head(64), x.wen)).toSeq
+  vfRfWHdata := io.fromVfWb.map(x => RegEnable(Mux(x.vfRfWen === "b10".U, x.data.head(64), x.data.tail(64)), x.wen))
+
+  vfRfWen.head.zip(io.fromVfWb.map(x => RegNext(x.wen && x.vfRfWen(0)))).foreach{ case (wenSink, wenSource) => wenSink := wenSource }
+  vfRfWen.last.zip(io.fromVfWb.map(x => RegNext(x.wen && x.vfRfWen(1)))).foreach{ case (wenSink, wenSource) => wenSink := wenSource }
 
   for(portIdx <- vfRfRLaddr.indices) {
     if (vfRFReadArbiter.io.out.isDefinedAt(portIdx)) {

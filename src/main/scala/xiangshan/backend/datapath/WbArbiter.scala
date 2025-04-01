@@ -13,15 +13,14 @@ import xiangshan.{Redirect, XSBundle, XSModule}
 import xiangshan.SrcType.v0
 import xiangshan.backend.fu.vector.Bundles.Vstart
 import xiangshan.backend.datapath.WbConfig._
+import xiangshan.backend.issue.IntScheduler
 
 class WbArbiterDispatcherIO[T <: Data](private val gen: T, n: Int) extends Bundle {
   val in = Flipped(DecoupledIO(gen))
-
   val out = Vec(n, DecoupledIO(gen))
 }
 
-class WbArbiterDispatcher[T <: Data](private val gen: T, n: Int, acceptCond: T => (Seq[Bool], Bool))
-                           (implicit p: Parameters)
+class WbArbiterDispatcher[T <: Data](private val gen: T, n: Int, acceptCond: T => (Seq[Bool], Bool))(implicit p: Parameters)
   extends Module {
 
   val io = IO(new WbArbiterDispatcherIO(gen, n))
@@ -123,6 +122,9 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
     // So this vstart should never be used as the beginning of vector mem operation.
     mgu.io.writeback.bits.vls.get.vpu.vstart := io.fromCSR.vstart
   }
+
+  val crossMatrixNum = fromExuPre.map(_.bits.params.sharedVf)
+
   val wbReplaceVld = fromExuPre
   val vldIdx: Seq[Int] = vldMgu.map(x => fromExuPre.indexWhere(_.bits.params == x.params))
   println("vldIdx: " + vldIdx)
@@ -333,7 +335,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   private val toV0Preg: MixedVec[RfWritePortWithConfig] = MixedVecInit(v0WbArbiterOut.map(x => x.bits.asV0RfWriteBundle(x.fire)).toSeq)
   private val toVlPreg: MixedVec[RfWritePortWithConfig] = MixedVecInit(vlWbArbiterOut.map(x => x.bits.asVlRfWriteBundle(x.fire)).toSeq)
 
-  private val wb2Ctrl = intExuWBs ++ vfExuWBs ++ memExuWBs
+  private val wb2Ctrl = intExuWBs ++ vfExuWBs ++ memExuWBs 
 
   io.toIntPreg := toIntPreg
   io.toVfPreg := toVfPreg
@@ -341,7 +343,7 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
   io.toVlPreg := toVlPreg
 
   io.toCtrlBlock.writeback.zip(wb2Ctrl).foreach { case (sink, source) =>
-    sink.valid := source.valid
+    sink.valid := source.valid && !(source.bits.vecWen.getOrElse(false.B) && source.bits.vfRfWen.getOrElse(3.U) === "b10".U)
     sink.bits := source.bits
     source.ready := true.B
   }

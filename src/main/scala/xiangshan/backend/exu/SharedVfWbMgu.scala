@@ -191,8 +191,10 @@ class SharedVfWbMgu(params: ExeUnitParams)(implicit p: Parameters) extends XSMod
       vdData := Cat(resDataHi_63_32, resDataHi_31_0, resDataLo_63_32, resDataLo_31_0)
       // Handles vd data mask.
       maskedData := Mux(vpuCtrl.isVFCmp && !hasFp, cmpResultBitMask(vdData), useMgu(vdData, vpuCtrl, 0))
-      io.outs(0).bits.data(i) := maskedData
+      io.outs(0).bits.data(i) := maskedData(63, 0)
       io.outs(1).bits.data(i) := maskedData(127, 64)
     }
   }
+  io.outs(0).bits.vfRfWen.foreach(_ := 1.U(2.W))
+  io.outs(1).bits.vfRfWen.foreach(_ := Mux(hasFp, 1.U(2.W), 2.U(2.W)))
 }

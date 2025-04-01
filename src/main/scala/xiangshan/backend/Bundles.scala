@@ -789,12 +789,10 @@ object Bundles {
     val intWen        = if (params.needIntWen)    Some(Bool())                  else None
     val fpWen         = if (params.needVecWen)    Some(Bool())                  else None
     val vecWen        = if (params.needVecWen)    Some(Bool())                  else None
-    val vfWenH        = if (params.needVecWen)    Some(Bool())                  else None
-    val vfWenL        = if (params.needVecWen)    Some(Bool())                  else None
     val v0Wen         = if (params.needV0Wen)     Some(Bool())                  else None
-    val v0WenH        = if (params.needV0Wen)     Some(Bool())                  else None
-    val v0WenL        = if (params.needV0Wen)     Some(Bool())                  else None
     val vlWen         = if (params.needVlWen)     Some(Bool())                  else None
+    val vfRfWen     = if (params.needVecWen || params.needV0Wen)
+                                                  Some(UInt(2.W))               else None
     val shareVpuCtrl  = if (params.isSharedVf)    Some(new VPUCtrlSignals)      else None // shareVF ctrl signal to mgu
     val mguEew        = if (params.isSharedVf)    Some(VSew())                  else None // for share mgu
     val oldVd         = if (params.isSharedVf)    Some(UInt(VLEN.W))            else None // shareVF ctrl signal to mgu
@@ -835,12 +833,9 @@ object Bundles {
     val rfWen = Bool()
     val fpWen = Bool()
     val vecWen = Bool()
-    val vfWenH = Bool()
-    val vfWenL = Bool()
     val v0Wen = Bool()
-    val v0WenH = Bool()
-    val v0WenL = Bool()
     val vlWen = Bool()
+    val vfRfWen = UInt(2.W)
     val pdest = UInt(params.pregIdxWidth(backendParams).W)
     val data = UInt(params.dataWidth.W)
     val robIdx = new RobPtr()(p)
@@ -860,12 +855,9 @@ object Bundles {
       this.rfWen  := source.intWen.getOrElse(false.B)
       this.fpWen  := source.fpWen.getOrElse(false.B)
       this.vecWen := source.vecWen.getOrElse(false.B)
-      this.vfWenH := source.vfWenH.getOrElse(false.B)
-      this.vfWenL := source.vfWenL.getOrElse(false.B)
       this.v0Wen  := source.v0Wen.getOrElse(false.B)
-      this.v0WenH := source.v0WenH.getOrElse(false.B)
-      this.v0WenL := source.v0WenL.getOrElse(false.B)
       this.vlWen  := source.vlWen.getOrElse(false.B)
+      this.vfRfWen := source.vfRfWen.getOrElse(0.U.asTypeOf(this.vfRfWen))
       this.pdest  := source.pdest
       this.data   := source.data(source.params.wbIndex(typeMap(wbType)))
       this.robIdx := source.robIdx
@@ -887,11 +879,8 @@ object Bundles {
       rfWrite.intWen := this.rfWen
       rfWrite.fpWen := false.B
       rfWrite.vecWen := false.B
-      rfWrite.vfWenH := false.B
-      rfWrite.vfWenL := false.B
       rfWrite.v0Wen := false.B
-      rfWrite.v0WenH := false.B
-      rfWrite.v0WenL := false.B
+      rfWrite.vfRfWen := 0.U.asTypeOf(this.vfRfWen)
       rfWrite.vlWen := false.B
       rfWrite
     }
@@ -904,11 +893,8 @@ object Bundles {
       rfWrite.intWen := false.B
       rfWrite.fpWen := false.B
       rfWrite.vecWen := this.vecWen
-      rfWrite.vfWenH := this.vfWenH
-      rfWrite.vfWenL := this.vfWenL
+      rfWrite.vfRfWen := this.vfRfWen
       rfWrite.v0Wen := false.B
-      rfWrite.v0WenH := false.B
-      rfWrite.v0WenL := false.B
       rfWrite.vlWen := false.B
       rfWrite
     }
@@ -922,10 +908,7 @@ object Bundles {
       rfWrite.fpWen := false.B
       rfWrite.vecWen := false.B
       rfWrite.v0Wen := this.v0Wen
-      rfWrite.vfWenH := false.B
-      rfWrite.vfWenL := false.B
-      rfWrite.v0WenH := this.v0WenH
-      rfWrite.v0WenL := this.v0WenL
+      rfWrite.vfRfWen := this.vfRfWen
       rfWrite.vlWen := false.B
       rfWrite
     }
@@ -939,10 +922,7 @@ object Bundles {
       rfWrite.fpWen := false.B
       rfWrite.vecWen := false.B
       rfWrite.v0Wen := false.B
-      rfWrite.vfWenH := false.B
-      rfWrite.vfWenL := false.B
-      rfWrite.v0WenH := false.B
-      rfWrite.v0WenL := false.B
+      rfWrite.vfRfWen := 0.U.asTypeOf(this.vfRfWen)
       rfWrite.vlWen := this.vlWen
       rfWrite
     }

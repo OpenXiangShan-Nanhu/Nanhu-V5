@@ -406,29 +406,29 @@ case class XSCoreParameters
         ExeUnitParams("VFMA0",  Seq(Vfma64Cfg),
                                 Seq(VfWB(0, 1), V0WB(0, 1)),
                                 Seq(Seq(VfRD(0, 0)), Seq(VfRD(1, 0)), Seq(VfRD(2, 0)), Seq(V0RD(0, 0)), Seq(VlRD(0, 0))),
-                                crossMatrixIdx = 0, crossMatrixPortIdx = 0),
-      ), numEntries = 18, numEnq = 2, numComp = 16, sharedVf = true),
+                                sharedVf = true, crossMatrixIdx = 0, crossMatrixPortIdx = 0),
+      ), numEntries = 18, numEnq = 2, numComp = 16),
 
       IssueBlockParams(Seq(
         ExeUnitParams("VFMA1",  Seq(Vfma64Cfg),
                                 Seq(VfWB(1, 0), V0WB(1, 0)),
                                 Seq(Seq(VfRD(3, 0)), Seq(VfRD(4, 0)), Seq(VfRD(5, 0)), Seq(V0RD(1, 0)), Seq(VlRD(1, 0))),
-                                crossMatrixIdx = 0, crossMatrixPortIdx = 1),
-      ), numEntries = 18, numEnq = 2, numComp = 16, sharedVf = true),
+                                sharedVf = true, crossMatrixIdx = 0, crossMatrixPortIdx = 1),
+      ), numEntries = 18, numEnq = 2, numComp = 16),
 
       IssueBlockParams(Seq(
         ExeUnitParams("VFALU0", Seq(Vfalu64Cfg, Vfcvt64Cfg),
                                 Seq(VfWB(2, 0), V0WB(2, 0), IntWB(7, 0)),
                                 Seq(Seq(VfRD(6, 0)), Seq(VfRD(7, 0)), Seq(VfRD(8, 0)), Seq(V0RD(2, 0)), Seq(VlRD(2, 0))),
-                                crossMatrixIdx = 1, crossMatrixPortIdx = 0)
-      ), numEntries = 18, numEnq = 2, numComp = 16, sharedVf = true),
+                                sharedVf = true, crossMatrixIdx = 1, crossMatrixPortIdx = 0)
+      ), numEntries = 18, numEnq = 2, numComp = 16),
 
       IssueBlockParams(Seq(
         ExeUnitParams("VFALU1", Seq(Vfalu64Cfg, Vfcvt64Cfg),
                                 Seq(VfWB(3, 0), V0WB(3, 0), IntWB(8, 0)),
                                 Seq(Seq(VfRD(2, 1)), Seq(VfRD(5, 1)), Seq(VfRD(8, 1)), Seq(V0RD(3, 0)), Seq(VlRD(3, 0))),
-                                crossMatrixIdx = 1, crossMatrixPortIdx = 1),
-      ), numEntries = 18, numEnq = 2, numComp = 16, sharedVf = true),
+                                sharedVf = true, crossMatrixIdx = 1, crossMatrixPortIdx = 1),
+      ), numEntries = 18, numEnq = 2, numComp = 16),
 
       IssueBlockParams(Seq(
         ExeUnitParams("VFEX0",  Seq(VialuCfg, VimacCfg, VppuCfg, VipuCfg, VidivCfg, VSetRvfWvfCfg, F2vCfg), 

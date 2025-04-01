@@ -51,11 +51,8 @@ class RfWritePortWithConfig(pregParams: PregParams) extends Bundle {
   val intWen = Input(Bool())
   val fpWen = Input(Bool())
   val vecWen = Input(Bool())
-  val vfWenH = Input(Bool())
-  val vfWenL = Input(Bool())
+  val vfRfWen = Input(UInt(2.W))
   val v0Wen = Input(Bool())
-  val v0WenH = Input(Bool())
-  val v0WenL = Input(Bool())
   val vlWen = Input(Bool())
 }
 

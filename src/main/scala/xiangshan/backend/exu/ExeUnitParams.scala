@@ -21,6 +21,7 @@ case class ExeUnitParams(
   copyWakeupOut: Boolean = false,
   copyDistance: Int = 1,
   fakeUnit      : Boolean = false,
+  val sharedVf : Boolean = false,
   val crossMatrixIdx   : Int = 0,
   val crossMatrixPortIdx: Int = 0
 )(

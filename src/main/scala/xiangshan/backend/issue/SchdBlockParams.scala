@@ -22,14 +22,11 @@ case class SchdBlockParams(
 
   def isIntSchd: Boolean = schdType == IntScheduler()
 
-  // def isFpSchd: Boolean = schdType == FpScheduler()
-
   def isVfSchd: Boolean = schdType == VfScheduler()
 
   def getExuBlockName: String = schdType match {
     case IntScheduler() => "IntBlock"
-    // case FpScheduler() => "FpBlock"
-    case VfScheduler() => "VecBlock"
+    case VfScheduler()  => "VfBlock"
     case MemScheduler() => "MemBlock"
     case _ => ""
   }
@@ -73,6 +70,11 @@ case class SchdBlockParams(
   def VstuCnt: Int = issueBlockParams.map(_.VstuCnt).sum
 
   def numExu: Int = issueBlockParams.map(_.exuBlockParams.count(!_.fakeUnit)).sum
+
+  def numVfCrossMatrix: Int = schdType match {
+                                case VfScheduler() => issueBlockParams.filter(_.sharedVf).map(_.exuBlockParams.map(_.crossMatrixIdx)).flatten.distinct.length
+                                case _ => 0
+                              }
 
   def hasCSR = CsrCnt > 0
 

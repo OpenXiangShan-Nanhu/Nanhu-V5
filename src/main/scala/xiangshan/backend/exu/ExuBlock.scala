@@ -52,6 +52,7 @@ class ExuBlockImp(
     exu.io.vtype.foreach(exuio => io.vtype.get := exuio)
     exu.io.in <> input
     output <> exu.io.out
+    output.bits.vfRfWen.foreach(_ := Mux(exu.io.out.bits.vecWen.getOrElse(false.B) || exu.io.out.bits.v0Wen.getOrElse(false.B), 3.U, 0.U))
     io.csrToDecode.foreach(toDecode => exu.io.csrToDecode.foreach(exuOut => toDecode := exuOut))
     XSPerfAccumulate(s"${(exu.wrapper.exuParams.name)}_fire_cnt", PopCount(exu.io.in.fire))
   }

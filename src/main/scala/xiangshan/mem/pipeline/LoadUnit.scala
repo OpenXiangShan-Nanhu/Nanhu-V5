@@ -1178,7 +1178,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                            io.dcache.resp.bits.tag_error
 
   val s2_troublem        = !s2_exception &&
-                           !s2_mmio &&
                            !s2_prf &&
                            !s2_in.delayedLoadError
 

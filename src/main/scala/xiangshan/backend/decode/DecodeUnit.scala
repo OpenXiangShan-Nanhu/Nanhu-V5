@@ -861,7 +861,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     io.fromCSR.illegalInst.vsIsOff    && !decodedInst.vpu.fpu.isFpToVecInst && FuType.FuTypeOrR(decodedInst.fuType, FuType.vecAll) ||
     io.fromCSR.illegalInst.wfi        && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr)   && CSROpType.isWfi(decodedInst.fuOpType) ||
     (decodedInst.needFrm.scalaNeedFrm) && (((decodedInst.fpu.rm === 5.U) || (decodedInst.fpu.rm === 6.U)) || ((decodedInst.fpu.rm === 7.U) && io.fromCSR.illegalInst.frm)) ||
-    (decodedInst.needFrm.vectorNeedFrm || FuType.isVectorNeedFrm(decodedInst.fuType)) && io.fromCSR.illegalInst.frm ||
+    (decodedInst.needFrm.vectorNeedFrm || FuType.isVectorNeedFrm(decodedInst.fuType)) && !decodedInst.vpu.fpu.isFpToVecInst && io.fromCSR.illegalInst.frm ||
     io.fromCSR.illegalInst.cboZ       && isCboZero ||
     io.fromCSR.illegalInst.cboCF      && (isCboClean || isCboFlush) ||
     io.fromCSR.illegalInst.cboI       && isCboInval

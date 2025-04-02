@@ -844,39 +844,65 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   private val isCboInval = CBO_INVAL === io.enq.ctrlFlow.instr
   private val isCboZero  = CBO_ZERO  === io.enq.ctrlFlow.instr
 
-  private val exceptionII =
-    decodedInst.selImm === SelImm.INVALID_INSTR ||
-    io.fromCSR.illegalInst.sfenceVMA  && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence  ||
-    io.fromCSR.illegalInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence ||
-    io.fromCSR.illegalInst.hfenceGVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.hfence_g ||
-    io.fromCSR.illegalInst.hfenceVVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.hfence_v ||
-    io.fromCSR.illegalInst.hlsv       && FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu)   && (LSUOpType.isHlv(decodedInst.fuOpType) || LSUOpType.isHlvx(decodedInst.fuOpType)) ||
-    io.fromCSR.illegalInst.hlsv       && FuType.FuTypeOrR(decodedInst.fuType, FuType.stu)   && LSUOpType.isHsv(decodedInst.fuOpType) ||
-    io.fromCSR.illegalInst.fsIsOff    && (
-      decodedInst.vpu.fpu.isFpToVecInst || FuType.FuTypeOrR(decodedInst.fuType, FuType.fpOP ++ Seq(FuType.f2v)) ||
-      (FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu) && (decodedInst.fuOpType === LSUOpType.lw || decodedInst.fuOpType === LSUOpType.ld) ||
-      FuType.FuTypeOrR(decodedInst.fuType, FuType.stu) && (decodedInst.fuOpType === LSUOpType.sw || decodedInst.fuOpType === LSUOpType.sd)) && decodedInst.instr(2) ||
-      inst.isOPFVF || inst.isOPFVV
-    ) ||
-    io.fromCSR.illegalInst.vsIsOff    && !decodedInst.vpu.fpu.isFpToVecInst && FuType.FuTypeOrR(decodedInst.fuType, FuType.vecAll) ||
-    io.fromCSR.illegalInst.wfi        && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr)   && CSROpType.isWfi(decodedInst.fuOpType) ||
-    (decodedInst.needFrm.scalaNeedFrm) && (((decodedInst.fpu.rm === 5.U) || (decodedInst.fpu.rm === 6.U)) || ((decodedInst.fpu.rm === 7.U) && io.fromCSR.illegalInst.frm)) ||
-    (decodedInst.needFrm.vectorNeedFrm || FuType.isVectorNeedFrm(decodedInst.fuType)) && !decodedInst.vpu.fpu.isFpToVecInst && io.fromCSR.illegalInst.frm ||
-    io.fromCSR.illegalInst.cboZ       && isCboZero ||
-    io.fromCSR.illegalInst.cboCF      && (isCboClean || isCboFlush) ||
-    io.fromCSR.illegalInst.cboI       && isCboInval
+  private val illegalSfenceVMA = io.fromCSR.illegalInst.sfenceVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence
+  private val illegalSfencePart = io.fromCSR.illegalInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence
+  private val illegalHfenceGVMA = io.fromCSR.illegalInst.hfenceGVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.hfence_g
+  private val illegalHfenceVVMA = io.fromCSR.illegalInst.hfenceVVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.hfence_v
+  private val illegalHld = io.fromCSR.illegalInst.hlsv && FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu) && (LSUOpType.isHlv(decodedInst.fuOpType) || LSUOpType.isHlvx(decodedInst.fuOpType))
+  private val illegalHst = io.fromCSR.illegalInst.hlsv && FuType.FuTypeOrR(decodedInst.fuType, FuType.stu) && LSUOpType.isHsv(decodedInst.fuOpType)
+  private val instrIsFpLS = (FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu) && (decodedInst.fuOpType === LSUOpType.lw || decodedInst.fuOpType === LSUOpType.ld) ||
+                              FuType.FuTypeOrR(decodedInst.fuType, FuType.stu) && (decodedInst.fuOpType === LSUOpType.sw || decodedInst.fuOpType === LSUOpType.sd)) && decodedInst.instr(2)
+  private val illegalFp_fsIsOff = io.fromCSR.illegalInst.fsIsOff && (decodedInst.vpu.fpu.isFpToVecInst || FuType.FuTypeOrR(decodedInst.fuType, FuType.fpOP ++ Seq(FuType.f2v)) ||
+                                                                      inst.isOPFVF || inst.isOPFVV || instrIsFpLS)
+  private val illegalVec_vsIsOff = io.fromCSR.illegalInst.vsIsOff && !decodedInst.vpu.fpu.isFpToVecInst && FuType.FuTypeOrR(decodedInst.fuType, FuType.vecAll)
+  private val illegalWfi = io.fromCSR.illegalInst.wfi && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr) && CSROpType.isWfi(decodedInst.fuOpType)
+  private val illegalFp_frm = decodedInst.needFrm.scalaNeedFrm && (((decodedInst.fpu.rm === 5.U) || (decodedInst.fpu.rm === 6.U)) || ((decodedInst.fpu.rm === 7.U) && io.fromCSR.illegalInst.frm))
+  private val illegalVec_frm = (decodedInst.needFrm.vectorNeedFrm || FuType.isVectorNeedFrm(decodedInst.fuType)) && !decodedInst.vpu.fpu.isFpToVecInst && io.fromCSR.illegalInst.frm
+  private val illegalCboZ = io.fromCSR.illegalInst.cboZ && isCboZero
+  private val illegalCboCF = io.fromCSR.illegalInst.cboCF && (isCboClean || isCboFlush)
+  private val illegalCboI = io.fromCSR.illegalInst.cboI && isCboInval
+  dontTouch(illegalSfenceVMA)
+  dontTouch(illegalSfencePart)
+  dontTouch(illegalHfenceGVMA)
+  dontTouch(illegalHfenceVVMA)
+  dontTouch(illegalHld)
+  dontTouch(illegalHst)
+  dontTouch(instrIsFpLS)
+  dontTouch(illegalFp_fsIsOff)
+  dontTouch(illegalVec_vsIsOff)
+  dontTouch(illegalWfi)
+  dontTouch(illegalFp_frm)
+  dontTouch(illegalVec_frm)
+  dontTouch(illegalCboZ)
+  dontTouch(illegalCboCF)
+  dontTouch(illegalCboI)
+  private val exceptionII = decodedInst.selImm === SelImm.INVALID_INSTR || illegalSfenceVMA ||
+                            illegalSfencePart || illegalHfenceGVMA || illegalHfenceVVMA || illegalHld || illegalHst ||
+                            illegalFp_fsIsOff || illegalVec_vsIsOff || illegalWfi || illegalFp_frm ||
+                            illegalVec_frm || illegalCboZ || illegalCboCF || illegalCboI
 
-  private val exceptionVI =
-    io.fromCSR.virtualInst.sfenceVMA  && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence ||
-    io.fromCSR.virtualInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence ||
-    io.fromCSR.virtualInst.hfence     && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && (decodedInst.fuOpType === FenceOpType.hfence_g || decodedInst.fuOpType === FenceOpType.hfence_v) ||
-    io.fromCSR.virtualInst.hlsv       && FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu)   && (LSUOpType.isHlv(decodedInst.fuOpType) || LSUOpType.isHlvx(decodedInst.fuOpType)) ||
-    io.fromCSR.virtualInst.hlsv       && FuType.FuTypeOrR(decodedInst.fuType, FuType.stu)   && LSUOpType.isHsv(decodedInst.fuOpType) ||
-    io.fromCSR.virtualInst.wfi        && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr)   && CSROpType.isWfi(decodedInst.fuOpType) ||
-    io.fromCSR.virtualInst.cboZ       && isCboZero ||
-    io.fromCSR.virtualInst.cboCF      && (isCboClean || isCboFlush) ||
-    io.fromCSR.virtualInst.cboI       && isCboInval
+  private val virtualSfenceVMA = io.fromCSR.virtualInst.sfenceVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence
+  private val virtualSfencePart = io.fromCSR.virtualInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence
+  private val virtualHfence = io.fromCSR.virtualInst.hfence && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && (decodedInst.fuOpType === FenceOpType.hfence_g || decodedInst.fuOpType === FenceOpType.hfence_v)
+  private val virtualHld = io.fromCSR.virtualInst.hlsv && FuType.FuTypeOrR(decodedInst.fuType, FuType.ldu) && (LSUOpType.isHlv(decodedInst.fuOpType) || LSUOpType.isHlvx(decodedInst.fuOpType))
+  private val virtualHst = io.fromCSR.virtualInst.hlsv && FuType.FuTypeOrR(decodedInst.fuType, FuType.stu) && LSUOpType.isHsv(decodedInst.fuOpType)
+  private val virtualWfi = io.fromCSR.virtualInst.wfi && FuType.FuTypeOrR(decodedInst.fuType, FuType.csr)   && CSROpType.isWfi(decodedInst.fuOpType)
+  private val virtualCboZ = io.fromCSR.virtualInst.cboZ && isCboZero
+  private val virtualCboCF = io.fromCSR.virtualInst.cboCF && (isCboClean || isCboFlush)
+  private val virtualCboI = io.fromCSR.virtualInst.cboI && isCboInval
+  dontTouch(virtualSfenceVMA)
+  dontTouch(virtualSfencePart)
+  dontTouch(virtualHfence)
+  dontTouch(virtualHld)
+  dontTouch(virtualHst)
+  dontTouch(virtualWfi)
+  dontTouch(virtualCboZ)
+  dontTouch(virtualCboCF)
+  dontTouch(virtualCboI)
 
+  private val exceptionVI = virtualSfenceVMA || virtualSfencePart || virtualHfence ||
+                            virtualHld || virtualHst || virtualWfi ||
+                            virtualCboZ || virtualCboCF || virtualCboI
 
   decodedInst.exceptionVec(illegalInstr) := exceptionII || io.enq.ctrlFlow.exceptionVec(EX_II)
   decodedInst.exceptionVec(virtualInstr) := exceptionVI

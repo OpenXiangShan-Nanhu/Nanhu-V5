@@ -1350,15 +1350,17 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   (0 until VlduCnt).foreach{i=>
     if (i == 0){ // for segmentUnit, segmentUnit use port0 writeback
-      io.mem_to_ooo.writebackVldu(i).valid := vlMergeBuffer.io.uopWriteback(i).valid || vsMergeBuffer(i).io.uopWriteback.head.valid || vSegmentUnit.io.uopwriteback.valid
+      io.mem_to_ooo.writebackVldu(i).valid := vlMergeBuffer.io.uopWriteback(i).valid || vsMergeBuffer(i).io.uopWriteback.head.valid || vSegmentUnit.io.uopwriteback.valid || vfofBuffer.io.uopWriteback.valid
       io.mem_to_ooo.writebackVldu(i).bits := PriorityMux(Seq(
         vSegmentUnit.io.uopwriteback.valid          -> vSegmentUnit.io.uopwriteback.bits,
         vlMergeBuffer.io.uopWriteback(i).valid      -> vlMergeBuffer.io.uopWriteback(i).bits,
         vsMergeBuffer(i).io.uopWriteback.head.valid -> vsMergeBuffer(i).io.uopWriteback.head.bits,
+        vfofBuffer.io.uopWriteback.valid            -> vfofBuffer.io.uopWriteback.bits,
       ))
+      vSegmentUnit.io.uopwriteback.ready := io.mem_to_ooo.writebackVldu(i).ready
       vlMergeBuffer.io.uopWriteback(i).ready := io.mem_to_ooo.writebackVldu(i).ready && !vSegmentUnit.io.uopwriteback.valid
       vsMergeBuffer(i).io.uopWriteback.head.ready := io.mem_to_ooo.writebackVldu(i).ready && !vlMergeBuffer.io.uopWriteback(i).valid && !vSegmentUnit.io.uopwriteback.valid
-      vSegmentUnit.io.uopwriteback.ready := io.mem_to_ooo.writebackVldu(i).ready
+      vfofBuffer.io.uopWriteback.ready := io.mem_to_ooo.writebackVldu(i).ready && !vlMergeBuffer.io.uopWriteback(i).valid && !vSegmentUnit.io.uopwriteback.valid && !vsMergeBuffer(i).io.uopWriteback.head.valid
     } else if (i == 1) {
       io.mem_to_ooo.writebackVldu(i).valid := vlMergeBuffer.io.uopWriteback(i).valid || vsMergeBuffer(i).io.uopWriteback.head.valid || vfofBuffer.io.uopWriteback.valid
       io.mem_to_ooo.writebackVldu(i).bits := PriorityMux(Seq(

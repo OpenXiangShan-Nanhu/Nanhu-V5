@@ -58,6 +58,8 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     val release = Flipped(Valid(new Release)) //paddr
     // violation query
     val query = Vec(LoadPipelineWidth, Flipped(new LoadNukeQueryIO))
+    // s2 mmio write paddr
+    val mmio_paddr = Vec(LoadPipelineWidth, Input(Valid(new LoadMMIOPaddrIO)))
 
     // replayq_mmio instr need read paddr from vqueue
     val mmioLqIdx = new Bundle {
@@ -276,13 +278,13 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     bypassPAddr(w) := 0.U(PAddrBits.W)
 
     // lqidx is pointer, so need to add .value
-    when(queryRAR_needEnqueue(w) && enq.ready) {
+    when((queryRAR_needEnqueue(w) && enq.ready) || io.mmio_paddr(w).valid) {
       val index = enq.bits.uop.lqIdx.value
       enqIndexVec(w) := index
       acceptedVec(w) := true.B
       paddrModule.io.wen(w) := true.B
-      paddrModule.io.waddr(w) := index
-      paddrModule.io.wdata(w) := enq.bits.paddr
+      paddrModule.io.waddr(w) := index | io.mmio_paddr(w).bits.lqIdx.value
+      paddrModule.io.wdata(w) := enq.bits.paddr | io.mmio_paddr(w).bits.paddr
       bypassPAddr(w) := enq.bits.paddr
       
       // release update

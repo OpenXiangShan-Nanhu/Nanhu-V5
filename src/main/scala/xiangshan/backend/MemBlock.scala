@@ -769,6 +769,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     // ld-ld violation check
     loadUnits(i).io.lsq.ldld_nuke_query <> lsq.io.ldu.ldld_nuke_query(i)
     loadUnits(i).io.lsq.stld_nuke_query <> lsq.io.ldu.stld_nuke_query(i)
+    loadUnits(i).io.lsq.mmio_paddr <> lsq.io.ldu.mmio_paddr(i)
     loadUnits(i).io.csrCtrl       <> csrCtrl
     // dcache refill req
   // loadUnits(i).io.refill           <> delayedDcacheRefill

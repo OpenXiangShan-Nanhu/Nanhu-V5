@@ -405,6 +405,11 @@ class StoreNukeQueryIO(implicit p: Parameters) extends XSBundle {
   val matchLine = Bool()
 }
 
+class LoadMMIOPaddrIO(implicit p: Parameters) extends XSBundle {
+  val lqIdx = new LqPtr
+  val paddr = UInt(PAddrBits.W)
+}
+
 class StoreMaBufToSqControlIO(implicit p: Parameters) extends XSBundle {
   // from storeMisalignBuffer to storeQueue, control it's sbuffer write
   val control = Output(new XSBundle {

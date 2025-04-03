@@ -210,6 +210,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     val ldu = new Bundle() {
         val stld_nuke_query = Vec(LoadPipelineWidth, Flipped(new LoadNukeQueryIO)) // from load_s2
         val ldld_nuke_query = Vec(LoadPipelineWidth, Flipped(new LoadNukeQueryIO)) // from load_s2
+        val mmio_paddr = Vec(LoadPipelineWidth, Input(Valid(new LoadMMIOPaddrIO))) // from load_s2
         val ldin         = Vec(LoadPipelineWidth, Flipped(Decoupled(new LqWriteBundle))) // from load_s3
     }
     val sta = new Bundle() {
@@ -281,6 +282,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   virtualLoadQueue.io.vecCommit     <> io.vecFeedback
   virtualLoadQueue.io.enq           <> io.enq
   virtualLoadQueue.io.ldin          <> io.ldu.ldin // from load_s3
+  virtualLoadQueue.io.mmio_paddr    := io.ldu.mmio_paddr // from load_s2
   virtualLoadQueue.io.lqFull        <> io.lqFull
   virtualLoadQueue.io.lqDeq         <> io.lqDeq
   virtualLoadQueue.io.lqCancelCnt   <> io.lqCancelCnt

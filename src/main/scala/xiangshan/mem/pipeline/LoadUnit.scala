@@ -83,6 +83,7 @@ class LoadToLsqIO(implicit p: Parameters) extends XSBundle {
   val forward         = new PipeLoadForwardQueryIO
   val stld_nuke_query = new LoadNukeQueryIO
   val ldld_nuke_query = new LoadNukeQueryIO
+  val mmio_paddr      = Valid(Output(new LoadMMIOPaddrIO))
 }
 
 class LoadToLoadIO(implicit p: Parameters) extends XSBundle {
@@ -1179,7 +1180,13 @@ class LoadUnit(implicit p: Parameters) extends XSModule
 
   val s2_troublem        = !s2_exception &&
                            !s2_prf &&
-                           !s2_in.delayedLoadError
+                           !s2_in.delayedLoadError &&
+                           !s2_mmio
+
+  // write paddr into virtualq
+  io.lsq.mmio_paddr.valid := s2_valid && s2_mmio
+  io.lsq.mmio_paddr.bits.lqIdx := s2_in.uop.lqIdx
+  io.lsq.mmio_paddr.bits.paddr := s2_in.paddr
 
   io.dcache.resp.ready  := true.B
   val s2_dcache_should_resp = !(s2_in.tlbMiss || s2_exception || s2_in.delayedLoadError || s2_mmio || s2_prf)

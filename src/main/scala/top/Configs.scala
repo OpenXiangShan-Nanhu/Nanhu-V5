@@ -353,7 +353,7 @@ class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1
           numCores = tiles.size
         )),
         reqField = Seq(utility.ReqSourceField()),
-        sramClkDivBy2 = true,
+        sramClkDivBy2 = false,
         sramDepthDiv = 4,
         tagECC = Some("secded"),
         dataECC = Some("secded"),
@@ -425,7 +425,7 @@ class NanhuV5_3Config(n: Int = 1) extends Config(
 
 class NactConfig(n: Int = 1) extends Config(
   new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
-    ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8)
+    ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8, tp = false)
     ++ new WithNKBL1I(64, ways = 8)
     ++ new WithNKBL1D(64, ways = 8)
     ++ new BaseConfig(n)

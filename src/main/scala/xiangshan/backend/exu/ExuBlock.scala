@@ -65,10 +65,11 @@ class ExuBlockImp(
   exuWithParam.filter(_._1._2.isSharedVf).groupBy(_._1._2.crossMatrixIdx).foreach {
     case (idx, exus) => {
       val wbMgu = Module(new SharedVfWbMgu(exus.head._1._2))
-      wbMgu.io.ins.head <> exus.head._1._1.io.out
-      wbMgu.io.ins.last <> exus.last._1._1.io.out
-      exus.head._2 <> wbMgu.io.outs.head
-      exus.last._2 <> wbMgu.io.outs.last
+      val sharedVfExus = exus.sortBy(_._1._2.crossMatrixPortIdx)
+      wbMgu.io.ins(0) <> sharedVfExus(0)._1._1.io.out
+      wbMgu.io.ins(1) <> sharedVfExus(1)._1._1.io.out
+      sharedVfExus(0)._2 <> wbMgu.io.outs(0)
+      sharedVfExus(1)._2 <> wbMgu.io.outs(1)
     }
   }
 

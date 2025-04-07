@@ -397,8 +397,8 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   VfRegFile128("VfRegFile", vfSchdParams.numPregs,
                 vfRfRHaddr, vfRfRHdata,
                 vfRfRLaddr, vfRfRLdata,
-                vfRfWen.head, vfRfWaddr, vfRfWHdata,
-                vfRfWen.last, vfRfWaddr, vfRfWLdata,
+                vfRfWen(1), vfRfWaddr, vfRfWHdata,
+                vfRfWen(0), vfRfWaddr, vfRfWLdata,
                 vecdebugReadAddr = vfDiffRead.map(_._1),
                 vecdebugReadData = vfDiffRead.map(_._2),
                 fpdebugReadAddr = fpDiffRead.map(_._1),
@@ -442,11 +442,11 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
 
   vfRfWaddr := io.fromVfWb.map(x => RegEnable(x.addr, x.wen)).toSeq
   // vfRfWdata := io.fromVfWb.map(x => RegEnable(x.data, x.wen)).toSeq
-  vfRfWLdata := io.fromVfWb.map(x => RegEnable(x.data.head(64), x.wen)).toSeq
-  vfRfWHdata := io.fromVfWb.map(x => RegEnable(Mux(x.vfRfWen === "b10".U, x.data.head(64), x.data.tail(64)), x.wen))
+  vfRfWLdata := io.fromVfWb.map(x => RegEnable(x.data.tail(64), x.wen)).toSeq
+  vfRfWHdata := io.fromVfWb.map(x => RegEnable(Mux(x.vfRfWen === "b11".U, x.data.head(64), x.data.tail(64)), x.wen))
 
-  vfRfWen.head.zip(io.fromVfWb.map(x => RegNext(x.wen && x.vfRfWen(0)))).foreach{ case (wenSink, wenSource) => wenSink := wenSource }
-  vfRfWen.last.zip(io.fromVfWb.map(x => RegNext(x.wen && x.vfRfWen(1)))).foreach{ case (wenSink, wenSource) => wenSink := wenSource }
+  vfRfWen(1).zip(io.fromVfWb.map(x => RegNext(x.wen && x.vfRfWen(1)))).foreach{ case (wenSink, wenSource) => wenSink := wenSource }
+  vfRfWen(0).zip(io.fromVfWb.map(x => RegNext(x.wen && x.vfRfWen(0)))).foreach{ case (wenSink, wenSource) => wenSink := wenSource }
 
   for(portIdx <- vfRfRLaddr.indices) {
     if (vfRFReadArbiter.io.out.isDefinedAt(portIdx)) {

@@ -502,7 +502,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     sink.bits.fpWen.foreach(_ := source.bits.uop.fpWen)
     sink.bits.vecWen.foreach(_ := source.bits.uop.vecWen)
     sink.bits.v0Wen.foreach(_ := source.bits.uop.v0Wen)
-    sink.bits.vfRfWen.foreach(_ := 3.U)
+    sink.bits.vfRfWen.foreach(_ := Mux(source.bits.isVls, 3.U(2.W), 1.U(2.W)))
     sink.bits.vlWen.foreach(_ := source.bits.uop.vlWen)
     sink.bits.exceptionVec.foreach(_ := source.bits.uop.exceptionVec)
     sink.bits.flushPipe.foreach(_ := source.bits.uop.flushPipe)

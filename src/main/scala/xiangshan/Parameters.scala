@@ -426,7 +426,7 @@ case class XSCoreParameters
       IssueBlockParams(Seq(
         ExeUnitParams("VFALU1", Seq(Vfalu64Cfg, Vfcvt64Cfg),
                                 Seq(VfWB(3, 0), V0WB(3, 0), IntWB(8, 0)),
-                                Seq(Seq(VfRD(2, 1)), Seq(VfRD(5, 1)), Seq(VfRD(8, 1)), Seq(V0RD(3, 0)), Seq(VlRD(3, 0))),
+                                Seq(Seq(VfRD(9, 0)), Seq(VfRD(10, 0)), Seq(VfRD(8, 1)), Seq(V0RD(3, 0)), Seq(VlRD(3, 0))),
                                 sharedVf = true, crossMatrixIdx = 1, crossMatrixPortIdx = 1),
       ), numEntries = 18, numEnq = 2, numComp = 16),
 
@@ -439,7 +439,7 @@ case class XSCoreParameters
       IssueBlockParams(Seq(
         ExeUnitParams("VFDIV", Seq(VfdivCfg),
                                 Seq(VfWB(1, 1), V0WB(1, 1)),
-                                Seq(Seq(VfRD(7, 1)), Seq(VfRD(8, 2)), Seq(VfRD(5, 3)), Seq(V0RD(1, 1)), Seq(VlRD(1, 1)))),
+                                Seq(Seq(VfRD(2, 1)), Seq(VfRD(5, 1)), Seq(VfRD(8, 2)), Seq(V0RD(5, 0)), Seq(VlRD(5, 0)))),
       ), numEntries = 18, numEnq = 2, numComp = 16),
       
     ),
@@ -468,7 +468,7 @@ case class XSCoreParameters
         ExeUnitParams("LDU1", Seq(LduCfg), Seq(IntWB(6, 0), VfWB(6, 0)), Seq(Seq(IntRD(9, 0))), true, 2),
       ), numEntries = 16, numEnq = 1, numComp = 15),
       IssueBlockParams(Seq(
-        ExeUnitParams("VLSU0", Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg), Seq(VfWB(7, 0), V0WB(5, 0), VlWB(2, 0)), Seq(Seq(VfRD(9, 0)), Seq(VfRD(10, 0)), Seq(VfRD(11, 0)), Seq(V0RD(5, 0)), Seq(VlRD(5, 0)))),
+        ExeUnitParams("VLSU0", Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg), Seq(VfWB(7, 0), V0WB(5, 0), VlWB(2, 0)), Seq(Seq(VfRD(11, 0)), Seq(VfRD(12, 0)), Seq(VfRD(13, 0)), Seq(V0RD(6, 0)), Seq(VlRD(6, 0)))),
       ), numEntries = 16, numEnq = 2, numComp = 14),
       IssueBlockParams(Seq(
         ExeUnitParams("STD0", Seq(StdCfg, MoudCfg), Seq(), Seq(Seq(IntRD(11, 0), VfRD(2, 2)))),

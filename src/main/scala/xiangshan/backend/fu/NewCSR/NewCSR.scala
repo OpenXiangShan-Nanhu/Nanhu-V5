@@ -212,6 +212,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     val fetchMalTval = Input(UInt(XLEN.W))
 
     val distributedWenLegal = Output(Bool())
+    // HW monitor to XSTop
+    val csrMon = if(env.EnableHWMoniter) Some(Output(new CSRHWMonitor)) else None
   })
 
   val toAIA   = IO(Output(new CSRToAIABundle))
@@ -1261,6 +1263,16 @@ class NewCSR(implicit val p: Parameters) extends Module
   )
 
   io.distributedWenLegal := wenLegal
+
+  if (env.EnableHWMoniter){
+    io.csrMon.foreach{ csrReg =>
+      csrReg.mstatus := mstatus.rdata.asUInt
+      csrReg.mcause  := mcause.rdata.asUInt
+      csrReg.mepc    := mepc.rdata.asUInt
+      csrReg.mtval   := mtval.rdata.asUInt
+    }
+    dontTouch(io.csrMon.get)
+  }
 
   // Always instantiate basic difftest modules.
   if (env.AlwaysBasicDiff || env.EnableDifftest) {

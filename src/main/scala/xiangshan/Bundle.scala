@@ -802,3 +802,20 @@ class XSL1BusErrors()(implicit val p: Parameters) extends BusErrors {
     )
 }
 
+
+class RobHWMonitor(implicit p: Parameters) extends XSBundle {
+  val commitState = Bool()
+  val commitValid = Vec(CommitWidth, Bool())
+  val commitInstr = Vec(CommitWidth, UInt(32.W))
+  val commitPC    = Vec(CommitWidth, UInt(VAddrBits.W))
+}
+class CSRHWMonitor(implicit p: Parameters) extends XSBundle {
+  val mstatus = UInt(XLEN.W)
+  val mcause  = UInt(XLEN.W)
+  val mepc    = UInt(XLEN.W)
+  val mtval   = UInt(XLEN.W)
+}
+class HardwareMonitor(implicit p: Parameters) extends XSBundle {
+  val robMon = new RobHWMonitor
+  val csrMon = new CSRHWMonitor
+}

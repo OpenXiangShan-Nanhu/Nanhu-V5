@@ -108,6 +108,8 @@ class CSRFileIO(implicit p: Parameters) extends XSBundle {
   val customCtrl = Output(new CustomCSRCtrlIO)
   // instruction fetch address translation type
   val instrAddrTransType = Output(new AddrTransType)
+  // HW monitor to XSTop
+  val csrMon = if(env.EnableHWMoniter) Some(Output(new CSRHWMonitor)) else None  
 }
 
 class VtypeStruct(implicit p: Parameters) extends XSBundle {

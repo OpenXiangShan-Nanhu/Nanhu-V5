@@ -696,6 +696,12 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   io.debugRolling := ctrlBlock.io.debugRolling
 
+  io.hwMon.foreach{ hwMon =>
+    hwMon.robMon := ctrlBlock.io.robMon.getOrElse(0.U.asTypeOf(hwMon.robMon))
+    hwMon.csrMon := intExuBlock.io.csrio.get.csrMon.getOrElse(0.U.asTypeOf(hwMon.csrMon))
+    dontTouch(io.hwMon.get)  
+  }
+
   if(backendParams.debugEn) {
     dontTouch(memScheduler.io)
     dontTouch(dataPath.io.toMemExu)
@@ -897,4 +903,6 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
     val fromCore = new CoreDispatchTopDownIO
   }
   val debugRolling = new RobDebugRollingIO
+  // HW monitor to XSTop
+  val hwMon = if(env.EnableHWMoniter) Some(Output(new HardwareMonitor)) else None
 }

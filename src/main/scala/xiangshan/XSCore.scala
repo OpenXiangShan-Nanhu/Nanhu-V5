@@ -95,6 +95,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
       val l2MissMatch = Input(Bool())
       val l3MissMatch = Input(Bool())
     }
+    val hwMon = if(env.EnableHWMoniter) Some(Output(new HardwareMonitor)) else None
   })
   val dft_reset = IO(Input(new DFTResetSignals()))
 
@@ -244,7 +245,10 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
 
   memBlock.io.resetInFrontendBypass.fromFrontend := frontend.io.resetInFrontend
   io.resetInFrontend := memBlock.io.resetInFrontendBypass.toL2Top
-
+  if(env.EnableHWMoniter){
+    io.hwMon.foreach(_ := backend.io.hwMon.getOrElse(0.U.asTypeOf(io.hwMon.get)))
+    dontTouch(io.hwMon.get)
+  }
   val dft = if (hasMbist) Some(IO(new SramBroadcastBundle)) else None
   if (hasMbist) {
     memBlock.dft.get := dft.get

@@ -81,8 +81,8 @@ object RobBundles extends HasCircularQueuePtrHelper {
     // status end
 
     // debug_begin
-    val debug_pc = OptionWrapper(backendParams.debugEn, UInt(VAddrBits.W))
-    val debug_instr = OptionWrapper(backendParams.debugEn, UInt(32.W))
+    val debug_pc = OptionWrapper(backendParams.debugEn || env.EnableHWMoniter, UInt(VAddrBits.W))
+    val debug_instr = OptionWrapper(backendParams.debugEn || env.EnableHWMoniter, UInt(32.W))
     val debug_ldest = OptionWrapper(backendParams.basicDebugEn, UInt(LogicRegsWidth.W))
     val debug_pdest = OptionWrapper(backendParams.basicDebugEn, UInt(PhyRegIdxWidth.W))
     val debug_fuType = OptionWrapper(backendParams.debugEn, FuType())
@@ -118,8 +118,8 @@ object RobBundles extends HasCircularQueuePtrHelper {
     // trace
     val traceBlockInPipe = new TracePipe(log2Up(RenameWidth * 2 + 1))
     // debug_begin
-    val debug_pc = OptionWrapper(backendParams.debugEn, UInt(VAddrBits.W))
-    val debug_instr = OptionWrapper(backendParams.debugEn, UInt(32.W))
+    val debug_pc = OptionWrapper(backendParams.debugEn || env.EnableHWMoniter, UInt(VAddrBits.W))
+    val debug_instr = OptionWrapper(backendParams.debugEn || env.EnableHWMoniter, UInt(32.W))
     val debug_ldest = OptionWrapper(backendParams.basicDebugEn, UInt(LogicRegsWidth.W))
     val debug_pdest = OptionWrapper(backendParams.basicDebugEn, UInt(PhyRegIdxWidth.W))
     val debug_fuType = OptionWrapper(backendParams.debugEn, FuType())

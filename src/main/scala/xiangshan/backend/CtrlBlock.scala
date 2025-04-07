@@ -635,6 +635,7 @@ class CtrlBlockImp(
   rob.io.debugHeadLsIssue := io.robio.robHeadLsIssue
   rob.io.lsTopdownInfo := io.robio.lsTopdownInfo
   rob.io.debugEnqLsq := io.debugEnqLsq
+  io.robMon.foreach(_ := rob.io.robMon.getOrElse(0.U.asTypeOf(io.robMon.get)))
 
   io.robio.robDeqPtr := rob.io.robDeqPtr
 
@@ -789,6 +790,8 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
   }
   val debugRolling = new RobDebugRollingIO
   val debugEnqLsq = Input(new LsqEnqIO)
+  // HW monitor to XSTop
+    val robMon = if(env.EnableHWMoniter) Some(Output(new RobHWMonitor)) else None
 }
 
 class NamedIndexes(namedCnt: Seq[(String, Int)]) {

@@ -354,6 +354,8 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
 
   csrOut.instrAddrTransType := csrMod.io.status.instrAddrTransType
 
+  csrOut.csrMon.foreach(_ := csrMod.io.csrMon.getOrElse(0.U.asTypeOf(csrOut.csrMon.get)))
+  
   csrToDecode := csrMod.io.toDecode
 }
 

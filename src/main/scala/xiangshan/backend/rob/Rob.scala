@@ -115,6 +115,8 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       val robHeadLqIdx = Valid(new LqPtr)
     }
     val debugRolling = new RobDebugRollingIO
+    // HW monitor to XSTop
+    val robMon = if(env.EnableHWMoniter) Some(Output(new RobHWMonitor)) else None
   })
 
   val exuWBs: Seq[ValidIO[ExuOutput]] = io.exuWriteback.filter(!_.bits.params.hasStdFu).toSeq
@@ -1583,6 +1585,20 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       difftest.code := trapCode
       difftest.pc := trapPC
     }
+  }
+
+  if (env.EnableHWMoniter){
+    io.robMon.foreach { rob =>
+      rob.commitState := state === s_idle && !blockCommit
+      rob.commitValid := io.commits.commitValid
+      rob.commitInstr.zipWithIndex.foreach { case (cmtInst, i) =>
+        cmtInst := commitInfo(i).debug_instr.getOrElse(0.U)
+      }
+      rob.commitPC.zipWithIndex.foreach { case (cmtPc, i) =>
+        cmtPc := commitInfo(i).debug_pc.getOrElse(0.U)
+      }
+    }
+    dontTouch(io.robMon.get)
   }
 
   // val commitMoveVec = VecInit(io.commits.commitValid.zip(commitIsMove).map { case (v, m) => v && m })

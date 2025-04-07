@@ -808,12 +808,24 @@ class RobHWMonitor(implicit p: Parameters) extends XSBundle {
   val commitValid = Vec(CommitWidth, Bool())
   val commitInstr = Vec(CommitWidth, UInt(32.W))
   val commitPC    = Vec(CommitWidth, UInt(VAddrBits.W))
+
+  val redirectValid = Bool()
+  val redirectPc    = UInt(VAddrBits.W)
+  val redirectLevel = RedirectLevel()
 }
 class CSRHWMonitor(implicit p: Parameters) extends XSBundle {
   val mstatus = UInt(XLEN.W)
   val mcause  = UInt(XLEN.W)
   val mepc    = UInt(XLEN.W)
   val mtval   = UInt(XLEN.W)
+  val mie     = UInt(XLEN.W)
+  val mip     = UInt(XLEN.W)
+  val mideleg = UInt(XLEN.W)
+  val scause  = UInt(XLEN.W)
+  val sepc    = UInt(XLEN.W)
+  val stval   = UInt(XLEN.W)
+  val sie     = UInt(XLEN.W)
+  val sip     = UInt(XLEN.W)
 }
 class HardwareMonitor(implicit p: Parameters) extends XSBundle {
   val robMon = new RobHWMonitor

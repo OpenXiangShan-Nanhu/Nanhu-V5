@@ -102,9 +102,9 @@ class DuplicatedTagArray(readPorts: Int)(implicit p: Parameters) extends Abstrac
   val array = Seq.fill(readPorts) { Module(new TagArray) }
 
   def getECCFromEncTag(encTag: UInt) = {
-    if (EnableDataEcc) {
+    if (EnableTagEcc) {
       require(encTag.getWidth == encTagBits, s"encTag=$encTag != encTagBits=$encTagBits!")
-      encTag(encTagBits - 1, tagBits)
+      encTag(encTagBits - 1, tagBits + ClientStates.width)
     } else {
       0.U
     }

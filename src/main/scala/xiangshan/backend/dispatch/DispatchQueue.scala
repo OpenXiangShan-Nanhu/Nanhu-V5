@@ -29,6 +29,7 @@ import xiangshan.backend.fu.FuType
 import xiangshan.frontend.{FtqPtr, PreDecodeInfo}
 import xiangshan.mem.{LqPtr, SqPtr}
 import xiangshan.backend.fu.vector.Bundles.NumLsElem
+import xs.utils.queue.QPtrMatchMatrix
 
 // for dq datamodule
   class DqBundle(implicit p: Parameters) extends XSBundle {

@@ -26,7 +26,7 @@ import xiangshan._
 import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
 import xiangshan.cache.mmu._
 import xiangshan.frontend.icache._
-import xs.utils.perf.{DebugOptionsKey, HasPerfEvents, HasPerfLogging, XSError, XSPerfAccumulate, PerfEvent, HPerfMonitor}
+import xs.utils.perf.{DebugOptionsKey, HasPerfEvents, XSError, XSPerfAccumulate, PerfEvent, HPerfMonitor}
 
 
 class Frontend()(implicit p: Parameters) extends LazyModule with HasXSParameter {

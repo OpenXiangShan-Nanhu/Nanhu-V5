@@ -45,7 +45,7 @@ import xs.utils._
 import xs.utils.common._
 import xs.utils.mbist.{MbistInterface, MbistPipeline}
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
-import xs.utils.perf.{HasPerfEvents, HasPerfLogging, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
+import xs.utils.perf.{HasPerfEvents, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
 
 trait HasMemBlockParameters extends HasXSParameter {

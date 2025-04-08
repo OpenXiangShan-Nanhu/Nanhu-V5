@@ -30,6 +30,7 @@ import scala.sys.exit
 import chisel3.util.log2Up
 import xs.utils._
 import xs.utils.perf._
+import xs.utils.perf.XSPerfLevel.VERBOSE
 
 object ArgParser {
   // TODO: add more explainations
@@ -165,6 +166,7 @@ object ArgParser {
       case PerfCounterOptionsKey => PerfCounterOptions(
         here(DebugOptionsKey).EnablePerfDebug && !here(DebugOptionsKey).FPGAPlatform,
         here(DebugOptionsKey).EnableRollingDB && !here(DebugOptionsKey).FPGAPlatform,
+        VERBOSE,
         0
       )
     })

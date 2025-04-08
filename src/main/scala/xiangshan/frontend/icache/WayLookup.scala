@@ -146,21 +146,17 @@ class WayLookup(implicit p: Parameters) extends ICacheModule {
     ******************************************************************************
     */
   // if the entry is empty, but there is a valid write, we can bypass it to read port (maybe timing critical)
-  private val can_bypass = empty && io.write.valid
-  io.read.valid := !empty || io.write.valid
-  when (can_bypass) {
-    io.read.bits := io.write.bits
-  }.otherwise {  // can't bypass
-    io.read.bits.entry := entries(readPtr.value)
-    when(gpf_hit) {  // ptr match && entry valid
-      io.read.bits.gpf := gpf_entry.bits
-      // also clear gpf_entry.valid when it's read, note this will be override by write (L175)
-      when (io.read.fire) {
-        gpf_entry.valid := false.B
-      }
-    }.otherwise {  // gpf not hit
-      io.read.bits.gpf := 0.U.asTypeOf(new WayLookupGPFEntry)
+  // delete bypass for timing
+  io.read.valid := !empty
+  io.read.bits.entry := entries(readPtr.value)
+  when(gpf_hit) {  // ptr match && entry valid
+    io.read.bits.gpf := gpf_entry.bits
+    // also clear gpf_entry.valid when it's read, note this will be override by write (L175)
+    when (io.read.fire) {
+      gpf_entry.valid := false.B
     }
+  }.otherwise {  // gpf not hit
+    io.read.bits.gpf := 0.U.asTypeOf(new WayLookupGPFEntry)
   }
 
   /**
@@ -176,7 +172,7 @@ class WayLookup(implicit p: Parameters) extends ICacheModule {
     when(io.write.bits.itlb_exception.map(_ === ExceptionType.gpf).reduce(_||_)) {
       // if gpf_entry is bypassed, we don't need to save it
       // note this will override the read (L156)
-      gpf_entry.valid := !(can_bypass && io.read.fire)
+      gpf_entry.valid := true.B
       gpf_entry.bits  := io.write.bits.gpf
       gpfPtr := writePtr
     }

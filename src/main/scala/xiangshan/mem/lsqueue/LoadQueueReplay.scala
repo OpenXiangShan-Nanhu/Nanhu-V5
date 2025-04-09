@@ -765,7 +765,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     //
     val schedIndex = enq.bits.schedIndex
     when (enq.valid && enq.bits.isLoadReplay) {
-      when (!needReplay(w) || hasExceptions(w)) {
+      when (!(needReplay(w) || loadMMIO(w)) || hasExceptions(w)) {
         allocated(schedIndex) := false.B
         freeMaskVec(schedIndex) := true.B
       } .otherwise {

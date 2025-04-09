@@ -62,7 +62,7 @@ case class ICacheParameters(
   val reqFields: Seq[BundleFieldBase] = Seq(
     PrefetchField(),
     ReqSourceField()
-  ) ++ aliasBitsOpt.map(AliasField)
+  )
   val echoFields: Seq[BundleFieldBase] = Nil
   def tagCode: Code = Code.fromString(tagECC)
   def dataCode: Code = Code.fromString(dataECC)

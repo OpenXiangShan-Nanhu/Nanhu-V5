@@ -426,8 +426,8 @@ class NanhuV5_3Config(n: Int = 1) extends Config(
 class NactConfig(n: Int = 1) extends Config(
   new WithNKBL3(4 * 1024, inclusive = false, banks = 4, ways = 8)
     ++ new WithNKBL2(512, inclusive = true, banks = 2, ways = 8, tp = false)
-    ++ new WithNKBL1I(64, ways = 8)
-    ++ new WithNKBL1D(64, ways = 8)
+    ++ new WithNKBL1I(64, ways = 4)
+    ++ new WithNKBL1D(64, ways = 4)
     ++ new BaseConfig(n)
 )
 

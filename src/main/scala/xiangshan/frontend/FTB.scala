@@ -758,7 +758,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   io.out.s3.full_pred.zip(s3_multi_hit_dup).map {case (fp, m) => fp.multiHit := m}
   for (full_pred & s3_ftb_entry & s3_pc & s2_pc & s2_fire <-
     io.out.s3.full_pred zip s3_ftb_entry_dup zip s3_pc_dup zip s2_pc_dup zip io.s2_fire)
-      full_pred.fromFtbEntry(s3_ftb_entry, s3_pc.getAddr(), Some((s2_pc.getAddr(), s2_fire)), Some(s2_read_resp, s2_fire))
+      full_pred.fromFtbEntry(s3_ftb_entry, s3_pc.getAddr(), Some((s2_pc.getAddr(), s2_fire)), Some(real_s2_ftb_entry, s2_fire))
 
   // Overwrite the fallThroughErr value
   io.out.s3.full_pred.zipWithIndex.map {case(fp, i) => fp.fallThroughErr := real_s3_fallThroughErr_dup(i)}

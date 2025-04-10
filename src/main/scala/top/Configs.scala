@@ -259,7 +259,7 @@ class WithNKBL1I(n: Int, ways: Int = 4) extends Config((site, here, up) => {
       icacheParameters = ICacheParameters(
         nSets = sets,
         nWays = ways,
-        tagECC = Some("parity"),
+        tagECC = Some("none"),
         dataECC = Some("parity"),
         replacer = Some("setplru")
       )
@@ -274,13 +274,15 @@ class WithNKBL1D(n: Int, ways: Int = 8) extends Config((site, here, up) => {
       dcacheParametersOpt = Some(DCacheParameters(
         nSets = sets,
         nWays = ways,
-        tagECC = Some("secded"),
-        dataECC = Some("secded"),
+        tagECC = Some("none"),
+        dataECC = Some("parity"),
         replacer = Some("setplru"),
         nMissEntries = 16,
         nProbeEntries = 4,
         nReleaseEntries = 4,
         nMaxPrefetchEntry = 6,
+        enableDataEcc = true,
+        enableTagEcc = false
       ))
     ))
 })

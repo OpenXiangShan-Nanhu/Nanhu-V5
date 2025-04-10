@@ -1597,6 +1597,9 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       rob.commitPC.zipWithIndex.foreach { case (cmtPc, i) =>
         cmtPc := commitInfo(i).debug_pc.getOrElse(0.U)
       }
+      rob.commitIsMMIO.zipWithIndex.foreach { case (cmtMMIO, i) =>
+        cmtMMIO := commitInfo(i).debug_isMMIO.getOrElse(false.B)
+      }
       rob.redirectValid := io.redirect.valid
       rob.redirectPc    := io.redirect.bits.cfiUpdate.pc
       rob.redirectLevel := io.redirect.bits.level

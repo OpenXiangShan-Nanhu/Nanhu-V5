@@ -123,6 +123,7 @@ object RobBundles extends HasCircularQueuePtrHelper {
     val debug_ldest = OptionWrapper(backendParams.basicDebugEn, UInt(LogicRegsWidth.W))
     val debug_pdest = OptionWrapper(backendParams.basicDebugEn, UInt(PhyRegIdxWidth.W))
     val debug_fuType = OptionWrapper(backendParams.debugEn, FuType())
+    val debug_isMMIO = OptionWrapper(env.EnableHWMoniter, Bool())
     // debug_end
     val dirtyFs = Bool()
     val dirtyVs = Bool()
@@ -183,6 +184,7 @@ object RobBundles extends HasCircularQueuePtrHelper {
     robCommitEntry.debug_ldest.foreach(_ := robEntry.debug_ldest.get)
     robCommitEntry.debug_pdest.foreach(_ := robEntry.debug_pdest.get)
     robCommitEntry.debug_fuType.foreach(_ := robEntry.debug_fuType.get)
+    robCommitEntry.debug_isMMIO.foreach(_ := robEntry.mmio)
   }
 }
 

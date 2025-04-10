@@ -329,11 +329,8 @@ class SramedDataArray(implicit p: Parameters) extends AbstractBankedDataArray {
   io.write.ready := true.B
   io.write_dup.foreach(_.ready := true.B)
 
-  val data_banks = List.tabulate(DCacheSetDiv)( k => {
-    val banks = List.tabulate(DCacheBanks, DCacheWays)({case(i, j) => Module(new DataSRAM(i,j))})
-    val mbistPl = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeDataSet$k", hasMbist)
-    banks
-  })
+  val data_banks = List.tabulate(DCacheSetDiv, DCacheBanks, DCacheWays)({case(k, i, j) => Module(new DataSRAM(i,j))})
+  val mbistPl = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeDcshData", hasMbist)
 
   data_banks.map(_.map(_.map(_.dump())))
 

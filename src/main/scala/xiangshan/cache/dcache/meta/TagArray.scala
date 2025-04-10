@@ -20,6 +20,7 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.tilelink.ClientStates
+import xs.utils.mbist.MbistPipeline
 import xs.utils.perf.XSPerfAccumulate
 import xs.utils.sram.SRAMTemplate
 
@@ -71,7 +72,7 @@ class TagArray(implicit p: Parameters) extends AbstractTagArray {
   }
 
   val tag_array = Module(new SRAMTemplate(UInt(encTagBits.W), set = nSets, way = nWays,
-    shouldReset = false, holdRead = false, singlePort = true))
+    shouldReset = false, holdRead = false, singlePort = true, hasMbist = hasMbist))
 
   val wen = rst || io.write.valid
   io.write.ready := !rst
@@ -109,6 +110,7 @@ class DuplicatedTagArray(readPorts: Int)(implicit p: Parameters) extends Abstrac
       0.U
     }
   }
+  val mbistPl = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeDcshTag", hasMbist)
 
   val tag_read_oh = WireInit(VecInit(Seq.fill(readPorts)(0.U(XLEN.W))))
   for (i <- 0 until readPorts) {

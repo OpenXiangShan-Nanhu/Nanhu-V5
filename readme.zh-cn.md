@@ -42,14 +42,18 @@ Weibo/微博：[香山开源处理器](https://weibo.com/u/7706264932)
 
 ## 处理器架构
 
-自 2020 年 6 月开始开发的[雁栖湖](https://github.com/OpenXiangShan/XiangShan/tree/yanqihu)为香山处理器的首个稳定的微架构。
+自 2020 年 6 月开始开发的[雁栖湖(稳定且不再维护)](https://github.com/OpenXiangShan/XiangShan/tree/yanqihu)为香山处理器的首个稳定的微架构。
 
-香山的第二代微架构被命名为[南湖](https://github.com/OpenXiangShan/XiangShan/tree/nanhu)。
+香山的第二代微架构被命名为南湖，有两个稳定版本和一个开发版本
+- [南湖V2(稳定且不再维护)](https://github.com/OpenXiangShan/XiangShan/tree/nanhu)。
+- [南湖V3(稳定且不再维护)](https://github.com/Siudya/Nanhu/tree/main)
+- [南湖V5(开发中)](https://github.com/OpenXiangShan-Nanhu/Nanhu-V5/tree/main), 本仓库
 
-香山的第三代微架构（昆明湖）正在 master 分支上不断开发中。
 
-南湖微架构概览：
-![xs-arch-nanhu](images/xs-arch-nanhu.svg)
+香山的第三代微架构（昆明湖）位于 [master 分支(开发中)](https://github.com/OpenXiangShan/XiangShan/tree/master)。
+
+南湖V5微架构概览：
+![xs-arch-nanhu](images/xs-arch-nanhuv5.png)
 
 ## 目录概览
 

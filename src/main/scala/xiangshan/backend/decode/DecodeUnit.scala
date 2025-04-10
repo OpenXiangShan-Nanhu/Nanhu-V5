@@ -516,21 +516,21 @@ object ZfaDecode extends DecodeConstants {
     // FLEQ_H      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
     // FLTQ_H      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
 
-    FLI_S       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
-    FLI_D       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
-    FMINM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
-    FMINM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
-    FMAXM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
-    FMAXM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
-    FROUND_S    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
-    FROUND_D    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
-    FROUNDNX_S  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
-    FROUNDNX_D  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
-    FCVTMOD_W_D -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fcvtmod_w_d, xWen = T, canRobCompress = T),
-    FLEQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
-    FLEQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
-    FLTQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
-    FLTQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
+    // FLI_S       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    // FLI_D       -> FDecode(SrcType.no, SrcType.X, SrcType.X, FuType.f2v, FuOpType.X, fWen = T, vWen = T, canRobCompress = T),
+    // FMINM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
+    // FMINM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fminm, fWen = T,vWen = T, canRobCompress = T),
+    // FMAXM_S     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
+    // FMAXM_D     -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fmaxm, fWen = T,vWen = T, canRobCompress = T),
+    // FROUND_S    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
+    // FROUND_D    -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fround, fWen = T,vWen = T, canRobCompress = T),
+    // FROUNDNX_S  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
+    // FROUNDNX_D  -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.froundnx, fWen = T,vWen = T, canRobCompress = T),
+    // FCVTMOD_W_D -> FDecode(SrcType.fp, SrcType.X,  SrcType.X, FuType.vfcvt, VfcvtType.fcvtmod_w_d, xWen = T, canRobCompress = T),
+    // FLEQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
+    // FLEQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fleq, xWen = T, canRobCompress = T),
+    // FLTQ_S      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
+    // FLTQ_D      -> FDecode(SrcType.fp, SrcType.fp, SrcType.X, FuType.vfalu, VfaluType.fltq, xWen = T, canRobCompress = T),
   )
 }
 
@@ -785,8 +785,8 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     HypervisorDecode.table ++
     VecDecoder.table ++
     ZicondDecode.table ++
-    ZimopDecode.table ++
-    ZfaDecode.table
+    ZimopDecode.table
+    // ZfaDecode.table
 
   require(decode_table.map(_._2.length == 15).reduce(_ && _), "Decode tables have different column size")
   // assertion for LUI: only LUI should be assigned `selImm === SelImm.IMM_U && fuType === FuType.alu`

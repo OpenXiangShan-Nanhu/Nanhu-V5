@@ -57,7 +57,6 @@ case class ExeUnitParams(
   val needVecWen: Boolean = fuConfigs.map(_.needVecWen).reduce(_ || _)
   val needV0Wen: Boolean = fuConfigs.map(_.needV0Wen).reduce(_ || _)
   val needVlWen: Boolean = fuConfigs.map(_.needVlWen).reduce(_ || _)
-  val needOg2: Boolean = fuConfigs.map(_.needOg2).reduce(_ || _)
   val writeVfRf: Boolean = writeVecRf
   val writeFflags: Boolean = fuConfigs.map(_.writeFflags).reduce(_ || _)
   val writeVxsat: Boolean = fuConfigs.map(_.writeVxsat).reduce(_ || _)
@@ -163,7 +162,7 @@ case class ExeUnitParams(
     */
   def fuLatencyMap: Map[FuType.Value, Int] = {
     if (latencyCertain)
-      if(needOg2) fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else if (hasUncertainLatencyVal)
       fuConfigs.map(x => (x.fuType, x.latency.uncertainLatencyVal)).toMap.filter(_._2.nonEmpty).map(x => (x._1, x._2.get))
     else
@@ -208,7 +207,7 @@ case class ExeUnitParams(
 
   def fpFuLatencyMap: Map[FuType.Value, Int] = {
     if (fpLatencyCertain)
-      if (needOg2) writeFpFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeFpFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      writeFpFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
       Map()
   }
@@ -217,7 +216,7 @@ case class ExeUnitParams(
 
   def vfFuLatencyMap: Map[FuType.Value, Int] = {
     if (vfLatencyCertain)
-      if(needOg2) writeVfFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeVfFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      writeVfFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
       Map()
   }
@@ -226,7 +225,7 @@ case class ExeUnitParams(
 
   def v0FuLatencyMap: Map[FuType.Value, Int] = {
     if (v0LatencyCertain)
-      if(needOg2) writeV0FuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeV0FuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      writeV0FuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
       Map()
   }
@@ -235,7 +234,7 @@ case class ExeUnitParams(
 
   def vlFuLatencyMap: Map[FuType.Value, Int] = {
     if (vlLatencyCertain)
-      if(needOg2) writeVlFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else writeVlFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      writeVlFuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else
       Map()
   }

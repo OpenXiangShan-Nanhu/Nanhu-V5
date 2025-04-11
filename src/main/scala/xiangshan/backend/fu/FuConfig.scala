@@ -188,8 +188,6 @@ case class FuConfig (
   
   def VecNeedSharedMgu : Boolean = isSharedVf && (fuType == FuType.vfma || fuType == FuType.vfalu || fuType == FuType.vfcvt)
 
-  def needOg2: Boolean = false // isVecArith || fuType == FuType.vsetfwf || isVecMem
-
   def isSta: Boolean = name.contains("sta")
 
   def ckAlwaysEn: Boolean = isCsr || isFence

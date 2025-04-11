@@ -57,12 +57,7 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
 
   val resps: Vec[Vec[ValidIO[EntryDeqRespBundle]]] = Wire(Vec(4, chiselTypeOf(io.og0Resp)))
 
-  if (params.needOg2Resp)
-    resps := Seq(io.og0Resp, io.og1Resp, io.og2Resp.get, WireDefault(0.U.asTypeOf(io.og0Resp)))
-  else
-    resps := Seq(io.og0Resp, io.og1Resp, WireDefault(0.U.asTypeOf(io.og0Resp)), WireDefault(0.U.asTypeOf(io.og0Resp)))
-
-
+  resps := Seq(io.og0Resp, io.og1Resp, WireDefault(0.U.asTypeOf(io.og0Resp)), WireDefault(0.U.asTypeOf(io.og0Resp)))
 
   //Module
   val enqEntries          = Seq.fill(EnqEntryNum)(Module(EnqEntry(isComp = true)(p, params)))
@@ -142,12 +137,6 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
     enqEntry.io.enqDelayIn1.srcLoadDependency := RegEnable(VecInit(io.enq(entryIdx).bits.payload.srcLoadDependency.take(params.numRegSrc)), io.enq(entryIdx).valid)
     enqEntry.io.enqDelayIn1.og0Cancel         := RegNext(io.og0Cancel)
     enqEntry.io.enqDelayIn1.ldCancel          := RegNext(io.ldCancel)
-    // note: these signals with 2 cycle delay should not be enabled by io.enq.valid
-    enqEntry.io.enqDelayIn2.wakeUpFromWB      := DelayN(io.wakeUpFromWB, 2)
-    enqEntry.io.enqDelayIn2.wakeUpFromIQ      := DelayN(io.wakeUpFromIQ, 2)
-    enqEntry.io.enqDelayIn2.srcLoadDependency := DelayN(VecInit(io.enq(entryIdx).bits.payload.srcLoadDependency.take(params.numRegSrc)), 2)
-    enqEntry.io.enqDelayIn2.og0Cancel         := DelayN(io.og0Cancel, 2)
-    enqEntry.io.enqDelayIn2.ldCancel          := DelayN(io.ldCancel, 2)
     enqEntryTransVec(entryIdx)                := enqEntry.io.commonOut.transEntry
   }
   //othersEntries
@@ -527,7 +516,6 @@ class EntriesIO(implicit p: Parameters, params: IssueBlockParams) extends XSBund
   val enq                 = Vec(params.numEnq, Flipped(ValidIO(new EntryBundle)))
   val og0Resp             = Vec(params.numDeq, Flipped(ValidIO(new EntryDeqRespBundle)))
   val og1Resp             = Vec(params.numDeq, Flipped(ValidIO(new EntryDeqRespBundle)))
-  val og2Resp             = OptionWrapper(params.needOg2Resp, Vec(params.numDeq, Flipped(ValidIO(new EntryDeqRespBundle))))
   //deq sel
   val deqReady            = Vec(params.numDeq, Input(Bool()))
   val deqSelOH            = Vec(params.numDeq, Flipped(ValidIO(UInt(params.numEntries.W))))

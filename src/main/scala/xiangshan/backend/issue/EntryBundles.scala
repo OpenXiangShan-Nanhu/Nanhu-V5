@@ -405,31 +405,10 @@ object EntryBundles extends HasCircularQueuePtrHelper {
       srcStatusNext.psrc                              := srcStatus.psrc
       srcStatusNext.srcType                           := Mux(ignoreOldVd, SrcType.no, srcStatus.srcType)
       srcStatusNext.srcState                          := Mux(cancel, false.B, wakeup | srcStatus.srcState | ignoreOldVd)
-      srcStatusNext.dataSources.value                 := (if (params.inVfSchd && params.readVfRf && params.hasIQWakeUp) {
-                                                            // Vf / Mem -> Vf
-                                                            val isWakeupByMemIQ = wakeupByIQOH.zip(commonIn.wakeUpFromIQ).filter(_._2.bits.params.isMemExeUnit).map(_._1).fold(false.B)(_ || _)
-                                                            MuxCase(srcStatus.dataSources.value, Seq(
-                                                              (wakeupByIQ && isWakeupByMemIQ)    -> DataSource.bypass2,
-                                                              (wakeupByIQ && !isWakeupByMemIQ)   -> DataSource.bypass,
-                                                              srcStatus.dataSources.readBypass   -> DataSource.bypass2,
-                                                              srcStatus.dataSources.readBypass2  -> DataSource.reg,
-                                                            ))
-                                                          }
-                                                          else if (params.inMemSchd && params.readVfRf && params.hasIQWakeUp) {
-                                                            // Vf / Int -> Mem
-                                                            MuxCase(srcStatus.dataSources.value, Seq(
-                                                              wakeupByIQ                                                               -> DataSource.bypass,
-                                                              (srcStatus.dataSources.readBypass && wakeUpByVf(srcStatus.srcWakeUpL1ExuOH.get)) -> DataSource.bypass2,
-                                                              (srcStatus.dataSources.readBypass && !wakeUpByVf(srcStatus.srcWakeUpL1ExuOH.get)) -> DataSource.reg,
-                                                              srcStatus.dataSources.readBypass2                                        -> DataSource.reg,
-                                                            ))
-                                                          }
-                                                          else {
-                                                            MuxCase(srcStatus.dataSources.value, Seq(
+      srcStatusNext.dataSources.value                 := MuxCase(srcStatus.dataSources.value, Seq(
                                                               wakeupByIQ                         -> DataSource.bypass,
                                                               srcStatus.dataSources.readBypass   -> DataSource.reg,
                                                             ))
-                                                          })
       if(params.hasIQWakeUp) {
         ExuOHGen(srcStatusNext.srcWakeUpL1ExuOH.get, wakeupByIQOH, hasIQWakeupGet.srcWakeupL1ExuOH(srcIdx))
         srcStatusNext.srcLoadDependency               := Mux(wakeupByIQ,

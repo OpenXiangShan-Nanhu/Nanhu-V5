@@ -95,8 +95,6 @@ case class IssueBlockParams(
 
   def numIntSrc: Int = exuBlockParams.map(_.numIntSrc).max
 
-  // def numFpSrc: Int = exuBlockParams.map(_.numFpSrc).max
-
   def numVecSrc: Int = exuBlockParams.map(_.numVecSrc).max
 
   def numVfSrc: Int = exuBlockParams.map(_.numVfSrc).max
@@ -110,8 +108,6 @@ case class IssueBlockParams(
   def numSrc: Int = exuBlockParams.map(_.numSrc).max
 
   def readIntRf: Boolean = numIntSrc > 0
-
-  // def readFpRf: Boolean = numFpSrc > 0
 
   def readVecRf: Boolean = numVecSrc > 0
 
@@ -227,8 +223,6 @@ case class IssueBlockParams(
 
   def needReadRegCache: Boolean = exuBlockParams.map(_.needReadRegCache).reduce(_ || _)
 
-  def needOg2Resp: Boolean = exuBlockParams.map(_.needOg2).reduce(_ || _)
-
   /**
     * Get the regfile type that this issue queue need to read
     */
@@ -297,8 +291,6 @@ case class IssueBlockParams(
   def hasIQWakeUp: Boolean = numWakeupFromIQ > 0 && numRegSrc > 0
 
   def needWakeupFromIntWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readIntRf).groupBy(x => x.getIntWBPort.getOrElse(IntWB(port = -1)).port).filter(_._1 != -1)
-
-  // def needWakeupFromFpWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readFpRf).groupBy(x => x.getFpWBPort.getOrElse(FpWB(port = -1)).port).filter(_._1 != -1)
 
   def needWakeupFromVfWBPort = backendParam.allExuParams.filter(x => !wakeUpInExuSources.map(_.name).contains(x.name) && this.readVecRf).groupBy(x => x.getVfWBPort.getOrElse(VfWB(port = -1)).port).filter(_._1 != -1)
 

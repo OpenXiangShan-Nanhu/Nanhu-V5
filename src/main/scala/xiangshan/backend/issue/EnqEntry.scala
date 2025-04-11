@@ -1,24 +1,21 @@
 package xiangshan.backend.issue
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xs.utils.{HasCircularQueuePtrHelper, GatedValidRegNext}
+import org.chipsalliance.cde.config.Parameters
 import utils.{MathUtils, OptionWrapper}
+import xs.utils.{HasCircularQueuePtrHelper, GatedValidRegNext}
 import xiangshan._
 import xiangshan.backend.Bundles._
-import xiangshan.backend.fu.FuType
 import xiangshan.backend.datapath.DataSource
 import xiangshan.backend.rob.RobPtr
 import xiangshan.backend.issue.EntryBundles._
 import xiangshan.mem.{MemWaitUpdateReq, SqPtr, LqPtr}
 
-
 class EnqEntryIO(implicit p: Parameters, params: IssueBlockParams) extends XSBundle {
   //input
   val commonIn            = new CommonInBundle
   val enqDelayIn1         = new EnqDelayInBundle
-  val enqDelayIn2         = new EnqDelayInBundle
 
   //output
   val commonOut           = new CommonOutBundle
@@ -74,42 +71,15 @@ class EnqEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams
 
   // enq delay wakeup
   val enqDelayOut1         = Wire(new EnqDelayOutBundle)
-  val enqDelayOut2         = Wire(new EnqDelayOutBundle)
   EnqDelayWakeupConnect(io.enqDelayIn1, enqDelayOut1, entryReg.status, delay = 1)
-  EnqDelayWakeupConnect(io.enqDelayIn2, enqDelayOut2, entryReg.status, delay = 2)
 
   for (i <- 0 until params.numRegSrc) {
     val enqDelay1WakeUpValid = enqDelayOut1.srcWakeUpByIQVec(i).asUInt.orR
     val enqDelay1WakeUpOH    = enqDelayOut1.srcWakeUpByIQVec(i)
-    val enqDelay2WakeUpOH    = enqDelayOut2.srcWakeUpByIQVec(i)
-    val enqDelay1IsWakeupByMemIQ = enqDelay1WakeUpOH.zip(io.commonIn.wakeUpFromIQ).filter(_._2.bits.params.isMemExeUnit).map(_._1).fold(false.B)(_ || _)
-    val enqDelay2IsWakeupByMemIQ = enqDelay2WakeUpOH.zip(io.commonIn.wakeUpFromIQ).filter(_._2.bits.params.isMemExeUnit).map(_._1).fold(false.B)(_ || _)
-    val enqDelay2IsWakeupByVfIQ  = enqDelay2WakeUpOH.zip(io.commonIn.wakeUpFromIQ).filter(_._2.bits.params.isVfExeUnit).map(_._1).fold(false.B)(_ || _)
 
-    if (params.inVfSchd && params.readVfRf && params.hasIQWakeUp) {
-      enqDelayDataSources(i).value            := MuxCase(entryReg.status.srcStatus(i).dataSources.value, Seq(
-                                                    (enqDelayOut1.srcWakeUpByIQ(i).asBool && !enqDelay1IsWakeupByMemIQ)  -> DataSource.bypass,
-                                                    (enqDelayOut1.srcWakeUpByIQ(i).asBool && enqDelay1IsWakeupByMemIQ)   -> DataSource.bypass2,
-                                                    (enqDelayOut2.srcWakeUpByIQ(i).asBool && !enqDelay2IsWakeupByMemIQ)  -> DataSource.bypass2,
-                                                 ))
-      enqDelaySrcWakeUpL1ExuOH.get(i)         := Mux(enqDelay1WakeUpValid, 
-                                                      Mux1H(enqDelay1WakeUpOH, params.wakeUpSourceExuIdx.map(x => VecInit(MathUtils.IntToOH(x).U(backendParams.numExu.W).asBools)).toSeq),
-                                                      Mux1H(enqDelay2WakeUpOH, params.wakeUpSourceExuIdx.map(x => VecInit(MathUtils.IntToOH(x).U(backendParams.numExu.W).asBools)).toSeq))
-    }
-    else if (params.inMemSchd && params.readVfRf && params.hasIQWakeUp) {
-      enqDelayDataSources(i).value            := MuxCase(entryReg.status.srcStatus(i).dataSources.value, Seq(
-                                                    enqDelayOut1.srcWakeUpByIQ(i).asBool                                 -> DataSource.bypass,
-                                                    (enqDelayOut2.srcWakeUpByIQ(i).asBool && enqDelay2IsWakeupByVfIQ)    -> DataSource.bypass2,
-                                                 ))
-      enqDelaySrcWakeUpL1ExuOH.get(i)         := Mux(enqDelay1WakeUpValid, 
-                                                      Mux1H(enqDelay1WakeUpOH, params.wakeUpSourceExuIdx.map(x => VecInit(MathUtils.IntToOH(x).U(backendParams.numExu.W).asBools)).toSeq),
-                                                      Mux1H(enqDelay2WakeUpOH,  params.wakeUpSourceExuIdx.map(x => VecInit(MathUtils.IntToOH(x).U(backendParams.numExu.W).asBools)).toSeq))
-    }
-    else {
-      enqDelayDataSources(i).value            := Mux(enqDelayOut1.srcWakeUpByIQ(i).asBool, DataSource.bypass, entryReg.status.srcStatus(i).dataSources.value)
-      if (params.hasIQWakeUp) {
-        enqDelaySrcWakeUpL1ExuOH.get(i)       := Mux1H(enqDelay1WakeUpOH, params.wakeUpSourceExuIdx.map(x => VecInit(MathUtils.IntToOH(x).U(backendParams.numExu.W).asBools)).toSeq)
-      }
+    enqDelayDataSources(i).value            := Mux(enqDelayOut1.srcWakeUpByIQ(i).asBool, DataSource.bypass, entryReg.status.srcStatus(i).dataSources.value)
+    if (params.hasIQWakeUp) {
+      enqDelaySrcWakeUpL1ExuOH.get(i)       := Mux1H(enqDelay1WakeUpOH, params.wakeUpSourceExuIdx.map(x => VecInit(MathUtils.IntToOH(x).U(backendParams.numExu.W).asBools)).toSeq)
     }
 
     enqDelaySrcState(i)                     := (!enqDelayOut1.srcCancelByLoad(i) & entryReg.status.srcStatus(i).srcState) | enqDelayOut1.srcWakeUpByWB(i) | enqDelayOut1.srcWakeUpByIQ(i)
@@ -129,7 +99,7 @@ class EnqEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams
                                                   enqDelayOut1.srcCancelByLoad(i)  -> false.B,
                                                   enqDelay1WakeupRC                -> true.B,
                                                   enqDelay1ReplaceRC               -> false.B,
-                                               ))
+                                                ))
       enqDelayRegCacheIdx.get(i)            := Mux(enqDelay1WakeupRC, enqDelay1WakeupRCIdx, entryReg.status.srcStatus(i).regCacheIdx.get)
     }
   }
@@ -172,7 +142,6 @@ object EnqEntry {
   def apply(isComp: Boolean)(implicit p: Parameters, iqParams: IssueBlockParams): EnqEntry = {
     iqParams.schdType match {
       case IntScheduler() => new EnqEntry(isComp)
-      // case FpScheduler()  => new EnqEntry(isComp)
       case MemScheduler() =>
         if (iqParams.isVecMemIQ) new EnqEntryVecMem(isComp)
         else new EnqEntry(isComp)

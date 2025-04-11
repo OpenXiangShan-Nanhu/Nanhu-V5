@@ -50,7 +50,6 @@ class IssueQueueIO()(implicit p: Parameters, params: IssueBlockParams) extends X
 
   val og0Resp = Vec(params.numDeq, Flipped(ValidIO(new IssueQueueDeqRespBundle)))
   val og1Resp = Vec(params.numDeq, Flipped(ValidIO(new IssueQueueDeqRespBundle)))
-  val og2Resp = Option.when(params.needOg2Resp)(Vec(params.numDeq, Flipped(ValidIO(new IssueQueueDeqRespBundle))))
   val finalIssueResp = Option.when(params.LdExuCnt > 0 || params.VlduCnt > 0)(Vec(params.numDeq, Flipped(ValidIO(new IssueQueueDeqRespBundle))))
   val memAddrIssueResp = Option.when(params.LdExuCnt > 0)(Vec(params.numDeq, Flipped(ValidIO(new IssueQueueDeqRespBundle))))
   val vecLoadIssueResp = Option.when(params.VlduCnt > 0)(Vec(params.numDeq, Flipped(ValidIO(new IssueQueueDeqRespBundle))))
@@ -334,11 +333,6 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     }
     entriesIO.og1Resp.zipWithIndex.foreach { case (og1Resp, i) =>
       og1Resp                                                   := io.og1Resp(i)
-    }
-    if (params.needOg2Resp) {
-      entriesIO.og2Resp.get.zipWithIndex.foreach { case (og2Resp, i) =>
-        og2Resp                                                 := io.og2Resp.get(i)
-      }
     }
     if (params.isLdAddrIQ || params.isHyAddrIQ) {
       entriesIO.fromLoad.get.finalIssueResp.zipWithIndex.foreach { case (finalIssueResp, i) =>
@@ -1093,15 +1087,8 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
   }
 
   if(iqParams.sharedVf && iqParams.backendParam.assertEn) {
-    val vfNeedSplit = BoolSequence(deqBeforeDly(0).valid && !deqBeforeDly(0).bits.common.vpu.get.fpu.isFpToVecInst)
-    val issuePort_0_1_robSame = deqDelay.map(_.valid).reduce(_ && _) && (deqDelay(0).bits.common.robIdx === deqDelay(1).bits.common.robIdx)
-    val issuePort_0_1_wenDiff = (deqDelay(0).bits.common.vfWenL.get === true.B && deqDelay(0).bits.common.vfWenH.get === false.B) &&
-                                                  (deqDelay(0).bits.common.v0WenL.get === true.B && deqDelay(0).bits.common.v0WenH.get === false.B) &&
-                                                  (deqDelay(1).bits.common.vfWenL.get === false.B && deqDelay(1).bits.common.vfWenH.get === true.B) && 
-                                                  (deqDelay(1).bits.common.v0WenL.get === false.B && deqDelay(1).bits.common.v0WenH.get === true.B)
-    val issuePort_0_1_uopIdxSame = (deqDelay(0).bits.common.vpu.get.vuopIdx === deqDelay(1).bits.common.vpu.get.vuopIdx)
-    val issuePort_property = BoolSequence(issuePort_0_1_robSame && issuePort_0_1_uopIdxSame && issuePort_0_1_wenDiff)
-    AssertProperty(Sequence(vfNeedSplit, Delay(), issuePort_property))
+    import xiangshan.backend.issue.assertion._
+    AssertVfSplit(params, deqBeforeDly(0), deqBeforeDly(1), deqDelay(0), deqDelay(1))
   }
 }
 

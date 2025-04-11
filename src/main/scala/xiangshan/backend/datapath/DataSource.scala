@@ -19,8 +19,6 @@ class DataSource extends Bundle {
 
   def readBypass: Bool = value === DataSource.bypass
 
-  def readBypass2: Bool = value === DataSource.bypass2
-
   def readImm: Bool = value === DataSource.imm
 
 }
@@ -41,7 +39,7 @@ object DataSource {
 
   def bypass: UInt = "b0010".U
 
-  def bypass2: UInt = "b0011".U
+  // def bypass2: UInt = "b0011".U
 
   def imm: UInt = "b0100".U
 

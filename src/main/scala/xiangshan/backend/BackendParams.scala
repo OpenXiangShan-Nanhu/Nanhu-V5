@@ -42,7 +42,7 @@ case class BackendParams(
 
   def debugEn(implicit p: Parameters): Boolean = p(DebugOptionsKey).EnableDifftest
 
-  def assertEn(implicit p: Parameters): Boolean = false
+  def assertEn(implicit p: Parameters): Boolean = true
 
   def basicDebugEn(implicit p: Parameters): Boolean = p(DebugOptionsKey).AlwaysBasicDiff || debugEn
 

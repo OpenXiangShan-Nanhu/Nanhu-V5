@@ -399,7 +399,7 @@ case class XSCoreParameters
         ExeUnitParams("VFEX0",  Seq(VialuCfg, VimacCfg, VppuCfg, VipuCfg, VidivCfg, VSetRvfWvfCfg, F2vCfg), 
                                 Seq(VfWB(1, 0), V0WB(1, 0), VlWB(1, 0), IntWB(1, 2)),
                                 Seq(Seq(VfRD(6, 1)), Seq(VfRD(7, 1)), Seq(VfRD(8, 1)), Seq(V0RD(0, 0)), Seq(VlRD(0, 0)))),
-      ), numEntries = 18, numEnq = 2, numComp = 16),
+      ), numEntries = 8, numEnq = 1, numComp = 7),
       IssueBlockParams(Seq(
         ExeUnitParams("VFMA0",  Seq(Vfma64Cfg),
                                 Seq(VfWB(2, 0), V0WB(2, 0)),
@@ -408,7 +408,7 @@ case class XSCoreParameters
         ExeUnitParams("VFMA1",  Seq(Vfma64Cfg),
                                 Seq(VfWB(3, 0), V0WB(3, 0)),
                                 Seq(Seq(VfRD(6, 0)), Seq(VfRD(7, 0)), Seq(VfRD(8, 0)), Seq(V0RD(2, 0)), Seq(VlRD(2, 0)))),
-      ), numEntries = 18, numEnq = 2, numComp = 16, sharedVf = true),
+      ), numEntries = 16, numEnq = 2, numComp = 8, sharedVf = true),
       IssueBlockParams(Seq(
         ExeUnitParams("VFALU0", Seq(Vfalu64Cfg, Vfcvt64Cfg),
                                 Seq(VfWB(4, 0), V0WB(4, 0), IntWB(7, 0)),
@@ -417,7 +417,7 @@ case class XSCoreParameters
         ExeUnitParams("VFALU1", Seq(Vfalu64Cfg, Vfcvt64Cfg),
                                 Seq(VfWB(5, 0), V0WB(5, 0), IntWB(8, 0)),
                                 Seq(Seq(VfRD(12, 0)), Seq(VfRD(13, 0)), Seq(VfRD(14, 0)), Seq(V0RD(4, 0)), Seq(VlRD(4, 0)))),
-      ), numEntries = 18, numEnq = 2, numComp = 16, sharedVf = true),
+      ), numEntries = 16, numEnq = 2, numComp = 8, sharedVf = true),
       IssueBlockParams(Seq(
         ExeUnitParams("VFDIV", Seq(VfdivCfg),
                                 Seq(VfWB(1, 1), V0WB(1, 1)),
@@ -426,7 +426,7 @@ case class XSCoreParameters
         // ExeUnitParams("VFDIV1", Seq(Vfdiv64Cfg),
         //                         Seq(VfWB(7, 0), V0WB(7, 0)),
         //                         Seq(Seq(VfRD(18, 0)), Seq(VfRD(19, 0)), Seq(VfRD(20, 0)), Seq(V0RD(6, 0)), Seq(VlRD(6, 0)))),
-      ), numEntries = 18, numEnq = 2, numComp = 16),
+      ), numEntries = 10, numEnq = 1, numComp = 9),
       
     ),
       numPregs = vfPreg.numEntries,

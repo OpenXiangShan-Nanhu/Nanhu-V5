@@ -1086,7 +1086,7 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
     }
   }
 
-  if(iqParams.sharedVf && iqParams.backendParam.assertEn) {
+  if(iqParams.sharedVf && iqParams.backendParam.svaEn) {
     import xiangshan.backend.issue.assertion._
     AssertVfSplit(params, deqBeforeDly(0), deqBeforeDly(1), deqDelay(0), deqDelay(1))
   }

@@ -718,7 +718,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   io.main_pipe_req.bits.pf_source := req.pf_source
   io.main_pipe_req.bits.access := access
 
-  io.block_addr.valid := req_valid && w_grantlast 
+  io.block_addr.valid := req_valid
   io.block_addr.bits := req.addr
 
   io.req_addr.valid := req_valid

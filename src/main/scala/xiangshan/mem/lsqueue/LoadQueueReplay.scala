@@ -250,7 +250,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val addrModule = Module(new LqVAddrModule(
     gen = UInt(VAddrBits.W),
     numEntries = LoadQueueReplaySize,
-    numRead = LoadPipelineWidth,
+    numRead = LoadPipelineWidth + 1,  // +1 is for mmio
     numWrite = LoadPipelineWidth,
     numWBank = LoadQueueNWriteBanks,
     numWDelay = 1,
@@ -560,13 +560,8 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     s2_oldestSel(i).valid := RegEnable(Mux(s1_can_go(i), s1_oldestSelV, false.B), false.B, (s1_can_go(i) || replay_req(i).fire))
     s2_oldestSel(i).bits  := RegEnable(s1_oldestSel(i).bits, s1_can_go(i))
 
-    if(i == 0){
-      addrModule.io.ren(i) := (s1_oldestSel(i).valid && s1_can_go(i)) | MMIOEntryinReplayQ_s0.valid 
-      addrModule.io.raddr(i) := s1_oldestSel(i).bits | MMIOEntryinReplayQ_s0.bits.entryIdx
-    } else {
-      addrModule.io.ren(i) := s1_oldestSel(i).valid && s1_can_go(i)
-      addrModule.io.raddr(i) := s1_oldestSel(i).bits
-    }
+    addrModule.io.ren(i) := s1_oldestSel(i).valid && s1_can_go(i)
+    addrModule.io.raddr(i) := s1_oldestSel(i).bits
   }
 
   for (i <- 0 until LoadPipelineWidth) {
@@ -821,11 +816,14 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   io.mmioLqIdx.lqIdx.valid := MMIOEntryinReplayQ_s0.valid
   io.mmioLqIdx.lqIdx.bits := MMIOEntryinReplayQ_s0.bits.lqIdx
 
+  addrModule.io.ren.last := MMIOEntryinReplayQ_s0.valid   // last port is for mmio
+  addrModule.io.raddr.last := MMIOEntryinReplayQ_s0.bits.entryIdx  // next cycle can get vaddr
+
   // s1: enq uncacheBuffer
   val MMIOReqinReplayQ = Wire(Valid(new LqWriteBundle))
   MMIOReqinReplayQ.valid := RegNext(MMIOEntryinReplayQ_s0.valid)
   MMIOReqinReplayQ.bits := DontCare
-  MMIOReqinReplayQ.bits.vaddr := addrModule.io.rdata.head  // need provide vaddr to REG mtval when bus return nderr
+  MMIOReqinReplayQ.bits.vaddr := addrModule.io.rdata.last  // need provide vaddr to REG mtval when bus return nderr
   MMIOReqinReplayQ.bits.paddr := io.mmioLqIdx.paddr   // get paddr a cycle after send lqidx
   MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid))
   MMIOReqinReplayQ.bits.mask := genVWmask(io.mmioLqIdx.paddr, uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid)).fuOpType(1,0))

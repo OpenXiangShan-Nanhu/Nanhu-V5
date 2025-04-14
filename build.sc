@@ -22,7 +22,6 @@ import $file.`rocket-chip`.dependencies.cde.common
 import $file.`rocket-chip`.dependencies.hardfloat.common
 import $file.`rocket-chip`.dependencies.diplomacy.common
 import $file.huancun.common
-import $file.coupledL2.common
 import $file.openLLC.common
 
 /* for publishVersion */
@@ -165,17 +164,11 @@ object huancun extends millbuild.huancun.common.HuanCunModule with HasChisel {
 
 }
 
-object coupledL2 extends millbuild.coupledL2.common.CoupledL2Module with HasChisel {
+object coupledL2 extends HasChisel {
 
   override def millSourcePath = os.pwd / "coupledL2"
 
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
-
-  def huancunModule: ScalaModule = huancun
-
-  def xsutilsModule: ScalaModule = xsutils
+  override def moduleDeps = super.moduleDeps ++ Seq(rocketchip, xsutils, huancun, utility)
 
 }
 

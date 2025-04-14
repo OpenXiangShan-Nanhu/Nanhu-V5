@@ -27,7 +27,8 @@ import xiangshan.mem.LqPtr
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.tl._
-import xs.utils.common._
+import xs.utils.cacheParam.common._
+import xs.utils.cacheParam.common.{AliasKey, DirtyKey, PrefetchKey, VaddrKey, IsKeywordKey}
 
 
 class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {

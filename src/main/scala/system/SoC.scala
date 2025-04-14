@@ -28,16 +28,18 @@ import freechips.rocketchip.interrupts.{IntSourceNode, IntSourcePortSimple}
 import freechips.rocketchip.regmapper.{RegField, RegFieldDesc, RegFieldGroup}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.AsyncQueueParams
-import huancun._
+
 import top.BusPerfMonitor
-import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
 import xiangshan.backend.fu.PMAConst
 import xiangshan.XSTileKey
-import xs.utils.perf.DebugOptionsKey
 
-import xiangshan.EnableCHI
 import coupledL2.tl2chi.CHIIssue
+import xiangshan.EnableCHI
 import xiangshan.PMParameKey
+
+import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
+import xs.utils.perf.DebugOptionsKey
+import xs.utils.cacheParam.HCCacheParameters
 
 case object SoCParamsKey extends Field[SoCParameters]
 

@@ -18,7 +18,6 @@ package tile
 
 import chisel3._
 import chisel3.util.{Valid, ValidIO}
-import coupledL2.L2ParamKey
 import coupledL2.tl2chi.PortIO
 import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy._
@@ -76,18 +75,6 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     case None =>
   }
 
-  // CMO
-  l2top.inner.l2cache match {
-    case Some(l2) =>
-      l2.cmo_sink_node.foreach(recv => {
-        recv := memBlock.cmo_sender.get
-      })
-      l2.cmo_source_node.foreach(resp => {
-        memBlock.cmo_reciver.get := resp
-      })
-    case None =>
-  }
-
   val core_l3_tpmeta_source_port = l2top.inner.l2cache match {
     case Some(l2) => l2.tpmeta_source_node
     case None => None
@@ -123,6 +110,7 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     dontTouch(io.hartId)
     dontTouch(io.msiInfo)
     dontTouch(dft_reset)
+    dontTouch(io.reset_vector)
     if (!io.chi.isEmpty) { dontTouch(io.chi.get) }
 
     val core_soft_rst = core_reset_sink.in.head._1 // unused

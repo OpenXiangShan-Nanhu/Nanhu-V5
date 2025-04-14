@@ -20,23 +20,27 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import utils._
-import xs.utils.common._
-import xs.utils.perf.{DebugOptionsKey, DebugOptions}
 import system._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams}
 import xiangshan.frontend.icache.ICacheParameters
 import freechips.rocketchip.devices.debug._
 import freechips.rocketchip.tile.{MaxHartIdBits}
+
 import xiangshan.backend.dispatch.DispatchParameters
 import xiangshan.backend.regfile.{IntPregParams, VfPregParams}
 import xiangshan.cache.DCacheParameters
 import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
 import device.{EnableJtag, XSDebugModuleParams}
-import huancun._
+
 import coupledL2._
 import coupledL2.prefetch._
 import xiangshan.frontend.icache.ICacheParameters
+import xs.utils.cacheParam.{HCCacheParameters, CacheCtrl}
+import xs.utils.cacheParam.common._
+import xs.utils.perf.{DebugOptionsKey, DebugOptions}
+import xs.utils.cacheParam.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverParams}
+import xs.utils.cacheParam.{L2Param, L1Param}
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64
@@ -215,7 +219,6 @@ class MinimalConfig(n: Int = 1) extends Config(
           "dcache",
           isKeywordBitsOpt = core.dcacheParametersOpt.get.isKeywordBitsOpt
         )),
-        hasCMO = core.HasCMO && site(EnableCHI),
       )
     case SoCParamsKey =>
       val tiles = site(XSTileKey)
@@ -320,12 +323,10 @@ class WithNKBL2
       prefetch = Seq(BOPParameters()) ++
         (if (tp) Seq(TPParameters()) else Nil) ++
         (if (core.prefetcher.nonEmpty) Seq(PrefetchReceiverParams()) else Nil),
-      hasCMO = core.HasCMO && site(EnableCHI),
       enablePerf = !site(DebugOptionsKey).FPGAPlatform && site(DebugOptionsKey).EnablePerfDebug,
       enableRollingDB = site(DebugOptionsKey).EnableRollingDB,
       enableMonitor = site(DebugOptionsKey).AlwaysBasicDB,
       elaboratedTopDown = !site(DebugOptionsKey).FPGAPlatform,
-      enableCHI = site(EnableCHI)
     )
 })
 
@@ -360,7 +361,7 @@ class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1
         tagECC = Some("secded"),
         dataECC = Some("secded"),
         simulation = !site(DebugOptionsKey).FPGAPlatform,
-        prefetch = Some(huancun.prefetch.L3PrefetchReceiverParams()),
+        prefetch = Some(L3PrefetchReceiverParams()),
         tpmeta = None
       ))
     )

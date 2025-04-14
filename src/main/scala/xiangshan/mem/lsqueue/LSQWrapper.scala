@@ -21,7 +21,7 @@ import chisel3._
 import chisel3.util._
 import xs.utils._
 import xs.utils.perf._
-import xs.utils.common._
+import xs.utils.cacheParam.common._
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
 import xiangshan.cache._
@@ -30,6 +30,7 @@ import xiangshan.backend._
 import xiangshan.backend.rob.RobLsqIO
 import xiangshan.backend.fu.FuType
 import xiangshan.mem.mdp.MDPResUpdateIO
+import xs.utils.cacheParam.common.{CMOResp, CMOReq}
 
 class ExceptionAddrIO(implicit p: Parameters) extends XSBundle {
   val isStore = Input(Bool())

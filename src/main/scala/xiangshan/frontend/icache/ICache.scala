@@ -22,7 +22,7 @@ import chisel3.util._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.BundleFieldBase
-import xs.utils.common.{AliasField, PrefetchField}
+import xs.utils.cacheParam.common.{AliasField, PrefetchField}
 import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
@@ -33,6 +33,7 @@ import xiangshan._
 import xiangshan.cache._
 import xiangshan.cache.mmu.TlbRequestIO
 import xiangshan.frontend._
+import xs.utils.cacheParam.common.{PrefetchField, AliasField}
 
 case class ICacheParameters(
     nSets: Int = 256,

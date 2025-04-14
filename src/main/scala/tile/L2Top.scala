@@ -20,12 +20,10 @@ import chisel3._
 import chisel3.util._
 import coupledL2.tl2chi.{CHIIssue, PortIO, TL2CHICoupledL2}
 import coupledL2.tl2tl.TL2TLCoupledL2
-import coupledL2.{L2Param, L2ParamKey}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams, BusErrors, MaxHartIdBits}
 import freechips.rocketchip.tilelink._
-import huancun.BankBitsKey
 import org.chipsalliance.cde.config._
 import system.HasSoCParameter
 import top.BusPerfMonitor
@@ -35,6 +33,9 @@ import xiangshan._
 import xs.utils._
 import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey, PerfEvent}
 import xs.utils.tl._
+import xs.utils.cacheParam.common._
+import xs.utils.debug.{HardwareAssertion, HardwareAssertionKey, HwaParams}
+import freechips.rocketchip.util.DontTouch
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
   val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
@@ -115,6 +116,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       case MaxHartIdBits => p(MaxHartIdBits)
       case LogUtilsOptionsKey => p(LogUtilsOptionsKey)
       case PerfCounterOptionsKey => p(PerfCounterOptionsKey)
+      case HardwareAssertionKey => HwaParams(enable = false)
     })
     if (enableCHI) Some(LazyModule(new TL2CHICoupledL2()(new Config(config))))
     else Some(LazyModule(new TL2TLCoupledL2()(new Config(config))))
@@ -201,6 +203,8 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
 
     if (l2cache.isDefined) {
       val l2 = l2cache.get.module
+      dontTouch(l2.io)
+      l2.io.pfCtrlFromCore := DontCare
       io.l2_hint := l2.io.l2_hint
       l2.io.debugTopDown.robHeadPaddr := DontCare
       l2.io.hartId := io.hartId.fromTile
@@ -279,10 +283,11 @@ class L2Top()(implicit p: Parameters) extends LazyModule
   val inner = LazyModule(new L2TopInlined())
 
   class Imp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
+    // override def resetType: Module.ResetType.Type = Module.ResetType.Asynchronous
     val io = IO(inner.module.io.cloneType)
     val reset_core = IO(Output(Reset()))
     io <> inner.module.io
-
+    dontTouch(inner.module.io)
     // val dft_reset = IO(Input(new DFTResetSignals()))
     // val dft_reset_out = IO(Output(new DFTResetSignals()))
     // inner.module.dft_reset := dft_reset

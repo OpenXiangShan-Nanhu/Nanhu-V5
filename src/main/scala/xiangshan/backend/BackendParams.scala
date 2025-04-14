@@ -42,7 +42,8 @@ case class BackendParams(
 
   def debugEn(implicit p: Parameters): Boolean = p(DebugOptionsKey).EnableDifftest
 
-  def svaEn(implicit p: Parameters): Boolean = false
+  def svaAssertEn(implicit p: Parameters): Boolean = false
+  def svaCoverEn(implicit p: Parameters): Boolean = false
 
   def basicDebugEn(implicit p: Parameters): Boolean = p(DebugOptionsKey).AlwaysBasicDiff || debugEn
 

@@ -1086,9 +1086,11 @@ class IssueQueueVfImp(override val wrapper: IssueQueue)(implicit p: Parameters, 
     }
   }
 
-  if(iqParams.sharedVf && iqParams.backendParam.svaEn) {
+  if(iqParams.sharedVf && (iqParams.backendParam.svaAssertEn || iqParams.backendParam.svaCoverEn)) {
     import xiangshan.backend.issue.assertion._
-    AssertVfSplit(params, deqBeforeDly(0), deqBeforeDly(1), deqDelay(0), deqDelay(1))
+    val assertEn = iqParams.backendParam.svaAssertEn
+    val coverEn = iqParams.backendParam.svaCoverEn
+    AssertVfSplit(params, assertEn, coverEn, clock = clock, disable = reset.asDisable, deqBeforeDly(0), deqBeforeDly(1), deqDelay(0), deqDelay(1))
   }
 }
 

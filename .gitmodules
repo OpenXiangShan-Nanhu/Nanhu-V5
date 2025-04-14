@@ -9,7 +9,7 @@
 	url = https://github.com/OpenXiangShan-Nanhu/ready-to-run
 [submodule "openLLC"]
 	path = openLLC
-	url = https://github.com/OpenXiangShan/OpenLLC.git
+	url = https://github.com/OpenXiangShan-Nanhu/OpenLLC.git
 [submodule "src/main/resources/aia"]
 	path = src/main/resources/aia
 	url = https://github.com/OpenXiangShan/OpenAIA.git

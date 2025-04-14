@@ -289,7 +289,7 @@ trait MachineLevel { self: NewCSR =>
     val MML   = RO( 0) // Smepmp
   })).setAddr(CSRs.mseccfg)
 
-  val mcycle = Module(new CSRModule("Mcycle") with HasMachineCounterControlBundle {
+  val mcycle = Module(new CSRModule("Mcycle", new McycleBundle) with HasMachineCounterControlBundle {
     when(w.wen) {
       reg := w.wdata
     }.elsewhen(!this.mcountinhibit.CY.asUInt.asBool) {
@@ -300,7 +300,7 @@ trait MachineLevel { self: NewCSR =>
   }).setAddr(CSRs.mcycle)
 
 
-  val minstret = Module(new CSRModule("Minstret") with HasMachineCounterControlBundle with HasRobCommitBundle {
+  val minstret = Module(new CSRModule("Minstret", new MinstretBundle) with HasMachineCounterControlBundle with HasRobCommitBundle {
     when(w.wen) {
       reg := w.wdata
     }.elsewhen(!this.mcountinhibit.IR && robCommit.instNum.valid) {

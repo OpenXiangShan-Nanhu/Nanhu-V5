@@ -39,7 +39,7 @@ import xiangshan.PMParameKey
 
 import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
 import xs.utils.perf.DebugOptionsKey
-import xs.utils.cacheParam.HCCacheParameters
+import xs.utils.cache.HCCacheParameters
 
 case object SoCParamsKey extends Field[SoCParameters]
 

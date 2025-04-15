@@ -36,11 +36,11 @@ import device.{EnableJtag, XSDebugModuleParams}
 import coupledL2._
 import coupledL2.prefetch._
 import xiangshan.frontend.icache.ICacheParameters
-import xs.utils.cacheParam.{HCCacheParameters, CacheCtrl}
-import xs.utils.cacheParam.common._
+import xs.utils.cache.{HCCacheParameters, CacheCtrl}
+import xs.utils.cache.common._
 import xs.utils.perf.{DebugOptionsKey, DebugOptions}
-import xs.utils.cacheParam.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverParams}
-import xs.utils.cacheParam.{L2Param, L1Param}
+import xs.utils.cache.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverParams}
+import xs.utils.cache.{L2Param, L1Param}
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64

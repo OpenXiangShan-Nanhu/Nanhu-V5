@@ -23,7 +23,7 @@ import chisel3.util._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, TransferSizes}
 import freechips.rocketchip.tilelink.{TLBundleD, _}
 import freechips.rocketchip.util.BundleFieldBase
-import xs.utils.cacheParam.common._
+import xs.utils.cache.common._
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.lazymodule.LazyModuleImp
 import xiangshan._
@@ -35,7 +35,7 @@ import xiangshan.mem.LqPtr
 import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ReplacementPolicy, SRAMQueue}
 import xs.utils.perf._
 import xs.utils.tl._
-import xs.utils.cacheParam.common.{IsKeywordKey, VaddrField, IsKeywordField, AliasField, PrefetchField}
+import xs.utils.cache.common.{IsKeywordKey, VaddrField, IsKeywordField, AliasField, PrefetchField}
 
 // DCache specific parameters
 case class DCacheParameters

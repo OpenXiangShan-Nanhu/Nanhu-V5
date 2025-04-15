@@ -24,7 +24,7 @@ import difftest.common.DifftestMem
 import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
-import xs.utils.cacheParam.common._
+import xs.utils.cache.common._
 import utils._
 import xiangshan._
 import xiangshan.cache._

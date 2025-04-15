@@ -860,12 +860,10 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   val needFreeIdx = RegInit(0.U(MMIOEntryinReplayQ_s0.bits.entryIdx.getWidth.W))
   val needFree = RegInit(false.B)
-  when( uncacheBuffer.io.req.fire ) {
-    when ( MMIOEntryinReplayQ_s0.valid ) {
-      scheduled(MMIOEntryinReplayQ_s0.bits.entryIdx) := true.B
+  when(uncacheBuffer.io.req.fire && RegNext(MMIOEntryinReplayQ_s0.valid, false.B)) {
+      scheduled(RegNext(MMIOEntryinReplayQ_s0.bits.entryIdx)) := true.B
       needFree := true.B
-      needFreeIdx := MMIOEntryinReplayQ_s0.bits.entryIdx
-    }
+      needFreeIdx := RegNext(MMIOEntryinReplayQ_s0.bits.entryIdx)
   }
 
   uncacheBuffer.io.uncache.req.ready := io.uncache.req.ready

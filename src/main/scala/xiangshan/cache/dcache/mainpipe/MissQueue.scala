@@ -699,7 +699,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   val grantack = RegEnable(edge.GrantAck(io.mem_grant.bits), io.mem_grant.fire)
   assert(RegNext(!io.mem_grant.fire || edge.isRequest(io.mem_grant.bits)))
-  io.mem_finish.valid := !s_grantack && w_grantfirst
+  io.mem_finish.valid := !s_grantack && w_grantlast
   io.mem_finish.bits := grantack
 
   // Send mainpipe_req when receive hint from L2 or receive data without hint

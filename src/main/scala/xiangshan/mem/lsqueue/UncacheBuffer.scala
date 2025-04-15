@@ -42,9 +42,6 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
     val ldout = DecoupledIO(new MemExuOutput)
     val ld_raw_data = Output(new LoadDataFromLQBundle)
 
-    // rob: uncache commit
-    val rob = Flipped(new RobLsqIO)
-
     // uncache io
     val uncache = new UncacheWordIO
 
@@ -73,25 +70,9 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
     req_valid := false.B
   }
 
-  /**
-    * Memory mapped IO / other uncached operations
-    *
-    * States:
-    * (1) writeback from store units: mark as pending
-    * (2) when they reach ROB's head, they can be sent to uncache channel
-    * (3) response from uncache channel: mark as datavalid
-    * (4) writeback to ROB (and other units): mark as writebacked
-    * (5) ROB commits the instruction: same as normal instructions
-    */
-
-  io.rob.mmio := DontCare
-  io.rob.uop := DontCare
-  val pendingld = GatedValidRegNext(io.rob.pendingUncacheld)
-  val pendingPtr = GatedRegNext(io.rob.pendingPtr)
-
   switch (uncacheState) {
     is (s_idle) {
-      when (req_valid && pendingld && req.uop.robIdx === pendingPtr) {
+      when (req_valid) {
         uncacheState := s_req
       }
     }
@@ -185,7 +166,6 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
       true.B
     )
   }
-  // end
 }
 
 class UncacheBufferEntry(entryIndex: Int)(implicit p: Parameters) extends XSModule

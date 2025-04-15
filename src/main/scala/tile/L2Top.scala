@@ -33,7 +33,7 @@ import xiangshan._
 import xs.utils._
 import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey, PerfEvent}
 import xs.utils.tl._
-import xs.utils.cacheParam.common._
+import xs.utils.cache.common._
 import xs.utils.debug.{HardwareAssertion, HardwareAssertionKey, HwaParams}
 import freechips.rocketchip.util.DontTouch
 

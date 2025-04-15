@@ -40,10 +40,10 @@ import freechips.rocketchip.jtag.JTAGIO
 import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
 import tile.XSTile
-import xs.utils.cacheParam.common._
+import xs.utils.cache.common._
 import xs.utils.perf.{DebugOptions, DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey}
-import xs.utils.cacheParam.common.PrefetchRecv
-import xs.utils.cacheParam.{HCCacheParameters, HCCacheParamsKey}
+import xs.utils.cache.common.PrefetchRecv
+import xs.utils.cache.{HCCacheParameters, HCCacheParamsKey}
 
 abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
   with BindingScope

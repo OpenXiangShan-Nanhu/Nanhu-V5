@@ -868,8 +868,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   uncacheBuffer.io.uncache.req.ready := io.uncache.req.ready
   uncacheBuffer.io.ldout.ready := io.ldout.ready
-  // for uncache commit  
-  uncacheBuffer.io.rob <> io.rob
 
   when(!uncacheBuffer.io.req.ready) {
     io.uncache.req.valid := uncacheBuffer.io.uncache.req.valid
@@ -896,6 +894,12 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     freeMaskVec(needFreeIdx) := true.B
     isMMIO(needFreeIdx) := false.B
     needFree := false.B
+  }
+
+  for (i <- 0 until LoadQueueReplaySize) {
+    when(allocated(i)){
+      assert(isNotBefore(uop(i).robIdx,io.rob.pendingPtr), "why the entry load is older ?")
+    }
   }
 
   // Topdown

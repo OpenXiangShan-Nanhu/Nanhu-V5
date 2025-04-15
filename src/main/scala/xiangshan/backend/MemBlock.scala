@@ -1684,6 +1684,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   vSegmentUnit.io.fromCsrTrigger.triggerCanRaiseBpExp := triggerCanRaiseBpExp
   vSegmentUnit.io.fromCsrTrigger.debugMode := debugMode
 
+  val clk_tmp = RegInit(false.B)
+  clk_tmp := !clk_tmp
+  dontTouch(clk_tmp)
+
+
   // reset tree of MemBlock
   if (p(DebugOptionsKey).ResetGen) {
     val leftResetTree = ResetGenNode(

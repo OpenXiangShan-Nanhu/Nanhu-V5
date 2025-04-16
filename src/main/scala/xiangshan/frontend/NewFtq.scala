@@ -72,7 +72,14 @@ class FtqNRSRAM[T <: Data](gen: T, numRead: Int)(implicit p: Parameters) extends
   })
 
   for(i <- 0 until numRead){
-    val sram = Module(new SRAMTemplate(gen = gen, set = FtqSize, hasMbist = hasMbist))
+    val sram = Module(new SRAMTemplate(
+      gen,
+      set = FtqSize,
+      way = 1,
+      singlePort = false,
+      hasMbist = hasMbist,
+      suffix = "_ftq"
+    ))
     sram.io.r.req.valid := io.ren(i)
     sram.io.r.req.bits.setIdx := io.raddr(i)
     io.rdata(i) := sram.io.r.resp.data(0)

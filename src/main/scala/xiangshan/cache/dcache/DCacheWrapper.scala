@@ -1188,6 +1188,9 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   }
 
   bankedDataArray.io.readline <> mainPipe.io.data_readline
+  bankedDataArray.io.readline_can_go := mainPipe.io.data_readline_can_go
+  bankedDataArray.io.readline_stall := mainPipe.io.data_readline_stall
+  bankedDataArray.io.readline_can_resp := mainPipe.io.data_readline_can_resp
   bankedDataArray.io.readline_intend := mainPipe.io.data_read_intend
   mainPipe.io.readline_error_delayed := bankedDataArray.io.readline_error_delayed
   mainPipe.io.data_resp := bankedDataArray.io.readline_resp
@@ -1225,7 +1228,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
 
 
   val grantDataQueue = Module(new SRAMQueue(new GrantDataQueueEntry, entries = (scala.math.pow(2,log2Up(nGrantDataEntries)).toInt + 1), flow = true, pipe = false, singlePort = true,
-    hasMbist = hasMbist))
+    hasMbist = hasMbist , suffix = "_grnt_q"))
   grantDataQueue.io.enq.valid := false.B
   grantDataQueue.io.enq.bits := DontCare
 

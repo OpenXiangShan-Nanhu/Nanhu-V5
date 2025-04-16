@@ -214,7 +214,16 @@ class ITTageTable
   val s1_valid = RegNext(s0_valid)
 
   val table = Module(new FoldedSRAMTemplate(
-    new ITTageEntry, set=nRows, width=foldedWidth, shouldReset=true, holdRead=true, singlePort=true, useBitmask=true, hasMbist = hasMbist))
+    new ITTageEntry,
+    set = nRows,
+    width = foldedWidth,
+    shouldReset = true,
+    holdRead = true,
+    singlePort = true,
+    useBitmask = true,
+    hasMbist = hasMbist,
+    suffix = "_ittage"
+  ))
   private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeIttage", hasMbist)
 
   table.io.r.req.valid := io.req.fire

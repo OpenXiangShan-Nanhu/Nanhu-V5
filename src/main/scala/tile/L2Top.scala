@@ -36,6 +36,7 @@ import xs.utils.tl._
 import xs.utils.cache.common._
 import xs.utils.debug.{HardwareAssertion, HardwareAssertionKey, HwaParams}
 import freechips.rocketchip.util.DontTouch
+import xs.utils.sram._
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
   val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
@@ -107,8 +108,8 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
     val config = new Config((_, _, _) => {
       case L2ParamKey => p(L2ParamKey).copy(
         hartId = p(XSCoreParamsKey).HartId,
-        FPGAPlatform = debugOpts.FPGAPlatform//,
-        //hasMbist = hasMbist
+        FPGAPlatform = debugOpts.FPGAPlatform,
+        hasMbist = hasMbist
       )
       case EnableCHI => p(EnableCHI)
       case CHIIssue => p(CHIIssue)
@@ -174,16 +175,19 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       val l2_pmp_resp = Flipped(new PMPRespBundle)
       val l2_hint = ValidIO(new L2ToL1Hint())
       val perfEvents = Output(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
+      val dftIn = new Bundle() {
+        val func      = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+        val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
+      }
+      val dftOut = new Bundle() {
+        val func      = Option.when(hasMbist)(Output(new SramBroadcastBundle))
+        val reset = Option.when(hasMbist)(Output(new DFTResetSignals()))
+      }
       // val reset_core = IO(Output(Reset()))
     })
 
-    // val dft_reset = IO(Input(new DFTResetSignals()))
-    // val dft_reset_out = IO(Output(new DFTResetSignals()))
-    // val dft = if(hasMbist) Some(IO(Input(new SramBroadcastBundle))) else None
-    // val dft_out = if(hasMbist) Some(IO(Output(new SramBroadcastBundle))) else None
-    // if(hasMbist){
-    //   dft_out.get := dft.get
-    // }
+    io.dftOut.func.zip(io.dftIn.func).foreach({case(a, b) => a := b})
+    io.dftOut.reset.zip(io.dftIn.reset).foreach({case(a, b) => a := b})
 
     val resetDelayN = Module(new DelayN(UInt(PAddrBits.W), 5))
 
@@ -203,6 +207,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
 
     if (l2cache.isDefined) {
       val l2 = l2cache.get.module
+      l2.io.dft := io.dftIn
       dontTouch(l2.io)
       l2.io.pfCtrlFromCore := DontCare
       io.l2_hint := l2.io.l2_hint

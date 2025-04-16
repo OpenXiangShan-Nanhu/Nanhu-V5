@@ -104,12 +104,14 @@ class XSTile()(implicit p: Parameters) extends LazyModule
       val chi = if (enableCHI) Some(new PortIO) else None
       val nodeID = if (enableCHI) Some(Input(UInt(NodeIDWidth.W))) else None
       val clintTime = Input(ValidIO(UInt(64.W)))
+      val dft = new Bundle() {
+        val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+        val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
+      }
     })
-    val dft_reset = IO(Input(new DFTResetSignals()))
 
     dontTouch(io.hartId)
     dontTouch(io.msiInfo)
-    dontTouch(dft_reset)
     dontTouch(io.reset_vector)
     if (!io.chi.isEmpty) { dontTouch(io.chi.get) }
 
@@ -125,7 +127,7 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     io.cpu_halt := l2top.module.io.cpu_halt.toTile
     // l2top.module.dft_reset := dft_reset
     // core.module.dft_reset := l2top.module.dft_reset_out
-    core.module.dft_reset := dft_reset
+    //core.module.dft_reset := dft_reset
 
     l2top.module.io.hartIsInReset.resetInFrontend := core.module.io.resetInFrontend
     io.hartIsInReset := l2top.module.io.hartIsInReset.toTile
@@ -133,11 +135,10 @@ class XSTile()(implicit p: Parameters) extends LazyModule
 
     l2top.module.io.beu_errors.icache <> core.module.io.beu_errors.icache
     l2top.module.io.beu_errors.dcache <> core.module.io.beu_errors.dcache
-    val dft = if (hasMbist) Some(IO(Input(new SramBroadcastBundle))) else None
+    //val dft = if (hasMbist) Some(IO(Input(new SramBroadcastBundle))) else None
     if (hasMbist) {
-      // l2top.module.dft.get := dft.get
-      // core.module.dft.get := l2top.module.dft_out.get
-      core.module.dft.get := dft.get
+      l2top.module.io.dftIn := io.dft
+      core.module.io.dft := l2top.module.io.dftOut
     }
     if (enableL2) {
       // TODO: add ECC interface of L2

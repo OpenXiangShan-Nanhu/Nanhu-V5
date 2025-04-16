@@ -320,7 +320,20 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       val fromFrontend = Input(Bool())
       val toL2Top      = Output(Bool())
     }
-    val dft_reset = Input(new DFTResetSignals())
+    val dftBypass = new Bundle() {
+      val fromL2Top = new Bundle() {
+        val func      = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+        val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
+      }
+      val toFrontend = new Bundle() {
+        val func      = Option.when(hasMbist)(Output(new SramBroadcastBundle))
+        val reset = Option.when(hasMbist)(Output(new DFTResetSignals()))
+      }
+      val toBackend = new Bundle() {
+        val func      = Option.when(hasMbist)(Output(new SramBroadcastBundle))
+        val reset = Option.when(hasMbist)(Output(new DFTResetSignals()))
+      }
+    }
   })
 
   dontTouch(io.inner_hartId)
@@ -1714,8 +1727,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         CellNode(io.reset_backend)
       )
     )
-    ResetGen(leftResetTree, reset, Some(io.dft_reset), !p(DebugOptionsKey).ResetGen)
-    ResetGen(rightResetTree, reset, Some(io.dft_reset), !p(DebugOptionsKey).ResetGen)
+    ResetGen(leftResetTree, reset, io.dftBypass.fromL2Top.reset, !p(DebugOptionsKey).ResetGen)
+    ResetGen(rightResetTree, reset, io.dftBypass.fromL2Top.reset, !p(DebugOptionsKey).ResetGen)
   } else {
     io.reset_backend := DontCare
   }
@@ -1790,12 +1803,13 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   private val sigFromSrams = if (hasMbist) Some(SramHelper.genBroadCastBundleTop()) else None
   private val cg = ClockGate.getTop
   dontTouch(cg)
-  val dft = if (hasMbist) Some(IO(sigFromSrams.get.cloneType)) else None
-  val dft_out = if (hasMbist) Some(IO(Output(sigFromSrams.get.cloneType))) else None
   if (hasMbist) {
-    sigFromSrams.get := dft.get
-    cg.te := dft.get.cgen
-    dft_out.get := dft.get
+    sigFromSrams.get := io.dftBypass.fromL2Top.func.get
+    io.dftBypass.toFrontend.func.get := io.dftBypass.fromL2Top.func.get
+    io.dftBypass.toFrontend.reset.get := io.dftBypass.fromL2Top.reset.get
+    io.dftBypass.toBackend.func.get := io.dftBypass.fromL2Top.func.get
+    io.dftBypass.toBackend.reset.get := io.dftBypass.fromL2Top.reset.get
+    cg.te := io.dftBypass.fromL2Top.func.get.cgen
   } else {
     cg.te := false.B
   }
@@ -1816,14 +1830,8 @@ class MemBlockImp(wrapper: MemBlock) extends LazyModuleImp(wrapper) with HasXSPa
   io <> wrapper.inner.module.io
   io_perf <> wrapper.inner.module.io_perf
 
-  val dft = if (hasMbist) Some(IO(new SramBroadcastBundle)) else None
-  val dft_out = if (hasMbist) Some(IO(Output(new SramBroadcastBundle))) else None
-  if (hasMbist) {
-    dft.get <> wrapper.inner.module.dft.get
-    wrapper.inner.module.dft_out.get <> dft_out.get
-  }
 
   if (p(DebugOptionsKey).ResetGen) {
-    ResetGen(ResetGenNode(Seq(ModuleNode(wrapper.inner.module))), reset, Some(io.dft_reset), !p(DebugOptionsKey).ResetGen)
+    ResetGen(ResetGenNode(Seq(ModuleNode(wrapper.inner.module))), reset, io.dftBypass.fromL2Top.reset, !p(DebugOptionsKey).ResetGen)
   }
 }

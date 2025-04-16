@@ -95,9 +95,12 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
       val l2MissMatch = Input(Bool())
       val l3MissMatch = Input(Bool())
     }
+    val dft = new Bundle() {
+      val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+      val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
+    }
     val hwMon = if(env.EnableHWMoniter) Some(Output(new HardwareMonitor)) else None
   })
-  val dft_reset = IO(Input(new DFTResetSignals()))
 
   println(s"FPGAPlatform:${env.FPGAPlatform} EnableDebug:${env.EnableDebug}")
 
@@ -222,7 +225,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.l2_pmp_resp <> io.l2_pmp_resp
   memBlock.io.l2_hint.bits.isKeyword := io.l2_hint.bits.isKeyword
   memBlock.io.l2PfqBusy := io.l2PfqBusy
-  memBlock.io.dft_reset := dft_reset
 
   // if l2 prefetcher use stream prefetch, it should be placed in XSCore
 
@@ -249,11 +251,11 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     io.hwMon.foreach(_ := backend.io.hwMon.getOrElse(0.U.asTypeOf(io.hwMon.get)))
     dontTouch(io.hwMon.get)
   }
-  val dft = if (hasMbist) Some(IO(new SramBroadcastBundle)) else None
   if (hasMbist) {
-    memBlock.dft.get := dft.get
-    frontend.dft.get := memBlock.dft_out.get
-    backend.cgen.get := memBlock.dft_out.get.cgen
+    memBlock.io.dftBypass.fromL2Top := io.dft
+    frontend.io.dft := memBlock.io.dftBypass.toFrontend
+    backend.io.dft.func.get := memBlock.io.dftBypass.toBackend.func.get
+    backend.io.dft.reset.get := memBlock.io.dftBypass.toBackend.reset.get
   }
 
 //  if (debugOpts.ResetGen) {

@@ -247,7 +247,8 @@ class ICacheMetaArray()(implicit p: Parameters) extends ICacheArray
       shouldReset = true,
       holdRead = true,
       singlePort = true,
-      hasMbist = hasMbist
+      hasMbist = hasMbist,
+      suffix = "_icsh_tag"
     ))
 
     //meta connection
@@ -395,9 +396,9 @@ class ICacheDataArray(implicit p: Parameters) extends ICacheArray
       )
       sramBank
     }
-    MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeIcacheDataWay${way}", hasMbist)
     banks
   }
+  MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeIcacheData", hasMbist)
 
   /**
     ******************************************************************************
@@ -669,7 +670,8 @@ class ICachePartWayArray[T <: Data](gen: T, pWay: Int)(implicit p: Parameters) e
       way=pWay,
       shouldReset = true,
       holdRead = true,
-      singlePort = true
+      singlePort = true,
+      suffix = "_icsh_way"
     ))
 
     sramBank.io.r.req.valid := io.read.req(bank).valid
@@ -723,7 +725,8 @@ class SRAMTemplateWithFixedWidth[T <: Data]
       holdRead = holdRead,
       singlePort = singlePort,
       bypassWrite = bypassWrite,
-      hasMbist = hasMbist
+      hasMbist = hasMbist,
+      suffix = "_icsh_data"
     ))
     // read req
     sramBank.io.r.req.valid       := io.r.req.valid

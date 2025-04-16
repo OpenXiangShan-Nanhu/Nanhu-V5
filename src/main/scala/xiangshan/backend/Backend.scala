@@ -59,11 +59,6 @@ class BackendImp(wrapper: Backend)(implicit p: Parameters) extends LazyModuleImp
   val io = IO(new BackendIO()(p, wrapper.params))
   io <> wrapper.inner.module.io
 
-  val cgen = if (hasMbist) Some(IO(Input(Bool()))) else None
-  if (hasMbist) {
-     wrapper.inner.module.cgen.get := cgen.get
-  }
-
   if (p(DebugOptionsKey).ResetGen) {
     ResetGen(ResetGenNode(Seq(ModuleNode(wrapper.inner.module))), reset, None, !p(DebugOptionsKey).ResetGen)
   }
@@ -706,8 +701,8 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
         // ))
       ))
     ))
-    ResetGen(leftResetTree, reset, None, !p(DebugOptionsKey).ResetGen)
-    ResetGen(rightResetTree, reset, None, !p(DebugOptionsKey).ResetGen)
+    ResetGen(leftResetTree, reset, io.dft.reset, !p(DebugOptionsKey).ResetGen)
+    ResetGen(rightResetTree, reset, io.dft.reset, !p(DebugOptionsKey).ResetGen)
   } else {
     io.frontendReset := DontCare
   }
@@ -741,9 +736,8 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   private val cg = ClockGate.getTop
   dontTouch(cg)
-  val cgen = if(hasMbist) Some(IO(Input(Bool()))) else None
   if(hasMbist) {
-    cg.te := cgen.get
+    cg.te := io.dft.func.get.cgen
   } else {
     cg.te := false.B
   }
@@ -878,6 +872,10 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
     val fromCore = new CoreDispatchTopDownIO
   }
   val debugRolling = new RobDebugRollingIO
+  val dft = new Bundle() {
+    val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+    val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
+  }
   // HW monitor to XSTop
   val hwMon = if(env.EnableHWMoniter) Some(Output(new HardwareMonitor)) else None
 }

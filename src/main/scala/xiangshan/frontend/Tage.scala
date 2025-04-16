@@ -166,7 +166,8 @@ class TageBTable(implicit p: Parameters) extends XSModule with TBTParams{
       shouldReset = false,
       holdRead = true,
       bypassWrite = true,
-      hasMbist = hasMbist
+      hasMbist = hasMbist,
+      suffix = "_tage_bt"
     ))
 
   val wrbypass = Module(new WrBypass(UInt(2.W), bypassEntries, log2Up(BtSize), numWays = numBr)) // logical bridx
@@ -313,12 +314,33 @@ class TageTable
   // val s1_pc = io.req.bits.pc
   val req_unhashed_idx = getUnhashedIdx(io.req.bits.pc)
 
-  val us = Module(new FoldedSRAMTemplate(Bool(), set=nRowsPerBr, width=uFoldedWidth, way=numBr, shouldReset=true, extraReset=true, holdRead=true, singlePort=true, hasMbist = hasMbist))
+  val us = Module(new FoldedSRAMTemplate(
+    Bool(),
+    set = nRowsPerBr,
+    width = uFoldedWidth,
+    way = numBr,
+    shouldReset = true,
+    extraReset = true,
+    holdRead = true,
+    singlePort = true,
+    hasMbist = hasMbist,
+    suffix = "_tage_us"
+  ))
   us.extra_reset.get := io.update.reset_u.reduce(_||_) && io.update.mask.reduce(_||_)
 
 
   val table_banks = Seq.fill(nBanks)(
-    Module(new FoldedSRAMTemplate(new TageEntry, set=bankSize, width=bankFoldWidth, way=numBr, shouldReset=false, holdRead=true, singlePort=true, hasMbist = hasMbist)))
+      Module(new FoldedSRAMTemplate(
+      new TageEntry,
+      set = bankSize,
+      width = bankFoldWidth,
+      way = numBr,
+      shouldReset = true,
+      holdRead = true,
+      singlePort = true,
+      hasMbist = hasMbist,
+      suffix = "_tage_tab"
+    )))
   // Power-on reset to weak taken
   val history_table_doing_reset = RegInit(true.B)
   val history_table_resetRow = RegInit(0.U(log2Ceil(bankSize).W))

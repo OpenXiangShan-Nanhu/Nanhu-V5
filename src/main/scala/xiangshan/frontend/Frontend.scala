@@ -41,13 +41,8 @@ class FrontendImp(wrapper: Frontend)(implicit p: Parameters) extends LazyModuleI
   io <> wrapper.inner.module.io
   io_perf <> wrapper.inner.module.io_perf
 
-  val dft = if (hasMbist) Some(IO(new SramBroadcastBundle)) else None
-  if (hasMbist) {
-     wrapper.inner.module.dft.get <> dft.get
-  }
-
   if (p(DebugOptionsKey).ResetGen) {
-    ResetGen(ResetGenNode(Seq(ModuleNode(wrapper.inner.module))), reset, None, !p(DebugOptionsKey).ResetGen)
+    ResetGen(ResetGenNode(Seq(ModuleNode(wrapper.inner.module))), reset, io.dft.reset, !p(DebugOptionsKey).ResetGen)
   }
 }
 
@@ -85,6 +80,10 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
     val resetInFrontend = Output(Bool())
     val debugTopDown = new Bundle {
       val robHeadVaddr = Flipped(Valid(UInt(VAddrBits.W)))
+    }
+    val dft = new Bundle() {
+      val func      = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+      val reset     = Option.when(hasMbist)(Input(new DFTResetSignals()))
     }
   })
 
@@ -406,12 +405,11 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   }
 
   private val sigFromSrams = if (hasMbist) Some(SramHelper.genBroadCastBundleTop()) else None
-  private val cg = ClockGate.getTop
+  private val cg           = ClockGate.getTop
   dontTouch(cg)
-  val dft = if (hasMbist) Some(IO(Input(new SramBroadcastBundle))) else None
   if (hasMbist) {
-    sigFromSrams.get := dft.get
-    cg.te := dft.get.cgen
+    sigFromSrams.get := io.dft.func.get
+    cg.te := io.dft.func.get.cgen
   } else {
     cg.te := false.B
   }

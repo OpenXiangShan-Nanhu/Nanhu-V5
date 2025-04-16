@@ -21,6 +21,7 @@ import chisel3.util._
 import xiangshan._
 import utils._
 import xs.utils._
+import xs.utils.sram._
 import xs.utils.perf._
 import system._
 import device._
@@ -105,6 +106,7 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
     val noc_reset = EnableCHIAsyncBridge.map(_ => IO(Input(AsyncReset())))
     val soc_clock = IO(Input(Clock()))
     val soc_reset = IO(Input(AsyncReset()))
+    private val hasMbist = tiles.head.hasMbist
     val io = IO(new Bundle {
       val hartId = Input(UInt(p(MaxHartIdBits).W))
       val riscv_halt = Output(Bool())
@@ -113,6 +115,8 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
       val chi = new PortIO
       val nodeID = Input(UInt(soc.NodeIDWidthList(issue).W))
       val clintTime = Input(ValidIO(UInt(64.W)))
+      val dft = Option.when(hasMbist)(Input(new SramBroadcastBundle))
+      val dft_reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
     })
     val dft_reset = IO(Input(new DFTResetSignals()))
     // imsic axi4lite io
@@ -121,8 +125,10 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
     val imsic_m_tl = wrapper.u_imsic_bus_top.tl_m.map(x => IO(chiselTypeOf(x.getWrappedValue)))
     val imsic_s_tl = wrapper.u_imsic_bus_top.tl_s.map(x => IO(chiselTypeOf(x.getWrappedValue)))
 
-    val noc_reset_sync = EnableCHIAsyncBridge.map(_ => withClockAndReset(noc_clock, noc_reset) { ResetGen(2, Some(dft_reset)) })
-    val soc_reset_sync = withClockAndReset(soc_clock, soc_reset) { ResetGen(2, Some(dft_reset)) }
+    val noc_reset_sync = EnableCHIAsyncBridge.map(_ => withClockAndReset(noc_clock, noc_reset) { ResetGen(2, io.dft_reset) })
+    val soc_reset_sync = withClockAndReset(soc_clock, soc_reset) { ResetGen(2, io.dft_reset) }
+    wrapper.core_with_l2.module.io.dft.func.zip(io.dft).foreach { case (a, b) => a := b }
+    wrapper.core_with_l2.module.io.dft.reset.zip(io.dft_reset).foreach { case (a, b) => a := b }
 
     // device clock and reset
     wrapper.u_imsic_bus_top.module.clock := soc_clock
@@ -177,11 +183,6 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
     core_rst_node.out.head._1 := false.B.asAsyncReset
 
     core_with_l2.module.io.debugTopDown.l3MissMatch := false.B
-    core_with_l2.tile.module.dft_reset := dft_reset
-    val dft = if(core_with_l2.tile.module.dft.isDefined) Some(IO(Input(core_with_l2.tile.module.dft.get.cloneType))) else None
-    if(dft.isDefined) {
-      core_with_l2.tile.module.dft.get := dft.get
-    }
 
 //    withClockAndReset(clock, noc_reset_sync) {
 //      // Modules are reset one by one

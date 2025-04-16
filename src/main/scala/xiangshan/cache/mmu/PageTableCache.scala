@@ -210,14 +210,13 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val l2h = Reg(Vec(l2tlbParams.l2Size, UInt(2.W)))
 
   // l1: level 1 non-leaf pte
-  val l1 = Module(new SplittedSRAM(
+  val l1 = Module(new SRAMTemplate(
     l1EntryType,
     set = l2tlbParams.l1nSets,
     way = l2tlbParams.l1nWays,
-    waySplit = 2,
-    dataSplit = 4,
     singlePort = sramSinglePort,
-    hasMbist = hasMbist
+    hasMbist = hasMbist,
+    suffix = "_ptw_l1"
     ))
   val mbistPlL1 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL1", hasMbist)
   val l1v = RegInit(0.U((l2tlbParams.l1nSets * l2tlbParams.l1nWays).W))
@@ -238,14 +237,13 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   }
 
   // l0: level 0 leaf pte of 4KB pages
-  val l0 = Module(new SplittedSRAM(
+  val l0 = Module(new SRAMTemplate(
     l0EntryType,
     set = l2tlbParams.l0nSets,
     way = l2tlbParams.l0nWays,
-    waySplit = 4,
-    dataSplit = 2,
     singlePort = sramSinglePort,
-    hasMbist = hasMbist
+    hasMbist = hasMbist,
+    suffix = "_ptw_l0"
   ))
   val mbistPlL0 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL0", hasMbist)
   val l0v = RegInit(0.U((l2tlbParams.l0nSets * l2tlbParams.l0nWays).W))

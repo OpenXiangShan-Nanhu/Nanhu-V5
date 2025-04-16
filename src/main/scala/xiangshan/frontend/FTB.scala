@@ -499,8 +499,16 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
     })
 
     // Extract holdRead logic to fix bug that update read override predict read result
-    val ftb = Module(new SRAMTemplate(new FTBEntryWithTag, set = numSets, way = numWays,
-      shouldReset = true, holdRead = false, singlePort = true, hasMbist = hasMbist))
+    val ftb = Module(new SRAMTemplate(
+      new FTBEntryWithTag,
+      set = numSets,
+      way = numWays,
+      shouldReset = true,
+      holdRead = false,
+      singlePort = true,
+      hasMbist = hasMbist,
+      suffix = "_ftb"
+    ))
     private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeFtb", hasMbist)
     val ftb_r_entries = ftb.io.r.resp.data.map(_.entry)
 

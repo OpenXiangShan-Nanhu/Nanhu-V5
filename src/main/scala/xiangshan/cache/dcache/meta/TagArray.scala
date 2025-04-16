@@ -23,6 +23,7 @@ import freechips.rocketchip.tilelink.ClientStates
 import xs.utils.mbist.MbistPipeline
 import xs.utils.perf.XSPerfAccumulate
 import xs.utils.sram.SRAMTemplate
+import xs.utils.mbist.MbistPipeline
 
 class TagReadReq(implicit p: Parameters) extends DCacheBundle {
   val idx = UInt(idxBits.W)
@@ -72,7 +73,8 @@ class TagArray(implicit p: Parameters) extends AbstractTagArray {
   }
 
   val tag_array = Module(new SRAMTemplate(UInt(encTagBits.W), set = nSets, way = nWays,
-    shouldReset = false, holdRead = false, singlePort = true, hasMbist = hasMbist))
+    shouldReset = false, holdRead = false, singlePort = true,
+    hasMbist = hasMbist , suffix = "_dcsh_tag"))
 
   val wen = rst || io.write.valid
   io.write.ready := !rst

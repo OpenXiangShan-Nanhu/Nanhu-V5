@@ -225,7 +225,7 @@ class SQData8Module(numEntries: Int, numRead: Int, numWrite: Int, numForward: In
 
   io := DontCare
 
-  val data = Reg(Vec(numEntries, new SQData8Entry))
+  val dataStorage = Reg(Vec(numEntries, new SQData8Entry))
 
   require(isPow2(StoreQueueNWriteBanks))
   require(StoreQueueNWriteBanks > 1)
@@ -256,7 +256,7 @@ class SQData8Module(numEntries: Int, numRead: Int, numWrite: Int, numForward: In
       val numRegsPerBank = StoreQueueSize / StoreQueueNWriteBanks
       (0 until numRegsPerBank).map(index => {
         when(s1_wen && s1_waddr === index.U){
-          data(get_vec_index(index, bank)).data := s1_wdata
+          dataStorage(get_vec_index(index, bank)).data := s1_wdata
         }
       })
       s0_wen.suggestName("data_s0_wen_" + i +"_bank_" + bank)
@@ -286,9 +286,10 @@ class SQData8Module(numEntries: Int, numRead: Int, numWrite: Int, numForward: In
       val s1_wdata = RegEnable(io.mask.wdata(i), s0_wen)
       val s1_waddr = RegEnable(get_bank_index(io.mask.waddr(i)), s0_wen)
       val numRegsPerBank = StoreQueueSize / StoreQueueNWriteBanks
+      require((StoreQueueSize % StoreQueueNWriteBanks) == 0, "StoreQueueSize must be divided by StoreQueueNWriteBanks!")
       (0 until numRegsPerBank).map(index => {
         when(s1_wen && s1_waddr === index.U){
-          data(get_vec_index(index, bank)).valid := s1_wdata
+          dataStorage(get_vec_index(index, bank)).valid := s1_wdata
         }
       })
       s0_wen.suggestName("mask_s0_wen_" + i +"_bank_" + bank)
@@ -300,7 +301,7 @@ class SQData8Module(numEntries: Int, numRead: Int, numWrite: Int, numForward: In
 
   // destorequeue read data
   (0 until numRead).map(i => {
-      io.rdata(i) := data(GatedRegNext(io.raddr(i)))
+      io.rdata(i) := dataStorage(GatedRegNext(io.raddr(i)))
   })
 
   // DataModuleTemplate should not be used when there're any write conflicts
@@ -348,12 +349,12 @@ class SQData8Module(numEntries: Int, numRead: Int, numWrite: Int, numForward: In
       val needCheck0Reg = RegNext(needCheck0)
       val needCheck1Reg = RegNext(needCheck1)
 
-      matchResultVec(j).validFast := needCheck0 && data(j).valid
-      matchResultVec(j).valid := needCheck0Reg && data(j).valid
-      matchResultVec(j).data := data(j).data
-      matchResultVec(numEntries + j).validFast := needCheck1 && data(j).valid
-      matchResultVec(numEntries + j).valid := needCheck1Reg && data(j).valid
-      matchResultVec(numEntries + j).data := data(j).data
+      matchResultVec(j).validFast := needCheck0 && dataStorage(j).valid
+      matchResultVec(j).valid := needCheck0Reg && dataStorage(j).valid
+      matchResultVec(j).data := dataStorage(j).data
+      matchResultVec(numEntries + j).validFast := needCheck1 && dataStorage(j).valid
+      matchResultVec(numEntries + j).valid := needCheck1Reg && dataStorage(j).valid
+      matchResultVec(numEntries + j).data := dataStorage(j).data
     }
 
     val parallelFwdResult = parallelFwd(matchResultVec).asTypeOf(new FwdEntry)

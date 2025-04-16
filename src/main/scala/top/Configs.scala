@@ -41,6 +41,8 @@ import xs.utils.cache.common._
 import xs.utils.perf.{DebugOptionsKey, DebugOptions}
 import xs.utils.cache.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverParams}
 import xs.utils.cache.{L2Param, L1Param}
+import xiangshan.backend.regfile.V0PregParams
+import xiangshan.backend.regfile.VlPregParams
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64
@@ -432,6 +434,67 @@ class NactConfig(n: Int = 1) extends Config(
     ++ new WithNKBL1I(64, ways = 4)
     ++ new WithNKBL1D(64, ways = 4)
     ++ new BaseConfig(n)
+)
+
+class NactMiniConfig(n: Int = 1)extends Config(
+  new NactConfig(n).alter((site, here, up) => {
+    case XSTileKey => up(XSTileKey).map(_.copy(
+        //Frontend
+        IBufSize = 32, //32
+        FtqSize = 32, //8
+        //Backend
+        RobSize = 72, //96
+        RabSize = 96, //96
+        intPreg = IntPregParams(
+          numEntries = 64,  //128
+          numRead = None,
+          numWrite = None,
+        ),
+        vfPreg = VfPregParams(
+          numEntries = 120,  //160
+          numRead = None,
+          numWrite = None,
+        ),
+        v0Preg = V0PregParams(
+          numEntries = 8, //22
+          numRead = None,
+          numWrite = None,
+        ),
+        vlPreg = VlPregParams(
+          numEntries = 8, //32
+          numRead = None,
+          numWrite = None,
+        ),
+        //Memblock
+        VirtualLoadQueueSize = 24,    //56
+        LoadQueueRAWSize = 12,        //24
+        LoadQueueReplaySize = 12,     //32
+        LoadUncacheBufferSize = 4,    //8
+        StoreQueueSize = 16,          //32
+        StoreBufferSize = 4,          //8
+        StoreBufferThreshold = 3,     //7
+        VlMergeBufferSize = 4,        //16
+        VsMergeBufferSize = 4,        //16
+        VSegmentBufferSize = 4,       //8
+        //L1 i&d
+        icacheParameters = ICacheParameters(
+          nSets = 128, //32 kB ICache, 16*1024/4/64
+          nWays = 2,
+        ),
+        dcacheParametersOpt = Some(DCacheParameters(
+          nSets = 128, //32 kB DCache, 16*1024/4/64
+          nWays = 2,
+          nMissEntries = 4,     //16
+          nProbeEntries = 2,    //4
+          nReleaseEntries = 2,  //4
+          nMaxPrefetchEntry = 2,//6
+        ))
+      ))
+    case L2ParamKey =>
+      up(L2ParamKey).copy(
+        sets = 64, //64k L2Cache, 64*1024/2*8*64
+      )
+  })
 )
 
 class WithCHI extends Config((_, _, _) => {

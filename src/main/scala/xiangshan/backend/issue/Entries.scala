@@ -271,6 +271,9 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
       respAfterDatapath.valid := hitRespsVec.reduce(_ | _)
       respAfterDatapath.bits  := (if (memEtyResps.size == 1) memEtyResps.head.bits
                                   else Mux1H(hitRespsVec, memEtyResps.map(_.bits).toSeq))
+      if(memEtyResps.size > 1) {
+        assert(PopCount(hitRespsVec) <= 1.U)
+      }
       issueResp := Mux(issueTimer(1), respAfterDatapath, respInDatapath)
     }
   }

@@ -641,6 +641,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     fromPrefetchSource(io.prefetch_req.bits)
   )
   s0_sel_src := ParallelPriorityMux(s0_src_selector, s0_src_format)
+  when(s0_src_selector.reduce(_ || _)) {
+    assert(!s0_sel_src.frm_mabuf, "Nanhu-V5 does not support mabuffer.")
+  }
 
   // fast replay and hardware prefetch don't need to query tlb
   val int_issue_vaddr = io.ldin.bits.src(0) + SignExt(io.ldin.bits.uop.imm(11, 0), VAddrBits)

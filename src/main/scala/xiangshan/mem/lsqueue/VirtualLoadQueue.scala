@@ -270,13 +270,14 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   val acceptedVec = Wire(Vec(LoadPipelineWidth, Bool()))
   val enqIndexVec = Wire(Vec(LoadPipelineWidth, UInt(log2Up(VirtualLoadQueueSize).W)))
   for ((enq, w) <- io.query.map(_.req).zipWithIndex) {
+    assert(!(queryRAR_needEnqueue(w) && enq.ready && io.mmio_paddr(w).valid))
     paddrModule.io.wen(w) := false.B
     enq.ready := true.B
     acceptedVec(w) := false.B
     // initalize
     enqIndexVec(w) := 0.U(log2Up(VirtualLoadQueueSize).W)
     bypassPAddr(w) := 0.U(PAddrBits.W)
-
+    
     // lqidx is pointer, so need to add .value
     when((queryRAR_needEnqueue(w) && enq.ready) || io.mmio_paddr(w).valid) {
       val index = enq.bits.uop.lqIdx.value

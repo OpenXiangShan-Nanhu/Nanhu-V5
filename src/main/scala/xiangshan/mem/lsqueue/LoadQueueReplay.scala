@@ -312,7 +312,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   // mmioFromLdu_s0_canissue=1 infers that can directly enq uncacheBuffer and starts fsm(namely the mmiold is at robhead)
   val mmioFromLdu_s0_canissue = Wire(Vec(LoadPipelineWidth, Bool()))
   (0 until LoadPipelineWidth).map ( i => {
-    mmioFromLdu_s0_canissue(i) := mmioFromLdu_s0_valid(i) && (io.rob.pendingPtr === io.enq(i).bits.uop.robIdx) && !hasExceptions(i) && !cancelEnq(i) && !needReplay(i)
+    mmioFromLdu_s0_canissue(i) := mmioFromLdu_s0_valid(i) && (io.rob.pendingPtr === io.enq(i).bits.uop.robIdx) && !hasExceptions(i) && !cancelEnq(i) && !needReplay(i) && !loadReplay(i)
   })
   val needEnqueue = VecInit((0 until LoadPipelineWidth).map(w => {
     canEnqueue(w) && !cancelEnq(w) && (needReplay(w) || loadMMIO(w)) && !hasExceptions(w) && !mmioFromLdu_s0_canissue(w)

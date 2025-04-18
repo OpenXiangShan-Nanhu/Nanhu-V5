@@ -308,14 +308,10 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val hasExceptions = io.enq.map(enq => ExceptionNO.selectByFu(enq.bits.uop.exceptionVec, LduCfg).asUInt.orR && !enq.bits.tlbMiss)
   val loadReplay = io.enq.map(enq => enq.bits.isLoadReplay)
   val loadMMIO = io.enq.map(enq => enq.bits.mmio)
-  val mmioFromLdu_s0_valid = VecInit(io.enq.map(e => e.valid & e.bits.mmio))
-  // mmioFromLdu_s0_canissue=1 infers that can directly enq uncacheBuffer and starts fsm(namely the mmiold is at robhead)
-  val mmioFromLdu_s0_canissue = Wire(Vec(LoadPipelineWidth, Bool()))
-  (0 until LoadPipelineWidth).map ( i => {
-    mmioFromLdu_s0_canissue(i) := mmioFromLdu_s0_valid(i) && (io.rob.pendingPtr === io.enq(i).bits.uop.robIdx) && !hasExceptions(i) && !cancelEnq(i) && !needReplay(i) && !loadReplay(i)
-  })
+  val mmio_can_direct_exu = VecInit(io.enq.map(e => e.valid & e.bits.mmio_can_direct_exu & !e.bits.uop.robIdx.needFlush(io.redirect)))
+
   val needEnqueue = VecInit((0 until LoadPipelineWidth).map(w => {
-    canEnqueue(w) && !cancelEnq(w) && (needReplay(w) || loadMMIO(w)) && !hasExceptions(w) && !mmioFromLdu_s0_canissue(w)
+    canEnqueue(w) && !cancelEnq(w) && (needReplay(w) || loadMMIO(w)) && !hasExceptions(w) && !mmio_can_direct_exu(w)
   }))
   val newEnqueue = Wire(Vec(LoadPipelineWidth, Bool()))
   val canFreeVec = VecInit((0 until LoadPipelineWidth).map(w => {
@@ -828,7 +824,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid))
   MMIOReqinReplayQ.bits.mask := genVWmask(io.mmioLqIdx.paddr, uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid)).fuOpType(1,0))
 
-  val mmioEnqUncacheBufferValid = mmioFromLdu_s0_canissue ++ Seq(MMIOReqinReplayQ.valid) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
+  val mmioEnqUncacheBufferValid = mmio_can_direct_exu ++ Seq(MMIOReqinReplayQ.valid) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmioEnqUncacheBufferBits = VecInit(io.enq.map(_.bits)) ++ Seq(MMIOReqinReplayQ.bits) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmiovalidMaskOH = PriorityEncoderOH(mmioEnqUncacheBufferValid)
   when (mmiovalidMaskOH.reduce(_|_)) {

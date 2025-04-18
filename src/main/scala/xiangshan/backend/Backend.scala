@@ -668,8 +668,9 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   io.debugRolling := ctrlBlock.io.debugRolling
 
   io.hwMon.foreach{ hwMon =>
-    hwMon.robMon := ctrlBlock.io.robMon.getOrElse(0.U.asTypeOf(hwMon.robMon))
-    hwMon.csrMon := intExuBlock.io.csrio.get.csrMon.getOrElse(0.U.asTypeOf(hwMon.csrMon))
+    hwMon.robMon  := ctrlBlock.io.robMon.getOrElse(0.U.asTypeOf(hwMon.robMon))
+    hwMon.excpMon := ctrlBlock.io.excpMon.getOrElse(0.U.asTypeOf(hwMon.excpMon))
+    hwMon.csrMon  := intExuBlock.io.csrio.get.csrMon.getOrElse(0.U.asTypeOf(hwMon.csrMon))
     dontTouch(io.hwMon.get)  
   }
 

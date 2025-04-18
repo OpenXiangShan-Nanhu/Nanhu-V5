@@ -1273,11 +1273,13 @@ class NewCSR(implicit val p: Parameters) extends Module
       csrReg.mie     := mie.rdata.asUInt
       csrReg.mip     := mip.rdata.asUInt
       csrReg.mideleg := mideleg.rdata.asUInt
+      csrReg.mtvec   := mtvec.rdata.asUInt
       csrReg.scause  := scause.rdata.asUInt
       csrReg.sepc    := sepc.rdata.asUInt
       csrReg.stval   := stval.rdata.asUInt
       csrReg.sie     := sie.rdata.asUInt
       csrReg.sip     := sip.rdata.asUInt
+      csrReg.stvec   := stvec.rdata.asUInt
     }
     dontTouch(io.csrMon.get)
   }

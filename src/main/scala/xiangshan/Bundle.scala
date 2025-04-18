@@ -814,6 +814,13 @@ class RobHWMonitor(implicit p: Parameters) extends XSBundle {
   val redirectPc    = UInt(VAddrBits.W)
   val redirectLevel = RedirectLevel()
 }
+class ExcpHWMonitor(implicit p: Parameters) extends XSBundle {
+  val excepVald = Bool()
+  val excepPc = UInt(VAddrBits.W)
+  val excepInstr = UInt(32.W)
+  val excepVec = ExceptionVec()
+  val excepIsInterrupt = Bool()
+}
 class CSRHWMonitor(implicit p: Parameters) extends XSBundle {
   val mstatus = UInt(XLEN.W)
   val mcause  = UInt(XLEN.W)
@@ -822,13 +829,16 @@ class CSRHWMonitor(implicit p: Parameters) extends XSBundle {
   val mie     = UInt(XLEN.W)
   val mip     = UInt(XLEN.W)
   val mideleg = UInt(XLEN.W)
+  val mtvec   = UInt(XLEN.W)
   val scause  = UInt(XLEN.W)
   val sepc    = UInt(XLEN.W)
   val stval   = UInt(XLEN.W)
   val sie     = UInt(XLEN.W)
   val sip     = UInt(XLEN.W)
+  val stvec   = UInt(XLEN.W)
 }
 class HardwareMonitor(implicit p: Parameters) extends XSBundle {
   val robMon = new RobHWMonitor
   val csrMon = new CSRHWMonitor
+  val excpMon = new ExcpHWMonitor
 }

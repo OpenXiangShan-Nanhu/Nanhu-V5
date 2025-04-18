@@ -120,13 +120,14 @@ class FetchToIBufferDB extends Bundle {
 }
 
 class IfuWbToFtqDB extends Bundle {
-  val start_addr = UInt(39.W)
-  val is_miss_pred = Bool()
-  val miss_pred_offset = UInt(32.W)
-  val checkJalFault = Bool()
-  val checkRetFault = Bool()
-  val checkTargetFault = Bool()
-  val checkNotCFIFault = Bool()
+  val start_addr        = UInt(39.W)
+  val is_miss_pred      = Bool()
+  val miss_pred_offset  = UInt(32.W)
+  val checkJalFault     = Bool()
+  val checkJalrFault    = Bool()
+  val checkRetFault     = Bool()
+  val checkTargetFault  = Bool()
+  val checkNotCFIFault  = Bool()
   val checkInvalidTaken = Bool()
 }
 
@@ -1007,19 +1008,21 @@ class NewIFU(implicit p: Parameters) extends XSModule
   wb_redirect := checkFlushWb.bits.misOffset.valid && wb_valid
 
   /*write back flush type*/
-  val checkFaultType = wb_check_result_stage2.faultType
-  val checkJalFault =  wb_valid && checkFaultType.map(_.isjalFault).reduce(_||_)
-  val checkRetFault =  wb_valid && checkFaultType.map(_.isRetFault).reduce(_||_)
-  val checkTargetFault =  wb_valid && checkFaultType.map(_.istargetFault).reduce(_||_)
-  val checkNotCFIFault =  wb_valid && checkFaultType.map(_.notCFIFault).reduce(_||_)
-  val checkInvalidTaken =  wb_valid && checkFaultType.map(_.invalidTakenFault).reduce(_||_)
+  val checkFaultType    = wb_check_result_stage2.faultType
+  val checkJalFault     = wb_valid && checkFaultType.map(_.isjalFault).reduce(_||_)
+  val checkJalrFault    = wb_valid && checkFaultType.map(_.isjalrFault).reduce(_ || _)
+  val checkRetFault     = wb_valid && checkFaultType.map(_.isRetFault).reduce(_||_)
+  val checkTargetFault  = wb_valid && checkFaultType.map(_.istargetFault).reduce(_||_)
+  val checkNotCFIFault  = wb_valid && checkFaultType.map(_.notCFIFault).reduce(_||_)
+  val checkInvalidTaken = wb_valid && checkFaultType.map(_.invalidTakenFault).reduce(_||_)
 
 
-  XSPerfAccumulate("predecode_flush_jalFault",   checkJalFault )
-  XSPerfAccumulate("predecode_flush_retFault",   checkRetFault )
-  XSPerfAccumulate("predecode_flush_targetFault",   checkTargetFault )
-  XSPerfAccumulate("predecode_flush_notCFIFault",   checkNotCFIFault )
-  XSPerfAccumulate("predecode_flush_incalidTakenFault",   checkInvalidTaken )
+  XSPerfAccumulate("predecode_flush_jalFault", checkJalFault )
+  XSPerfAccumulate("predecode_flush_jalrFault", checkJalrFault)
+  XSPerfAccumulate("predecode_flush_retFault", checkRetFault )
+  XSPerfAccumulate("predecode_flush_targetFault", checkTargetFault )
+  XSPerfAccumulate("predecode_flush_notCFIFault", checkNotCFIFault )
+  XSPerfAccumulate("predecode_flush_incalidTakenFault", checkInvalidTaken )
 
   when(checkRetFault){
     XSDebug("startAddr:%x  nextstartAddr:%x  taken:%d    takenIdx:%d\n",
@@ -1082,13 +1085,14 @@ class NewIFU(implicit p: Parameters) extends XSModule
   fetchIBufferDumpData.is_cache_hit := f3_hit
 
   val ifuWbToFtqDumpData = Wire(new IfuWbToFtqDB)
-  ifuWbToFtqDumpData.start_addr := wb_ftq_req.startAddr
-  ifuWbToFtqDumpData.is_miss_pred := checkFlushWb.bits.misOffset.valid
-  ifuWbToFtqDumpData.miss_pred_offset := checkFlushWb.bits.misOffset.bits
-  ifuWbToFtqDumpData.checkJalFault := checkJalFault
-  ifuWbToFtqDumpData.checkRetFault := checkRetFault
-  ifuWbToFtqDumpData.checkTargetFault := checkTargetFault
-  ifuWbToFtqDumpData.checkNotCFIFault := checkNotCFIFault
+  ifuWbToFtqDumpData.start_addr        := wb_ftq_req.startAddr
+  ifuWbToFtqDumpData.is_miss_pred      := checkFlushWb.bits.misOffset.valid
+  ifuWbToFtqDumpData.miss_pred_offset  := checkFlushWb.bits.misOffset.bits
+  ifuWbToFtqDumpData.checkJalFault     := checkJalFault
+  ifuWbToFtqDumpData.checkJalrFault    := checkJalrFault
+  ifuWbToFtqDumpData.checkRetFault     := checkRetFault
+  ifuWbToFtqDumpData.checkTargetFault  := checkTargetFault
+  ifuWbToFtqDumpData.checkNotCFIFault  := checkNotCFIFault
   ifuWbToFtqDumpData.checkInvalidTaken := checkInvalidTaken
 
   fetchToIBufferTable.log(

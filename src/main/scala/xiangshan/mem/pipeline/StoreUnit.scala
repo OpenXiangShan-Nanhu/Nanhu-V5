@@ -324,15 +324,22 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.atomic    := s1_mmio
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
-  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
-    (s1_out.uop.exceptionVec(storePageFault) ||
-      s1_out.uop.exceptionVec(storeAccessFault) ||
-      s1_out.uop.exceptionVec(storeGuestPageFault))) {
-    s1_out.uop.exceptionVec(storeAddrMisaligned) := false.B
-  }
+//  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
+//    (s1_out.uop.exceptionVec(storePageFault) ||
+//      s1_out.uop.exceptionVec(storeAccessFault) ||
+//      s1_out.uop.exceptionVec(storeGuestPageFault))) {
+//    s1_out.uop.exceptionVec(storeAddrMisaligned) := false.B
+//  }
+
   s1_out.uop.exceptionVec(storePageFault)      := io.tlb.resp.bits.excp(0).pf.st && s1_vecActive
   s1_out.uop.exceptionVec(storeAccessFault)    := io.tlb.resp.bits.excp(0).af.st && s1_vecActive
   s1_out.uop.exceptionVec(storeGuestPageFault) := io.tlb.resp.bits.excp(0).gpf.st && s1_vecActive
+
+  when(s1_in.uop.exceptionVec(storeAddrMisaligned)){
+    s1_out.uop.exceptionVec(storePageFault) := false.B
+    s1_out.uop.exceptionVec(storeAccessFault) := false.B
+    s1_out.uop.exceptionVec(storeGuestPageFault) := false.B
+  }
 
   // trigger
   val storeTrigger = Module(new MemTrigger(MemType.STORE))

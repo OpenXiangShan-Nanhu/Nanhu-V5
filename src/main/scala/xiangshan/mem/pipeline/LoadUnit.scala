@@ -956,12 +956,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     s1_out.uop.exceptionVec(loadPageFault)   := io.tlb.resp.bits.excp(0).pf.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
     s1_out.uop.exceptionVec(loadGuestPageFault)   := io.tlb.resp.bits.excp(0).gpf.ld && !s1_tlb_miss && !s1_in.tlbNoQuery
     s1_out.uop.exceptionVec(loadAccessFault) := io.tlb.resp.bits.excp(0).af.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
-    when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
-      (s1_out.uop.exceptionVec(loadPageFault) ||
-        s1_out.uop.exceptionVec(loadGuestPageFault) ||
-        s1_out.uop.exceptionVec(loadAccessFault))) {
-      s1_out.uop.exceptionVec(loadAddrMisaligned) := false.B
-    }
   } .otherwise {
     s1_out.uop.exceptionVec(loadPageFault)      := false.B
     s1_out.uop.exceptionVec(loadGuestPageFault) := false.B
@@ -969,6 +963,11 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     s1_out.uop.exceptionVec(loadAccessFault)    := s1_dly_err && s1_vecActive
   }
 
+  when(s1_in.uop.exceptionVec(loadAddrMisaligned)) {
+    s1_out.uop.exceptionVec(loadAccessFault) := false.B
+    s1_out.uop.exceptionVec(loadPageFault) := false.B
+    s1_out.uop.exceptionVec(loadGuestPageFault) := false.B
+  }
   // pointer chasing
   val s1_try_ptr_chasing       = GatedValidRegNext(s0_do_try_ptr_chasing, false.B)
   val s1_ptr_chasing_vaddr     = RegEnable(s0_ptr_chasing_vaddr, s0_do_try_ptr_chasing)

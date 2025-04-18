@@ -84,6 +84,12 @@ class LoadToLsqIO(implicit p: Parameters) extends XSBundle {
   val stld_nuke_query = new LoadNukeQueryIO
   val ldld_nuke_query = new LoadNukeQueryIO
   val mmio_paddr      = Valid(Output(new LoadMMIOPaddrIO))
+  val rob             = new RobToLDU
+}
+
+class RobToLDU(implicit p: Parameters) extends XSBundle {
+  val pendingPtr = Input(new RobPtr)
+  val pendingld = Input(Bool())
 }
 
 class LoadToLoadIO(implicit p: Parameters) extends XSBundle {
@@ -1503,6 +1509,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.lsq.ldld_nuke_query.revoke := s3_revoke
   io.lsq.stld_nuke_query.revoke := s3_revoke
 
+  // if mmio can directly enq uncacheBuffer in replayq and execuation
+  io.lsq.ldin.bits.mmio_can_direct_exu := io.lsq.ldin.bits.mmio && (io.lsq.rob.pendingPtr === io.lsq.ldin.bits.uop.robIdx) && !io.lsq.ldin.bits.rep_info.need_rep && !s3_in.isLoadReplay
+
   // feedback slow
   s3_fast_rep := RegNext(s2_fast_rep)
 
@@ -1513,7 +1522,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   // feedback: scalar load will send feedback to RS
   //           vector load will send signal to VL Merge Buffer, then send feedback at granularity of uops
   io.feedback_slow.valid                 := s3_valid && s3_fb_no_waiting && !s3_isvec && !s3_frm_mabuf
-  io.feedback_slow.bits.hit              := !s3_rep_info.need_rep || io.lsq.ldin.ready
+  // if satisfy both: (1)dont need replay  (2) is mmio but can direct exu (namely dont need enq replayq) , then can feedback hit to release the entry.
+  io.feedback_slow.bits.hit              := !(s3_rep_info.need_rep || (s3_in.mmio && !io.lsq.ldin.bits.mmio_can_direct_exu)) || io.lsq.ldin.ready
   io.feedback_slow.bits.flushState       := s3_in.ptwBack
   io.feedback_slow.bits.robIdx           := s3_in.uop.robIdx
   io.feedback_slow.bits.sqIdx            := s3_in.uop.sqIdx

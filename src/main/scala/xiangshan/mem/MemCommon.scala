@@ -99,6 +99,7 @@ class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   val ptwBack = Bool()
   val af = Bool()
   val mmio = Bool()
+  val mmio_can_direct_exu = Bool()
   val atomic = Bool()
 
   val forwardMask = Vec(VLEN/8, Bool())
@@ -185,6 +186,7 @@ class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
     if (latch) ptwBack := RegEnable(input.ptwBack, enable) else ptwBack := input.ptwBack
     if (latch) af := RegEnable(input.af, enable) else af := input.af
     if (latch) mmio := RegEnable(input.mmio, enable) else mmio := input.mmio
+    if (latch) mmio_can_direct_exu := RegEnable(input.mmio_can_direct_exu, enable) else mmio_can_direct_exu := input.mmio_can_direct_exu
     if (latch) forwardMask := RegEnable(input.forwardMask, enable) else forwardMask := input.forwardMask
     if (latch) forwardData := RegEnable(input.forwardData, enable) else forwardData := input.forwardData
     if (latch) isPrefetch := RegEnable(input.isPrefetch, enable) else isPrefetch := input.isPrefetch
@@ -269,6 +271,7 @@ class LqWriteBundle(implicit p: Parameters) extends LsPipelineBundle {
     if(latch) tlbMiss := RegEnable(input.tlbMiss, enable) else tlbMiss := input.tlbMiss
     if(latch) ptwBack := RegEnable(input.ptwBack, enable) else ptwBack := input.ptwBack
     if(latch) mmio := RegEnable(input.mmio, enable) else mmio := input.mmio
+    if(latch) mmio_can_direct_exu := RegEnable(input.mmio_can_direct_exu, enable) else mmio_can_direct_exu := input.mmio_can_direct_exu
     if(latch) atomic := RegEnable(input.atomic, enable) else atomic := input.atomic
     if(latch) forwardMask := RegEnable(input.forwardMask, enable) else forwardMask := input.forwardMask
     if(latch) forwardData := RegEnable(input.forwardData, enable) else forwardData := input.forwardData

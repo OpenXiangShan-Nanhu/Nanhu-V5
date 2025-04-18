@@ -856,6 +856,10 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
     // passdown to lsq (load s2)
     lsq.io.ldu.ldin(i) <> loadUnits(i).io.lsq.ldin
+    (0 until LoadPipelineWidth).map ( i => {
+      loadUnits(i).io.lsq.rob.pendingld  := io.ooo_to_mem.lsqio.pendingld
+      loadUnits(i).io.lsq.rob.pendingPtr := io.ooo_to_mem.lsqio.pendingPtr
+    })
     lsq.io.ldout <> loadUnits(0).io.lsq.uncache
     lsq.io.ld_raw_data <> loadUnits(0).io.lsq.ld_raw_data
     loadUnits(1).io.lsq.uncache := DontCare

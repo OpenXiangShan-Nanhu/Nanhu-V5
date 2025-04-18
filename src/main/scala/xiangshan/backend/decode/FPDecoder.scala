@@ -55,12 +55,13 @@ class FPToVecDecoder(implicit p: Parameters) extends XSModule {
     // FROUND_H, FROUND_S, FROUND_D, FROUNDNX_H, FROUNDNX_S, FROUNDNX_D, FCVTMOD_W_D,
   )
   val isFpToVecInst = fpToVecInsts.map(io.instr === _).reduce(_ || _)
-  val isFP16Instrs = Seq(
+  //val isFP16Instrs = Seq(
     // zfa inst
     // FLEQ_H, FLTQ_H, FMINM_H, FMAXM_H,
     // FROUND_H, FROUNDNX_H,
-  )
-  val isFP16Instr = isFP16Instrs.map(io.instr === _).reduce(_ || _)
+  //)
+  //val isFP16Instr = isFP16Instrs.map(io.instr === _).reduce(_ || _)
+  val isFP16Instr = false.B
   val isFP32Instrs = Seq(
     FADD_S, FSUB_S, FEQ_S, FLT_S, FLE_S, FMIN_S, FMAX_S,
     FMUL_S, FDIV_S, FSQRT_S,
@@ -92,12 +93,13 @@ class FPToVecDecoder(implicit p: Parameters) extends XSModule {
   FCVT_H_D:VSew.e64
   FCVT_D_H:VSew.e16
    */
-  val isSew2Cvth = Seq(
+  //val isSew2Cvth = Seq(
     // FCVT_S_H, FCVT_H_S, FCVT_D_H,
     // FMV_X_H,
-  )
+  //)
   val isSew2Cvt32 = isSew2Cvts.map(io.instr === _).reduce(_ || _)
-  val isSew2Cvt16 = isSew2Cvth.map(io.instr === _).reduce(_ || _)
+  //val isSew2Cvt16 = isSew2Cvth.map(io.instr === _).reduce(_ || _)
+  val isSew2Cvt16 = false.B
   val isLmulMf4Cvts = Seq(
     FCVT_W_S, FCVT_WU_S,
     FMV_X_W,

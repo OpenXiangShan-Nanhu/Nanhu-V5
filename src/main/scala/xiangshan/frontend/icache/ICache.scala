@@ -59,7 +59,6 @@ case class ICacheParameters(
 )extends L1CacheParameters {
 
   val setBytes = nSets * blockBytes
-  val aliasBitsOpt = DCacheParameters().aliasBitsOpt //if(setBytes > pageSize) Some(log2Ceil(setBytes / pageSize)) else None
   val reqFields: Seq[BundleFieldBase] = Seq(
     PrefetchField(),
     ReqSourceField()

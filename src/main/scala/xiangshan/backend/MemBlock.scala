@@ -943,14 +943,18 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 //  val PrefetcherDTLBPortIndex = TlbStartVec(dtlb_pf_idx)
 //  val L2toL1DLBPortIndex = TlbStartVec(dtlb_pf_idx) + 1
   prefetcherOpt match {
-  case Some(pf) => dtlb_reqs(DTLB_PORT_START_SMS) <> pf.io.tlb_req
+  case Some(pf) => 
+    dtlb_reqs(DTLB_PORT_START_SMS) <> pf.io.tlb_req
+    pf.io.pmp_resp := pmp_check(DTLB_PORT_START_SMS).resp
   case None =>
     dtlb_reqs(DTLB_PORT_START_SMS) := DontCare
     dtlb_reqs(DTLB_PORT_START_SMS).req.valid := false.B
     dtlb_reqs(DTLB_PORT_START_SMS).resp.ready := true.B
   }
   l1PrefetcherOpt match {
-    case Some(pf) => dtlb_reqs(DTLB_PORT_START_STRIDE) <> pf.io.tlb_req
+    case Some(pf) => 
+      dtlb_reqs(DTLB_PORT_START_STRIDE) <> pf.io.tlb_req
+      pf.io.pmp_resp := pmp_check(DTLB_PORT_START_STRIDE).resp
     case None =>
         dtlb_reqs(DTLB_PORT_START_STRIDE) := DontCare
         dtlb_reqs(DTLB_PORT_START_STRIDE).req.valid := false.B

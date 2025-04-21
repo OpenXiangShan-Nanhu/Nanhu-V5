@@ -154,7 +154,7 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
   io.exception.valid := io.ldout.fire
   io.exception.bits := req
   io.exception.bits.uop.exceptionVec(loadAccessFault) := nderr
-
+  io.exception.bits.fullva := SignExt(req.vaddr, XLEN)
 
   when (io.ldout.fire) {
     req_valid := false.B

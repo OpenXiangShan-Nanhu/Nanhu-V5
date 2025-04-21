@@ -34,9 +34,11 @@ trait CSREvents { self: NewCSR =>
     trapEntryMEvent,
     trapEntryHSEvent,
     trapEntryVSEvent,
+    trapEntryMNEvent,
     mretEvent,
     sretEvent,
     dretEvent,
+    mnretEvent,
   )
 
   events.foreach(x => dontTouch(x.out))
@@ -46,6 +48,7 @@ trait CSREvents { self: NewCSR =>
     trapEntryMEvent,
     trapEntryHSEvent,
     trapEntryVSEvent,
+    trapEntryMNEvent,
   )
 }
 

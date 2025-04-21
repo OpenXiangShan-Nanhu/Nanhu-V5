@@ -52,8 +52,9 @@ class MNretEventModule(implicit p: Parameters) extends Module with CSREventBase 
   out := DontCare
 
   out.privState.valid := valid
-  out.mnstatus .valid := valid
-  out.targetPc .valid := valid
+  out.mnstatus.valid  := valid
+  out.mstatus.valid   := valid
+  out.targetPc.valid  := valid
 
   out.privState.bits.PRVM     := in.mnstatus.MNPP
   out.privState.bits.V        := Mux(in.mnstatus.MNPP === PrivMode.M, VirtMode.Off.asUInt, in.mnstatus.MNPV.asUInt)

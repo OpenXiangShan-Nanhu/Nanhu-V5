@@ -1202,6 +1202,19 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
     pfPtrPlus1_write := idx + 2.U
   }
 
+    when(RegNext(redirectVec.map(r => r.valid).reduce(_ || _))){
+    val r = PriorityMux(redirectVec.map(r => (r.valid -> r.bits)))
+    val notIfu = redirectVec.dropRight(1).map(r => r.valid).reduce(_||_)
+    val (idx, offset, flushItSelf, isException) = (r.ftqIdx, r.ftqOffset, RedirectLevel.flushItself(r.level), !r.isStLd)
+
+    // Since the exception instruction is only issued after reaching the head of the ROB,
+    // the FTQ can dequeue the corresponding entry, meaning that all previous instructions must have already completed.
+    when(RegNext(flushItSelf && isException && notIfu)) {
+      commPtr_write := RegNext(idx + 1.U)
+      commPtrPlus1_write := RegNext(idx + 2.U)
+    }
+  }
+
   // only the valid bit is actually needed
   io.toIfu.redirect.bits    := backendRedirect.bits
   io.toIfu.redirect.valid   := stage2Flush

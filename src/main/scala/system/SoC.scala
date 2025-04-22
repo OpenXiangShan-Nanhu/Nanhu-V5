@@ -34,7 +34,7 @@ import xiangshan.backend.fu.PMAConst
 import xiangshan.XSTileKey
 
 import coupledL2.tl2chi.CHIIssue
-import xiangshan.EnableCHI
+import xs.utils.cache.EnableCHI
 import xiangshan.PMParameKey
 
 import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}

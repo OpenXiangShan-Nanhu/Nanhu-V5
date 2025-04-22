@@ -36,7 +36,7 @@ import xiangshan.cache.wpu.WPUParameters
 import xiangshan.backend.datapath.WakeUpConfig
 import xiangshan.mem.prefetch.{PrefetcherParams, SMSParams}
 import xs.utils.perf.DebugOptionsKey
-
+import xs.utils.cache.EnableCHI
 
 import scala.math.{max, min}
 
@@ -45,8 +45,6 @@ case object XLen extends Field[Int]
 case object XSTileKey extends Field[Seq[XSCoreParameters]]
 
 case object XSCoreParamsKey extends Field[XSCoreParameters]
-
-case object EnableCHI extends Field[Boolean](false)
 
 case class XSCoreParameters
 (

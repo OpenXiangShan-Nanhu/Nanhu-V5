@@ -37,6 +37,7 @@ import xs.utils.cache.common._
 import xs.utils.debug.{HardwareAssertion, HardwareAssertionKey, HwaParams}
 import freechips.rocketchip.util.DontTouch
 import xs.utils.sram._
+import xs.utils.cache.EnableCHI
 
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle {
   val ecc_error = Valid(UInt(48.W)) //Valid(UInt(soc.PAddrBits.W))
@@ -103,7 +104,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
   val plic_int_node = IntIdentityNode()
   val nmi_int_node = IntIdentityNode()
 
-  println(s"enableCHI: ${enableCHI}")
+  println(s"L2top enableCHI: ${enableCHI}")
   val l2cache = if (enableL2) {
     val config = new Config((_, _, _) => {
       case L2ParamKey => p(L2ParamKey).copy(

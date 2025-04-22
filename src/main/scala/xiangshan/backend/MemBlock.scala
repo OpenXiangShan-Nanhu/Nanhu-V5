@@ -48,6 +48,7 @@ import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xs.utils.perf.{HasPerfEvents, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
 import xs.utils.cache.common.{PrefetchRecv, CMOResp, CMOReq}
+import xs.utils.cache.EnableCHI
 
 trait HasMemBlockParameters extends HasXSParameter {
   // number of memory units

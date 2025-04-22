@@ -40,7 +40,7 @@ import xs.utils.cache.{HCCacheParameters, CacheCtrl}
 import xs.utils.cache.common._
 import xs.utils.perf.{DebugOptionsKey, DebugOptions}
 import xs.utils.cache.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverParams}
-import xs.utils.cache.{L2Param, L1Param}
+import xs.utils.cache.{L2Param, L1Param, EnableCHI}
 import xiangshan.backend.regfile.V0PregParams
 import xiangshan.backend.regfile.VlPregParams
 

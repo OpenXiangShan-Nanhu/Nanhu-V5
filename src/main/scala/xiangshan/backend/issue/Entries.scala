@@ -259,14 +259,15 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
 
   //issueRespVec
   if (params.needFeedBackSqIdx || params.needFeedBackLqIdx) {
-    issueRespVec.lazyZip(sqIdxVec.get.zip(lqIdxVec.get)).lazyZip(issueTimerVec.lazyZip(deqPortIdxReadVec)).foreach { case (issueResp, (sqIdx, lqIdx), (issueTimer, deqPortIdx)) =>
+    issueRespVec.lazyZip(sqIdxVec.get.zip(lqIdxVec.get)).lazyZip(issueTimerVec.lazyZip(deqPortIdxReadVec)).zipWithIndex.foreach { case ((issueResp, (sqIdx, lqIdx), (issueTimer, deqPortIdx)),idx) =>
       val respInDatapath = if (!params.isVecMemIQ) resps(issueTimer(0))(deqPortIdx)
                            else resps(issueTimer)(deqPortIdx)
       val respAfterDatapath = Wire(chiselTypeOf(respInDatapath))
       val hitRespsVec = VecInit(memEtyResps.map(x =>
         x.valid &&
         (if (params.needFeedBackSqIdx) x.bits.sqIdx.get === sqIdx else true.B) &&
-        (if (params.needFeedBackLqIdx) x.bits.lqIdx.get === lqIdx else true.B)
+        (if (params.needFeedBackLqIdx) x.bits.lqIdx.get === lqIdx else true.B) &&
+        validVec(idx)
       ).toSeq)
       respAfterDatapath.valid := hitRespsVec.reduce(_ | _)
       respAfterDatapath.bits  := (if (memEtyResps.size == 1) memEtyResps.head.bits

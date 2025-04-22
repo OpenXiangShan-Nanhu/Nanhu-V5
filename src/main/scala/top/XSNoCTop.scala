@@ -93,6 +93,7 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
   core_with_l2.tile.core_reset_sink := core_rst_node
 
   class XSNoCTopImp(wrapper: XSNoCTop) extends LazyRawModuleImp(wrapper) {
+    override def provideImplicitClockToLazyChildren = true
     soc.XSTopPrefix.foreach { prefix =>
       val mod = this.toNamed
       annotate(new ChiselAnnotation {
@@ -183,6 +184,9 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
     core_rst_node.out.head._1 := false.B.asAsyncReset
 
     core_with_l2.module.io.debugTopDown.l3MissMatch := false.B
+    core_with_l2.module.io.dft := DontCare
+    core_with_l2.module.io.traceCoreInterface.fromEncoder := DontCare
+
 
 //    withClockAndReset(clock, noc_reset_sync) {
 //      // Modules are reset one by one

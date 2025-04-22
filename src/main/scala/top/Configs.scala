@@ -43,6 +43,7 @@ import xs.utils.cache.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverP
 import xs.utils.cache.{L2Param, L1Param, EnableCHI}
 import xiangshan.backend.regfile.V0PregParams
 import xiangshan.backend.regfile.VlPregParams
+import coupledL2.tl2chi.DecoupledCHI
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64
@@ -434,6 +435,19 @@ class NactConfig(n: Int = 1) extends Config(
     ++ new WithNKBL1I(64, ways = 4)
     ++ new WithNKBL1D(64, ways = 4)
     ++ new BaseConfig(n)
+)
+
+class NactNocConfig(n: Int = 1) extends Config(
+  new WithNKBL3(n).alter((site, here, up) => {
+    case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCTop = true)
+  })
+  ++ new WithCHI
+  ++ (new WithNKBL2(512, inclusive = true, banks = 2, ways = 8, tp = false)).alter((site, here, up) => {
+    case DecoupledCHI => false
+  })
+  ++ new WithNKBL1I(64, ways = 4)
+  ++ new WithNKBL1D(64, ways = 4)
+  ++ new BaseConfig(n)
 )
 
 class NactMiniConfig(n: Int = 1)extends Config(

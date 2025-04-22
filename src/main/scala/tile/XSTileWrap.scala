@@ -53,6 +53,7 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
   tile.nmi_int_node := IntBuffer(3, cdc = true) := nmiIntNode
   beuIntNode := IntBuffer() := tile.beu_int_source
   class XSTileWrapImp(wrapper: LazyModule) extends LazyRawModuleImp(wrapper) {
+    override def provideImplicitClockToLazyChildren = true
     val clock = IO(Input(Clock()))
     val reset = IO(Input(AsyncReset()))
     val noc_reset = EnableCHIAsyncBridge.map(_ => IO(Input(AsyncReset())))

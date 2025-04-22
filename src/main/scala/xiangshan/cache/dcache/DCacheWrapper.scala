@@ -19,7 +19,6 @@ package xiangshan.cache
 import chisel3._
 import chisel3.experimental.ExtModule
 import chisel3.util._
-
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, TransferSizes}
 import freechips.rocketchip.tilelink.{TLBundleD, _}
 import freechips.rocketchip.util.BundleFieldBase
@@ -32,10 +31,10 @@ import xiangshan.cache.wpu._
 import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
 import xiangshan.mem.prefetch._
 import xiangshan.mem.LqPtr
-import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ReplacementPolicy, SRAMQueue}
+import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, PipelineConnect, PipelineConnectPipe, ReplacementPolicy, SRAMQueue}
 import xs.utils.perf._
 import xs.utils.tl._
-import xs.utils.cache.common.{IsKeywordKey, VaddrField, IsKeywordField, AliasField, PrefetchField}
+import xs.utils.cache.common.{AliasField, IsKeywordField, IsKeywordKey, PrefetchField, VaddrField}
 
 // DCache specific parameters
 case class DCacheParameters
@@ -1248,12 +1247,19 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   }.otherwise {
     assert(!bus.d.fire)
   }
-  missQueue.io.mem_grant <> gDQDeqBitsWire
- val isKeyword = gDQDeqBitsWire.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
+
+  val grantDataQueueConnectPipe = Module(new PipelineConnectPipe(new TLBundleD(edge.bundle)))
+  grantDataQueueConnectPipe.io.in <> gDQDeqBitsWire
+  grantDataQueueConnectPipe.io.out <> missQueue.io.mem_grant
+  grantDataQueueConnectPipe.io.rightOutFire := missQueue.io.mem_grant.fire
+  grantDataQueueConnectPipe.io.isFlush := false.B
+
+//  missQueue.io.mem_grant <> gDQDeqBitsWire
+ val isKeyword = missQueue.io.mem_grant.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
   (0 until LoadPipelineWidth).map(i => {
-    val (_, _, done, _) = edge.count(gDQDeqBitsWire)
-    when(gDQDeqBitsWire.bits.opcode === TLMessages.GrantData) {
-      io.lsu.forward_D(i).apply(gDQDeqBitsWire.valid, gDQDeqBitsWire.bits.data, gDQDeqBitsWire.bits.source, isKeyword ^ done)
+    val (_, _, done, _) = edge.count(missQueue.io.mem_grant)
+    when(missQueue.io.mem_grant.bits.opcode === TLMessages.GrantData) {
+      io.lsu.forward_D(i).apply(missQueue.io.mem_grant.valid, missQueue.io.mem_grant.bits.data, missQueue.io.mem_grant.bits.source, isKeyword ^ done)
    //   io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source,done)
     }.otherwise {
       io.lsu.forward_D(i).dontCare()
@@ -1261,8 +1267,8 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   })
   // tl D channel wakeup
   val (_, _, done, _) = edge.count(bus.d)
-  when (gDQDeqBitsWire.bits.opcode === TLMessages.GrantData || gDQDeqBitsWire.bits.opcode === TLMessages.Grant) {
-    io.lsu.tl_d_channel.apply(gDQDeqBitsWire.valid, gDQDeqBitsWire.bits.data, gDQDeqBitsWire.bits.source, done)
+  when (missQueue.io.mem_grant.bits.opcode === TLMessages.GrantData || missQueue.io.mem_grant.bits.opcode === TLMessages.Grant) {
+    io.lsu.tl_d_channel.apply(missQueue.io.mem_grant.valid, missQueue.io.mem_grant.bits.data, missQueue.io.mem_grant.bits.source, done)
   } .otherwise {
     io.lsu.tl_d_channel.dontCare()
   }

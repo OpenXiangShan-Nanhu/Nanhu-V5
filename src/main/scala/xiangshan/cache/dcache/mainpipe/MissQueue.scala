@@ -963,7 +963,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     assert(!RegNext(out.valid && PopCount(Cat(in.map(_.valid))) > 1.U))
   }
 
-  io.mem_grant.ready := false.B
+  io.mem_grant.ready := true.B
   io.refill_to_sbuffer.valid := false.B
   io.refill_to_sbuffer.bits := DontCare
 
@@ -1001,10 +1001,11 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       e.io.mem_grant.valid := false.B
       e.io.mem_grant.bits := DontCare
-      when (io.mem_grant.bits.source === i.U) {
-        when(e.io.req_source === STORE_SOURCE.U || e.io.req_source === AMO_SOURCE.U){
+
+      when(io.mem_grant.valid && io.mem_grant.bits.source === i.U) {
+        when(e.io.req_source === STORE_SOURCE.U || e.io.req_source === AMO_SOURCE.U) {
           io.mem_grant.ready := e.io.mem_grant.ready
-          when(io.mem_grant.fire && hasData){
+          when(io.mem_grant.fire && hasData) {
             io.refill_to_sbuffer.valid := true.B
             io.refill_to_sbuffer.bits.data := refill_row_data
             io.refill_to_sbuffer.bits.id := e.io.sbuffer_id
@@ -1013,9 +1014,9 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
             difftest_data_raw(refill_count ^ isKeyword) := refill_row_data
           }
-        }.elsewhen(e.io.req_source === LOAD_SOURCE.U || e.io.req_source === DCACHE_PREFETCH_SOURCE.U){
+        }.elsewhen(e.io.req_source === LOAD_SOURCE.U || e.io.req_source === DCACHE_PREFETCH_SOURCE.U) {
           io.mem_grant.ready := !dataBuffer.io.full && e.io.mem_grant.ready
-          when(io.mem_grant.fire && hasData){
+          when(io.mem_grant.fire && hasData) {
             dataBuffer.io.write.valid := true.B
             dataBuffer.io.write.bits.wid := io.mem_grant.bits.source
             dataBuffer.io.write.bits.wdata := refill_row_data

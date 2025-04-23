@@ -226,6 +226,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   }
   s0_out.isFrmMisAlignBuf := s0_use_flow_ma
 
+  val s0_isCboAll = s0_use_flow_rs && LSUOpType.isCboAll(s0_stin.uop.fuOpType)
   // exception check
   val s0_addr_aligned = LookupTree(Mux(s0_use_flow_vec, s0_vecstin.alignedType(1,0), s0_uop.fuOpType(1, 0)), List(
     "b00".U   -> true.B,              //b

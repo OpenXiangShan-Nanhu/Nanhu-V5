@@ -99,6 +99,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val uncacheOutstanding = Input(Bool())
     val uncache = new UncacheWordIO
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
+    // val cboZeroStout = DecoupledIO(new MemExuOutput)
     // TODO: implement vector store
     val vecmmioStout = DecoupledIO(new MemExuOutput(isVector = true)) // vec writeback uncached store
     val sqEmpty = Output(Bool())
@@ -137,6 +138,11 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.uncacheOutstanding := io.uncacheOutstanding
   io.mdpTrainUpdate := storeQueue.io.mdpTrainUpdate
 
+  dontTouch(loadQueue.io.tlbReplayDelayCycleCtrl)
+  // Todo: imm
+  val tlbReplayDelayCycleCtrl = WireInit(VecInit(Seq(14.U(ReSelectLen.W), 0.U(ReSelectLen.W), 125.U(ReSelectLen.W), 0.U(ReSelectLen.W))))
+  loadQueue.io.tlbReplayDelayCycleCtrl := tlbReplayDelayCycleCtrl
+
   // io.enq logic
   // LSQ: send out canAccept when both load queue and store queue are ready
   // Dispatch: send instructions to LSQ only when they are ready
@@ -173,6 +179,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.sbuffer     <> io.sbuffer
   storeQueue.io.sbufferVecDifftestInfo <> io.sbufferVecDifftestInfo
   storeQueue.io.mmioStout   <> io.mmioStout
+  // storeQueue.io.cboZeroStout <> io.cboZeroStout
   storeQueue.io.vecmmioStout <> io.vecmmioStout
   storeQueue.io.rob         <> io.rob
   storeQueue.io.exceptionAddr.isStore := DontCare

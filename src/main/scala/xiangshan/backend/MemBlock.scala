@@ -907,20 +907,24 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   lsq.io.maControl                              <> storeMisalignBuffer.io.sqControl
 
-  // lsq to l2 CMO
-  outer.cmo_sender match {
-    case Some(x) =>
-      x.out.head._1 <> lsq.io.cmoOpReq
-    case None =>
-      lsq.io.cmoOpReq.ready  := false.B
-  }
-  outer.cmo_reciver match {
-    case Some(x) =>
-      x.in.head._1  <> lsq.io.cmoOpResp
-    case None =>
-      lsq.io.cmoOpResp.valid := false.B
-      lsq.io.cmoOpResp.bits  := 0.U.asTypeOf(new CMOResp)
-  }
+  // // lsq to l2 CMO
+  // outer.cmo_sender match {
+  //   case Some(x) =>
+  //     x.out.head._1 <> lsq.io.cmoOpReq
+  //   case None =>
+  //     lsq.io.cmoOpReq.ready  := false.B
+  // }
+  // outer.cmo_reciver match {
+  //   case Some(x) =>
+  //     x.in.head._1  <> lsq.io.cmoOpResp
+  //   case None =>
+  //     lsq.io.cmoOpResp.valid := false.B
+  //     lsq.io.cmoOpResp.bits  := 0.U.asTypeOf(new CMOResp)
+  // }
+
+  // cmoreq from sq send to MissQueue
+  lsq.io.cmoOpReq <> dcache.io.cmoOpReq
+  lsq.io.cmoOpResp <> dcache.io.cmoOpResp
 
   // Prefetcher
 //  val StreamDTLBPortIndex = TlbStartVec(dtlb_ld_idx) + LduCnt + HyuCnt
@@ -1061,6 +1065,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     stu.io.vec_isFirstIssue := true.B // TODO
   }
 
+  // mmio/cbo and cbozero store writeback will use store writeback port 0
   // mmio store writeback will use store writeback port 0
   val mmioStout = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
   NewPipelineConnect(

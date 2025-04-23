@@ -909,20 +909,24 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   lsq.io.maControl                              <> storeMisalignBuffer.io.sqControl
 
-  // lsq to l2 CMO
-  outer.cmo_sender match {
-    case Some(x) =>
-      x.out.head._1 <> lsq.io.cmoOpReq
-    case None =>
-      lsq.io.cmoOpReq.ready  := false.B
-  }
-  outer.cmo_reciver match {
-    case Some(x) =>
-      x.in.head._1  <> lsq.io.cmoOpResp
-    case None =>
-      lsq.io.cmoOpResp.valid := false.B
-      lsq.io.cmoOpResp.bits  := 0.U.asTypeOf(new CMOResp)
-  }
+  // // lsq to l2 CMO
+  // outer.cmo_sender match {
+  //   case Some(x) =>
+  //     x.out.head._1 <> lsq.io.cmoOpReq
+  //   case None =>
+  //     lsq.io.cmoOpReq.ready  := false.B
+  // }
+  // outer.cmo_reciver match {
+  //   case Some(x) =>
+  //     x.in.head._1  <> lsq.io.cmoOpResp
+  //   case None =>
+  //     lsq.io.cmoOpResp.valid := false.B
+  //     lsq.io.cmoOpResp.bits  := 0.U.asTypeOf(new CMOResp)
+  // }
+
+  // cmoreq from sq send to MissQueue
+  lsq.io.cmoOpReq <> dcache.io.cmoOpReq
+  lsq.io.cmoOpResp <> dcache.io.cmoOpResp
 
   // Prefetcher
 //  val StreamDTLBPortIndex = TlbStartVec(dtlb_ld_idx) + LduCnt + HyuCnt
@@ -1063,18 +1067,25 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     stu.io.vec_isFirstIssue := true.B // TODO
   }
 
-  // mmio store writeback will use store writeback port 0
-  val mmioStout = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
+  // mmio/cbo and cbozero store writeback will use store writeback port 0
+  val sqStout = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
+  sqStout.valid := lsq.io.mmioStout.valid || lsq.io.cboZeroStout.valid
+  sqStout.bits  := Mux(lsq.io.cboZeroStout.valid, lsq.io.cboZeroStout.bits, lsq.io.mmioStout.bits)
+  lsq.io.mmioStout.ready := sqStout.ready
+  lsq.io.cboZeroStout.ready := sqStout.ready
+  assert(!(lsq.io.mmioStout.valid && lsq.io.cboZeroStout.valid), "Cannot writeback mmio and cboZero at the same time.")
+
+  val sqStoutPipe = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
   NewPipelineConnect(
-    lsq.io.mmioStout, mmioStout, mmioStout.fire,
+    sqStout, sqStoutPipe, sqStoutPipe.fire,
     false.B,
-    Option("mmioStOutConnect")
+    Option("sqStoutConnect")
   )
-  mmioStout.ready := false.B
-  when (mmioStout.valid && !storeUnits(0).io.stout.valid) {
+  sqStoutPipe.ready := false.B
+  when (sqStoutPipe.valid && !storeUnits(0).io.stout.valid) {
     stOut(0).valid := true.B
-    stOut(0).bits  := mmioStout.bits
-    mmioStout.ready := true.B
+    stOut(0).bits  := sqStoutPipe.bits
+    sqStoutPipe.ready := true.B
   }
   // vec mmio writeback
   lsq.io.vecmmioStout.ready := false.B

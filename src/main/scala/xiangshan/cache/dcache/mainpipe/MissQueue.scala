@@ -29,6 +29,8 @@ import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.cache.common._
 import xs.utils.cache.common.{AliasKey, DirtyKey, PrefetchKey, VaddrKey, IsKeywordKey}
+import java.lang.reflect.Parameter
+import scala.annotation.switch
 
 
 class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
@@ -281,6 +283,70 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
     reg_valid() && get_block(req.addr) === get_block(release_addr)
   }
 }
+
+class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
+{
+  val io = IO(new Bundle(){
+    val cmo_req  = Flipped(Decoupled(new CMOReq))
+    val cmo_resp = Decoupled(new CMOResp)
+    val req_TLA = DecoupledIO(new TLBundleA(edge.bundle))
+    val resp_TLD = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
+  })
+
+  val s_idle :: s_req :: s_resp :: s_wb :: Nil = Enum(4)
+  val cmoState = RegInit(s_idle)
+
+  val req = RegEnable(io.cmo_req.bits, io.cmo_req.fire)
+  val nderr = RegInit(false.B)
+
+  switch(cmoState) {
+    is(s_idle) {
+      when(io.cmo_req.fire) {
+        cmoState := s_req
+        nderr := false.B
+      }
+    }
+
+    is(s_req) {
+      when(io.req_TLA.fire) {
+        cmoState := s_resp
+      }
+    }
+
+    is(s_resp) {
+      when(io.resp_TLD.fire) {
+        cmoState := s_wb
+        nderr := io.resp_TLD.bits.denied || io.resp_TLD.bits.corrupt
+      }
+    }
+
+    is(s_wb) {
+      when(io.cmo_resp.fire) {
+        cmoState := s_idle
+      }
+    }
+  }
+
+  io.cmo_req.ready := (cmoState === s_idle)
+
+  io.req_TLA.valid := (cmoState === s_req)
+  io.req_TLA.bits := edge.CacheBlockOperation(
+    fromSource = (cfg.nMissEntries + 1).U, // source is the # of MissEntries + 1
+    toAddress = req.address,
+    lgSize = (log2Up(cfg.blockBytes)).U,
+    opcode = req.opcode
+  )._2
+
+  io.resp_TLD.ready := (cmoState === s_resp)
+  
+  io.cmo_resp.valid := (cmoState === s_wb)
+  io.cmo_resp.bits.address := req.address
+  io.cmo_resp.bits.nderr   := nderr
+
+  assert(!(cmoState =/= s_idle && io.cmo_req.valid), "CBO can not continuously execute!")
+  assert(!(cmoState =/= s_resp && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
+}
+
 
 class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DCacheModule 
   with HasCircularQueuePtrHelper
@@ -832,6 +898,9 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val forward = Vec(LoadPipelineWidth, new LduToMissqueueForwardIO)
     val l2_pf_store_only = Input(Bool())
 
+    val cmoOpReq = Flipped(DecoupledIO(new CMOReq))
+    val cmoOpResp = DecoupledIO(new CMOResp)
+
     val memSetPattenDetected = Output(Bool())
     val lqEmpty = Input(Bool())
 
@@ -857,6 +926,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
   val dataBuffer = Module(new dataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
+  val cmoUnit = Module(new CMOUnit(edge))
 
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))
   val acquire_from_pipereg = Wire(chiselTypeOf(io.mem_acquire))
@@ -979,6 +1049,9 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val diff_refill = Wire(Bool())
   diff_refill := merge && io.req.valid && !io.req.bits.cancel && io.req.bits.isFromLoad
 
+  cmoUnit.io.cmo_req <> io.cmoOpReq
+  cmoUnit.io.cmo_resp <> io.cmoOpResp
+
   val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = 14)
   entries.zipWithIndex.foreach {
     case (e, i) =>
@@ -1083,9 +1156,17 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   XSPerfAccumulate("acquire_fire_from_pipereg", acquire_from_pipereg.fire)
   XSPerfAccumulate("pipereg_valid", miss_req_pipe_reg.reg_valid())
 
-  val acquire_sources = Seq(acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
+  val acquire_sources = Seq(cmoUnit.io.req_TLA, acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
   TLArbiter.lowest(edge, io.mem_acquire, acquire_sources:_*)
   TLArbiter.lowest(edge, io.mem_finish, entries.map(_.io.mem_finish):_*)
+
+  // cmo resp
+  when (io.mem_grant.valid && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
+    cmoUnit.io.resp_TLD <> io.mem_grant
+  } .otherwise {
+    cmoUnit.io.resp_TLD.valid := false.B
+    cmoUnit.io.resp_TLD.bits  := DontCare
+  }
 
   // amo's main pipe req out
   fastArbiter(entries.map(_.io.main_pipe_req), io.main_pipe_req, Some("main_pipe_req"))

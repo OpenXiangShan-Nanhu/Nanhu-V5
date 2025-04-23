@@ -189,6 +189,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val cmoOpReq  = DecoupledIO(new CMOReq)
     val cmoOpResp = Flipped(DecoupledIO(new CMOResp))
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
+    val cboZeroStout = DecoupledIO(new MemExuOutput) // writeback cbo zero
     val vecmmioStout = DecoupledIO(new MemExuOutput(isVector = true))
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
     val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
@@ -842,13 +843,14 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val uncacheState = RegInit(s_idle)
   val uncacheUop = Reg(new DynInst)
   val uncacheVAddr = Reg(UInt(VAddrBits.W))
-  val cboFlushedSb = RegInit(false.B)
+  // flag that infers whether the cbo inval/flush/clean has finished flushing sbuffer
+  val cboWaitFlushSb = RegInit(false.B)
   switch(uncacheState) {
     is(s_idle) {
       when(RegNext(io.rob.pendingst && uop(deqPtr).robIdx === io.rob.pendingPtr && pending(deqPtr) && allocated(deqPtr) && datavalid(deqPtr) && addrvalid(deqPtr))) {
         uncacheState := s_req
         uncacheUop := uop(deqPtr)
-        cboFlushedSb := false.B
+        cboWaitFlushSb := true.B
       }
     }
     is(s_req) {
@@ -908,6 +910,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // as uncache op will not start in s_idle
   val cboMmioAddr = get_block_addr(addrModule.io.rdata_p(0))
   val deqCanDoCbo = GatedRegNext(LSUOpType.isCbo(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr))
+
+  // cbo inval/clean/flush: 
   when (deqCanDoCbo) {
     // disable uncache channel
     io.uncache.req.valid := false.B
@@ -923,16 +927,46 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     }
   }
 
-  io.cmoOpReq.valid := deqCanDoCbo && cboFlushedSb && (uncacheState === s_req)
+  io.cmoOpReq.valid := deqCanDoCbo && !cboWaitFlushSb && (uncacheState === s_req)
   io.cmoOpReq.bits.opcode  := uop(deqPtr).fuOpType(1, 0)
   io.cmoOpReq.bits.address := cboMmioAddr
 
   io.cmoOpResp.ready := deqCanDoCbo && (uncacheState === s_resp)
 
-  io.flushSbuffer.valid := deqCanDoCbo && !cboFlushedSb && (uncacheState === s_req) && !io.flushSbuffer.empty
+  // cbo zero:
+  val isCboZeroToSbVec = (0 until EnsbufferWidth).map{ i => 
+    RegNext(io.sbuffer(i).fire) && uop(deqPtrExt(i).value).fuOpType === LSUOpType.cbo_zero && allocated(deqPtrExt(i).value)
+  }
+  assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
+  
+  val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _)
+  // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 
+  val cboZeroFlushSb      = GatedRegNext(deqCanDoCboZero)
+  val cboZeroUop          = RegEnable(PriorityMux(isCboZeroToSbVec, deqPtrExt.map(x=>uop(x.value))), deqCanDoCboZero)
+  
+  val cboZeroValid        = RegInit(false.B)
+  val cboZeroWaitFlushSb  = RegInit(false.B)
 
-  when(deqCanDoCbo && !cboFlushedSb && (uncacheState === s_req) && io.flushSbuffer.empty) {
-    cboFlushedSb := true.B
+  // start to flush sbuffer
+  when (cboZeroFlushSb) {
+    cboZeroValid        := true.B
+    cboZeroWaitFlushSb  := true.B
+  }
+
+  // finish flush sbuffer
+  when (cboZeroWaitFlushSb && io.flushSbuffer.empty) {
+    cboZeroWaitFlushSb  := false.B
+  }
+
+  when (io.cboZeroStout.fire) {
+    cboZeroValid := false.B
+  }
+
+  // flush sbuffer
+  io.flushSbuffer.valid := (deqCanDoCbo && cboWaitFlushSb && (uncacheState === s_req) && !io.flushSbuffer.empty) || cboZeroFlushSb
+
+  when(deqCanDoCbo && cboWaitFlushSb && (uncacheState === s_req) && io.flushSbuffer.empty) {
+    cboWaitFlushSb := false.B
   }
 
   io.uncache.req.bits.atomic := atomic(GatedRegNext(rdataPtrExtNext(0)).value)
@@ -969,6 +1003,16 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   when (io.mmioStout.fire) {
     allocated(deqPtr) := false.B
   }
+
+  // cbo zero wb to ROB when finish flushing sbuffer
+  io.cboZeroStout.valid                := cboZeroValid && !cboZeroWaitFlushSb
+  io.cboZeroStout.bits.uop             := cboZeroUop
+  io.cboZeroStout.bits.data            := DontCare
+  io.cboZeroStout.bits.isFromLoadUnit  := DontCare
+  io.cboZeroStout.bits.debug.isMMIO    := false.B
+  io.cboZeroStout.bits.debug.paddr     := DontCare
+  io.cboZeroStout.bits.debug.isPerfCnt := false.B
+  io.cboZeroStout.bits.debug.vaddr     := DontCare
 
   exceptionBuffer.io.storeAddrIn.last.valid := io.mmioStout.fire
   exceptionBuffer.io.storeAddrIn.last.bits := DontCare

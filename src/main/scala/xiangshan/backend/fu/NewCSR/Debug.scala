@@ -6,7 +6,9 @@ import org.chipsalliance.cde.config.Parameters
 import xiangshan.backend.fu.NewCSR.CSRBundles.PrivState
 import xiangshan.backend.fu.util.CSRConst
 import xiangshan.backend.fu.util.SdtrigExt
+import xiangshan.cache.HasDCacheParameters
 import xiangshan._
+import utils._
 
 class Debug(implicit val p: Parameters) extends Module with HasXSParameter {
   val io = IO(new DebugIO)
@@ -205,7 +207,7 @@ class BaseTriggerIO(implicit p: Parameters) extends XSBundle{
 }
 
 
-abstract class BaseTrigger()(implicit val p: Parameters) extends Module with HasXSParameter with SdtrigExt {
+abstract class BaseTrigger()(implicit val p: Parameters) extends Module with HasXSParameter with SdtrigExt with HasDCacheParameters {
   lazy val io = IO(new BaseTriggerIO)
 
   def getTriggerHitVec(): Vec[Bool]
@@ -252,6 +254,12 @@ abstract class BaseTrigger()(implicit val p: Parameters) extends Module with Has
 
 class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Parameters) extends BaseTrigger {
 
+  class MemTriggerIO extends BaseTriggerIO{
+    val isCbo = OptionWrapper(memType == MemType.STORE, Input(Bool()))
+  }
+
+  override lazy val io = IO(new MemTriggerIO)
+
   override def getTriggerHitVec(): Vec[Bool] = {
     val triggerHitVec = WireInit(VecInit(Seq.fill(TriggerNum)(false.B)))
     for (i <- 0 until TriggerNum) {
@@ -271,6 +279,17 @@ class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Param
         (if(memType == MemType.LOAD) tdata.load else tdata.store) &&
         (vaddr >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
     })
+  }
+
+  def DcacheLineBitsEq(): (Bool, Vec[Bool])= {
+    (
+    io.isCbo.getOrElse(false.B),
+    VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
+      !tdata.select && !debugMode && en &&
+        tdata.store && io.isCbo.getOrElse(false.B) &&
+        (vaddr >> DCacheLineOffset) === (tdata.tdata2 >> DCacheLineOffset)
+    })
+    )
   }
 }
 

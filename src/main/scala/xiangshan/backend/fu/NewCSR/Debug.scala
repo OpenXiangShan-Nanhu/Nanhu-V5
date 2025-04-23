@@ -297,16 +297,6 @@ class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Param
     })
   }
 
-  def DcacheLineBitsEq(): (Bool, Vec[Bool])= {
-    (
-    io.isCbo.getOrElse(false.B),
-    VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
-      !tdata.select && !debugMode && en &&
-        tdata.store && io.isCbo.getOrElse(false.B) &&
-        (vaddr >> DCacheLineOffset) === (tdata.tdata2 >> DCacheLineOffset)
-    })
-    )
-  }
 }
 
 class VSegmentTrigger(override implicit val p: Parameters) extends BaseTrigger {

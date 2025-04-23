@@ -363,7 +363,6 @@ class MissQueueBlockIO(implicit p: Parameters) extends XSBundle {
 }
 
 
-
 class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DCacheModule 
   with HasCircularQueuePtrHelper
  {

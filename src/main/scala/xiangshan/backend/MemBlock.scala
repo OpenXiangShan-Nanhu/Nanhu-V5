@@ -238,11 +238,11 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
   val l2_pf_sender_opt = coreParams.prefetcher.map(_ =>
     BundleBridgeSource(() => new PrefetchRecv)
   )
-  val l3_pf_sender_opt = if (L3notEmpty) coreParams.prefetcher.map(_ =>
+  val l3_pf_sender_opt = if (L3notEmpty && !p(EnableCHI)) coreParams.prefetcher.map(_ =>
     BundleBridgeSource(() => new PrefetchRecv)
   ) else None
-  val cmo_sender  = if (HasCMO) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None
-  val cmo_reciver = if (HasCMO) Some(BundleBridgeSink(Some(() => DecoupledIO(new CMOResp)))) else None
+  val cmo_sender  = if (HasCMO && !p(EnableCHI)) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None
+  val cmo_reciver = if (HasCMO && !p(EnableCHI)) Some(BundleBridgeSink(Some(() => DecoupledIO(new CMOResp)))) else None
   val frontendBridge = LazyModule(new FrontendBridge)
   // interrupt sinks
   val clint_int_sink = IntSinkNode(IntSinkPortSimple(1, 2))

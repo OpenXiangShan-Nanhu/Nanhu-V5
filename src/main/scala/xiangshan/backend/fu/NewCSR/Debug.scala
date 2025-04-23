@@ -7,6 +7,7 @@ import xiangshan.cache.HasDCacheParameters
 import xiangshan.backend.fu.NewCSR.CSRBundles.PrivState
 import xiangshan.backend.fu.util.CSRConst
 import xiangshan.backend.fu.util.SdtrigExt
+import xiangshan.cache.HasDCacheParameters
 import xiangshan._
 import utils._
 
@@ -294,6 +295,17 @@ class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Param
         (if(memType == MemType.LOAD) tdata.load else tdata.store) &&
         (vaddr >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
     })
+  }
+
+  def DcacheLineBitsEq(): (Bool, Vec[Bool])= {
+    (
+    io.isCbo.getOrElse(false.B),
+    VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
+      !tdata.select && !debugMode && en &&
+        tdata.store && io.isCbo.getOrElse(false.B) &&
+        (vaddr >> DCacheLineOffset) === (tdata.tdata2 >> DCacheLineOffset)
+    })
+    )
   }
 }
 

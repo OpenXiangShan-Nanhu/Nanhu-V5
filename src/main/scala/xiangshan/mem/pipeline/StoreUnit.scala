@@ -223,13 +223,14 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   }
   s0_out.isFrmMisAlignBuf := s0_use_flow_ma
 
+  val s0_isCboAll = s0_use_flow_rs && LSUOpType.isCboAll(s0_stin.uop.fuOpType)
   // exception check
   val s0_addr_aligned = LookupTree(Mux(s0_use_flow_vec, s0_vecstin.alignedType(1,0), s0_uop.fuOpType(1, 0)), List(
     "b00".U   -> true.B,              //b
     "b01".U   -> (s0_out.vaddr(0) === 0.U),   //h
     "b10".U   -> (s0_out.vaddr(1,0) === 0.U), //w
     "b11".U   -> (s0_out.vaddr(2,0) === 0.U)  //d
-  ))
+  )) || s0_isCboAll
   // if vector store sends 128-bit requests, its address must be 128-aligned
   XSError(s0_use_flow_vec && s0_out.vaddr(3, 0) =/= 0.U && s0_vecstin.alignedType(2), "unit stride 128 bit element is not aligned!")
   s0_out.uop.exceptionVec(storeAddrMisaligned) := Mux(s0_use_non_prf_flow, (!s0_addr_aligned || s0_vecstin.uop.exceptionVec(storeAddrMisaligned) && s0_vecActive), false.B)
@@ -258,16 +259,13 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s1_frm_mabuf    = s1_in.isFrmMisAlignBuf
 
   // mmio cbo decoder
-  val s1_mmio_cbo  = s1_in.uop.fuOpType === LSUOpType.cbo_clean ||
-                     s1_in.uop.fuOpType === LSUOpType.cbo_flush ||
-                     s1_in.uop.fuOpType === LSUOpType.cbo_inval
   val s1_vaNeedExt = io.tlb.resp.bits.excp(0).vaNeedExt
   val s1_isHyper   = io.tlb.resp.bits.excp(0).isHyper
   val s1_paddr     = io.tlb.resp.bits.paddr(0)
   val s1_gpaddr    = io.tlb.resp.bits.gpaddr(0)
   val s1_isForVSnonLeafPTE   = io.tlb.resp.bits.isForVSnonLeafPTE
   val s1_tlb_miss  = io.tlb.resp.bits.miss
-  val s1_mmio      = s1_mmio_cbo
+  val s1_isCboAll  = RegEnable(s0_isCboAll, s0_fire)
   val s1_pbmt      = Mux(!s1_tlb_miss, io.tlb.resp.bits.pbmt.head, 0.U(Pbmt.width.W))
   val s1_exception = ExceptionNO.selectByFu(s1_out.uop.exceptionVec, StaCfg).asUInt.orR
   val s1_isvec     = RegEnable(s0_out.isvec, false.B, s0_fire)
@@ -321,10 +319,10 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.isHyper   := s1_isHyper
   s1_out.miss      := false.B
   s1_out.nc        := Pbmt.isNC(s1_pbmt)
-  s1_out.mmio      := Pbmt.isIO(s1_pbmt)
-  s1_out.mmio      := s1_mmio
+  // s1_out.mmio      := Pbmt.isIO(s1_pbmt)
+  s1_out.mmio      := false.B
   s1_out.tlbMiss   := s1_tlb_miss
-  s1_out.atomic    := s1_mmio
+  s1_out.atomic    := false.B
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
 //  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
 //    (s1_out.uop.exceptionVec(storePageFault) ||
@@ -352,8 +350,8 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   storeTrigger.io.fromLoadStore.vaddr                 := s1_in.vaddr
   storeTrigger.io.fromLoadStore.isVectorUnitStride    := s1_in.isvec && s1_in.is128bit
   storeTrigger.io.fromLoadStore.mask                  := s1_in.mask
-  storeTrigger.io.isCbo.get                           := s1_mmio_cbo
-    
+  storeTrigger.io.isCbo.get                           := s1_isCboAll
+
   val s1_trigger_action = storeTrigger.io.toLoadStore.triggerAction
   val s1_trigger_debug_mode = TriggerAction.isDmode(s1_trigger_action)
   val s1_trigger_breakpoint = TriggerAction.isExp(s1_trigger_action)
@@ -369,16 +367,16 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.vecTriggerMask := Mux(s1_trigger_debug_mode || s1_trigger_breakpoint, storeTrigger.io.toLoadStore.triggerMask, 0.U)
 
   // scalar store and scalar load nuke check, and also other purposes
-  io.lsq.valid     := s1_valid && !s1_in.isHWPrefetch && !s1_frm_mabuf
+  io.lsq.valid     := s1_valid && !s1_in.isHWPrefetch && !s1_frm_mabuf && !s1_tlb_miss
   io.lsq.bits      := s1_out
-  io.lsq.bits.miss := s1_tlb_miss
+  // io.lsq.bits.miss := s1_tlb_miss
 
   // goto misalignBuffer
   io.misalign_buf.valid := s1_valid && !s1_tlb_miss && !s1_in.isHWPrefetch && GatedValidRegNext(io.csrCtrl.hd_misalign_st_enable) && !s1_in.isvec
   io.misalign_buf.bits  := io.lsq.bits
 
   // kill dcache write intent request when tlb miss or exception
-  io.dcache.s1_kill  := (s1_tlb_miss || s1_exception || s1_mmio || s1_in.uop.robIdx.needFlush(io.redirect))
+  io.dcache.s1_kill  := (s1_tlb_miss || s1_exception || s1_isCboAll || s1_in.uop.robIdx.needFlush(io.redirect))
   io.dcache.s1_paddr := s1_paddr
 
   // write below io.out.bits assign sentence to prevent overwriting values
@@ -405,6 +403,8 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_trigger_debug_mode = RegEnable(s1_trigger_debug_mode, false.B, s1_fire)
   val s2_mis_align = GatedValidRegNext(io.csrCtrl.hd_misalign_st_enable) && !s2_in.isvec &&
                      s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_in.uop.exceptionVec(breakPoint) && !s2_trigger_debug_mode
+  val s2_isCboAll = RegEnable(s1_isCboAll, s1_fire)
+  val s2_isCboNoZero = LSUOpType.isCbo(s2_in.uop.fuOpType)
 
   s2_ready := !s2_valid || s2_kill || s3_ready
   when (s1_fire) { s2_valid := true.B }
@@ -420,11 +420,11 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
-  s2_out.mmio   := s2_mmio && !s2_exception
+  s2_out.mmio   := (s2_mmio || s2_isCboNoZero) && !s2_exception
   s2_out.atomic := s2_in.atomic || s2_pmp.atomic
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_pmp.st ||
-                                                (s2_in.isvec && s2_pmp.mmio && RegNext(s1_feedback.bits.hit))
+                                                ((s2_in.isvec || s2_isCboAll) && s2_pmp.mmio && RegNext(s1_feedback.bits.hit))
                                                 ) && s2_vecActive
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew
 
@@ -498,7 +498,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   // store misalign will not writeback to rob now
   when (s2_fire) {
-    s3_valid := (!s2_mmio || s2_exception) && !s2_out.isHWPrefetch
+    s3_valid := ((!s2_mmio && !s2_isCboAll) || s2_exception) && !s2_out.isHWPrefetch
   } .elsewhen (s3_fire) {
       s3_valid := false.B
   } .elsewhen (s3_kill) {

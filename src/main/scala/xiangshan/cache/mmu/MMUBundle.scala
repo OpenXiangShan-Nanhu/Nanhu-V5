@@ -750,6 +750,10 @@ class PteBundle(implicit p: Parameters) extends PtwBundle{
     !(Mux(mode === Sv39, sv39_high, Mux(mode === Sv48, sv48_high, 0.U)) === 0.U) && perm.v
   }
 
+  def isNapot(level: UInt): Bool = {
+    isLeaf() && (n === true.B)
+  }
+
   def getPerm() = {
     val pm = Wire(new PtePermBundle)
     pm.d := perm.d

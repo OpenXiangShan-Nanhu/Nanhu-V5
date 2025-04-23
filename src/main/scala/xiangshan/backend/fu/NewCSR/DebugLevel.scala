@@ -43,9 +43,9 @@ trait DebugLevel { self: NewCSR =>
     .setAddr(CSRs.tdata2)
 
   val tdata1RegVec: Seq[CSRModule[_]] = Range(0, TriggerNum).map(i =>
-    Module(new CSRModule(s"Trigger$i" + s"_Tdata1", new Tdata1Bundle) with HasdebugModeBundle {
+    Module(new CSRModule(s"Trigger$i" + s"_Tdata1", new Tdata1Bundle) with HasTriggerBundle {
       when(wen){
-        reg := wdata.writeTdata1(debugMode, chainable).asUInt
+        reg := wdata.writeTdata1(canWriteDmode, chainable).asUInt
       }
     })
   )
@@ -313,8 +313,9 @@ trait HasTdataSink { self: CSRModule[_] =>
     val tdata2 = UInt(XLEN.W)
   }))
 }
-trait HasdebugModeBundle { self: CSRModule[_] =>
-  val debugMode = IO(Input(Bool()))
+
+trait HasTriggerBundle { self: CSRModule[_] =>
+  val canWriteDmode = IO(Input(Bool()))
   val chainable = IO(Input(Bool()))
 }
 

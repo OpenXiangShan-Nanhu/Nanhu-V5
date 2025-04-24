@@ -288,6 +288,8 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   virtualLoadQueue.io.lqCancelCnt   <> io.lqCancelCnt
   virtualLoadQueue.io.lqEmpty       <> io.lqEmpty
   virtualLoadQueue.io.ldWbPtr       <> io.lqDeqPtr
+  virtualLoadQueue.io.mmioWbPtr.valid := loadQueueReplay.io.ldout.fire
+  virtualLoadQueue.io.mmioWbPtr.bits := loadQueueReplay.io.ldout.bits.uop.lqIdx
   // add for RAR violation check
   virtualLoadQueue.io.release       <> io.release
   for (w <- 0 until LoadPipelineWidth) {
@@ -295,6 +297,11 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     virtualLoadQueue.io.query(w).resp   <> io.ldu.ldld_nuke_query(w).resp // to load_s3
     virtualLoadQueue.io.query(w).revoke := io.ldu.ldld_nuke_query(w).revoke // from load_s3
   }
+  virtualLoadQueue.io.debugInfo.pendingRobPtr := io.rob.pendingPtr
+  virtualLoadQueue.io.debugInfo.replayAllocateVec := loadQueueReplay.io.replayEntryInfo.allocateVec
+  virtualLoadQueue.io.debugInfo.replayUopVec := loadQueueReplay.io.replayEntryInfo.uopVec
+  virtualLoadQueue.io.debugInfo.mmioEntry := loadQueueReplay.io.replayEntryInfo.mmioEntry
+
   /**
    * Load queue exception buffer
    */

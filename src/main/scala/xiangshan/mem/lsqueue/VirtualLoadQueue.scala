@@ -66,6 +66,18 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
       val lqIdx = Flipped(Valid(Output(new LqPtr)))
       val paddr = Flipped(Input(UInt(PAddrBits.W)))
     }
+    val mmioWbPtr = Flipped(ValidIO(new LqPtr))
+
+    //for debug
+    val debugInfo = new Bundle {
+      val pendingRobPtr = Input(new RobPtr)
+
+      //replayEntry
+      val replayAllocateVec = Input(Vec(LoadQueueReplaySize, Bool()))
+      val replayUopVec = Input(Vec(LoadQueueReplaySize, new DynInst))
+      //mmio
+      val mmioEntry = Flipped(ValidIO(new LqWriteBundle))
+    }
   })
 
   println("VirtualLoadQueue: size: " + VirtualLoadQueueSize)
@@ -380,6 +392,23 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     }
   }
 
+  //for debug
+
+  for(i <- 0 until LoadQueueReplaySize){
+    val rValid = io.debugInfo.replayAllocateVec(i)
+    val rUop = io.debugInfo.replayUopVec(i)
+    val rLqIdx = rUop.lqIdx.value
+    when(rValid){
+      assert(allocated(rLqIdx),"why the loadQueue entry has been released?")
+    }
+  }
+
+  when(io.debugInfo.mmioEntry.valid){
+    assert(allocated(io.debugInfo.mmioEntry.bits.uop.lqIdx.value),"the mmio entry has not been released")
+  }
+
+
+
   // misprediction recovery / exception redirect
   // invalidate lq term using robIdx
   for (i <- 0 until VirtualLoadQueueSize) {
@@ -413,14 +442,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
         datavalid(loadWbIndex) :=
           (if (EnableFastForward) {
               hasExceptions ||
-              io.ldin(i).bits.mmio ||
-             !io.ldin(i).bits.miss && // dcache miss
-             !io.ldin(i).bits.dcacheRequireReplay || // do not writeback if that inst will be resend from rs
+             (!io.ldin(i).bits.mmio && !io.ldin(i).bits.miss && !io.ldin(i).bits.dcacheRequireReplay) || // do not writeback if that inst will be resend from rs
               io.ldin(i).bits.isSWPrefetch
            } else {
               hasExceptions ||
-              io.ldin(i).bits.mmio ||
-             !io.ldin(i).bits.miss ||
+              (!io.ldin(i).bits.mmio && !io.ldin(i).bits.miss) ||
               io.ldin(i).bits.isSWPrefetch
            })
 
@@ -452,6 +478,15 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
       }
     }
   }
+
+  when(io.mmioWbPtr.valid){
+    assert(allocated(io.mmioWbPtr.bits.value))
+    assert(!datavalid(io.mmioWbPtr.bits.value))
+
+    datavalid(io.mmioWbPtr.bits.value) := true.B
+  }
+
+
 
   //  perf counter
   QueuePerf(VirtualLoadQueueSize, validCount, !allowEnqueue)

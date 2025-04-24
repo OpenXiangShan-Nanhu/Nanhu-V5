@@ -32,6 +32,7 @@ import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend._
 import xiangshan.cache.mmu.TlbRequestIO
+import coupledL2.PrefetchCtrlFromCore
 
 abstract class XSModule(implicit val p: Parameters) extends Module
   with HasXSParameter
@@ -83,6 +84,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     val resetInFrontend = Output(Bool())
     val traceCoreInterface = new TraceCoreInterface
     val l2_pf_enable = Output(Bool())
+    val l2PfCtrl = Output(new PrefetchCtrlFromCore)
     val perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val beu_errors = Output(new XSL1BusErrors())
     val l2_hint = Input(Valid(new L2ToL1Hint()))
@@ -245,6 +247,12 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   io.l2_pf_enable := memBlock.io.outer_l2_pf_enable
   io.traceCoreInterface <> backend.io.traceCoreInterface
 
+
+  io.l2PfCtrl.l2_pf_master_en := backend.io.mem.csrCtrl.l2_pf_enable
+  io.l2PfCtrl.l2_pf_recv_en   := true.B
+  io.l2PfCtrl.l2_pbop_en      := true.B
+  io.l2PfCtrl.l2_vbop_en      := true.B
+  io.l2PfCtrl.l2_tp_en        := true.B
   memBlock.io.resetInFrontendBypass.fromFrontend := frontend.io.resetInFrontend
   io.resetInFrontend := memBlock.io.resetInFrontendBypass.toL2Top
   if(env.EnableHWMoniter){

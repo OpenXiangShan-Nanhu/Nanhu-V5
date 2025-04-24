@@ -175,6 +175,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       val l2_tlb_req = new TlbRequestIO(nRespDups = 2)
       val l2_pmp_resp = Flipped(new PMPRespBundle)
       val l2_hint = ValidIO(new L2ToL1Hint())
+      val pfCtrlFromCore = Input(new PrefetchCtrlFromCore)
       val perfEvents = Output(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
       val dftIn = new Bundle() {
         val func      = Option.when(hasMbist)(Input(new SramBroadcastBundle))
@@ -210,7 +211,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       val l2 = l2cache.get.module
       l2.io.dft := io.dftIn
       dontTouch(l2.io)
-      l2.io.pfCtrlFromCore := DontCare
+      l2.io.pfCtrlFromCore := io.pfCtrlFromCore
       io.l2_hint := l2.io.l2_hint
       l2.io.debugTopDown.robHeadPaddr := DontCare
       l2.io.hartId := io.hartId.fromTile

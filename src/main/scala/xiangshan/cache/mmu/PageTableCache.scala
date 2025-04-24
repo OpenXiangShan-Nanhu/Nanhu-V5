@@ -698,7 +698,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       !flush_dup(2) &&
       refill.levelOH.l3.get &&
       !memPte(2).isLeaf() &&
-      memPte(2).canRefill(refill.level_dup(2), refill.req_info_dup(2).s2xlate, pbmte, io.csr_dup(2).vsatp.mode)
+      memPte(2).canRefill(refill.level_dup(2), refill.req_info_dup(2).s2xlate, pbmte, io.csr_dup(2).hgatp.mode)
     ) {
       val refillIdx = replaceWrapper(l3v.get, ptwl3replace.get.way)
       refillIdx.suggestName(s"Ptwl3RefillIdx")
@@ -733,7 +733,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     !flush_dup(2) &&
     refill.levelOH.l2 &&
     !memPte(2).isLeaf() &&
-    memPte(2).canRefill(refill.level_dup(2), refill.req_info_dup(2).s2xlate, pbmte, io.csr_dup(2).vsatp.mode)
+    memPte(2).canRefill(refill.level_dup(2), refill.req_info_dup(2).s2xlate, pbmte, io.csr_dup(2).hgatp.mode)
   ) {
     val refillIdx = replaceWrapper(l2v, ptwl2replace.way)
     refillIdx.suggestName(s"Ptwl2RefillIdx")
@@ -778,7 +778,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       refill_prefetch_dup(1),
       refill.req_info_dup(1).s2xlate,
       pbmte,
-      io.csr_dup(1).vsatp.mode
+      io.csr_dup(1).hgatp.mode
     )
     l1.io.w.apply(
       valid = true.B,
@@ -822,7 +822,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       refill_prefetch_dup(0),
       refill.req_info_dup(0).s2xlate,
       pbmte,
-      io.csr_dup(0).vsatp.mode
+      io.csr_dup(0).hgatp.mode
     )
     l0.io.w.apply(
       valid = true.B,
@@ -855,7 +855,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   when (
     !flush_dup(0) &&
     (refill.levelOH.sp || (refill.levelOH.l0 && memPte(0).isNapot(refill.level_dup(0)))) &&
-    ((memPte(0).isLeaf() && memPte(0).canRefill(refill.level_dup(0), refill.req_info_dup(0).s2xlate, pbmte, io.csr_dup(0).vsatp.mode)) ||
+    ((memPte(0).isLeaf() && memPte(0).canRefill(refill.level_dup(0), refill.req_info_dup(0).s2xlate, pbmte, io.csr_dup(0).hgatp.mode)) ||
     memPte(0).onlyPf(refill.level_dup(0), refill.req_info_dup(0).s2xlate, pbmte))
   ) {
     val refillIdx = spreplace.way// LFSR64()(log2Up(l2tlbParams.spSize)-1,0) // TODO: may be LRU

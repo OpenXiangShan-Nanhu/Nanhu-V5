@@ -230,6 +230,15 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val exception = Valid(new LqWriteBundle)
 
     val debugTopDown = new LoadQueueTopDownIO
+
+    //for debug:
+    val replayEntryInfo = new Bundle {
+      val allocateVec = Output(Vec(LoadQueueReplaySize, Bool()))
+      val uopVec = Output(Vec(LoadQueueReplaySize,new DynInst))
+
+      //mmioEntry
+      val mmioEntry = ValidIO(new LqWriteBundle)
+    }
   })
 
   println("LoadQueueReplay size: " + LoadQueueReplaySize)
@@ -476,19 +485,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
    * WARNING: Make sure that OldestSelectStride must less than or equal stages of load pipeline.        *
    ******************************************************************************************************
    */
-  // val OldestSelectStride = 4
-  // val oldestPtrExt = (0 until OldestSelectStride).map(i => io.ldWbPtr + i.U)
-  // val s0_oldestMatchMaskVec = (0 until LoadQueueReplaySize).map(i => (0 until OldestSelectStride).map(j => s0_loadNormalReplaySelMask(i) && uop(i).lqIdx === oldestPtrExt(j)))
-  // val s0_remOldsetMatchMaskVec = (0 until LoadPipelineWidth).map(rem => getRemSeq(s0_oldestMatchMaskVec.map(_.take(1)))(rem))
-  // val s0_remOlderMatchMaskVec = (0 until LoadPipelineWidth).map(rem => getRemSeq(s0_oldestMatchMaskVec.map(_.drop(1)))(rem))
-  // val s0_remOldestSelVec = VecInit(Seq.tabulate(LoadPipelineWidth)(rem => {
-  //   VecInit((0 until LoadQueueReplaySize / LoadPipelineWidth).map(i => {
-  //     Mux(ParallelORR(s0_remOldsetMatchMaskVec(rem).map(_(0))), s0_remOldsetMatchMaskVec(rem)(i)(0), s0_remOlderMatchMaskVec(rem)(i).reduce(_|_))
-  //   })).asUInt
-  // }))
-  // val s0_remOldestHintSelVec = s0_remOldestSelVec.zip(s0_remLoadHintSelMask).map {
-  //   case(oldestVec, hintVec) => oldestVec & hintVec
-  // }
 
   // select oldest logic
   s0_oldestSel := VecInit((0 until LoadPipelineWidth).map(rport => {
@@ -498,11 +494,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     assert(!(ageOldest.valid && PopCount(ageOldest.bits) > 1.U), "oldest index must be one-hot!")
     val ageOldestValid = ageOldest.valid
     val ageOldestIndexOH = ageOldest.bits
-
-    // // select program order oldest
-    // val l2HintFirst = io.l2_hint.valid && ParallelORR(s0_remOldestHintSelVec(rport))
-    // val issOldestValid = l2HintFirst || ParallelORR(s0_remOldestSelVec(rport))
-    // val issOldestIndexOH = Mux(l2HintFirst, PriorityEncoderOH(s0_remOldestHintSelVec(rport)), PriorityEncoderOH(s0_remOldestSelVec(rport)))
 
     val oldest = Wire(Valid(UInt()))
     // val oldestSel = Mux(issOldestValid, issOldestIndexOH, ageOldestIndexOH)
@@ -611,12 +602,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       io.replay(i) <> replay_req(i)
   }.otherwise {
     io.replay(0) <> replay_req(0)
-//    io.replay(2).valid := false.B
-//    io.replay(2).bits := DontCare
 
     val arbiter = Module(new RRArbiter(new LsPipelineBundle, 1))
     arbiter.io.in(0) <> replay_req(1)
-//    arbiter.io.in(1) <> replay_req(2)
     io.replay(1) <> arbiter.io.out
   }
   // update cold counter
@@ -832,7 +820,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   }
   val needEnqUncacheBuffer = mmiovalidMaskOH.reduce(_|_)
 
-  val uncacheBuffer = Module(new UncacheBufferEntrySimple)  
+  val uncacheBuffer = Module(new UncacheBufferEntrySimple)
   // set enqueue default
   uncacheBuffer.io.req.valid := false.B
   uncacheBuffer.io.req.bits := DontCare
@@ -892,11 +880,19 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     needFree := false.B
   }
 
+  //for debug assert:
   for (i <- 0 until LoadQueueReplaySize) {
+    io.replayEntryInfo.allocateVec(i) := allocated(i)
+    io.replayEntryInfo.uopVec(i) := uop(i)
+
     when(allocated(i)){
       assert(isNotBefore(uop(i).robIdx,io.rob.pendingPtr), "why the entry load is older ?")
     }
   }
+  io.replayEntryInfo.mmioEntry <> uncacheBuffer.io.entryInfo.mmioEntry
+
+
+
 
   // Topdown
   val robHeadVaddr = io.debugTopDown.robHeadVaddr

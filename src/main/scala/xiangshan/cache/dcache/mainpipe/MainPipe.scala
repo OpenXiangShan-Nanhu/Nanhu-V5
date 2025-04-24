@@ -468,7 +468,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     s3_store_data_merged(i) := mergePutData(s3_store_data_merged_without_cache(i), s3_data(i), s3_merge_mask(i))
   }
   val s3_data_word = s3_store_data_merged(s3_req.word_idx)
-  val s3_l2_error = RegEnable(s2_l2_error, s2_fire_to_s3)
+  val s3_l2_error = RegEnable(s2_l2_error, s2_fire)
   // data_error will be reported by data array 1 cycle after data read resp
   val s3_data_error = Wire(Bool())
   s3_data_error := Mux(GatedValidRegNextN(s1_fire,2), // ecc check result is generated 2 cycle after read req
@@ -477,7 +477,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   )
   // error signal for amo inst
   // s3_error = s3_flag_error || s3_tag_error || s3_l2_error || s3_data_error
-  val s3_error = RegEnable(s2_error, 0.U.asTypeOf(s2_error), s2_fire_to_s3) || s3_data_error
+  val s3_error = RegEnable(s2_error, 0.U.asTypeOf(s2_error), s2_fire) || s3_data_error
   val (_, _, probe_new_coh) = s3_coh.onProbe(s3_req.probe_param)
   val s3_need_replacement = RegEnable(s2_need_replacement, s2_fire_to_s3)
 

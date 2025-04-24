@@ -35,11 +35,11 @@ import xiangshan.backend.fu.vector.Bundles.{VConfig, VType}
 import xiangshan.backend.fu.{FenceIO, FenceToSbuffer, FuConfig, FuType, PFEvent, PerfCounterIO}
 import xiangshan.backend.issue.EntryBundles._
 import xiangshan.backend.issue.{Scheduler, SchedulerArithImp, SchedulerImpBase, SchedulerMemImp}
+import xiangshan.backend.issue.VfScheduler
 import xiangshan.backend.rob.{RobCoreTopDownIO, RobDebugRollingIO, RobLsqIO, RobPtr}
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend.{FtqPtr, FtqRead, PreDecodeInfo}
 import xiangshan.mem.{LqPtr, LsqEnqIO, SqPtr}
-
 
 import scala.collection.mutable
 
@@ -345,7 +345,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   println(s"[Backend] bypassNetwork.io.fromDataPath.mem: ${bypassNetwork.io.fromDataPath.mem.size}, dataPath.io.toMemExu: ${dataPath.io.toMemExu.size}")
   bypassNetwork.io.fromDataPath.int <> dataPath.io.toIntExu
-  bypassNetwork.io.fromDataPath.vf <> dataPath.io.toVfExu
   bypassNetwork.io.fromDataPath.mem.zip(dataPath.io.toMemExu).map(x => (x._1, x._2)).foreach {
     case (bypassMem, datapathMem) => bypassMem <> datapathMem
   }
@@ -353,7 +352,37 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   bypassNetwork.io.fromDataPath.immInfo := dataPath.io.og1ImmInfo
   bypassNetwork.io.fromDataPath.rcData := dataPath.io.toBypassNetworkRCData
   bypassNetwork.io.fromExus.connectExuOutput(_.int)(intExuBlock.io.out)
-  bypassNetwork.io.fromExus.connectExuOutput(_.vf)(vfExuBlock.io.out)
+  
+  val sharedVfVec = backendParams.schdParams(VfScheduler()).issueBlockParams.map(_.sharedVf)
+  bypassNetwork.io.fromDataPath.vf.zip(dataPath.io.toVfExu).zip(sharedVfVec).foreach {
+    case ((bpVf, dpVf), sharedVf) => {
+      if(sharedVf)
+        bpVf.zip(dpVf).foreach { case (bp, dp) => NewPipelineConnect(dp, bp, bp.fire, dp.bits.robIdx.needFlush(ctrlBlock.io.redirect), Some("sharedVfBypassPipeData"))}
+      else
+        bpVf <> dpVf
+      }
+  }
+
+  bypassNetwork.io.fromExus.vf.zip(vfExuBlock.io.out).zip(sharedVfVec).foreach {
+    case ((bpVf, exuVf), sharedVf) => {
+      if(sharedVf)
+        bpVf.zip(exuVf).foreach { case (bp, exu) =>
+          bp.valid := RegNext(exu.valid)
+          bp.bits.intWen := RegEnable(exu.bits.intWen.getOrElse(false.B), exu.valid)
+          bp.bits.pdest := RegEnable(exu.bits.pdest, exu.valid)
+          bp.bits.data := RegEnable(exu.bits.data(0), exu.valid)
+        }
+      else
+        bpVf.zip(exuVf).foreach { case (bp, exu) =>
+          bp.valid := exu.valid
+          bp.bits.intWen := exu.bits.intWen.getOrElse(false.B)
+          bp.bits.pdest := exu.bits.pdest
+          bp.bits.data := exu.bits.data(0)
+        }
+    }
+  }
+
+  // bypassNetwork.io.fromExus.connectExuOutput(_.vf)(vfExuBlock.io.out)
 
   require(bypassNetwork.io.fromExus.mem.flatten.size == io.mem.writeBack.size,
     s"bypassNetwork.io.fromExus.mem.flatten.size(${bypassNetwork.io.fromExus.mem.flatten.size}: ${bypassNetwork.io.fromExus.mem.map(_.size)}, " +

@@ -99,6 +99,7 @@ class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   val ptwBack = Bool()
   val af = Bool()
   val mmio = Bool()
+  val nc = Bool()
   val mmio_can_direct_exu = Bool()
   val atomic = Bool()
 
@@ -186,6 +187,7 @@ class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
     if (latch) ptwBack := RegEnable(input.ptwBack, enable) else ptwBack := input.ptwBack
     if (latch) af := RegEnable(input.af, enable) else af := input.af
     if (latch) mmio := RegEnable(input.mmio, enable) else mmio := input.mmio
+    if (latch) nc := RegEnable(input.nc, enable) else nc := input.nc
     if (latch) mmio_can_direct_exu := RegEnable(input.mmio_can_direct_exu, enable) else mmio_can_direct_exu := input.mmio_can_direct_exu
     if (latch) forwardMask := RegEnable(input.forwardMask, enable) else forwardMask := input.forwardMask
     if (latch) forwardData := RegEnable(input.forwardData, enable) else forwardData := input.forwardData

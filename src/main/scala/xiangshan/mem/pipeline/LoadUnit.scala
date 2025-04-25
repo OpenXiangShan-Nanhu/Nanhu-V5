@@ -721,6 +721,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     "b10".U   -> (s0_dcache_vaddr(1, 0) === 0.U), //w
     "b11".U   -> (s0_dcache_vaddr(2, 0) === 0.U)  //d
   ))
+  dontTouch(s0_addr_aligned)
+
   XSError(s0_sel_src.isvec && s0_dcache_vaddr(3, 0) =/= 0.U && s0_sel_src.alignedType(2), "unit-stride 128 bit element is not aligned!")
 
   // accept load flow if dcache ready (tlb is always ready)
@@ -1268,6 +1270,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s2_out.data                := 0.U // data will be generated in load s3
   s2_out.uop.fpWen           := s2_in.uop.fpWen
   s2_out.mmio                := s2_mmio
+  s2_out.nc                  := s2_pbmt
   s2_out.uop.flushPipe       := false.B
   s2_out.uop.exceptionVec    := s2_exception_vec
   s2_out.forwardMask         := s2_fwd_mask

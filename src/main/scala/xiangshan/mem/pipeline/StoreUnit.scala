@@ -268,7 +268,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s1_isForVSnonLeafPTE   = io.tlb.resp.bits.isForVSnonLeafPTE
   val s1_tlb_miss  = io.tlb.resp.bits.miss
   val s1_mmio      = s1_mmio_cbo
-  val s1_pbmt      = io.tlb.resp.bits.pbmt(0)
+  val s1_pbmt      = Mux(!s1_tlb_miss, io.tlb.resp.bits.pbmt.head, 0.U(Pbmt.width.W))
   val s1_exception = ExceptionNO.selectByFu(s1_out.uop.exceptionVec, StaCfg).asUInt.orR
   val s1_isvec     = RegEnable(s0_out.isvec, false.B, s0_fire)
   // val s1_isLastElem = RegEnable(s0_isLastElem, false.B, s0_fire)
@@ -320,6 +320,8 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.vaNeedExt := s1_vaNeedExt
   s1_out.isHyper   := s1_isHyper
   s1_out.miss      := false.B
+  s1_out.nc        := Pbmt.isNC(s1_pbmt)
+  s1_out.mmio      := Pbmt.isIO(s1_pbmt)
   s1_out.mmio      := s1_mmio
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.atomic    := s1_mmio

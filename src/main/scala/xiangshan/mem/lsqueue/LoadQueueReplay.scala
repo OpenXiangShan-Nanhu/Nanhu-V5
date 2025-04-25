@@ -272,6 +272,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val blocking = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val strict = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val isMMIO = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
+  val isNc = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
 
   // freeliset: store valid entries index.
   // +---+---+--------------+-----+-----+
@@ -692,6 +693,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       }
       cause(enqIndex) := Mux(!enq.bits.mmio, replayInfo.cause.asUInt, 0.U)
       isMMIO(enqIndex) := enq.bits.mmio
+      isNc(enqIndex) := enq.bits.nc
       // blocking for mmio is always true.B
       when(enq.bits.mmio) {
         blocking(enqIndex) := true.B
@@ -877,6 +879,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     allocated(needFreeIdx) := false.B
     freeMaskVec(needFreeIdx) := true.B
     isMMIO(needFreeIdx) := false.B
+    isNc(needFreeIdx) := false.B
     needFree := false.B
   }
 

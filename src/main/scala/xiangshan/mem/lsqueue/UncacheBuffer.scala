@@ -106,6 +106,7 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
   io.uncache.req.bits.instrtype := DontCare
   io.uncache.req.bits.replayCarry := DontCare
   io.uncache.req.bits.atomic := true.B
+  io.uncache.req.bits.nc := req.nc
 
   io.uncache.resp.ready := true.B
 

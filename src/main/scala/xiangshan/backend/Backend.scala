@@ -363,26 +363,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
       }
   }
 
-  bypassNetwork.io.fromExus.vf.zip(vfExuBlock.io.out).zip(sharedVfVec).foreach {
-    case ((bpVf, exuVf), sharedVf) => {
-      if(sharedVf)
-        bpVf.zip(exuVf).foreach { case (bp, exu) =>
-          bp.valid := RegNext(exu.valid)
-          bp.bits.intWen := RegEnable(exu.bits.intWen.getOrElse(false.B), exu.valid)
-          bp.bits.pdest := RegEnable(exu.bits.pdest, exu.valid)
-          bp.bits.data := RegEnable(exu.bits.data(0), exu.valid)
-        }
-      else
-        bpVf.zip(exuVf).foreach { case (bp, exu) =>
-          bp.valid := exu.valid
-          bp.bits.intWen := exu.bits.intWen.getOrElse(false.B)
-          bp.bits.pdest := exu.bits.pdest
-          bp.bits.data := exu.bits.data(0)
-        }
-    }
-  }
-
-  // bypassNetwork.io.fromExus.connectExuOutput(_.vf)(vfExuBlock.io.out)
+  bypassNetwork.io.fromExus.connectExuOutput(_.vf)(vfExuBlock.io.out)
 
   require(bypassNetwork.io.fromExus.mem.flatten.size == io.mem.writeBack.size,
     s"bypassNetwork.io.fromExus.mem.flatten.size(${bypassNetwork.io.fromExus.mem.flatten.size}: ${bypassNetwork.io.fromExus.mem.map(_.size)}, " +

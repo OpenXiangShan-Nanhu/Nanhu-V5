@@ -222,7 +222,6 @@ class ITTageTable
     singlePort = true,
     useBitmask = true,
     hasMbist = hasMbist,
-    sramCtl = true,
     suffix = "_ittage"
   ))
   private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeIttage", hasMbist)

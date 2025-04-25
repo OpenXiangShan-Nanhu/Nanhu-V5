@@ -110,7 +110,6 @@ class DataSRAM(bankIdx: Int, wayIdx: Int)(implicit p: Parameters) extends DCache
     holdRead = false,
     singlePort = true,
     hasMbist = hasMbist,
-    sramCtl = true,
     suffix = "_dcsh_sram"
   ))
 
@@ -181,7 +180,6 @@ class DataSRAMBank(index: Int)(implicit p: Parameters) extends DCacheModule {
       holdRead = false,
       singlePort = true,
       hasMbist = hasMbist,
-      sramCtl = true,
       suffix = "_dcsh_dat"
     ))
   }

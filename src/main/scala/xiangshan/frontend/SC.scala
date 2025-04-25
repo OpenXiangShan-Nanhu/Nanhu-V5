@@ -78,7 +78,6 @@ class SCTable(val nRows: Int, val ctrBits: Int, val histLen: Int)(implicit p: Pa
     singlePort = false,
     bypassWrite = true,
     hasMbist = hasMbist,
-    sramCtl = true,
     suffix = "_sc"
   ))
   private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeSc", hasMbist)

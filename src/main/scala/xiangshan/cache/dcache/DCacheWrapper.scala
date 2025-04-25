@@ -1227,7 +1227,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
 
 
   val grantDataQueue = Module(new SRAMQueue(new GrantDataQueueEntry, entries = (scala.math.pow(2,log2Up(nGrantDataEntries)).toInt + 1), flow = true, pipe = false, singlePort = true,
-    hasMbist = hasMbist , sramCtl = true , suffix = "_grnt_q"))
+    hasMbist = hasMbist , suffix = "_grnt_q"))
   grantDataQueue.io.enq.valid := false.B
   grantDataQueue.io.enq.bits := DontCare
 

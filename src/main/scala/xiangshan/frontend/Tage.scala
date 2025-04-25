@@ -167,7 +167,6 @@ class TageBTable(implicit p: Parameters) extends XSModule with TBTParams{
       holdRead = true,
       bypassWrite = true,
       hasMbist = hasMbist,
-      sramCtl = true,
       suffix = "_tage_bt"
     ))
 
@@ -325,7 +324,6 @@ class TageTable
     holdRead = true,
     singlePort = true,
     hasMbist = hasMbist,
-    sramCtl = true,
     suffix = "_tage_us"
   ))
   us.extra_reset.get := io.update.reset_u.reduce(_||_) && io.update.mask.reduce(_||_)
@@ -341,7 +339,6 @@ class TageTable
       holdRead = true,
       singlePort = true,
       hasMbist = hasMbist,
-      sramCtl = true,
       suffix = "_tage_tab"
     )))
   // Power-on reset to weak taken

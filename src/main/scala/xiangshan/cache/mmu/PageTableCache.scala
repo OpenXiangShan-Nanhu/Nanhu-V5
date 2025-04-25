@@ -216,7 +216,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     way = l2tlbParams.l1nWays,
     singlePort = sramSinglePort,
     hasMbist = hasMbist,
-    sramCtl = true,
     suffix = "_ptw_l1"
     ))
   val mbistPlL1 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL1", hasMbist)
@@ -244,7 +243,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     way = l2tlbParams.l0nWays,
     singlePort = sramSinglePort,
     hasMbist = hasMbist,
-    sramCtl = true,
     suffix = "_ptw_l0"
   ))
   val mbistPlL0 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL0", hasMbist)

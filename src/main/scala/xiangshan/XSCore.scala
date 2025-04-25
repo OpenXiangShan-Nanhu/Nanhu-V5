@@ -27,6 +27,7 @@ import xiangshan.XSL1BusErrors
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.mbist.MbistInterface
 import xiangshan.backend._
 import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface
@@ -259,7 +260,11 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     io.hwMon.foreach(_ := backend.io.hwMon.getOrElse(0.U.asTypeOf(io.hwMon.get)))
     dontTouch(io.hwMon.get)
   }
+  val sramBroadcastBundleInst = io.dft.func.getOrElse(new SramBroadcastBundle())
+  MbistInterface("Core",  sramBroadcastBundleInst, hasMbist)
+  private val sigFromSrams = if (hasMbist) Some(SramHelper.genBroadCastBundleTop()) else None
   if (hasMbist) {
+    sigFromSrams.get := io.dft.func.get
     memBlock.io.dftBypass.fromL2Top := io.dft
     frontend.io.dft := memBlock.io.dftBypass.toFrontend
     backend.io.dft.func.get := memBlock.io.dftBypass.toBackend.func.get

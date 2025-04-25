@@ -248,6 +248,7 @@ class ICacheMetaArray()(implicit p: Parameters) extends ICacheArray
       holdRead = true,
       singlePort = true,
       hasMbist = hasMbist,
+      sramCtl = true,
       suffix = "_icsh_tag"
     ))
 
@@ -398,7 +399,7 @@ class ICacheDataArray(implicit p: Parameters) extends ICacheArray
     }
     banks
   }
-  MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeIcacheData", hasMbist)
+  private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeIcacheData", hasMbist)
 
   /**
     ******************************************************************************
@@ -675,6 +676,7 @@ class ICachePartWayArray[T <: Data](gen: T, pWay: Int)(implicit p: Parameters) e
       shouldReset = true,
       holdRead = true,
       singlePort = true,
+      sramCtl = true,
       suffix = "_icsh_way"
     ))
 
@@ -730,6 +732,7 @@ class SRAMTemplateWithFixedWidth[T <: Data]
       singlePort = singlePort,
       bypassWrite = bypassWrite,
       hasMbist = hasMbist,
+      sramCtl = true,
       suffix = "_icsh_data"
     ))
     // read req

@@ -385,30 +385,9 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   override val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
   generatePerfEvent()
 
-  private val mbistPl = MbistPipeline.PlaceMbistPipeline(Int.MaxValue, "MbistPipeFrontend", hasMbist)
-  private val mbistIntf = if(hasMbist) {
-    val params = mbistPl.get.nodeParams
-    val intf = Some(Module(new MbistInterface(
-      params = Seq(params),
-      ids = Seq(mbistPl.get.childrenIds),
-      name = s"MbistIntfFrontend",
-      pipelineNum = 1
-    )))
-    intf.get.toPipeline.head <> mbistPl.get.mbist
-    mbistPl.get.registerCSV(intf.get.info, "MbistFrontend")
-    intf.get.mbist := DontCare
-    dontTouch(intf.get.mbist)
-    //TODO: add mbist controller connections here
-    intf
-  } else {
-    None
-  }
-
-  private val sigFromSrams = if (hasMbist) Some(SramHelper.genBroadCastBundleTop()) else None
   private val cg           = ClockGate.getTop
   dontTouch(cg)
   if (hasMbist) {
-    sigFromSrams.get := io.dft.func.get
     cg.te := io.dft.func.get.cgen
   } else {
     cg.te := false.B

@@ -416,7 +416,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       sms.io_act_stride := GatedRegNextN(io.ooo_to_mem.csrCtrl.l1D_pf_active_stride, 2, Some(30.U))
       sms.io_stride_en := false.B
       sms.io_dcache_evict <> dcache.io.sms_agt_evict_req
-      val mbistSmsPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeSms", hasMbist)
+      val mbistPlSms = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeSms", hasMbist)
       sms
   }
   prefetcherOpt.foreach{ pf => pf.io.l1_req.ready := false.B }
@@ -1807,29 +1807,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val allPerfInc = allPerfEvents.map(_._2.asTypeOf(new PerfEvent))
   val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
   generatePerfEvent()
-  private val mbistPl = MbistPipeline.PlaceMbistPipeline(Int.MaxValue, "MbistPipeMemBlk", hasMbist)
-  private val mbistIntf = if(hasMbist) {
-    val params = mbistPl.get.nodeParams
-    val intf = Some(Module(new MbistInterface(
-      params = Seq(params),
-      ids = Seq(mbistPl.get.childrenIds),
-      name = s"MbistIntfMemBlk",
-      pipelineNum = 1
-    )))
-    intf.get.toPipeline.head <> mbistPl.get.mbist
-    mbistPl.get.registerCSV(intf.get.info, "MbistMemBlk")
-    intf.get.mbist := DontCare
-    dontTouch(intf.get.mbist)
-    //TODO: add mbist controller connections here
-    intf
-  } else {
-    None
-  }
-  private val sigFromSrams = if (hasMbist) Some(SramHelper.genBroadCastBundleTop()) else None
   private val cg = ClockGate.getTop
   dontTouch(cg)
   if (hasMbist) {
-    sigFromSrams.get := io.dftBypass.fromL2Top.func.get
     io.dftBypass.toFrontend.func.get := io.dftBypass.fromL2Top.func.get
     io.dftBypass.toFrontend.reset.get := io.dftBypass.fromL2Top.reset.get
     io.dftBypass.toBackend.func.get := io.dftBypass.fromL2Top.func.get

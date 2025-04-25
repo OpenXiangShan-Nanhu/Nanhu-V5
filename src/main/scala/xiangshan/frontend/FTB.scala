@@ -507,6 +507,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
       holdRead = false,
       singlePort = true,
       hasMbist = hasMbist,
+      sramCtl = true,
       suffix = "_ftb"
     ))
     private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeFtb", hasMbist)

@@ -216,6 +216,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     way = l2tlbParams.l1nWays,
     singlePort = sramSinglePort,
     hasMbist = hasMbist,
+    sramCtl = true,
     suffix = "_ptw_l1"
     ))
   val mbistPlL1 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL1", hasMbist)
@@ -243,6 +244,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     way = l2tlbParams.l0nWays,
     singlePort = sramSinglePort,
     hasMbist = hasMbist,
+    sramCtl = true,
     suffix = "_ptw_l0"
   ))
   val mbistPlL0 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL0", hasMbist)
@@ -399,6 +401,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val vVec_req = getl1vSet(vpn_search)
     val hVec_req = getl1hSet(vpn_search)
 
+    val mbistAckL1 = mbistPlL1.map(_.mbist.mbist_ack).getOrElse(false.B)
+
     // delay one cycle after sram read
     val delay_vpn = stageDelay(0).bits.req_info.vpn
     val delay_h = MuxLookup(stageDelay(0).bits.req_info.s2xlate, noS2xlate)(Seq(
@@ -408,7 +412,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     ))
 
     val ramDatas = Wire(l1.io.r.resp.data.cloneType)  //delay 1 cycle from data_resp
-    val data_resp = Mux(stageDelay_valid_1cycle, l1.io.r.resp.data, ramDatas)
+    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
     val hVec_delay = RegEnable(hVec_req, stageReq.fire)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(hVec_delay).map { case ((wayData, v), h) =>
@@ -416,8 +420,23 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire)
+    ramDatas := RegEnable(data_resp, stageDelay(1).fire || mbistAckL1)
     val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+
+    if(hasMbist){
+      val mbistSramPortsL1 = mbistPlL1.map(_.toSRAM)
+      val mbistSelectedOHL1 = mbistPlL1.map(_.toSRAM.map(_.selectedOH)).getOrElse(Seq(0.U))
+      val mbistSelectedOHWidthL1 = mbistSelectedOHL1.head.getWidth
+      val mbistSelectedOHRegL1 = mbistSelectedOHL1.map(RegNext(_))
+      mbistSramPortsL1.foreach { sramPorts =>
+        sramPorts.foreach { sramPort =>
+          sramPort.rdata := Mux1H(
+            mbistSelectedOHRegL1.head,
+            ramDatas.asTypeOf(Vec(mbistSelectedOHWidthL1, UInt((ramDatas.getWidth / mbistSelectedOHWidthL1).W)))
+          )
+        }
+      }
+    }
 
     val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
@@ -458,6 +477,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val vVec_req = getl0vSet(vpn_search)
     val hVec_req = getl0hSet(vpn_search)
 
+    val mbistAckL0 = mbistPlL0.map(_.mbist.mbist_ack).getOrElse(false.B)
+
     // delay one cycle after sram read
     val delay_vpn = stageDelay(0).bits.req_info.vpn
     val delay_h = MuxLookup(stageDelay(0).bits.req_info.s2xlate, noS2xlate)(Seq(
@@ -466,7 +487,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       onlyStage2 -> onlyStage2
     ))
     val ramDatas = Wire(l0.io.r.resp.data.cloneType)
-    val data_resp = Mux(stageDelay_valid_1cycle, l0.io.r.resp.data, ramDatas)
+    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL0, l0.io.r.resp.data, ramDatas)
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
     val hVec_delay = RegEnable(hVec_req, stageReq.fire)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(hVec_delay).map { case ((wayData, v), h) =>
@@ -474,8 +495,23 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire)
+    ramDatas := RegEnable(data_resp, stageDelay(1).fire || mbistAckL0)
     val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+
+    if(hasMbist){
+      val mbistSramPortsL0 = mbistPlL0.map(_.toSRAM)
+      val mbistSelectedOHL0 = mbistPlL0.map(_.toSRAM.map(_.selectedOH)).getOrElse(Seq(0.U))
+      val mbistSelectedOHWidthL0 = mbistSelectedOHL0.head.getWidth
+      val mbistSelectedOHRegL0 = mbistSelectedOHL0.map(RegNext(_))
+      mbistSramPortsL0.foreach { sramPorts =>
+        sramPorts.foreach { sramPort =>
+          sramPort.rdata := Mux1H(
+            mbistSelectedOHRegL0.head,
+            ramDatas.asTypeOf(Vec(mbistSelectedOHWidthL0, UInt((ramDatas.getWidth / mbistSelectedOHWidthL0).W)))
+          )
+        }
+      }
+    }
 
     val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)

@@ -74,7 +74,7 @@ class TagArray(implicit p: Parameters) extends AbstractTagArray {
 
   val tag_array = Module(new SRAMTemplate(UInt(encTagBits.W), set = nSets, way = nWays,
     shouldReset = false, holdRead = false, singlePort = true,
-    hasMbist = hasMbist , suffix = "_dcsh_tag"))
+    hasMbist = hasMbist , sramCtl = true, suffix = "_dcsh_tag"))
 
   val wen = rst || io.write.valid
   io.write.ready := !rst

@@ -75,6 +75,7 @@ class DuplicatedDataArray(implicit p: Parameters) extends AbstractDataArray {
         shouldReset = false,
         holdRead = false,
         singlePort = singlePort,
+        sramCtl = true,
         suffix = "_dup_data"
       ))
     }
@@ -124,6 +125,7 @@ class DuplicatedDataArray(implicit p: Parameters) extends AbstractDataArray {
         shouldReset = false,
         holdRead = false,
         singlePort = singlePort,
+        sramCtl = true,
         suffix = "_dup_ecc"
       ))
       ecc_array.io.w.req.valid := io.write.valid && io.write.bits.wmask(r)

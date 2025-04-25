@@ -78,6 +78,7 @@ class FtqNRSRAM[T <: Data](gen: T, numRead: Int)(implicit p: Parameters) extends
       way = 1,
       singlePort = false,
       hasMbist = hasMbist,
+      sramCtl = true,
       suffix = "_ftq"
     ))
     sram.io.r.req.valid := io.ren(i)

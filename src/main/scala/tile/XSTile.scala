@@ -108,6 +108,7 @@ class XSTile()(implicit p: Parameters) extends LazyModule
         val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
         val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
       }
+      val sram_ctrl = Input(new SramCtrlBundle)
     })
 
     dontTouch(io.hartId)
@@ -185,6 +186,8 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     if (debugOpts.ResetGen && enableL2) {
       core.module.reset := l2top.module.reset_core
     }
+    private val sramCtrl = SramHelper.genSramCtrlBundleTop()
+    sramCtrl := io.sram_ctrl
   }
 
   lazy val module = new XSTileImp(this)

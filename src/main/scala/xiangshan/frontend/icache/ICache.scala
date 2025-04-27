@@ -398,7 +398,7 @@ class ICacheDataArray(implicit p: Parameters) extends ICacheArray
     }
     banks
   }
-  MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeIcacheData", hasMbist)
+  private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipeIcacheData", hasMbist)
 
   /**
     ******************************************************************************

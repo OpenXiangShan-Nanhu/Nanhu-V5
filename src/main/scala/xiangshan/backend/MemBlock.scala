@@ -1067,24 +1067,18 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   }
 
   // mmio/cbo and cbozero store writeback will use store writeback port 0
-  val sqStout = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
-  sqStout.valid := lsq.io.mmioStout.valid || lsq.io.cboZeroStout.valid
-  sqStout.bits  := Mux(lsq.io.cboZeroStout.valid, lsq.io.cboZeroStout.bits, lsq.io.mmioStout.bits)
-  lsq.io.mmioStout.ready := sqStout.ready
-  lsq.io.cboZeroStout.ready := sqStout.ready
-  assert(!(lsq.io.mmioStout.valid && lsq.io.cboZeroStout.valid), "Cannot writeback mmio and cboZero at the same time.")
-
-  val sqStoutPipe = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
+  // mmio store writeback will use store writeback port 0
+  val mmioStout = WireInit(0.U.asTypeOf(lsq.io.mmioStout))
   NewPipelineConnect(
-    sqStout, sqStoutPipe, sqStoutPipe.fire,
+    lsq.io.mmioStout, mmioStout, mmioStout.fire,
     false.B,
-    Option("sqStoutConnect")
+    Option("mmioStOutConnect")
   )
-  sqStoutPipe.ready := false.B
-  when (sqStoutPipe.valid && !storeUnits(0).io.stout.valid) {
+  mmioStout.ready := false.B
+  when (mmioStout.valid && !storeUnits(0).io.stout.valid) {
     stOut(0).valid := true.B
-    stOut(0).bits  := sqStoutPipe.bits
-    sqStoutPipe.ready := true.B
+    stOut(0).bits  := mmioStout.bits
+    mmioStout.ready := true.B
   }
   // vec mmio writeback
   lsq.io.vecmmioStout.ready := false.B

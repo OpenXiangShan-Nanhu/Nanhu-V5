@@ -267,7 +267,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       core.module.io.traceCoreInterface.fromEncoder := io.traceCoreInterface(i).fromEncoder
       core.module.io.reset_vector := io.riscv_rst_vec(i)
       dontTouch(core.module.io.dft) := 0.U.asTypeOf(core.module.io.dft)
-      dontTouch(core.module.io.sram_ctrl) := 0.U.asTypeOf(core.module.io.sram_ctrl)
       chi_dummyllc_opt.foreach { case llc =>
         llc.module.io.rn(i) <> core.module.io.chi.get
         core.module.io.nodeID.get := i.U // TODO

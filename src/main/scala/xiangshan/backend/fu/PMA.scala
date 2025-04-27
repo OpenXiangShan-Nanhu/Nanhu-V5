@@ -34,6 +34,23 @@ case class MMPMAConfig
   num: Int
 )
 
+case class MemoryRange(lower: BigInt, upper: BigInt) {
+  def cover(addr: BigInt): Boolean = addr >= lower && addr < upper
+  def cover(addr: UInt): Bool = addr >= lower.U && addr < upper.U
+}
+
+case class PMAConfigEntry(
+  base_addr: BigInt,
+  range: BigInt = 0L, // only use for napot mode
+  l: Boolean = false,
+  c: Boolean = false,
+  atomic: Boolean = false,
+  a: Int = 0,
+  x: Boolean = false,
+  w: Boolean = false,
+  r: Boolean = false
+)
+
 trait PMAConst extends PMPConst
 
 trait MMPMAMethod extends PMAConst with PMAMethod with PMPReadWriteMethodBare {

@@ -110,6 +110,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   with DebugLevel
   with CSRCustom
   with CSRPMP
+  with CSRPMA
   with IpIeAliasConnect
 {
 
@@ -283,7 +284,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     debugCSRMap ++
     aiaCSRMap ++
     customCSRMap ++
-    pmpCSRMap
+    pmpCSRMap ++
+    pmaCSRMap
 
   val csrMods: Seq[CSRModule[_]] =
     machineLevelCSRMods ++
@@ -294,7 +296,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     debugCSRMods ++
     aiaCSRMods ++
     customCSRMods ++
-    pmpCSRMods
+    pmpCSRMods ++ 
+    pmaCSRMods
 
   var csrOutMap: SeqMap[Int, UInt] =
     machineLevelCSROutMap ++
@@ -305,7 +308,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     debugCSROutMap ++
     aiaCSROutMap ++
     customCSROutMap ++
-    pmpCSROutMap
+    pmpCSROutMap ++ 
+    pmaCSROutMap
 
   // interrupt
   val nmip = RegInit(new NonMaskableIRPendingBundle, (new NonMaskableIRPendingBundle).init)
@@ -376,12 +380,20 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   // PMP
   val pmpEntryMod = Module(new PMPEntryHandleModule)
-  pmpEntryMod.io.in.pmpCfg  := cfgs.map(_.regOut.asInstanceOf[PMPCfgBundle])
+  pmpEntryMod.io.in.pmpCfg  := pmpcfgs.map(_.regOut.asInstanceOf[PMPCfgBundle])
   pmpEntryMod.io.in.pmpAddr := pmpaddr.map(_.regOut.asInstanceOf[PMPAddrBundle])
   pmpEntryMod.io.in.ren   := ren
   pmpEntryMod.io.in.wen   := wenLegal
   pmpEntryMod.io.in.addr  := addr
   pmpEntryMod.io.in.wdata := wdata
+
+  // PMA
+  val pmaEntryMod = Module(new PMAEntryHandleModule)
+  pmaEntryMod.io.in.pmaCfg  := pmacfgs.map(_.regOut.asInstanceOf[PMACfgBundle])
+  pmaEntryMod.io.in.ren   := ren
+  pmaEntryMod.io.in.wen   := wenLegal
+  pmaEntryMod.io.in.addr  := addr
+  pmaEntryMod.io.in.wdata := wdata
 
   // Todo: all wen and wdata of CSRModule assigned in this for loop
   for ((id, (wBundle, _)) <- csrRwMap) {
@@ -465,14 +477,19 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   mhartid.hartid := this.io.fromTop.hartId
 
-  cfgs.zipWithIndex.foreach { case (mod, i) =>
-    mod.w.wen := wenLegal && (addr === (0x3A0 + i / 8 * 2).U)
+  pmpcfgs.zipWithIndex.foreach { case (mod, i) =>
+    mod.w.wen := wenLegal && (addr === (CSRs.pmpcfg0 + i / 8 * 2).U)
     mod.w.wdata := pmpEntryMod.io.out.pmpCfgWData(8*((i%8)+1)-1,8*(i%8))
   }
 
   pmpaddr.zipWithIndex.foreach{ case(mod, i) =>
-    mod.w.wen := wenLegal && (addr === (0x3B0 + i).U)
+    mod.w.wen := wenLegal && (addr === (CSRs.pmpaddr0 + i).U)
     mod.w.wdata := pmpEntryMod.io.out.pmpAddrWData(i)
+  }
+
+  pmacfgs.zipWithIndex.foreach { case (mod, i) =>
+    mod.w.wen   := wenLegal && (addr === (CSRConst.PmacfgBase + i / 8 * 2).U)
+    mod.w.wdata := pmaEntryMod.io.out.pmaCfgWdata(8*((i%8)+1)-1,8*(i%8))
   }
 
   csrMods.foreach { mod =>
@@ -589,6 +606,11 @@ class NewCSR(implicit val p: Parameters) extends Module
     mod match {
       case m: HasPMPAddrSink =>
         m.addrRData := pmpEntryMod.io.out.pmpAddrRData
+      case _ =>
+    }
+    mod match {
+      case m: HasPMAAddrSink =>
+        m.addrRData := pmaEntryMod.io.out.pmaAddrRData
       case _ =>
     }
     mod match {
@@ -1039,7 +1061,7 @@ class NewCSR(implicit val p: Parameters) extends Module
        case _ =>
      }
    }
-   
+
   tdata1RegVec.zip(tdata2RegVec).zipWithIndex.map { case ((mod1, mod2), idx) => {
     mod1.w.wen    := tdata1Update && (tselect.rdata === idx.U)
     mod1.w.wdata  := wdata

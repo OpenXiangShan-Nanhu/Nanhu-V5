@@ -189,7 +189,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val cmoOpReq  = DecoupledIO(new CMOReq)
     val cmoOpResp = Flipped(DecoupledIO(new CMOResp))
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
-    val cboZeroStout = DecoupledIO(new MemExuOutput) // writeback cbo zero
+    // val cboZeroStout = DecoupledIO(new MemExuOutput) // writeback cbo zero
     val vecmmioStout = DecoupledIO(new MemExuOutput(isVector = true))
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
     val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
@@ -958,9 +958,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     cboZeroWaitFlushSb  := false.B
   }
 
-  when (io.cboZeroStout.fire) {
-    cboZeroValid := false.B
-  }
 
   // flush sbuffer
   io.flushSbuffer.valid := (deqCanDoCbo && cboWaitFlushSb && (uncacheState === s_req) && !io.flushSbuffer.empty) || cboZeroFlushSb
@@ -987,14 +984,28 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // (3) response from uncache channel: mark as datavalid
   io.uncache.resp.ready := true.B
 
+  // cbo zero wb to ROB when finish flushing sbuffer
+  val cboZeroStout = WireInit(0.U.asTypeOf(io.mmioStout))
+  cboZeroStout.valid                := cboZeroValid && !cboZeroWaitFlushSb
+  cboZeroStout.bits.uop             := cboZeroUop
+  cboZeroStout.bits.data            := DontCare
+  cboZeroStout.bits.isFromLoadUnit  := DontCare
+  cboZeroStout.bits.debug.isMMIO    := false.B
+  cboZeroStout.bits.debug.paddr     := DontCare
+  cboZeroStout.bits.debug.isPerfCnt := false.B
+  cboZeroStout.bits.debug.vaddr     := DontCare
+  cboZeroStout.ready                := io.mmioStout.ready
+
   // (4) scalar store: writeback to ROB (and other units): mark as writebacked
-  io.mmioStout.valid := uncacheState === s_wb && !isVec(deqPtr)
-  io.mmioStout.bits.uop := uncacheUop
+  val mmioStout_valid = uncacheState === s_wb && !isVec(deqPtr)
+  io.mmioStout.valid := mmioStout_valid | cboZeroStout.valid
+  assert( !(mmioStout_valid & cboZeroStout.valid), "mmiostout and cbozerostout can not be valid simtanuesly")
+  io.mmioStout.bits.uop := Mux(mmioStout_valid, uncacheUop, cboZeroUop)
   io.mmioStout.bits.uop.sqIdx := deqPtrExt(0)
   io.mmioStout.bits.uop.flushPipe := deqCanDoCbo // flush Pipeline to keep order in CMO
   io.mmioStout.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
   io.mmioStout.bits.isFromLoadUnit := DontCare
-  io.mmioStout.bits.debug.isMMIO := true.B
+  io.mmioStout.bits.debug.isMMIO := Mux(mmioStout_valid, true.B, false.B)
   io.mmioStout.bits.debug.paddr := DontCare
   io.mmioStout.bits.debug.isPerfCnt := false.B
   io.mmioStout.bits.debug.vaddr := DontCare
@@ -1004,15 +1015,9 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     allocated(deqPtr) := false.B
   }
 
-  // cbo zero wb to ROB when finish flushing sbuffer
-  io.cboZeroStout.valid                := cboZeroValid && !cboZeroWaitFlushSb
-  io.cboZeroStout.bits.uop             := cboZeroUop
-  io.cboZeroStout.bits.data            := DontCare
-  io.cboZeroStout.bits.isFromLoadUnit  := DontCare
-  io.cboZeroStout.bits.debug.isMMIO    := false.B
-  io.cboZeroStout.bits.debug.paddr     := DontCare
-  io.cboZeroStout.bits.debug.isPerfCnt := false.B
-  io.cboZeroStout.bits.debug.vaddr     := DontCare
+  when (cboZeroStout.fire) {
+    cboZeroValid := false.B
+  }
 
   exceptionBuffer.io.storeAddrIn.last.valid := io.mmioStout.fire
   exceptionBuffer.io.storeAddrIn.last.bits := DontCare

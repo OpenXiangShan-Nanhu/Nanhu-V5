@@ -99,6 +99,8 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
     tile.module.io.msiInfo := imsicAsync.o.msiInfo
     tile.module.io.reset_vector := io.reset_vector
     tile.module.io.dft := io.dft
+    tile.module.io.sram_ctrl := DontCare
+
     io.cpu_halt := tile.module.io.cpu_halt 
     io.hartIsInReset := tile.module.io.hartIsInReset
     io.traceCoreInterface <> tile.module.io.traceCoreInterface

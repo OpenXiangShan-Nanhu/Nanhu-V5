@@ -50,7 +50,7 @@ class BaseConfig(n: Int) extends Config((site, here, up) => {
   case DebugOptionsKey => DebugOptions(ResetGen = true)
   case SoCParamsKey => SoCParameters()
   case PMParameKey => PMParameters()
-  case XSTileKey => Seq.tabulate(n){ i => XSCoreParameters(HartId = i, hasMbist = true) }
+  case XSTileKey => Seq.tabulate(n){ i => XSCoreParameters(HartId = i, hasMbist = false) }
   case L2ParamKey => L2Param()
   case ExportDebug => DebugAttachParams(protocols = Set(JTAG))
   case DebugModuleKey => Some(XSDebugModuleParams(site(XLen)))

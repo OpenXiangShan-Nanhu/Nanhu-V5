@@ -211,6 +211,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
     if (l2cache.isDefined) {
       val l2 = l2cache.get.module
       l2.io.dft := io.dftIn
+      l2.io.ramctl := DontCare
       dontTouch(l2.io)
       l2.io.pfCtrlFromCore := io.pfCtrlFromCore
       io.l2_hint := l2.io.l2_hint

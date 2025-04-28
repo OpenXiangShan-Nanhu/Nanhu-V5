@@ -20,7 +20,7 @@ import chisel3._
 import chisel3.util._
 import coupledL2.tl2chi.{CHIIssue, PortIO, TL2CHICoupledL2}
 import coupledL2.tl2tl.TL2TLCoupledL2
-import coupledL2.PrefetchCtrlFromCore
+import xs.utils.cache.common.PrefetchCtrlFromCore
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.tile.{BusErrorUnit, BusErrorUnitParams, BusErrors, MaxHartIdBits}

@@ -33,7 +33,7 @@ import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend._
 import xiangshan.cache.mmu.TlbRequestIO
-import coupledL2.PrefetchCtrlFromCore
+import xs.utils.cache.common.PrefetchCtrlFromCore
 
 abstract class XSModule(implicit val p: Parameters) extends Module
   with HasXSParameter

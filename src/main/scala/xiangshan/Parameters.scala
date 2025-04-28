@@ -322,7 +322,7 @@ case class XSCoreParameters
   softTLB: Boolean = false, // dpi-c l1tlb debug only
   softPTW: Boolean = false, // dpi-c l2tlb debug only
   softPTWDelay: Int = 1,
-  hasMbist:Boolean = true
+  hasMbist:Boolean = false
 ){
   def vlWidth = log2Up(VLEN) + 1
 

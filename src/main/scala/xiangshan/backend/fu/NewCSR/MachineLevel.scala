@@ -18,8 +18,11 @@ import xiangshan.backend.fu.NewCSR.CSRConfig._
 import xiangshan.backend.fu.NewCSR.CSRFunc.wNoEffectWhen
 
 import scala.collection.immutable.SeqMap
+import utils.OptionWrapper
 
 trait MachineLevel { self: NewCSR =>
+  def enableAIA: Boolean = true
+
   val mstatus = Module(new MstatusModule)
     .setAddr(CSRs.mstatus)
 
@@ -105,8 +108,8 @@ trait MachineLevel { self: NewCSR =>
   val mcounteren = Module(new CSRModule("Mcounteren", new Counteren))
     .setAddr(CSRs.mcounteren)
 
-  val mvien = Module(new CSRModule("Mvien", new MvienBundle))
-    .setAddr(CSRs.mvien)
+  val mvien = OptionWrapper(enableAIA, Module(new CSRModule("Mvien", new MvienBundle))
+    .setAddr(CSRs.mvien))
 
   val mvip = Module(new CSRModule("Mvip", new MvipBundle)
     with HasIpIeBundle
@@ -191,6 +194,7 @@ trait MachineLevel { self: NewCSR =>
     with HasLocalInterruptReqBundle
     with HasAIABundle
   {
+    override def csrEnableAIA: Boolean = self.enableAIA
     // Alias write in
     val fromMvip = IO(Flipped(new MvipToMip))
     val fromSip  = IO(Flipped(new SipToMip))
@@ -250,14 +254,14 @@ trait MachineLevel { self: NewCSR =>
     // When mvien.SEIE = 0, mip.SEIP is alias of mvip.SEIP.
     // Otherwise, mip.SEIP is read only 0
     regOut.SEIP := Mux(!this.mvien.SEIE, this.mvip.SEIP.asUInt, 0.U)
-    rdataFields.SEIP := regOut.SEIP || platformIRP.SEIP || aiaToCSR.seip
+    rdataFields.SEIP := regOut.SEIP || platformIRP.SEIP || aiaToCSR.seip.getOrElse(false.B)
 
     // bit 10 VSEIP
     regOut.VSEIP := hvip.VSEIP || platformIRP.VSEIP || hgeip.asUInt(hstatusVGEIN.asUInt)
 
     // bit 11 MEIP is read-only in mip, and is set and cleared by a platform-specific interrupt controller.
     // MEIP can from PLIC and IMSIC
-    regOut.MEIP := platformIRP.MEIP || aiaToCSR.meip
+    regOut.MEIP := platformIRP.MEIP || aiaToCSR.meip.getOrElse(false.B)
 
     // bit 12 SGEIP
     regOut.SGEIP := Cat(hgeip.asUInt & hgeie.asUInt).orR
@@ -377,6 +381,10 @@ trait MachineLevel { self: NewCSR =>
   val mnscratch = Module(new CSRModule("Mnscratch"))
     .setAddr(CSRs.mnscratch)
 
+  val aiaMCSRs: Seq[CSRModule[_]] = if(enableAIA) Seq(
+    mvien.get
+  ) else Nil
+  
   val machineLevelCSRMods: Seq[CSRModule[_]] = Seq(
     mstatus,
     misa,
@@ -385,7 +393,6 @@ trait MachineLevel { self: NewCSR =>
     mie,
     mtvec,
     mcounteren,
-    mvien,
     mvip,
     menvcfg,
     mcountinhibit,
@@ -409,7 +416,7 @@ trait MachineLevel { self: NewCSR =>
     mncause,
     mnstatus,
     mnscratch,
-  ) ++ mhpmevents ++ mhpmcounters
+  ) ++ mhpmevents ++ mhpmcounters ++ aiaMCSRs
 
   val machineLevelCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap.from(
     machineLevelCSRMods.map(csr => (csr.addr -> (csr.w -> csr.rdata))).iterator

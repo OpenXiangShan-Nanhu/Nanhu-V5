@@ -217,11 +217,16 @@ class NewCSR(implicit val p: Parameters) extends Module
     val csrMon = if(env.EnableHWMoniter) Some(Output(new CSRHWMonitor)) else None
   })
 
-  val toAIA   = IO(Output(new CSRToAIABundle))
-  val fromAIA = IO(Flipped(Output(new AIAToCSRBundle)))
+  override def enableAIA: Boolean = EnableAIA
 
-  dontTouch(toAIA)
-  dontTouch(fromAIA)
+  val toAIA   = IO(Output(new CSRToAIABundle(EnableAIA)))
+  val fromAIA = IO(Flipped(Output(new AIAToCSRBundle(EnableAIA))))
+
+  if(EnableAIA) {
+    dontTouch(toAIA)
+    dontTouch(fromAIA)
+  }
+  
   dontTouch(io.fromTop.clintTime)
 
   /* Alias of input valid/ready */
@@ -265,7 +270,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   private val (isModeHS, isModeHU) = (privState.isModeHS, privState.isModeHU)
   private val (isModeVS, isModeVU) = (privState.isModeVS, privState.isModeVU)
 
-  val permitMod = Module(new CSRPermitModule)
+  val permitMod = Module(new CSRPermitModule(EnableAIA))
   val sstcIRGen = Module(new SstcInterruptGen)
 
   private val wenLegal = permitMod.io.out.hasLegalWen
@@ -282,10 +287,10 @@ class NewCSR(implicit val p: Parameters) extends Module
     virtualSupervisorCSRMap ++
     unprivilegedCSRMap ++
     debugCSRMap ++
-    aiaCSRMap ++
     customCSRMap ++
     pmpCSRMap ++
-    pmaCSRMap
+    pmaCSRMap ++
+    aiaCSRMap
 
   val csrMods: Seq[CSRModule[_]] =
     machineLevelCSRMods ++
@@ -335,15 +340,8 @@ class NewCSR(implicit val p: Parameters) extends Module
   intrMod.io.in.hideleg := hideleg.regOut
   intrMod.io.in.vsip := vsip.regOut
   intrMod.io.in.vsie := vsie.regOut
-  intrMod.io.in.hvictl := hvictl.regOut
   intrMod.io.in.hstatus := hstatus.regOut
-  intrMod.io.in.mtopei := mtopei.regOut
-  intrMod.io.in.stopei := stopei.regOut
-  intrMod.io.in.vstopei := vstopei.regOut
-  intrMod.io.in.hviprio1 := hviprio1.regOut
-  intrMod.io.in.hviprio2 := hviprio2.regOut
-  intrMod.io.in.miprios := Cat(miregiprios.map(_.rdata).reverse)
-  intrMod.io.in.hsiprios := Cat(siregiprios.map(_.rdata).reverse)
+  
   intrMod.io.in.mnstatusNMIE := mnstatus.regOut.NMIE.asBool
   intrMod.io.in.nmi := nmip.asUInt.orR
   intrMod.io.in.nmiVec := nmip.asUInt
@@ -368,12 +366,34 @@ class NewCSR(implicit val p: Parameters) extends Module
   trapHandleMod.io.in.medeleg := medeleg.regOut
   trapHandleMod.io.in.hideleg := hideleg.regOut
   trapHandleMod.io.in.hedeleg := hedeleg.regOut
-  trapHandleMod.io.in.mvien := mvien.regOut
-  trapHandleMod.io.in.hvien := hvien.regOut
   trapHandleMod.io.in.mtvec := mtvec.regOut
   trapHandleMod.io.in.stvec := stvec.regOut
   trapHandleMod.io.in.vstvec := vstvec.regOut
   trapHandleMod.io.in.virtualInterruptIsHvictlInject := virtualInterruptIsHvictlInject
+
+  if(EnableAIA) {
+    intrMod.io.in.mtopei := mtopei.get.regOut
+    intrMod.io.in.stopei := stopei.get.regOut
+    intrMod.io.in.vstopei := vstopei.get.regOut
+    intrMod.io.in.hvictl := hvictl.get.regOut
+    intrMod.io.in.hviprio1 := hviprio1.get.regOut
+    intrMod.io.in.hviprio2 := hviprio2.get.regOut
+    intrMod.io.in.miprios := Cat(miregiprios.map(_.rdata).reverse)
+    intrMod.io.in.hsiprios := Cat(siregiprios.map(_.rdata).reverse)
+    trapHandleMod.io.in.mvien := mvien.get.regOut
+    trapHandleMod.io.in.hvien := hvien.get.regOut
+  } else {
+    intrMod.io.in.mtopei := 0.U
+    intrMod.io.in.stopei := 0.U
+    intrMod.io.in.vstopei := 0.U
+    intrMod.io.in.hvictl := 0.U
+    intrMod.io.in.hviprio1 := 0.U
+    intrMod.io.in.hviprio2 := 0.U
+    intrMod.io.in.miprios := 0.U
+    intrMod.io.in.hsiprios := 0.U
+    trapHandleMod.io.in.mvien := 0.U
+    trapHandleMod.io.in.hvien := 0.U
+  }
 
   val entryPrivState = trapHandleMod.io.out.entryPrivState
   val entryDebugMode = WireInit(false.B)
@@ -448,13 +468,13 @@ class NewCSR(implicit val p: Parameters) extends Module
   permitMod.io.in.status.vsstatusFSOff := vsstatus.regOut.FS === ContextStatus.Off
   permitMod.io.in.status.vsstatusVSOff := vsstatus.regOut.VS === ContextStatus.Off
 
-  permitMod.io.in.aia.miselectIsIllegal  := miselect.isIllegal
-  permitMod.io.in.aia.siselectIsIllegal  := siselect.isIllegal
-  permitMod.io.in.aia.vsiselectIsIllegal := vsiselect.isIllegal
-  permitMod.io.in.aia.siselect := siselect.rdata
-  permitMod.io.in.aia.vsiselect := vsiselect.rdata
-  permitMod.io.in.aia.mvienSEIE := mvien.regOut.SEIE.asBool
-  permitMod.io.in.aia.hvictlVTI := hvictl.regOut.VTI.asBool
+  permitMod.io.in.aia.miselectIsIllegal .foreach(_ := miselect.get.isIllegal)
+  permitMod.io.in.aia.siselectIsIllegal .foreach(_ := siselect.get.isIllegal)
+  permitMod.io.in.aia.vsiselectIsIllegal.foreach(_ := vsiselect.get.isIllegal)
+  permitMod.io.in.aia.siselect          .foreach(_ := siselect.get.rdata)
+  permitMod.io.in.aia.vsiselect         .foreach(_ := vsiselect.get.rdata)
+  permitMod.io.in.aia.mvienSEIE         .foreach(_ := mvien.get.regOut.SEIE.asBool)
+  permitMod.io.in.aia.hvictlVTI         .foreach(_ := hvictl.get.regOut.VTI.asBool)
 
   sstcIRGen.i.stime.valid := time.updated
   sstcIRGen.i.stime.bits  := time.stime
@@ -466,12 +486,12 @@ class NewCSR(implicit val p: Parameters) extends Module
   sstcIRGen.i.henvcfgSTCE := henvcfg.regOut.STCE.asBool
 
   miregiprios.foreach { mod =>
-    mod.w.wen := mireg.w.wen && (miselect.regOut.ALL.asUInt === mod.addr.U)
+    mod.w.wen := mireg.get.w.wen && (miselect.get.regOut.ALL.asUInt === mod.addr.U)
     mod.w.wdata := wdata
   }
 
   siregiprios.foreach { mod =>
-    mod.w.wen := sireg.w.wen && (siselect.regOut.ALL.asUInt === mod.addr.U)
+    mod.w.wen := sireg.get.w.wen && (siselect.get.regOut.ALL.asUInt === mod.addr.U)
     mod.w.wdata := wdata
   }
 
@@ -585,15 +605,21 @@ class NewCSR(implicit val p: Parameters) extends Module
     }
     mod match {
       case m: HasAIABundle =>
-        m.aiaToCSR.rdata.valid := fromAIA.rdata.valid
-        m.aiaToCSR.rdata.bits.data := fromAIA.rdata.bits.data
-        m.aiaToCSR.rdata.bits.illegal := fromAIA.rdata.bits.illegal
-        m.aiaToCSR.meip    := fromAIA.meip
-        m.aiaToCSR.seip    := fromAIA.seip
-        m.aiaToCSR.vseip   := fromAIA.vseip
-        m.aiaToCSR.mtopei  := fromAIA.mtopei
-        m.aiaToCSR.stopei  := fromAIA.stopei
-        m.aiaToCSR.vstopei := fromAIA.vstopei
+        if(EnableAIA) {
+          m.aiaToCSR.rdata.foreach {
+            case rd =>
+              rd.valid := fromAIA.rdata.get.valid
+              rd.bits.data := fromAIA.rdata.get.bits.data
+              rd.bits.illegal := fromAIA.rdata.get.bits.illegal
+          }
+          m.aiaToCSR.meip.foreach(    _ := fromAIA.meip.get)
+          m.aiaToCSR.seip.foreach(    _ := fromAIA.seip.get)
+          m.aiaToCSR.vseip.foreach(   _ := fromAIA.vseip.get)
+          m.aiaToCSR.mtopei.foreach(  _ := fromAIA.mtopei.get)
+          m.aiaToCSR.stopei.foreach(  _ := fromAIA.stopei.get)
+          m.aiaToCSR.vstopei.foreach( _ := fromAIA.vstopei.get)
+        } else {
+        }
       case _ =>
     }
     mod match {
@@ -645,11 +671,17 @@ class NewCSR(implicit val p: Parameters) extends Module
         m.mip := mip.rdata
         m.mie := mie.regOut
         m.mvip := mvip.regOut
-        m.mvien := mvien.regOut
+        
         m.hideleg := hideleg.regOut
         m.hip := hip.regOut
         m.hie := hie.regOut
-        m.hvien := hvien.regOut
+        if(EnableAIA) {
+          m.mvien := mvien.get.regOut
+          m.hvien := hvien.get.regOut
+        } else {
+          m.hvien := 0.U
+          m.mvien := 0.U
+        }
         m.hvip := hvip.regOut
         m.sip := sip.regOut
         m.sie := sie.regOut
@@ -723,7 +755,12 @@ class NewCSR(implicit val p: Parameters) extends Module
         in.memExceptionIsForVSnonLeafPTE := io.fromMem.excpIsForVSnonLeafPTE
 
         in.virtualInterruptIsHvictlInject := virtualInterruptIsHvictlInject
-        in.hvictlIID := hvictl.regOut.IID.asUInt
+        if(EnableAIA) {
+          in.hvictlIID := hvictl.get.regOut.IID.asUInt
+        } else {
+          assert(virtualInterruptIsHvictlInject === false.B)
+          in.hvictlIID := 0.U
+        }
     }
   }
 
@@ -812,7 +849,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     (addr >= CSRs.mcycle.U) && (addr <= CSRs.mhpmcounter31.U) ||
     (addr === mcountinhibit.addr.U) ||
     (addr >= CSRs.cycle.U) && (addr <= CSRs.hpmcounter31.U) ||
-    Cat(aiaSkipCSRs.map(_.addr.U === addr)).orR
+    Cat(aiaSkipCSRs.map(_.get.addr.U === addr)).orR
   )
 
   // flush
@@ -887,48 +924,68 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   /** the state machine of newCSR module */
   private val state = RegInit(s_idle)
-  /** the next state of newCSR */
-  private val stateNext = WireInit(state)
-  state := stateNext
 
   /**
    * Asynchronous access operation of CSR. Check whether an access is asynchronous when read/write-enable is high.
    * AIA registers are designed to be access asynchronously, so newCSR will wait for response.
    **/
-  private val asyncAccess = (wen || ren) && !(permitMod.io.out.EX_II || permitMod.io.out.EX_VI) && (
-    mireg.addr.U === addr && miselect.inIMSICRange ||
-    sireg.addr.U === addr && ((!V.asUInt.asBool && siselect.inIMSICRange) || (V.asUInt.asBool && vsiselect.inIMSICRange)) ||
-    vsireg.addr.U === addr && vsiselect.inIMSICRange
-  )
+  private val asyncAccessMireg = if(EnableAIA) mireg.get.addr.U === addr && miselect.get.inIMSICRange else false.B
+  private val asyncAccessSireg = if(EnableAIA) sireg.get.addr.U === addr && ((!V.asUInt.asBool && siselect.get.inIMSICRange) || (V.asUInt.asBool && vsiselect.get.inIMSICRange)) else false.B
+  private val asyncAccessVsireg = if(EnableAIA) vsireg.get.addr.U === addr && vsiselect.get.inIMSICRange else false.B
+
+  if(EnableAIA) {
+    dontTouch(asyncAccessMireg)
+    dontTouch(asyncAccessSireg)
+    dontTouch(asyncAccessVsireg)
+  }
+
+  private val asyncAccess = (wen || ren) && !(permitMod.io.out.EX_II || permitMod.io.out.EX_VI) && (asyncAccessMireg || asyncAccessSireg || asyncAccessVsireg)
 
   /** State machine of newCSR */
-  switch(state) {
-    is(s_idle) {
-      when(valid && asyncAccess) {
-        stateNext := s_waitIMSIC
-      }.elsewhen(valid && !io.out.ready) {
-        stateNext := s_finish
-      }
-    }
-    is(s_waitIMSIC) {
-      when(fromAIA.rdata.valid) {
-        when(io.out.ready) {
-          stateNext := s_idle
-        }.otherwise {
+  if(EnableAIA) {
+      /** the next state of newCSR */
+    val stateNext = WireInit(state)
+    state := stateNext
+    switch(state) {
+      is(s_idle) {
+        when(valid && asyncAccess) {
+          stateNext := s_waitIMSIC
+        }.elsewhen(valid && !io.out.ready) {
           stateNext := s_finish
         }
       }
-    }
-    is(s_finish) {
-      when(io.out.ready) {
-        stateNext := s_idle
+      is(s_waitIMSIC) {
+        when(fromAIA.rdata.get.valid) {
+          when(io.out.ready) {
+            stateNext := s_idle
+          }.otherwise {
+            stateNext := s_finish
+          }
+        }
+      }
+      is(s_finish) {
+        when(io.out.ready) {
+          stateNext := s_idle
+        }
       }
     }
+  } else {
+    when(valid && !io.out.ready) {
+      state := s_finish
+    }.elsewhen(state === s_finish && io.out.ready) {
+      state := s_idle
+    }.otherwise {
+      state := state
+    }
+    assert(state =/= s_waitIMSIC)
   }
 
 
   // Todo: check IMSIC EX_II and EX_VI
-  private val imsicIllegal = fromAIA.rdata.valid && fromAIA.rdata.bits.illegal
+  private val aia_rvalid = if(EnableAIA) fromAIA.rdata.get.valid else false.B
+  private val aia_rdata = if(EnableAIA) fromAIA.rdata.get.bits.data else 0.U
+  private val aia_rillegal = if(EnableAIA) fromAIA.rdata.get.bits.illegal else false.B
+  private val imsicIllegal = aia_rvalid && aia_rillegal
   private val imsic_EX_II = imsicIllegal && !V.asUInt.asBool
   private val imsic_EX_VI = imsicIllegal && V.asUInt.asBool
 
@@ -942,21 +999,21 @@ class NewCSR(implicit val p: Parameters) extends Module
    **/
 
   /** Data that have been read before,and should be stored because output not fired */
-  io.out.valid := state === s_idle && valid && !asyncAccess ||
-                  state === s_waitIMSIC && fromAIA.rdata.valid ||
-                  state === s_finish
+  io.out.valid := state === s_idle && valid && !asyncAccess || state === s_finish ||
+                  state === s_waitIMSIC && aia_rvalid
+                  
   io.out.bits.EX_II := DataHoldBypass(permitMod.io.out.EX_II || noCSRIllegal, false.B, io.in.fire) ||
-                       DataHoldBypass(imsic_EX_II, false.B, fromAIA.rdata.valid)
+                       DataHoldBypass(imsic_EX_II, false.B, aia_rvalid)
   io.out.bits.EX_VI := DataHoldBypass(permitMod.io.out.EX_VI, false.B, io.in.fire) ||
-                       DataHoldBypass(imsic_EX_VI, false.B, fromAIA.rdata.valid)
+                       DataHoldBypass(imsic_EX_VI, false.B, aia_rvalid)
   io.out.bits.flushPipe := DataHoldBypass(flushPipe, false.B, io.in.fire)
 
   /** Prepare read data for output */
   io.out.bits.rData := DataHoldBypass(
     Mux1H(Seq(
       io.in.fire -> rdata,
-      fromAIA.rdata.valid -> fromAIA.rdata.bits.data
-    )), 0.U(64.W), io.in.fire || fromAIA.rdata.valid)
+      aia_rvalid -> aia_rdata
+    )), 0.U(64.W), io.in.fire || aia_rvalid)
   io.out.bits.regOut := regOut
   io.out.bits.targetPc := DataHoldBypass(
     Mux(trapEntryDEvent.out.targetPc.valid,
@@ -1190,16 +1247,16 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   private val csrAccess = wenLegal || ren
 
-  private val imsicAddrValid =
-    csrAccess &&  addr === CSRs.mireg.U &&  miselect.inIMSICRange ||
-    csrAccess &&  addr === CSRs.sireg.U && !isModeVS && siselect.inIMSICRange ||
-    csrAccess && (addr === CSRs.sireg.U &&  isModeVS || addr === CSRs.vsireg.U) && vsiselect.inIMSICRange
+  private val imsicAddrValid = if(EnableAIA) (csrAccess &&  addr === CSRs.mireg.U &&  miselect.get.inIMSICRange ||
+                                              csrAccess &&  addr === CSRs.sireg.U && !isModeVS && siselect.get.inIMSICRange ||
+                                              csrAccess && (addr === CSRs.sireg.U &&  isModeVS || addr === CSRs.vsireg.U) && vsiselect.get.inIMSICRange)
+                                else false.B
 
-  private val imsicAddr = Mux1H(Seq(
-    (csrAccess &&  addr === CSRs.mireg.U) -> miselect.rdata,
-    (csrAccess &&  addr === CSRs.sireg.U && !isModeVS) -> siselect.rdata,
-    (csrAccess && (addr === CSRs.sireg.U &&  isModeVS || addr === CSRs.vsireg.U)) -> vsiselect.rdata,
-  ))
+  private val imsicAddr = if(EnableAIA) Mux1H(Seq(
+    (csrAccess &&  addr === CSRs.mireg.U) -> miselect.get.rdata,
+    (csrAccess &&  addr === CSRs.sireg.U && !isModeVS) -> siselect.get.rdata,
+    (csrAccess && (addr === CSRs.sireg.U &&  isModeVS || addr === CSRs.vsireg.U)) -> vsiselect.get.rdata,
+  )) else 0.U
 
   private val imsicAddrPrivState = Mux1H(Seq(
     (csrAccess &&  addr === CSRs.mireg.U) -> PrivState.ModeM,
@@ -1207,23 +1264,29 @@ class NewCSR(implicit val p: Parameters) extends Module
     (csrAccess && (addr === CSRs.sireg.U &&  isModeVS || addr === CSRs.vsireg.U)) -> PrivState.ModeVS,
   ))
 
-  private val imsicWdataValid =
-    mireg.w.wen  && miselect.inIMSICRange ||
-    sireg.w.wen  && siselect.inIMSICRange ||
-    vsireg.w.wen && vsiselect.inIMSICRange
+  private val imsicWdataValid = if(EnableAIA) (mireg.get.w.wen  && miselect.get.inIMSICRange ||
+                                                sireg.get.w.wen  && siselect.get.inIMSICRange ||
+                                                vsireg.get.w.wen && vsiselect.get.inIMSICRange)
+                                else false.B
 
-  toAIA.addr.valid     := imsicAddrValid
-  toAIA.addr.bits.addr := imsicAddr
-  toAIA.addr.bits.prvm := imsicAddrPrivState.PRVM
-  toAIA.addr.bits.v    := imsicAddrPrivState.V
+  toAIA.addr.foreach {
+    case addr =>
+      addr.valid     := imsicAddrValid
+      addr.bits.addr := imsicAddr
+      addr.bits.prvm := imsicAddrPrivState.PRVM
+      addr.bits.v    := imsicAddrPrivState.V
+  }
 
-  toAIA.wdata.valid := imsicWdataValid
-  toAIA.wdata.bits.op := io.in.bits.op
-  toAIA.wdata.bits.data := io.in.bits.src
-  toAIA.vgein := hstatus.regOut.VGEIN.asUInt
-  toAIA.mClaim  := mtopei.w.wen
-  toAIA.sClaim  := stopei.w.wen
-  toAIA.vsClaim := vstopei.w.wen
+  toAIA.wdata.foreach {
+    case wdata =>
+      wdata.valid     := imsicWdataValid
+      wdata.bits.data := io.in.bits.src
+      wdata.bits.op   := io.in.bits.op
+  }
+  toAIA.vgein.foreach(_ := hstatus.regOut.VGEIN.asUInt)
+  toAIA.mClaim.foreach(_   := mtopei.get.w.wen)
+  toAIA.sClaim.foreach(_   := stopei.get.w.wen)
+  toAIA.vsClaim.foreach(_  := vstopei.get.w.wen)
 
   // tlb
   io.tlb.satpASIDChanged  := GatedValidRegNext(satp.w.wen  && satp .regOut.ASID =/=  satp.w.wdataFields.ASID)
@@ -1325,7 +1388,7 @@ class NewCSR(implicit val p: Parameters) extends Module
 
     val hartId = io.fromTop.hartId
     val trapValid = pendingTrap && !io.fromVecExcpMod.busy
-    val trapNO = Mux(virtualInterruptIsHvictlInject && hasTrap, hvictl.regOut.IID.asUInt, trapHandleMod.io.out.causeNO.ExceptionCode.asUInt)
+    val trapNO = if(EnableAIA) Mux(virtualInterruptIsHvictlInject && hasTrap, hvictl.get.regOut.IID.asUInt, trapHandleMod.io.out.causeNO.ExceptionCode.asUInt) else trapHandleMod.io.out.causeNO.ExceptionCode.asUInt
     val interrupt = trapHandleMod.io.out.causeNO.Interrupt.asBool
     val hasNMI = nmi && hasTrap
     val interruptNO = Mux(interrupt, trapNO, 0.U)
@@ -1430,14 +1493,14 @@ class NewCSR(implicit val p: Parameters) extends Module
 
     val platformIRPMeipChange = !platformIRP.MEIP &&  RegNext(platformIRP.MEIP) ||
                                  platformIRP.MEIP && !RegNext(platformIRP.MEIP) ||
-                                !fromAIA.meip     &&  RegNext(fromAIA.meip)     ||
-                                 fromAIA.meip     && !RegNext(fromAIA.meip)
+                                !fromAIA.meip.getOrElse(false.B) &&  RegNext(fromAIA.meip.getOrElse(false.B)) ||
+                                 fromAIA.meip.getOrElse(false.B) && !RegNext(fromAIA.meip.getOrElse(false.B))
     val platformIRPMtipChange = !platformIRP.MTIP &&  RegNext(platformIRP.MTIP) || platformIRP.MTIP && !RegNext(platformIRP.MTIP)
     val platformIRPMsipChange = !platformIRP.MSIP &&  RegNext(platformIRP.MSIP) || platformIRP.MSIP && !RegNext(platformIRP.MSIP)
     val platformIRPSeipChange = !platformIRP.SEIP &&  RegNext(platformIRP.SEIP) ||
                                  platformIRP.SEIP && !RegNext(platformIRP.SEIP) ||
-                                !fromAIA.seip     &&  RegNext(fromAIA.seip)     ||
-                                 fromAIA.seip     && !RegNext(fromAIA.seip)
+                                !fromAIA.seip.getOrElse(false.B) &&  RegNext(fromAIA.seip.getOrElse(false.B)) ||
+                                 fromAIA.seip.getOrElse(false.B) && !RegNext(fromAIA.seip.getOrElse(false.B))
     val platformIRPStipChange = !sstcIRGen.o.STIP &&  RegNext(sstcIRGen.o.STIP) || sstcIRGen.o.STIP && !RegNext(sstcIRGen.o.STIP)
     val platformIRPVseipChange = !platformIRP.VSEIP &&  RegNext(platformIRP.VSEIP) ||
                                   platformIRP.VSEIP && !RegNext(platformIRP.VSEIP) ||
@@ -1452,10 +1515,10 @@ class NewCSR(implicit val p: Parameters) extends Module
                                                         platformIRPSeipChange || platformIRPStipChange ||
                                                         platformIRPVseipChange || platformIRPVstipChange ||
                                                         lcofiReqChange
-    diffNonRegInterruptPendingEvent.platformIRPMeip  := platformIRP.MEIP || fromAIA.meip
+    diffNonRegInterruptPendingEvent.platformIRPMeip  := platformIRP.MEIP || fromAIA.meip.getOrElse(false.B)
     diffNonRegInterruptPendingEvent.platformIRPMtip  := platformIRP.MTIP
     diffNonRegInterruptPendingEvent.platformIRPMsip  := platformIRP.MSIP
-    diffNonRegInterruptPendingEvent.platformIRPSeip  := platformIRP.SEIP || fromAIA.seip
+    diffNonRegInterruptPendingEvent.platformIRPSeip  := platformIRP.SEIP || fromAIA.seip.getOrElse(false.B)
     diffNonRegInterruptPendingEvent.platformIRPStip  := sstcIRGen.o.STIP
     diffNonRegInterruptPendingEvent.platformIRPVseip := platformIRP.VSEIP || hgeip.rdata.asUInt(hstatus.regOut.VGEIN.asUInt)
     diffNonRegInterruptPendingEvent.platformIRPVstip := sstcIRGen.o.VSTIP

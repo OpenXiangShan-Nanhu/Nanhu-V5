@@ -182,30 +182,35 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   trapTvalMod.io.fromCtrlBlock.flush := io.flush
   trapTvalMod.io.fromCtrlBlock.robDeqPtr := io.csrio.get.robDeqPtr
 
-  private val imsic = Module(new IMSIC(NumVSIRFiles = 5, NumHart = 1, XLEN = 64, NumIRSrc = 256))
-  imsic.i.hartId := io.csrin.get.hartId
-  imsic.i.msiInfo := io.csrin.get.msiInfo
-  imsic.i.csr.addr.valid := csrMod.toAIA.addr.valid
-  imsic.i.csr.addr.bits.addr := csrMod.toAIA.addr.bits.addr
-  imsic.i.csr.addr.bits.prvm := csrMod.toAIA.addr.bits.prvm.asUInt
-  imsic.i.csr.addr.bits.v := csrMod.toAIA.addr.bits.v.asUInt
-  imsic.i.csr.vgein := csrMod.toAIA.vgein
-  imsic.i.csr.mClaim := csrMod.toAIA.mClaim
-  imsic.i.csr.sClaim := csrMod.toAIA.sClaim
-  imsic.i.csr.vsClaim := csrMod.toAIA.vsClaim
-  imsic.i.csr.wdata.valid := csrMod.toAIA.wdata.valid
-  imsic.i.csr.wdata.bits.op := csrMod.toAIA.wdata.bits.op
-  imsic.i.csr.wdata.bits.data := csrMod.toAIA.wdata.bits.data
+  if(EnableAIA) {
+    val imsic = Module(new IMSIC(NumVSIRFiles = 5, NumHart = 1, XLEN = 64, NumIRSrc = 256))
+    imsic.i.hartId := io.csrin.get.hartId
+    imsic.i.msiInfo := io.csrin.get.msiInfo
+    imsic.i.csr.addr.valid := csrMod.toAIA.addr.get.valid
+    imsic.i.csr.addr.bits.addr := csrMod.toAIA.addr.get.bits.addr
+    imsic.i.csr.addr.bits.prvm := csrMod.toAIA.addr.get.bits.prvm.asUInt
+    imsic.i.csr.addr.bits.v := csrMod.toAIA.addr.get.bits.v.asUInt
+    imsic.i.csr.vgein := csrMod.toAIA.vgein.get
+    imsic.i.csr.mClaim := csrMod.toAIA.mClaim.get
+    imsic.i.csr.sClaim := csrMod.toAIA.sClaim.get
+    imsic.i.csr.vsClaim := csrMod.toAIA.vsClaim.get
+    imsic.i.csr.wdata.valid := csrMod.toAIA.wdata.get.valid
+    imsic.i.csr.wdata.bits.op := csrMod.toAIA.wdata.get.bits.op
+    imsic.i.csr.wdata.bits.data := csrMod.toAIA.wdata.get.bits.data
 
-  csrMod.fromAIA.rdata.valid        := imsic.o.csr.rdata.valid
-  csrMod.fromAIA.rdata.bits.data    := imsic.o.csr.rdata.bits.rdata
-  csrMod.fromAIA.rdata.bits.illegal := imsic.o.csr.rdata.bits.illegal
-  csrMod.fromAIA.meip    := imsic.o.meip
-  csrMod.fromAIA.seip    := imsic.o.seip
-  csrMod.fromAIA.vseip   := imsic.o.vseip
-  csrMod.fromAIA.mtopei  := imsic.o.mtopei
-  csrMod.fromAIA.stopei  := imsic.o.stopei
-  csrMod.fromAIA.vstopei := imsic.o.vstopei
+    csrMod.fromAIA.rdata.foreach {
+      case rdata =>
+        rdata.valid := imsic.o.csr.rdata.valid
+        rdata.bits.data := imsic.o.csr.rdata.bits.rdata
+        rdata.bits.illegal := imsic.o.csr.rdata.bits.illegal
+    }
+    csrMod.fromAIA.meip.foreach(_ := imsic.o.meip)
+    csrMod.fromAIA.seip.foreach(_ := imsic.o.seip)
+    csrMod.fromAIA.vseip.foreach(_ := imsic.o.vseip)
+    csrMod.fromAIA.mtopei.foreach(_ := imsic.o.mtopei)
+    csrMod.fromAIA.stopei.foreach(_ := imsic.o.stopei)
+    csrMod.fromAIA.vstopei.foreach(_ := imsic.o.vstopei)
+  }
 
   private val exceptionVec = WireInit(0.U.asTypeOf(ExceptionVec())) // Todo:
 

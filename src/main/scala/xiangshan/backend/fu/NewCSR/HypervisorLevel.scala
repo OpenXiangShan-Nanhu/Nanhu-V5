@@ -14,6 +14,7 @@ import xiangshan.backend.fu.NewCSR.CSRFunc._
 import xiangshan.backend.fu.NewCSR.ChiselRecordForField._
 
 import scala.collection.immutable.SeqMap
+import utils.OptionWrapper
 
 trait HypervisorLevel { self: NewCSR =>
 
@@ -55,11 +56,11 @@ trait HypervisorLevel { self: NewCSR =>
   val hgeie = Module(new CSRModule("Hgeie", new HgeieBundle))
     .setAddr(CSRs.hgeie)
 
-  val hvien = Module(new CSRModule("Hvien", new HvienBundle))
-    .setAddr(CSRs.hvien)
+  val hvien = OptionWrapper(enableAIA, Module(new CSRModule("Hvien", new HvienBundle))
+    .setAddr(CSRs.hvien))
 
-  val hvictl = Module(new CSRModule("Hvictl", new HvictlBundle))
-    .setAddr(CSRs.hvictl)
+  val hvictl = OptionWrapper(enableAIA, Module(new CSRModule("Hvictl", new HvictlBundle))
+    .setAddr(CSRs.hvictl))
 
   val henvcfg = Module(new CSRModule("Henvcfg", new HEnvCfg) with HasHypervisorEnvBundle {
     when (!menvcfg.STCE.asBool) {
@@ -119,11 +120,11 @@ trait HypervisorLevel { self: NewCSR =>
   })
     .setAddr(CSRs.hvip)
 
-  val hviprio1 = Module(new CSRModule("Hviprio1", new Hviprio1Bundle))
-    .setAddr(CSRs.hviprio1)
+  val hviprio1 = OptionWrapper(enableAIA, Module(new CSRModule("Hviprio1", new Hviprio1Bundle))
+    .setAddr(CSRs.hviprio1))
 
-  val hviprio2 = Module(new CSRModule("Hviprio2", new Hviprio2Bundle))
-    .setAddr(CSRs.hviprio2)
+  val hviprio2 = OptionWrapper(enableAIA, Module(new CSRModule("Hviprio2", new Hviprio2Bundle))
+    .setAddr(CSRs.hviprio2))
 
   val htinst = Module(new CSRModule("Htinst", new XtinstBundle) with TrapEntryHSEventSinkBundle)
     .setAddr(CSRs.htinst)
@@ -151,16 +152,23 @@ trait HypervisorLevel { self: NewCSR =>
   })
     .setAddr(CSRs.hgatp)
 
-  val hgeip = Module(new CSRModule("Hgeip", new HgeipBundle) with HasAIABundle {
-    regOut.ip := aiaToCSR.vseip
-  })
-    .setAddr(CSRs.hgeip)
+  val hgeip = Module(new CSRModule("Hgeip", new HgeipBundle) {
+    val aiaToCSR = IO(Input(new AIAToCSRBundle(enableAIA)))
+    regOut.ip := aiaToCSR.vseip.getOrElse(0.U)
+  }).setAddr(CSRs.hgeip)
 
   val hstateen0 = Module(new CSRModule("Hstateen", new HstateenBundle0) with HasStateen0Bundle {
     // For every bit in an mstateen CSR that is zero (whether read-only zero or set to zero), the same bit
     // appears as read-only zero in the matching hstateen and sstateen CSRs.
     regOut := reg.asUInt & fromMstateen0.asUInt
   }).setAddr(CSRs.hstateen0)
+
+  val aiaHCSRs: Seq[CSRModule[_]] = if(enableAIA) Seq(
+    hvien.get,
+    hvictl.get,
+    hviprio1.get,
+    hviprio2.get
+  ) else Nil
 
   val hypervisorCSRMods: Seq[CSRModule[_]] = Seq(
     hstatus,
@@ -170,19 +178,15 @@ trait HypervisorLevel { self: NewCSR =>
     htimedelta,
     hcounteren,
     hgeie,
-    hvien,
-    hvictl,
+    hgeip,
     henvcfg,
     htval,
     hip,
     hvip,
-    hviprio1,
-    hviprio2,
     htinst,
     hgatp,
-    hgeip,
     hstateen0,
-  )
+  ) ++ aiaHCSRs
 
   val hypervisorCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap.from(
     hypervisorCSRMods.map(csr => (csr.addr -> (csr.w -> csr.rdata))).iterator

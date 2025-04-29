@@ -4,11 +4,12 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.decode.TruthTable
 import freechips.rocketchip.rocket.CSRs
+import utils.OptionWrapper
 import xiangshan.backend.fu.NewCSR.CSRBundles.{Counteren, PrivState}
 import xiangshan.backend.fu.NewCSR.CSRDefines._
 
-class CSRPermitModule extends Module {
-  val io = IO(new CSRPermitIO)
+class CSRPermitModule(enableAIA: Boolean) extends Module {
+  val io = IO(new CSRPermitIO(enableAIA))
 
   private val (ren, wen, addr, privState, debugMode) = (
     io.in.csrAccess.ren,
@@ -71,22 +72,6 @@ class CSRPermitModule extends Module {
     io.in.status.mstatusVSOff,
     io.in.status.mstatusFSOff || io.in.status.vsstatusFSOff,
     io.in.status.mstatusVSOff || io.in.status.vsstatusVSOff,
-  )
-
-  private val (miselectIsIllegal, siselectIsIllegal, vsiselectIsIllegal) = (
-    io.in.aia.miselectIsIllegal,
-    io.in.aia.siselectIsIllegal,
-    io.in.aia.vsiselectIsIllegal,
-  )
-
-  private val (siselect, vsiselect) = (
-    io.in.aia.siselect,
-    io.in.aia.vsiselect,
-  )
-
-  private val (mvienSEIE, hvictlVTI) = (
-    io.in.aia.mvienSEIE,
-    io.in.aia.hvictlVTI,
   )
 
   private val csrIsRO = addr(11, 10) === "b11".U
@@ -181,21 +166,6 @@ class CSRPermitModule extends Module {
   private val accessIND_EX_VI = csrIsSi && mstateen0.CSRIND.asBool && privState.isVirtual && !hstateen0.CSRIND.asBool ||
     csrIsVSi && mstateen0.CSRIND.asBool && privState.isVirtual
 
-  // AIA bit 59
-  private val ssAiaHaddr = Seq(CSRs.hvien.U, CSRs.hvictl.U, CSRs.hviprio1.U, CSRs.hviprio2.U)
-  private val ssAiaVSaddr = addr === CSRs.vstopi.U
-  private val csrIsAIA = ssAiaHaddr.map(_ === addr).reduce(_ || _) || ssAiaVSaddr
-  private val accessAIA_EX_II = csrIsAIA && !privState.isModeM && !mstateen0.AIA.asBool
-  private val accessAIA_EX_VI = csrIsAIA && mstateen0.AIA.asBool && privState.isVirtual
-
-  // IMSIC bit 58 (Ssaia extension)
-  private val csrIsStopei = addr === CSRs.stopei.U
-  private val csrIsVStopei = addr === CSRs.vstopei.U
-  private val csrIsTpoie = csrIsStopei || csrIsVStopei
-  private val accessTopie_EX_II = csrIsTpoie && !privState.isModeM && !mstateen0.IMSIC.asBool
-  private val accessTopie_EX_VI = csrIsStopei && mstateen0.IMSIC.asBool && privState.isVirtual && !hstateen0.IMSIC.asBool ||
-    csrIsVStopei && mstateen0.IMSIC.asBool && privState.isVirtual
-
   // CONTEXT bit 57 context reg (Sdtrig extensions), this is not implemented
   private val csrIsHcontext = (addr === CSRs.hcontext.U)
   private val csrIsScontext = (addr === CSRs.scontext.U)
@@ -223,10 +193,55 @@ class CSRPermitModule extends Module {
       csrIsUCustom && privState.isModeVU && hstateen0.C.asBool && !sstateen0.C.asBool
   )
 
-  val xstateControlAccess_EX_II = csrAccess && (accessStateen0_EX_II || accessEnvcfg_EX_II || accessIND_EX_II || accessAIA_EX_II ||
-    accessTopie_EX_II || accessContext_EX_II || accessCustom_EX_II)
-  val xstateControlAccess_EX_VI = csrAccess && (accessStateen0_EX_VI || accessEnvcfg_EX_VI || accessIND_EX_VI || accessAIA_EX_VI ||
-    accessTopie_EX_VI || accessContext_EX_VI || accessCustom_EX_VI)
+  // AIA
+  private val (miselectIsIllegal, siselectIsIllegal, vsiselectIsIllegal) = (
+    io.in.aia.miselectIsIllegal.getOrElse(false.B),
+    io.in.aia.siselectIsIllegal.getOrElse(false.B),
+    io.in.aia.vsiselectIsIllegal.getOrElse(false.B),
+  )
+
+  private val (siselect, vsiselect) = (
+    io.in.aia.siselect.getOrElse(0.U),
+    io.in.aia.vsiselect.getOrElse(0.U),
+  )
+
+  private val (mvienSEIE, hvictlVTI) = (
+    io.in.aia.mvienSEIE.getOrElse(false.B),
+    io.in.aia.hvictlVTI.getOrElse(false.B),
+  )
+  // AIA bit 59
+  private val ssAiaHaddr = Seq(CSRs.hvien.U, CSRs.hvictl.U, CSRs.hviprio1.U, CSRs.hviprio2.U)
+  private val ssAiaVSaddr = addr === CSRs.vstopi.U
+  private val csrIsAIA = ssAiaHaddr.map(_ === addr).reduce(_ || _) || ssAiaVSaddr
+  private val accessAIA_EX_II = csrIsAIA && !privState.isModeM  && !mstateen0.AIA.asBool
+  private val accessAIA_EX_VI = csrIsAIA && privState.isVirtual && mstateen0.AIA.asBool
+
+  // IMSIC bit 58 (Ssaia extension)
+  private val csrIsStopei = addr === CSRs.stopei.U
+  private val csrIsVStopei = addr === CSRs.vstopei.U
+  private val csrIsTpoie = csrIsStopei || csrIsVStopei
+  private val accessTopie_EX_II = csrIsTpoie && !privState.isModeM && !mstateen0.IMSIC.asBool
+  private val accessTopie_EX_VI = csrIsStopei && mstateen0.IMSIC.asBool && privState.isVirtual && !hstateen0.IMSIC.asBool ||
+                                  csrIsVStopei && mstateen0.IMSIC.asBool && privState.isVirtual
+  
+  private val aia_EX_II = OptionWrapper(enableAIA, accessAIA_EX_II)
+  private val stopi_EX_II = OptionWrapper(enableAIA, accessTopie_EX_II)
+  private val aia_EX_VI = OptionWrapper(enableAIA, accessAIA_EX_VI)
+  private val stopi_EX_VI = OptionWrapper(enableAIA, accessTopie_EX_VI)
+  
+  if(enableAIA) {
+    dontTouch(aia_EX_II.get)
+    dontTouch(stopi_EX_II.get)
+    dontTouch(aia_EX_VI.get)
+    dontTouch(stopi_EX_VI.get)
+  }
+
+  val xstateControlAccess_EX_II = csrAccess && (accessStateen0_EX_II || accessEnvcfg_EX_II || accessIND_EX_II ||
+                                                accessContext_EX_II || accessCustom_EX_II  ||
+                                                aia_EX_II.getOrElse(false.B) || stopi_EX_II.getOrElse(false.B))
+  val xstateControlAccess_EX_VI = csrAccess && (accessStateen0_EX_VI || accessEnvcfg_EX_VI || accessIND_EX_VI ||
+                                                accessContext_EX_VI || accessCustom_EX_VI  ||
+                                                aia_EX_VI.getOrElse(false.B) || stopi_EX_VI.getOrElse(false.B))
   /**
    * Sm/Ssstateen end
    */
@@ -246,18 +261,28 @@ class CSRPermitModule extends Module {
   /**
    * AIA begin
    */
-  private val rwStopei_EX_II = csrAccess && privState.isModeHS && mvienSEIE && addr === CSRs.stopei.U
+  private val rwStopei_EX_II = OptionWrapper(enableAIA, csrAccess && addr === CSRs.stopei.U && privState.isModeHS && mvienSEIE)
 
-  private val rwMireg_EX_II = csrAccess && privState.isModeM && miselectIsIllegal && addr === CSRs.mireg.U
+  private val rwMireg_EX_II = OptionWrapper(enableAIA, csrAccess && addr === CSRs.mireg.U && privState.isModeM && miselectIsIllegal)
 
-  private val rwSireg_EX_II = csrAccess && ((privState.isModeHS && mvienSEIE && siselect >= 0x70.U && siselect <= 0xFF.U) ||
+  private val rwSireg_EX_II = OptionWrapper(enableAIA, csrAccess && ((privState.isModeHS && mvienSEIE && siselect >= 0x70.U && siselect <= 0xFF.U) ||
     ((privState.isModeM || privState.isModeHS) && siselectIsIllegal) ||
-    (privState.isModeVS && (vsiselect < 0x30.U || (vsiselect >= 0x40.U && vsiselect < 0x70.U) || vsiselect > 0xFF.U))) && addr === CSRs.sireg.U
-  private val rwSireg_EX_VI = csrAccess && (privState.isModeVS && (vsiselect >= 0x30.U && vsiselect <= 0x3F.U)) && addr === CSRs.sireg.U
+    (privState.isModeVS && (vsiselect < 0x30.U || (vsiselect >= 0x40.U && vsiselect < 0x70.U) || vsiselect > 0xFF.U))) && addr === CSRs.sireg.U)
 
-  private val rwVSireg_EX_II = csrAccess && (privState.isModeM || privState.isModeHS) && vsiselectIsIllegal && addr === CSRs.vsireg.U
+  private val rwSireg_EX_VI = OptionWrapper(enableAIA, csrAccess && (privState.isModeVS && (vsiselect >= 0x30.U && vsiselect <= 0x3F.U)) && addr === CSRs.sireg.U)
 
-  private val rwSip_Sie_EX_VI = csrAccess && privState.isModeVS && hvictlVTI && (addr === CSRs.sip.U || addr === CSRs.sie.U)
+  private val rwVSireg_EX_II = OptionWrapper(enableAIA, csrAccess && (privState.isModeM || privState.isModeHS) && vsiselectIsIllegal && addr === CSRs.vsireg.U)
+
+  private val rwSip_Sie_EX_VI = OptionWrapper(enableAIA, csrAccess && privState.isModeVS && hvictlVTI && (addr === CSRs.sip.U || addr === CSRs.sie.U))
+
+  if(enableAIA) {
+    dontTouch(rwStopei_EX_II.get)
+    dontTouch(rwMireg_EX_II.get)
+    dontTouch(rwSireg_EX_II.get)
+    dontTouch(rwSireg_EX_VI.get)
+    dontTouch(rwVSireg_EX_II.get)
+    dontTouch(rwSip_Sie_EX_VI.get)
+  }
 
   /**
    * AIA end
@@ -266,10 +291,10 @@ class CSRPermitModule extends Module {
   // Todo: check correct
   io.out.EX_II :=  csrAccess && !privilegeLegal && (!privState.isVirtual || privState.isVirtual && csrIsM) ||
     rwIllegal || mnret_EX_II || mret_EX_II || sret_EX_II || rwSatp_EX_II || accessHPM_EX_II ||
-    rwStimecmp_EX_II || rwCustom_EX_II || fpVec_EX_II || dret_EX_II || xstateControlAccess_EX_II || rwStopei_EX_II ||
-    rwMireg_EX_II || rwSireg_EX_II || rwVSireg_EX_II
+    rwStimecmp_EX_II || rwCustom_EX_II || fpVec_EX_II || dret_EX_II || xstateControlAccess_EX_II || rwStopei_EX_II.getOrElse(false.B) ||
+    rwMireg_EX_II.getOrElse(false.B) || rwSireg_EX_II.getOrElse(false.B) || rwVSireg_EX_II.getOrElse(false.B)
   io.out.EX_VI := (csrAccess && !privilegeLegal && privState.isVirtual && !csrIsM ||
-    mnret_EX_VI || mret_EX_VI || sret_EX_VI || rwSatp_EX_VI || accessHPM_EX_VI || rwStimecmp_EX_VI || rwSireg_EX_VI || rwSip_Sie_EX_VI) && !rwIllegal || xstateControlAccess_EX_VI
+    mnret_EX_VI || mret_EX_VI || sret_EX_VI || rwSatp_EX_VI || accessHPM_EX_VI || rwStimecmp_EX_VI || rwSireg_EX_VI.getOrElse(false.B) || rwSip_Sie_EX_VI.getOrElse(false.B)) && !rwIllegal || xstateControlAccess_EX_VI
 
   io.out.hasLegalWen   := wen   && !(io.out.EX_II || io.out.EX_VI)
   io.out.hasLegalMNret := mnret && !mnretIllegal
@@ -283,7 +308,7 @@ class CSRPermitModule extends Module {
   dontTouch(regularPrivilegeLegal)
 }
 
-class CSRPermitIO extends Bundle {
+class CSRPermitIO(enableAIA: Boolean) extends Bundle {
   val in = Input(new Bundle {
     val csrAccess = new Bundle {
       val ren = Bool()
@@ -332,13 +357,13 @@ class CSRPermitIO extends Bundle {
       val sstateen0 = new SstateenBundle0
     }
     val aia = new Bundle {
-      val miselectIsIllegal = Bool()
-      val siselectIsIllegal = Bool()
-      val vsiselectIsIllegal = Bool()
-      val siselect = UInt(64.W)
-      val vsiselect = UInt(64.W)
-      val mvienSEIE = Bool()
-      val hvictlVTI = Bool()
+      val miselectIsIllegal   = OptionWrapper(enableAIA, Bool())
+      val siselectIsIllegal   = OptionWrapper(enableAIA, Bool())
+      val vsiselectIsIllegal  = OptionWrapper(enableAIA, Bool())
+      val siselect            = OptionWrapper(enableAIA, UInt(64.W))
+      val vsiselect           = OptionWrapper(enableAIA, UInt(64.W))
+      val mvienSEIE           = OptionWrapper(enableAIA, Bool())
+      val hvictlVTI           = OptionWrapper(enableAIA, Bool())
     }
   })
 

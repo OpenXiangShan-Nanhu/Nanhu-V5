@@ -9,9 +9,10 @@ import xiangshan.backend.fu.NewCSR.CSRConfig._
 import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRROField => RO, CSRRWField => RW, _}
 
 import scala.collection.immutable.SeqMap
+import utils.OptionWrapper
 
 trait CSRAIA { self: NewCSR with HypervisorLevel =>
-  val miselect = Module(new CSRModule("Miselect", new MISelectBundle) with HasISelectBundle {
+  val miselect = OptionWrapper(enableAIA, Module(new CSRModule("Miselect", new MISelectBundle) with HasISelectBundle {
     private val value = reg.ALL.asUInt
     inIMSICRange := value >= 0x70.U && value < 0x100.U
     isIllegal :=
@@ -19,26 +20,23 @@ trait CSRAIA { self: NewCSR with HypervisorLevel =>
       value >= 0x30.U && value < 0x40.U && value(0) === 1.U ||
       value >= 0x40.U && value < 0x70.U ||
       value >= 0x100.U
-  })
-    .setAddr(CSRs.miselect)
+  }).setAddr(CSRs.miselect))
 
-  val mireg = Module(new CSRModule("Mireg") with HasIregSink {
+  val mireg = OptionWrapper(enableAIA, Module(new CSRModule("Mireg") with HasIregSink {
     rdata := iregRead.mireg
-  })
-    .setAddr(CSRs.mireg)
+  }).setAddr(CSRs.mireg))
 
-  val mtopei = Module(new CSRModule("Mtopei", new TopEIBundle) with HasAIABundle {
-    regOut := aiaToCSR.mtopei
-  })
-    .setAddr(CSRs.mtopei)
+  val mtopei = OptionWrapper(enableAIA, Module(new CSRModule("Mtopei", new TopEIBundle) with HasAIABundle {
+    override def csrEnableAIA: Boolean = self.enableAIA
+    regOut := aiaToCSR.mtopei.getOrElse(0.U.asTypeOf(new TopEIBundle))
+  }).setAddr(CSRs.mtopei))
 
-  val mtopi = Module(new CSRModule("Mtopi", new TopIBundle) with HasInterruptFilterSink {
+  val mtopi = OptionWrapper(enableAIA, Module(new CSRModule("Mtopi", new TopIBundle) with HasInterruptFilterSink {
     regOut.IID   := topIR.mtopi.IID
     regOut.IPRIO := topIR.mtopi.IPRIO
-  })
-    .setAddr(CSRs.mtopi)
+  }).setAddr(CSRs.mtopi))
 
-  val siselect = Module(new CSRModule("Siselect", new SISelectBundle) with HasISelectBundle {
+  val siselect = OptionWrapper(enableAIA, Module(new CSRModule("Siselect", new SISelectBundle) with HasISelectBundle {
     private val value = reg.ALL.asUInt
     inIMSICRange := value >= 0x70.U && value < 0x100.U
     isIllegal :=
@@ -46,125 +44,103 @@ trait CSRAIA { self: NewCSR with HypervisorLevel =>
       value >= 0x30.U && value < 0x40.U && value(0) === 1.U ||
       value >= 0x40.U && value < 0x70.U ||
       value >= 0x100.U
-  })
-    .setAddr(CSRs.siselect)
+  }).setAddr(CSRs.siselect))
 
-  val sireg = Module(new CSRModule("Sireg") with HasIregSink {
+  val sireg = OptionWrapper(enableAIA, Module(new CSRModule("Sireg") with HasIregSink {
     rdata := iregRead.sireg
-  })
-    .setAddr(CSRs.sireg)
+  }).setAddr(CSRs.sireg))
 
-  val stopei = Module(new CSRModule("Stopei", new TopEIBundle) with HasAIABundle {
-    regOut := aiaToCSR.stopei
-  })
-    .setAddr(CSRs.stopei)
+  val stopei = OptionWrapper(enableAIA, Module(new CSRModule("Stopei", new TopEIBundle) with HasAIABundle {
+    override def csrEnableAIA: Boolean = self.enableAIA
+    regOut := aiaToCSR.stopei.getOrElse(0.U.asTypeOf(new TopEIBundle))
+  }).setAddr(CSRs.stopei))
 
-  val stopi = Module(new CSRModule("Stopi", new TopIBundle) with HasInterruptFilterSink {
+  val stopi = OptionWrapper(enableAIA, Module(new CSRModule("Stopi", new TopIBundle) with HasInterruptFilterSink {
     regOut.IID   := topIR.stopi.IID
     regOut.IPRIO := topIR.stopi.IPRIO
-  })
-    .setAddr(CSRs.stopi)
+  }).setAddr(CSRs.stopi))
 
-  val vsiselect = Module(new CSRModule("VSiselect", new VSISelectBundle) with HasISelectBundle {
+  val vsiselect = OptionWrapper(enableAIA, Module(new CSRModule("VSiselect", new VSISelectBundle) with HasISelectBundle {
     private val value = reg.ALL.asUInt
     inIMSICRange := value >= 0x70.U && value < 0x100.U
     isIllegal :=
       value < 0x70.U ||
       value >= 0x100.U
-  })
-    .setAddr(CSRs.vsiselect)
+  }).setAddr(CSRs.vsiselect))
 
-  val vsireg    = Module(new CSRModule("VSireg") with HasIregSink {
+  val vsireg    = OptionWrapper(enableAIA, Module(new CSRModule("VSireg") with HasIregSink {
     rdata := iregRead.sireg
-  })
-    .setAddr(CSRs.vsireg)
+  }).setAddr(CSRs.vsireg))
 
-  val vstopei   = Module(new CSRModule("VStopei", new TopEIBundle) with HasAIABundle {
-    regOut := aiaToCSR.vstopei
-  })
-    .setAddr(CSRs.vstopei)
+  val vstopei   = OptionWrapper(enableAIA, Module(new CSRModule("VStopei", new TopEIBundle) with HasAIABundle {
+    override def csrEnableAIA: Boolean = self.enableAIA
+    regOut := aiaToCSR.vstopei.getOrElse(0.U.asTypeOf(new TopEIBundle))
+  }).setAddr(CSRs.vstopei))
 
-  val vstopi = Module(new CSRModule("VStopi", new TopIBundle) with HasInterruptFilterSink {
+  val vstopi = OptionWrapper(enableAIA, Module(new CSRModule("VStopi", new TopIBundle) with HasInterruptFilterSink {
     regOut.IID   := topIR.vstopi.IID
     regOut.IPRIO := topIR.vstopi.IPRIO
-  })
-    .setAddr(CSRs.vstopi)
+  }).setAddr(CSRs.vstopi))
 
-  val miprio0 = Module(new CSRModule(s"Iprio0", new Iprio0Bundle))
-    .setAddr(0x30)
+  val miprio0 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio0", new Iprio0Bundle)).setAddr(0x30))
 
-  val miprio2 = Module(new CSRModule(s"Iprio2", new Iprio2Bundle))
-    .setAddr(0x32)
+  val miprio2 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio2", new Iprio2Bundle)).setAddr(0x32))
 
-  val miprio4 = Module(new CSRModule(s"Iprio4", new IprioBundle))
-    .setAddr(0x34)
+  val miprio4 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio4", new IprioBundle)).setAddr(0x34))
 
-  val miprio6 = Module(new CSRModule(s"Iprio6", new IprioBundle))
-    .setAddr(0x36)
+  val miprio6 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio6", new IprioBundle)).setAddr(0x36))
 
-  val miprio8 = Module(new CSRModule(s"Iprio8", new Iprio8Bundle))
-    .setAddr(0x38)
+  val miprio8 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio8", new Iprio8Bundle)).setAddr(0x38))
 
-  val miprio10 = Module(new CSRModule(s"Iprio10", new Iprio10Bundle))
-    .setAddr(0x3A)
+  val miprio10 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio10", new Iprio10Bundle)).setAddr(0x3A))
 
-  val miprio12 = Module(new CSRModule(s"Iprio12", new IprioBundle))
-    .setAddr(0x3C)
+  val miprio12 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio12", new IprioBundle)).setAddr(0x3C))
 
-  val miprio14 = Module(new CSRModule(s"Iprio14", new IprioBundle))
-    .setAddr(0x3E)
+  val miprio14 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio14", new IprioBundle)).setAddr(0x3E))
 
-  val siprio0 = Module(new CSRModule(s"Iprio0", new Iprio0Bundle))
-    .setAddr(0x30)
+  val siprio0 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio0", new Iprio0Bundle)).setAddr(0x30))
 
-  val siprio2 = Module(new CSRModule(s"Iprio2", new Iprio2Bundle))
-    .setAddr(0x32)
+  val siprio2 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio2", new Iprio2Bundle)).setAddr(0x32))
 
-  val siprio4 = Module(new CSRModule(s"Iprio4", new IprioBundle))
-    .setAddr(0x34)
+  val siprio4 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio4", new IprioBundle)).setAddr(0x34))
 
-  val siprio6 = Module(new CSRModule(s"Iprio6", new IprioBundle))
-    .setAddr(0x36)
+  val siprio6 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio6", new IprioBundle)).setAddr(0x36))
 
-  val siprio8 = Module(new CSRModule(s"Iprio8", new Iprio8Bundle))
-    .setAddr(0x38)
+  val siprio8 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio8", new Iprio8Bundle)).setAddr(0x38))
 
-  val siprio10 = Module(new CSRModule(s"Iprio10", new Iprio10Bundle))
-    .setAddr(0x3A)
+  val siprio10 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio10", new Iprio10Bundle)).setAddr(0x3A))
 
-  val siprio12 = Module(new CSRModule(s"Iprio12", new IprioBundle))
-    .setAddr(0x3C)
+  val siprio12 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio12", new IprioBundle)).setAddr(0x3C))
 
-  val siprio14 = Module(new CSRModule(s"Iprio14", new IprioBundle))
-    .setAddr(0x3E)
+  val siprio14 = OptionWrapper(enableAIA, Module(new CSRModule(s"Iprio14", new IprioBundle)).setAddr(0x3E))
 
-  val miregiprios: Seq[CSRModule[_]] = Seq(miprio0, miprio2, miprio4, miprio6, miprio8, miprio10, miprio12, miprio14)
+  val miregiprios: Seq[CSRModule[_]] = if(enableAIA) Seq(miprio0.get, miprio2.get, miprio4.get, miprio6.get, miprio8.get, miprio10.get, miprio12.get, miprio14.get) else Nil
 
-  val siregiprios: Seq[CSRModule[_]] = Seq(siprio0, siprio2, siprio4, siprio6, siprio8, siprio10, siprio12, siprio14)
+  val siregiprios: Seq[CSRModule[_]] = if(enableAIA) Seq(siprio0.get, siprio2.get, siprio4.get, siprio6.get, siprio8.get, siprio10.get, siprio12.get, siprio14.get) else Nil
 
-  val aiaCSRMods = Seq(
-    miselect,
-    mireg,
-    mtopei,
-    mtopi,
-    siselect,
-    sireg,
-    stopei,
-    stopi,
-    vsiselect,
-    vsireg,
-    vstopi,
-    vstopei,
-  )
+  val aiaCSRMods = if(enableAIA) Seq(
+    miselect.get,
+    mireg.get,
+    mtopei.get,
+    mtopi.get,
+    siselect.get,
+    sireg.get,
+    stopei.get,
+    stopi.get,
+    vsiselect.get,
+    vsireg.get,
+    vstopi.get,
+    vstopei.get,
+  ) else Seq()
 
-  val aiaSkipCSRs = Seq(
+  val aiaSkipCSRs = if(enableAIA) Seq(
     mtopei,
     mtopi,
     stopei,
     stopi,
     vstopi,
     vstopei,
-  )
+  ) else Seq()
 
   val aiaCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap.from(
     aiaCSRMods.map(csr => (csr.addr -> (csr.w -> csr.rdata))).iterator
@@ -174,13 +150,13 @@ trait CSRAIA { self: NewCSR with HypervisorLevel =>
     aiaCSRMods.map(csr => (csr.addr -> csr.regOut.asInstanceOf[CSRBundle].asUInt)).iterator
   )
 
-  private val miregRData: UInt = Mux1H(
-    miregiprios.map(prio => (miselect.rdata.asUInt === prio.addr.U) -> prio.rdata)
-  )
+  private val miregRData: UInt = if(enableAIA) Mux1H(
+    miregiprios.map(prio => (miselect.get.rdata.asUInt === prio.addr.U) -> prio.rdata)
+  ) else 0.U
 
-  private val siregRData: UInt = Mux1H(
-    siregiprios.map(prio => (siselect.rdata.asUInt === prio.addr.U) -> prio.rdata)
-  )
+  private val siregRData: UInt = if(enableAIA) Mux1H(
+    siregiprios.map(prio => (siselect.get.rdata.asUInt === prio.addr.U) -> prio.rdata)
+  ) else 0.U
 
   aiaCSRMods.foreach { mod =>
     mod match {
@@ -273,43 +249,45 @@ class Iprio10Bundle extends CSRBundle {
   val PrioHPRASEI = RW(31, 24).withReset(0.U)
 }
 
-class CSRToAIABundle extends Bundle {
+class CSRToAIABundle(enableAIA: Boolean) extends Bundle {
   private final val AddrWidth = 12
 
-  val addr = ValidIO(new Bundle {
+  val addr = OptionWrapper(enableAIA, ValidIO(new Bundle {
     val addr = UInt(AddrWidth.W)
     val v = VirtMode()
     val prvm = PrivMode()
-  })
+  }))
 
-  val vgein = UInt(VGEINWidth.W)
+  val vgein = OptionWrapper(enableAIA, UInt(VGEINWidth.W))
 
-  val wdata = ValidIO(new Bundle {
+  val wdata = OptionWrapper(enableAIA, ValidIO(new Bundle {
     val op = UInt(2.W)
     val data = UInt(XLEN.W)
-  })
+  }))
 
-  val mClaim = Bool()
-  val sClaim = Bool()
-  val vsClaim = Bool()
+  val mClaim = OptionWrapper(enableAIA, Bool())
+  val sClaim = OptionWrapper(enableAIA, Bool())
+  val vsClaim = OptionWrapper(enableAIA, Bool())
 }
 
-class AIAToCSRBundle extends Bundle {
+class AIAToCSRBundle(enableAIA: Boolean) extends Bundle {
   private val NumVSIRFiles = 63
-  val rdata = ValidIO(new Bundle {
+  val rdata = OptionWrapper(enableAIA, ValidIO(new Bundle {
     val data = UInt(XLEN.W)
     val illegal = Bool()
-  })
-  val meip    = Bool()
-  val seip    = Bool()
-  val vseip   = UInt(NumVSIRFiles.W)
-  val mtopei  = new TopEIBundle
-  val stopei  = new TopEIBundle
-  val vstopei = new TopEIBundle
+  }))
+  val meip    = OptionWrapper(enableAIA, Bool())
+  val seip    = OptionWrapper(enableAIA, Bool())
+  val vseip   = OptionWrapper(enableAIA, UInt(NumVSIRFiles.W))
+  val mtopei  = OptionWrapper(enableAIA, new TopEIBundle)
+  val stopei  = OptionWrapper(enableAIA, new TopEIBundle)
+  val vstopei = OptionWrapper(enableAIA, new TopEIBundle)
 }
 
 trait HasAIABundle { self: CSRModule[_] =>
-  val aiaToCSR = IO(Input(new AIAToCSRBundle))
+  def csrEnableAIA: Boolean = true
+  println(s"csrEnableAIA: $csrEnableAIA")
+  val aiaToCSR = IO(Input(new AIAToCSRBundle(csrEnableAIA)))
 }
 
 trait HasInterruptFilterSink { self: CSRModule[_] =>

@@ -324,6 +324,7 @@ case class XSCoreParameters
   softTLB: Boolean = false, // dpi-c l1tlb debug only
   softPTW: Boolean = false, // dpi-c l2tlb debug only
   softPTWDelay: Int = 1,
+  EnableAIA: Boolean = false,
   hasMbist:Boolean = false
 ){
   def vlWidth = log2Up(VLEN) + 1
@@ -810,6 +811,9 @@ trait HasXSParameter {
   def numCSRPCntLsu      = 8
   def numCSRPCntHc       = 5
   def printEventCoding   = true
+
+  def EnableAIA = coreParams.EnableAIA
+
   def hasMbist = coreParams.hasMbist
 
   // Vector load exception

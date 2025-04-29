@@ -454,37 +454,42 @@ class NactMiniConfig(n: Int = 1)extends Config(
   new NactConfig(n).alter((site, here, up) => {
     case XSTileKey => up(XSTileKey).map(_.copy(
         //Frontend
-        IBufSize = 32, //32
-        FtqSize = 32, //8
+        DecodeWidth = 2,      //2
+        RenameWidth = 2,      //4
+        IBufSize = 32,        //32
+        FtqSize = 32,         //8
         //Backend
-        RobSize = 72, //96
-        RabSize = 96, //96
+        RobSize = 72,         //96
+        RabSize = 96,         //96
         intPreg = IntPregParams(
-          numEntries = 64,  //128
+          numEntries = 48,    //128
           numRead = None,
           numWrite = None,
         ),
         vfPreg = VfPregParams(
-          numEntries = 120,  //160
+          numEntries = 96,    //160
           numRead = None,
           numWrite = None,
         ),
         v0Preg = V0PregParams(
-          numEntries = 8, //22
+          numEntries = 8,     //22
           numRead = None,
           numWrite = None,
         ),
         vlPreg = VlPregParams(
-          numEntries = 8, //32
+          numEntries = 8,     //32
           numRead = None,
           numWrite = None,
         ),
+        IntRegCacheSize = 4,
+        MemRegCacheSize = 4,
+        EnableMiniConfig = true,
         //Memblock
-        VirtualLoadQueueSize = 24,    //56
-        LoadQueueRAWSize = 12,        //24
-        LoadQueueReplaySize = 12,     //32
+        VirtualLoadQueueSize = 48,    //56
+        LoadQueueRAWSize = 32,        //24
+        LoadQueueReplaySize = 32,     //32
         LoadUncacheBufferSize = 4,    //8
-        StoreQueueSize = 16,          //32
+        StoreQueueSize = 32,          //32
         StoreBufferSize = 4,          //8
         StoreBufferThreshold = 3,     //7
         VlMergeBufferSize = 4,        //16

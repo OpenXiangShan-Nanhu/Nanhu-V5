@@ -37,6 +37,7 @@ import xiangshan.backend.datapath.WakeUpConfig
 import xiangshan.mem.prefetch.{PrefetcherParams, SMSParams}
 import xs.utils.perf.DebugOptionsKey
 import xs.utils.cache.EnableCHI
+import system.SoCParamsKey
 
 import scala.math.{max, min}
 
@@ -524,9 +525,7 @@ trait HasXSParameter {
   implicit val p: Parameters
 
   def PAddrBits = 48// p(SoCParamsKey).PAddrBits // PAddrBits is Phyical Memory addr bits
-  def PmemRanges = Seq((0x80000000L, 0x80000000000L)) // p(SoCParamsKey).PmemRanges
-  def PmemLowBounds = PmemRanges.unzip._1
-  def PmemHighBounds = PmemRanges.unzip._2
+  def PmemRanges = p(SoCParamsKey).PmemRanges
   final val PageOffsetWidth = 12
   def NodeIDWidth = 11 // p(SoCParamsKey).NodeIDWidthList(p(CHIIssue)) // NodeID width among NoC
   def L3notEmpty = true// p(SoCParamsKey).L3CacheParamsOpt.nonEmpty

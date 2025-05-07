@@ -1243,7 +1243,7 @@ class SMSPrefetcher()(implicit p: Parameters) extends BasePrefecher with HasSMSM
   pf_filter.io.gen_req.bits := pf_gen_req
   io.tlb_req <> pf_filter.io.tlb_req
   pf_filter.io.pmp_resp := io.pmp_resp
-  val is_valid_address = PmemRanges.map(range => pf_filter.io.l2_pf_addr.bits.inRange(range._1.U, range._2.U)).reduce(_ || _)
+  val is_valid_address = PmemRanges.map(_.cover(pf_filter.io.l2_pf_addr.bits)).reduce(_ || _)
 
   io.l2_req.valid := pf_filter.io.l2_pf_addr.valid && io.enable && is_valid_address
   io.l2_req.bits.addr := pf_filter.io.l2_pf_addr.bits

@@ -896,7 +896,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // as uncache op will not start in s_idle
   val cboMmioAddr = get_block_addr(addrModule.io.rdata_p(0))
   val deqCanDoCbo = GatedRegNext(LSUOpType.isCbo(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr))
-
+  dontTouch(deqCanDoCbo)
   // cbo inval/clean/flush: 
   when (deqCanDoCbo) {
     // disable uncache channel
@@ -904,10 +904,14 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
     when (io.cmoOpReq.fire) {
       uncacheState := s_resp
+      
     }
 
     when (uncacheState === s_resp) {
       when (io.cmoOpResp.fire) {
+        when (io.cmoOpResp.bits.nderr) {
+          uncacheUop.exceptionVec(storeAccessFault) := true.B
+        }
         uncacheState := s_wb
       }
     }
@@ -1000,6 +1004,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   when (io.mmioStout.fire) {
     allocated(deqPtr) := false.B
   }
+  assert(!(io.mmioStout.valid && deqCanDoCbo && !io.flushSbuffer.empty), "why sbuffer is not empty when cbo gonna writeback")
 
   when (cboZeroStout.fire) {
     cboZeroValid := false.B

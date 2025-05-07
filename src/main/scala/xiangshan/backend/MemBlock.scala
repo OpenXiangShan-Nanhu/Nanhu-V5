@@ -437,11 +437,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
           source.bits.miss || isFromStride(source.bits.meta_prefetch)
         )
         l1Prefetcher.stride_train(i).bits := source.bits
-        l1Prefetcher.stride_train(i).bits.uop.pc := Mux(
-          loadUnits(i).io.s2_ptr_chasing,
-          RegEnable(io.ooo_to_mem.loadPc(i), loadUnits(i).io.s2_prefetch_spec),
-          RegEnable(RegEnable(io.ooo_to_mem.loadPc(i), loadUnits(i).io.s1_prefetch_spec), loadUnits(i).io.s2_prefetch_spec)
-        )
+        l1Prefetcher.stride_train(i).bits.uop.pc := RegEnable(RegEnable(io.ooo_to_mem.loadPc(i), loadUnits(i).io.s1_prefetch_spec), loadUnits(i).io.s2_prefetch_spec)
       }
       l1Prefetcher
   }
@@ -532,8 +528,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // TODO: fast load wakeup
   val lsq     = Module(new LsqWrapper)
   val sbuffer = Module(new Sbuffer)
-  // if you wants to stress test dcache store, use FakeSbuffer
-  // val sbuffer = Module(new FakeSbuffer) // out of date now
   lsq.io := DontCare
   mdp.io.ldUpdate := lsq.io.mdpTrainUpdate
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
@@ -628,7 +622,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   val tlbreplay = WireInit(VecInit(Seq.fill(LdExuCnt)(false.B)))
   val tlbreplay_reg = GatedValidRegNext(tlbreplay)
-//  val dtlb_ld0_tlbreplay_reg = GatedValidRegNext(dtlb_ld(0).tlbreplay)
   val dtlb_ld0_tlbreplay_reg = GatedValidRegNext(dtlbIO.tlbreplay)
 
   dontTouch(tlbreplay)
@@ -788,8 +781,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     loadUnits(i).io.lsq.stld_nuke_query <> lsq.io.ldu.stld_nuke_query(i)
     loadUnits(i).io.lsq.mmio_paddr <> lsq.io.ldu.mmio_paddr(i)
     loadUnits(i).io.csrCtrl       <> csrCtrl
-    // dcache refill req
-  // loadUnits(i).io.refill           <> delayedDcacheRefill
     // dtlb
     loadUnits(i).io.tlb <> dtlb_reqs.take(LduCnt)(i)
     if(i == 0 ){ // port 0 assign to vsegmentUnit
@@ -818,11 +809,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         source.valid && source.bits.isFirstIssue && source.bits.miss
       )
       pf.io.ld_in(i).bits := source.bits
-      pf.io.ld_in(i).bits.uop.pc := Mux(
-        loadUnits(i).io.s2_ptr_chasing,
-        RegEnable(io.ooo_to_mem.loadPc(i), loadUnits(i).io.s2_prefetch_spec),
-        RegEnable(RegEnable(io.ooo_to_mem.loadPc(i), loadUnits(i).io.s1_prefetch_spec), loadUnits(i).io.s2_prefetch_spec)
-      )
+      pf.io.ld_in(i).bits.uop.pc := RegEnable(RegEnable(io.ooo_to_mem.loadPc(i), loadUnits(i).io.s1_prefetch_spec), loadUnits(i).io.s2_prefetch_spec)
     })
     l1PrefetcherOpt.foreach(pf => {
       // stream will train on all load sources
@@ -831,20 +818,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       pf.io.ld_in(i).bits := source.bits
     })
 
-    // load to load fast forward: load(i) prefers data(i)
-    val l2l_fwd_out = loadUnits.map(_.io.l2l_fwd_out)
-    val fastPriority = (i until LduCnt + HyuCnt) ++ (0 until i)
-    val fastValidVec = fastPriority.map(j => l2l_fwd_out(j).valid)
-    val fastDataVec = fastPriority.map(j => l2l_fwd_out(j).data)
-    val fastErrorVec = fastPriority.map(j => l2l_fwd_out(j).dly_ld_err)
-    val fastMatchVec = fastPriority.map(j => io.ooo_to_mem.loadFastMatch(i)(j))
-    loadUnits(i).io.l2l_fwd_in.valid := VecInit(fastValidVec).asUInt.orR
-    loadUnits(i).io.l2l_fwd_in.data := ParallelPriorityMux(fastValidVec, fastDataVec)
-    loadUnits(i).io.l2l_fwd_in.dly_ld_err := ParallelPriorityMux(fastValidVec, fastErrorVec)
-    val fastMatch = ParallelPriorityMux(fastValidVec, fastMatchVec)
-    loadUnits(i).io.ld_fast_match := fastMatch
-    loadUnits(i).io.ld_fast_imm := io.ooo_to_mem.loadFastImm(i)
-    loadUnits(i).io.ld_fast_fuOpType := io.ooo_to_mem.loadFastFuOpType(i)
+    loadUnits(i).io.l2l_fwd_in := DontCare
     loadUnits(i).io.replay <> lsq.io.replay(i)
 
     val l2_hint = RegNext(io.l2_hint)
@@ -1063,10 +1037,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       pf.io.st_in(i).bits.uop.pc := RegEnable(RegEnable(io.ooo_to_mem.storePc(i), stu.io.s1_prefetch_spec), stu.io.s2_prefetch_spec)
     })
 
-    // 1. sync issue info to store set LFST
-    // 2. when store issue, broadcast issued sqPtr to wake up the following insts
-    // io.stIn(i).valid := io.issue(exuParameters.LduCnt + i).valid
-    // io.stIn(i).bits := io.issue(exuParameters.LduCnt + i).bits
     io.mem_to_ooo.stIn(i).valid := stu.io.issue.valid
     io.mem_to_ooo.stIn(i).bits := stu.io.issue.bits
 
@@ -1264,11 +1234,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       }
     }
   }
-
-  // lsq.io.vecStoreRetire <> vsFlowQueue.io.sqRelease
-  // lsq.io.vecWriteback.valid := vlWrapper.io.uopWriteback.fire &&
-  //   vlWrapper.io.uopWriteback.bits.uop.vpu.lastUop
-  // lsq.io.vecWriteback.bits := vlWrapper.io.uopWriteback.bits
 
   // vector
   val vLoadCanAccept  = (0 until VlduCnt).map(i =>

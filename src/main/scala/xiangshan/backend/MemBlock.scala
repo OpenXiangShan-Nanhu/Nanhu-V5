@@ -732,7 +732,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     loadUnits(i).io.fast_rep_in <> loadUnits(i).io.fast_rep_out
 
     // SoftPrefetch to frontend (prefetch.i)
-    loadUnits(i).io.ifetchPrefetch <> io.ifetchPrefetch(i)
+    io.ifetchPrefetch(i).valid <> RegNext(loadUnits(i).io.ifetchPrefetch.valid,false.B)
+    io.ifetchPrefetch(i).bits <> RegEnable(loadUnits(i).io.ifetchPrefetch.bits,loadUnits(i).io.ifetchPrefetch.valid)
 
     // dcache access
     loadUnits(i).io.dcache <> dcache.io.lsu.load(i)

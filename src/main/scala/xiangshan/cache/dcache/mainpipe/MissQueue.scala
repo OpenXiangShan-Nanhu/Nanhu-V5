@@ -344,7 +344,7 @@ class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   io.cmo_resp.bits.nderr   := nderr
 
   assert(!(cmoState =/= s_idle && io.cmo_req.valid), "CBO can not continuously execute!")
-  assert(!(cmoState =/= s_wb && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
+  assert(!(cmoState =/= s_resp && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
 }
 
 

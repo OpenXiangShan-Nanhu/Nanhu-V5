@@ -1240,7 +1240,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
 
   // in L1DCache, we ony expect Grant[Data] and ReleaseAck
   bus.d.ready := false.B
-  when(bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData) {
+  when(bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.GrantData || bus.d.bits.opcode === TLMessages.CBOAck) {
     grantDataQueue.io.enq.valid := bus.d.valid
     grantDataQueue.io.enq.bits.tlDBundle := bus.d.bits
     bus.d.ready := grantDataQueue.io.enq.ready

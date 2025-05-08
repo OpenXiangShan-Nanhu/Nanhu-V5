@@ -318,7 +318,8 @@ class TlbSectorEntry(pageNormal: Boolean, pageSuper: Boolean)(implicit p: Parame
     val s2ppn_low = VecInit(Seq.fill(tlbcontiguous)(s2ppn_tmp(sectortlbwidth - 1, 0)))
     this.ppn := Mux(item.s2xlate === noS2xlate || item.s2xlate === onlyStage1, s1ppn, s2ppn)
     this.ppn_low := Mux(item.s2xlate === noS2xlate || item.s2xlate === onlyStage1, s1ppn_low, s2ppn_low)
-    this.vmid := item.s1.entry.vmid.getOrElse(0.U)
+//    this.vmid := item.s1.entry.vmid.getOrElse(0.U)
+    this.vmid := Mux(item.s2xlate === onlyStage2, item.s2.entry.vmid.getOrElse(0.U), item.s1.entry.vmid.getOrElse(0.U))
     this.g_pbmt := item.s2.entry.pbmt
     this.g_perm.applyS2(item.s2)
     this.s2xlate := item.s2xlate
@@ -879,7 +880,8 @@ class PtwEntry(tagLen: Int, hasPerm: Boolean = false, hasLevel: Boolean = false)
 
     tag := vpn(vpnLen - 1, vpnLen - tagLen)
     pbmt := pte.asTypeOf(new PteBundle().cloneType).pbmt
-    ppn := pte.asTypeOf(new PteBundle().cloneType).ppn
+    //ppn := pte.asTypeOf(new PteBundle().cloneType).ppn
+    ppn := pte.asTypeOf(new PteBundle().cloneType).getPPN()
     perm.map(_ := pte.asTypeOf(new PteBundle().cloneType).perm)
     this.asid := asid
     this.vmid.map(_ := vmid)
@@ -968,7 +970,8 @@ class PtwEntries(num: Int, tagLen: Int, level: Int, hasPerm: Boolean, ReservedBi
     for (i <- 0 until num) {
       val pte = data((i+1)*XLEN-1, i*XLEN).asTypeOf(new PteBundle)
       ps.pbmts(i) := pte.pbmt
-      ps.ppns(i) := pte.ppn
+      //ps.ppns(i) := pte.ppn
+      ps.ppns(i) := pte.getPPN()
       ps.vs(i)   := (pte.canRefill(levelUInt, s2xlate, pbmte, mode) && (if (hasPerm) pte.isLeaf() else !pte.isLeaf())) || (if (hasPerm) pte.onlyPf(levelUInt, s2xlate, pbmte) else false.B)
       ps.onlypf(i) := pte.onlyPf(levelUInt, s2xlate, pbmte)
       ps.perms.map(_(i) := pte.perm)
@@ -1292,7 +1295,8 @@ class PtwRespS2(implicit p: Parameters) extends PtwBundle {
     )
 
     val vpn_hit = level_match
-    val vmid_hit = Mux(this.s2xlate === allStage, s2.entry.vmid.getOrElse(0.U) === vmid, true.B)
+//    val vmid_hit = Mux(this.s2xlate === allStage, s2.entry.vmid.getOrElse(0.U) === vmid, true.B)
+    val vmid_hit = s1.entry.vmid.getOrElse(0.U) === vmid
     val vasid_hit = if (ignoreAsid) true.B else (s1.entry.asid === vasid)
     val all_onlyS1_hit = vpn_hit && vmid_hit && vasid_hit
     Mux(this.s2xlate === noS2xlate, noS2_hit,

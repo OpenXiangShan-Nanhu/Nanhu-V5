@@ -405,9 +405,12 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
     val req_s2xlate = Wire(UInt(2.W))
     req_s2xlate := MuxCase(noS2xlate, Seq(
       (!(virt_out(idx) || req_out(idx).hyperinst)) -> noS2xlate,
+//      (csr.vsatp.mode =/= 0.U && csr.hgatp.mode =/= 0.U) -> allStage,
+//      (csr.vsatp.mode === 0.U) -> onlyStage2,
+//      (csr.hgatp.mode === 0.U || req_need_gpa) -> onlyStage1
       (csr.vsatp.mode =/= 0.U && csr.hgatp.mode =/= 0.U) -> allStage,
       (csr.vsatp.mode === 0.U) -> onlyStage2,
-      (csr.hgatp.mode === 0.U || req_need_gpa) -> onlyStage1
+      (csr.hgatp.mode === 0.U) -> onlyStage1
     ))
 
     val ptw_just_back = ptw.resp.fire && req_s2xlate === ptw.resp.bits.s2xlate && ptw.resp.bits.hit(get_pn(req_out(idx).vaddr), csr.satp.asid, csr.vsatp.asid, csr.hgatp.vmid, true, false)
@@ -440,9 +443,12 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
     val miss_req_s2xlate = Wire(UInt(2.W))
     miss_req_s2xlate := MuxCase(noS2xlate, Seq(
       (!(virt_out(idx) || req_out(idx).hyperinst)) -> noS2xlate,
+//      (csr.vsatp.mode =/= 0.U && csr.hgatp.mode =/= 0.U) -> allStage,
+//      (csr.vsatp.mode === 0.U) -> onlyStage2,
+//      (csr.hgatp.mode === 0.U || req_need_gpa) -> onlyStage1
       (csr.vsatp.mode =/= 0.U && csr.hgatp.mode =/= 0.U) -> allStage,
       (csr.vsatp.mode === 0.U) -> onlyStage2,
-      (csr.hgatp.mode === 0.U || req_need_gpa) -> onlyStage1
+      (csr.hgatp.mode === 0.U) -> onlyStage1
     ))
     val miss_req_s2xlate_reg = RegEnable(miss_req_s2xlate, io.ptw.req(idx).fire)
     val hasS2xlate = miss_req_s2xlate_reg =/= noS2xlate
@@ -467,10 +473,15 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
       val s2xlate = io.ptw.resp.bits.s2xlate
       resp(idx).valid := true.B
       resp(idx).bits.miss := false.B
-      val s1_paddr = Cat(stage1.genPPN(get_pn(req_out(idx).vaddr)), get_off(req_out(idx).vaddr))
-      val s2_paddr = Cat(stage2.genPPNS2(get_pn(req_out(idx).vaddr)), get_off(req_out(idx).vaddr))
+//      val s1_paddr = Cat(stage1.genPPN(get_pn(req_out(idx).vaddr)), get_off(req_out(idx).vaddr))
+//      val s2_paddr = Cat(stage2.genPPNS2(get_pn(req_out(idx).vaddr)), get_off(req_out(idx).vaddr))
+      val s1_ppn = stage1.genPPN(get_pn(req_out(idx).vaddr))(ppnLen - 1, 0)
+      val s2_ppn = stage2.genPPNS2(get_pn(req_out(idx).vaddr))(ppnLen - 1, 0)
+      val s1_paddr = Cat(s1_ppn, get_off(req_out(idx).vaddr))
+      val s2_paddr = Cat(s2_ppn, get_off(req_out(idx).vaddr))
       for (d <- 0 until nRespDups) {
-        resp(idx).bits.paddr(d) := Mux(s2xlate =/= noS2xlate, s2_paddr, s1_paddr)
+//        resp(idx).bits.paddr(d) := Mux(s2xlate =/= noS2xlate, s2_paddr, s1_paddr)
+        resp(idx).bits.paddr(d) := Mux(s2xlate === onlyStage2 || s2xlate === allStage, s2_paddr, s1_paddr)
         resp(idx).bits.gpaddr(d) := s1_paddr
         pbmt_check(idx, d, io.ptw.resp.bits.s1.entry.pbmt, io.ptw.resp.bits.s2.entry.pbmt, s2xlate)
         perm_check(stage1, req_out(idx).cmd, idx, d, stage2, req_out(idx).hlvx, s2xlate)
@@ -595,7 +606,9 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
         (!RegNext(virt_in || req_in(i).bits.hyperinst)) -> noS2xlate,
         (csr.vsatp.mode =/= 0.U && csr.hgatp.mode =/= 0.U) -> allStage,
         (csr.vsatp.mode === 0.U) -> onlyStage2,
-        (csr.hgatp.mode === 0.U || req_need_gpa) -> onlyStage1
+//        (csr.hgatp.mode === 0.U || req_need_gpa) -> onlyStage1
+        (csr.hgatp.mode === 0.U) -> onlyStage1
+
       ))
       difftest.s2xlate := req_s2xlate
     }

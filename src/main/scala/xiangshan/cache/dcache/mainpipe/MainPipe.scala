@@ -443,13 +443,22 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
 
   // s3: write data, meta and tag
   val s3_valid = RegInit(false.B)
+  val s3_valid_dup = RegInit(false.B)
   val s3_req = RegEnable(s2_req, s2_fire_to_s3)
+  val s3_req_probe_dup = RegEnable(s2_req.probe, s2_fire_to_s3)
+  val s3_req_probe_param_dup = RegEnable(s2_req.probe_param, s2_fire_to_s3)
+  val s3_req_miss_dup = RegEnable(s2_req.miss, s2_fire_to_s3)
+  val s3_req_source_dup = RegEnable(s2_req.source, s2_fire_to_s3)
+
+
   val s3_miss_param = RegEnable(io.refill_info.bits.miss_param, s2_fire_to_s3)
   val s3_miss_dirty = RegEnable(io.refill_info.bits.miss_dirty, s2_fire_to_s3)
   val s3_tag = RegEnable(s2_tag, s2_fire_to_s3)
   val s3_idx = RegEnable(get_idx(s2_req.vaddr), s2_fire_to_s3)
   val s3_tag_match = RegEnable(s2_tag_match, s2_fire_to_s3)
   val s3_coh = RegEnable(s2_coh, s2_fire_to_s3)
+  val s3_coh_dup = RegEnable(s2_coh, s2_fire_to_s3)
+
   val s3_hit = RegEnable(s2_hit, s2_fire_to_s3)
   val s3_amo_hit = RegEnable(s2_amo_hit, s2_fire_to_s3)
   val s3_store_hit = RegEnable(s2_store_hit, s2_fire_to_s3)
@@ -484,7 +493,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val s3_need_replacement = RegEnable(s2_need_replacement, s2_fire_to_s3)
 
 
-  val (_, probe_shrink_param, _) = s3_coh.onProbe(s3_req.probe_param)
+  val (_, probe_shrink_param, _) = s3_coh_dup.onProbe(s3_req_probe_param_dup)
 
 
   val miss_update_meta = s3_req.miss
@@ -553,7 +562,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   // When we update update_resv_set, block all probe req in the next cycle
   // It should give Probe reservation set addr compare an independent cycle,
   // which will lead to better timing
-  io.update_resv_set := s3_valid && s3_lr && s3_can_do_amo
+  io.update_resv_set := s3_valid_dup && s3_lr && s3_can_do_amo
 
   when (s3_valid) {
     when (s3_req.addr === debug_sc_fail_addr) {
@@ -623,12 +632,12 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     s3_s_amoalu := true.B
   }
 
-  val miss_wb = s3_req.miss && s3_need_replacement && s3_coh.state =/= ClientStates.Nothing
+  val miss_wb = s3_req_miss_dup && s3_need_replacement && s3_coh.state =/= ClientStates.Nothing
   val probe_wb = s3_req.probe
   val replace_wb = s3_req.replace
   val need_wb = miss_wb || probe_wb || replace_wb
 
-  val (_, miss_shrink_param, _) = s3_coh.onCacheControl(M_FLUSH)
+  val (_, miss_shrink_param, _) = s3_coh_dup.onCacheControl(M_FLUSH)
   val writeback_param = Mux(probe_wb, probe_shrink_param, miss_shrink_param)
   val writeback_data = if (dcacheParameters.alwaysReleaseData) {
     s3_tag_match && s3_req.probe && s3_req.probe_need_data ||
@@ -638,9 +647,9 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   }
 
   val s3_probe_can_go = s3_req.probe && (io.tag_write.ready || !probe_update_meta)
-  val s3_store_can_go = s3_req.source === STORE_SOURCE.U && !s3_req.probe && (io.tag_write.ready || !store_update_meta) && (io.data_write.ready || !update_data) && !s3_req.miss
+  val s3_store_can_go = s3_req.source === STORE_SOURCE.U && !s3_req.probe && (io.tag_write.ready || !store_update_meta) && (io.data_write.ready || !update_data) && !s3_req_miss_dup
   val s3_amo_can_go = s3_amo_hit && (io.tag_write.ready || !amo_update_meta) && (io.data_write.ready || !update_data) && (s3_s_amoalu || !amo_wait_amoalu)
-  val s3_miss_can_go = s3_req.miss &&
+  val s3_miss_can_go = s3_req_miss_dup &&
     // (io.tag_write.ready || !amo_update_meta) &&
     (io.data_write.ready || !update_data) &&
     (s3_s_amoalu || !amo_wait_amoalu) &&
@@ -693,12 +702,14 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val s3_fire_for_tag_w_valid = s3_valid && s3_can_go_for_tag_w_valid
   when (s2_fire_to_s3) {
     s3_valid := true.B
+    s3_valid_dup := true.B
   }.elsewhen (s3_fire) {
     s3_valid := false.B
+    s3_valid_dup := false.B
   }
-  s3_ready := !s3_valid || s3_can_go
-  s3_s0_set_conflict := s3_valid && s3_idx === s0_idx
-  s3_s0_set_conflict_store := s3_valid && s3_idx === store_idx
+  s3_ready := !s3_valid_dup || s3_can_go
+  s3_s0_set_conflict := s3_valid_dup && s3_idx === s0_idx
+  s3_s0_set_conflict_store := s3_valid_dup && s3_idx === store_idx
   //assert(RegNext(!s3_valid || !(s3_req_source_dup_2 === STORE_SOURCE.U && !s3_req.probe) || s3_hit)) // miss store should never come to s3 ,fixed(reserve)
 
   when(s3_fire) {
@@ -745,13 +756,13 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.store_replay_resp.bits.replay := true.B
   io.store_replay_resp.bits.id := s2_req.id
 
-  io.store_hit_resp.valid := s3_valid && (s3_store_can_go || (s3_miss_can_go && s3_req.isStore))
+  io.store_hit_resp.valid := s3_valid_dup && (s3_store_can_go || (s3_miss_can_go && s3_req.isStore))
   io.store_hit_resp.bits.data := DontCare
   io.store_hit_resp.bits.miss := false.B
   io.store_hit_resp.bits.replay := false.B
   io.store_hit_resp.bits.id := s3_req.id
 
-  io.release_update.valid := s3_valid && (s3_store_can_go || s3_amo_can_go) && s3_hit && update_data
+  io.release_update.valid := s3_valid_dup && (s3_store_can_go || s3_amo_can_go) && s3_hit && update_data
   io.release_update.bits.addr := s3_req.addr
   io.release_update.bits.mask := Mux(s3_store_hit, s3_banked_store_wmask, banked_amo_wmask)
   io.release_update.bits.data := Mux(
@@ -771,7 +782,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.amo_hit_resp.bits.id := 0.U
 
   val atomic_hit_resp = Wire(new MainPipeResp)
-  atomic_hit_resp.source := s3_req.source
+  atomic_hit_resp.source := s3_req_source_dup
   atomic_hit_resp.data := Mux(s3_sc, s3_sc_resp, s3_data_word)
   atomic_hit_resp.miss := false.B
   atomic_hit_resp.miss_id := s3_req.miss_id
@@ -806,7 +817,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
 
   // if we use (prefetch_flag && meta =/= ClientStates.Nothing) for prefetch check
   // prefetch_flag_write can be omited
-  io.prefetch_flag_write.valid := s3_fire && s3_req.miss
+  io.prefetch_flag_write.valid := s3_fire && s3_req_miss_dup
   io.prefetch_flag_write.bits.idx := s3_idx
   io.prefetch_flag_write.bits.way_en := s3_way_en
   io.prefetch_flag_write.bits.source := s3_req.pf_source
@@ -869,7 +880,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     // replace
     s3_req.replace && !s3_replace_nothing ||
     // probe can go to wbq
-    s3_req.probe && (io.tag_write.ready || !probe_update_meta) ||
+      s3_req_probe_dup && (io.tag_write.ready || !probe_update_meta) ||
       // amo miss can go to wbq
       s3_req.miss &&
         // (io.tag_write.ready || !amo_update_meta_dup_for_wb_valid) &&
@@ -882,12 +893,12 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.wb.bits.param := writeback_param
   io.wb.bits.voluntary := s3_req.miss || s3_req.replace
   io.wb.bits.hasData := writeback_data
-  io.wb.bits.dirty := s3_coh === ClientStates.Dirty
+  io.wb.bits.dirty := s3_coh_dup === ClientStates.Dirty
   io.wb.bits.data := s3_data.asUInt
   io.wb.bits.delay_release := s3_req.replace
   io.wb.bits.miss_id := s3_req.miss_id
 
-  io.probe_resp.valid := s3_fire && s3_req.probe
+  io.probe_resp.valid := s3_fire && s3_req_probe_dup
   io.probe_resp.bits.id := s3_req.id
   io.probe_resp.bits.replay := io.wb.valid && !io.wb.ready
 

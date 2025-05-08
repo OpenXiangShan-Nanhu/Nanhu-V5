@@ -258,7 +258,8 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   val virtualLoadQueue = Module(new VirtualLoadQueue)  //  control state
   val exceptionBuffer = Module(new LqExceptionBuffer) // exception buffer
 
-  val redirectDupName = List("loadQueueRAW", "loadQueueReplay", "virtualLoadQueue", "exceptionBuffer")
+  val redirectDupName = List("loadQueueRAW", "loadQueueReplay", "exceptionBuffer",
+                            "virtualLoadQueue_0", "virtualLoadQueue_1", "virtualLoadQueue_2")
   val redirectReg = PipeDup("redirect", redirectDupName, io.redirect)
 
   /**
@@ -278,7 +279,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   /**
    * VirtualLoadQueue
    */
-  virtualLoadQueue.io.redirect := redirectReg("virtualLoadQueue")
+  virtualLoadQueue.io.redirect_dup.zipWithIndex.foreach(r => r._1 := redirectReg(s"virtualLoadQueue_${r._2}"))
   virtualLoadQueue.io.vecCommit     <> io.vecFeedback
   virtualLoadQueue.io.enq           <> io.enq
   virtualLoadQueue.io.ldin          <> io.ldu.ldin // from load_s3

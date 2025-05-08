@@ -38,7 +38,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   with HasVLSUParameters {
   val io = IO(new Bundle() {
     // control
-    val redirect    = Flipped(Valid(new Redirect))
+    val redirect_dup = Vec(3, Flipped(Valid(new Redirect)))
     val vecCommit   = Vec(VecLoadPipelineWidth, Flipped(ValidIO(new FeedbackToLsqIO)))
     // from dispatch
     val enq         = new LqEnqIO
@@ -161,18 +161,18 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   /**
    * update pointer
    */
-  val lastCycleRedirect = RegNext(io.redirect)
+  val lastCycleRedirect = RegNext(io.redirect_dup(0))
   val lastLastCycleRedirect = RegNext(lastCycleRedirect)
 
   val validCount = distanceBetween(enqPtrExt(0), deqPtr)
   val allowEnqueue = validCount <= (VirtualLoadQueueSize - LSQLdEnqWidth).U
   val canEnqueue = io.enq.req.map(_.valid)
   val needCancel = WireInit(VecInit((0 until VirtualLoadQueueSize).map(i => {
-    uop(i).robIdx.needFlush(io.redirect) && allocated(i)
+    uop(i).robIdx.needFlush(io.redirect_dup(0)) && allocated(i)
   })))
   val lastNeedCancel = GatedValidRegNext(needCancel)
   val enqCancel = canEnqueue.zip(io.enq.req).map{case (v , x) =>
-    v && x.bits.robIdx.needFlush(io.redirect)
+    v && x.bits.robIdx.needFlush(io.redirect_dup(1))
   }
   val enqCancelNum = enqCancel.zip(io.enq.req).map{case (v, req) =>
     Mux(v, req.bits.numLsElem, 0.U)
@@ -276,7 +276,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   val release1Cycle = io.release
   val release2Cycle = RegNext(release1Cycle)
   val queryRAR_canEnqueue = io.query.map(_.req.valid)
-  val queryRAR_cancelEnqueue = io.query.map(_.req.bits.uop.robIdx.needFlush(io.redirect))
+  val queryRAR_cancelEnqueue = io.query.map(_.req.bits.uop.robIdx.needFlush(io.redirect_dup(2)))
   val queryRAR_needEnqueue = queryRAR_canEnqueue.zip(queryRAR_cancelEnqueue).map { case (v, c) => v && !c}
   // Allocate logic
   val acceptedVec = Wire(Vec(LoadPipelineWidth, Bool()))

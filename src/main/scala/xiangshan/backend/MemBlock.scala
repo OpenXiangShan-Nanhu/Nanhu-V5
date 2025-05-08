@@ -353,6 +353,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   val redirect = RegNextWithEnable(io.redirect)
 
+  val redirectDupName = List("DTLB", "LoadUnit_0", "LoadUnit_1", "StoreUnit_0")
+  val redirectReg = PipeDup("redirect", redirectDupName, io.redirect)
+
   private val dcache = outer.dcache.module
   val uncache = outer.uncache.module
 
@@ -613,7 +616,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   dtlbIO.sfence := sfence
   dtlbIO.csr := tlbcsr
   dtlbIO.flushPipe.map(a => a := false.B) // non-block doesn't need
-  dtlbIO.redirect := redirect
+  dtlbIO.redirect := redirectReg("DTLB")
 
 
   val ptw_resp_next = RegEnable(ptwio.resp.bits, ptwio.resp.valid)
@@ -695,11 +698,14 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // The segment instruction is executed atomically.
   // After the segment instruction directive starts executing, no other instructions should be executed.
   val vSegmentFlag = RegInit(false.B)
+  val vSegmentFlag_dup = RegInit(false.B) //for fanout
 
   when(vSegmentUnit.io.in.fire){
     vSegmentFlag := true.B
+    vSegmentFlag_dup := true.B
   }.elsewhen(vSegmentUnit.io.uopwriteback.valid){
     vSegmentFlag := false.B
+    vSegmentFlag_dup := false.B
   }
 
   // LoadUnit
@@ -707,7 +713,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
 
   for (i <- 0 until LduCnt) {
-    loadUnits(i).io.redirect <> redirect
+    loadUnits(i).io.redirect <> redirectReg(s"LoadUnit_${i}")
     loadUnits(i).io.replayQValidCount := lsq.io.replayQValidCount
     mdp.io.ldReq(i) := loadUnits(i).io.s0_reqMDP
     loadUnits(i).io.s1_respMDP := mdp.io.ldResp(i)
@@ -759,7 +765,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       dcache.io.lsu.load(0).s0_pc                  := vSegmentUnit.io.rdcache.s0_pc
       dcache.io.lsu.load(0).s1_pc                  := vSegmentUnit.io.rdcache.s1_pc
       dcache.io.lsu.load(0).s2_pc                  := vSegmentUnit.io.rdcache.s2_pc
-    }.otherwise {
+    }
+    //for fanout
+    when(!vSegmentFlag_dup){
       loadUnits(i).io.dcache.req.ready             := dcache.io.lsu.load(i).req.ready
 
       dcache.io.lsu.load(0).pf_source              := loadUnits(0).io.dcache.pf_source
@@ -953,7 +961,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   for (i <- 0 until StaCnt) {
     val stu = storeUnits(i)
 
-    stu.io.redirect      <> redirect
+    stu.io.redirect      <> redirectReg(s"StoreUnit_${i}")
     stu.io.csrCtrl       <> csrCtrl
     stu.io.dcache        <> dcache.io.lsu.sta(i)
     stu.io.feedback_slow <> io.mem_to_ooo.staIqFeedback(i).feedbackSlow

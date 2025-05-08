@@ -1100,8 +1100,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                          !s2_in.tlbMiss
 
   val s2_full_fwd      = Wire(Bool())
-//  val s2_mem_amb       = s2_in.uop.storeSetHit &&
-//                         io.lsq.forward.addrInvalid && RegNext(io.lsq.forward.valid)
   val s2_mem_amb = RegNext(s1_mdpResp.valid && s1_mdpResp.bits.hit, false.B) &&
                   io.lsq.forward.addrInvalid && RegNext(io.lsq.forward.valid)
 
@@ -1270,16 +1268,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val debug_fwd_fail_rep = s2_fwd_fail && !s2_troublem && !s2_in.tlbMiss
   // if ld-ld violation is detected, replay from this inst from fetch
   val debug_ldld_nuke_rep = false.B // s2_ldld_violation && !s2_mmio && !s2_is_prefetch && !s2_in.tlbMiss
-
-//  // to be removed
-//  io.feedback_fast.valid                 := false.B
-//  io.feedback_fast.bits.hit              := false.B
-//  io.feedback_fast.bits.flushState       := s2_in.ptwBack
-//  io.feedback_fast.bits.robIdx           := s2_in.uop.robIdx
-//  io.feedback_fast.bits.sqIdx            := s2_in.uop.sqIdx
-//  io.feedback_fast.bits.lqIdx            := s2_in.uop.lqIdx
-//  io.feedback_fast.bits.sourceType       := RSFeedbackType.lrqFull
-//  io.feedback_fast.bits.dataInvalidSqIdx := DontCare
 
   io.ldCancel.ld1Cancel := false.B
 

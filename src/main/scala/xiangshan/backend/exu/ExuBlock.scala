@@ -14,7 +14,7 @@ import xiangshan.backend.fu.FuConfig.{AluCfg, BrhCfg}
 import xiangshan.backend.fu.vector.Bundles.{VType, Vxrm}
 import xiangshan.backend.fu.fpu.Bundles.Frm
 import xiangshan.backend.fu.wrapper.{CSRInput, CSRToDecode}
-import xiangshan.backend.datapath.NewPipelineConnect
+import scala.annotation.meta.param
 
 class ExuBlock(params: SchdBlockParams)(implicit p: Parameters) extends LazyModule with HasXSParameter {
   override def shouldBeInlined: Boolean = false
@@ -67,8 +67,8 @@ class ExuBlockImp(
         val wbMgu = Module(new SharedVfWbMgu(param.exuBlockParams.head, wbMguName).suggestName(wbMguName))
         wbMgu.io.ins.head <> exes.head.io.out
         wbMgu.io.ins.last <> exes.last.io.out
-        NewPipelineConnect(wbMgu.io.outs.head, out.head, out.head.fire, wbMgu.io.outs.head.bits.robIdx.needFlush(io.flush), Some("sharedVfWbPipe_hi"))
-        NewPipelineConnect(wbMgu.io.outs.last, out.last, out.last.fire, wbMgu.io.outs.last.bits.robIdx.needFlush(io.flush), Some("sharedVfWbPipe_lo"))
+        out.head <> wbMgu.io.outs.head
+        out.last <> wbMgu.io.outs.last
       }
     }
   }

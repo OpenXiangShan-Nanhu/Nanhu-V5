@@ -518,47 +518,47 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     s"\n\thas vlDiffRead: ${vlDiffRead.nonEmpty}")
 
   // regcache
-  private val regCache = Module(new RegCache())
+  // private val regCache = Module(new RegCache())
 
-  def IssueBundle2RCReadPort(issue: DecoupledIO[IssueQueueIssueBundle]): Vec[RCReadPort] = {
-    val readPorts = Wire(Vec(issue.bits.exuParams.numIntSrc, new RCReadPort(params.intSchdParams.get.rfDataWidth, RegCacheIdxWidth)))
-    readPorts.zipWithIndex.foreach{ case (r, idx) =>
-      r.ren  := issue.valid && issue.bits.common.dataSources(idx).readRegCache
-      r.addr := issue.bits.rcIdx.get(idx)
-      r.data := DontCare
-    }
-    readPorts
-  }
+  // def IssueBundle2RCReadPort(issue: DecoupledIO[IssueQueueIssueBundle]): Vec[RCReadPort] = {
+  //   val readPorts = Wire(Vec(issue.bits.exuParams.numIntSrc, new RCReadPort(params.intSchdParams.get.rfDataWidth, RegCacheIdxWidth)))
+  //   readPorts.zipWithIndex.foreach{ case (r, idx) =>
+  //     r.ren  := issue.valid && issue.bits.common.dataSources(idx).readRegCache
+  //     r.addr := issue.bits.rcIdx.get(idx)
+  //     r.data := DontCare
+  //   }
+  //   readPorts
+  // }
 
-  private val regCacheReadReq = fromIntIQ.flatten.filter(_.bits.exuParams.numIntSrc > 0).flatMap(IssueBundle2RCReadPort(_)) ++ 
-                                fromMemIQ.flatten.filter(_.bits.exuParams.numIntSrc > 0).flatMap(IssueBundle2RCReadPort(_))
-  private val regCacheReadData = regCache.io.readPorts.map(_.data)
+  // private val regCacheReadReq = fromIntIQ.flatten.filter(_.bits.exuParams.numIntSrc > 0).flatMap(IssueBundle2RCReadPort(_)) ++ 
+  //                               fromMemIQ.flatten.filter(_.bits.exuParams.numIntSrc > 0).flatMap(IssueBundle2RCReadPort(_))
+  // private val regCacheReadData = regCache.io.readPorts.map(_.data)
 
-  println(s"[DataPath] regCache readPorts size: ${regCache.io.readPorts.size}, regCacheReadReq size: ${regCacheReadReq.size}")
-  require(regCache.io.readPorts.size == regCacheReadReq.size, "reg cache's readPorts size should be equal to regCacheReadReq")
+  // println(s"[DataPath] regCache readPorts size: ${regCache.io.readPorts.size}, regCacheReadReq size: ${regCacheReadReq.size}")
+  // require(regCache.io.readPorts.size == regCacheReadReq.size, "reg cache's readPorts size should be equal to regCacheReadReq")
 
-  regCache.io.readPorts.zip(regCacheReadReq).foreach{ case (r, req) => 
-    r.ren := req.ren
-    r.addr := req.addr
-  }
+  // regCache.io.readPorts.zip(regCacheReadReq).foreach{ case (r, req) => 
+  //   r.ren := req.ren
+  //   r.addr := req.addr
+  // }
 
-  val s1_RCReadData: MixedVec[MixedVec[Vec[UInt]]] = Wire(MixedVec(toExu.map(x => MixedVec(x.map(_.bits.src.cloneType).toSeq))))
-  s1_RCReadData.foreach(_.foreach(_.foreach(_ := 0.U)))
-  s1_RCReadData.zip(toExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten
-    .zip(regCacheReadData.take(params.getIntExuRCReadSize)).foreach{ case (s1_data, rdata) => 
-      s1_data := rdata
-    }
-  s1_RCReadData.zip(toExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten
-    .zip(regCacheReadData.takeRight(params.getMemExuRCReadSize)).foreach{ case (s1_data, rdata) => 
-      s1_data := rdata
-    }
+  // val s1_RCReadData: MixedVec[MixedVec[Vec[UInt]]] = Wire(MixedVec(toExu.map(x => MixedVec(x.map(_.bits.src.cloneType).toSeq))))
+  // s1_RCReadData.foreach(_.foreach(_.foreach(_ := 0.U)))
+  // s1_RCReadData.zip(toExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten
+  //   .zip(regCacheReadData.take(params.getIntExuRCReadSize)).foreach{ case (s1_data, rdata) => 
+  //     s1_data := rdata
+  //   }
+  // s1_RCReadData.zip(toExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten
+  //   .zip(regCacheReadData.takeRight(params.getMemExuRCReadSize)).foreach{ case (s1_data, rdata) => 
+  //     s1_data := rdata
+  //   }
 
-  println(s"[DataPath] s1_RCReadData.int.size: ${s1_RCReadData.zip(toExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.int.size: ${params.getIntExuRCReadSize}")
-  println(s"[DataPath] s1_RCReadData.mem.size: ${s1_RCReadData.zip(toExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.mem.size: ${params.getMemExuRCReadSize}")
+  // println(s"[DataPath] s1_RCReadData.int.size: ${s1_RCReadData.zip(toExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.int.size: ${params.getIntExuRCReadSize}")
+  // println(s"[DataPath] s1_RCReadData.mem.size: ${s1_RCReadData.zip(toExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.mem.size: ${params.getMemExuRCReadSize}")
 
-  io.toWakeupQueueRCIdx := regCache.io.toWakeupQueueRCIdx
-  io.toBypassNetworkRCData := s1_RCReadData
-  regCache.io.writePorts := io.fromBypassNetwork
+  io.toWakeupQueueRCIdx := DontCare // regCache.io.toWakeupQueueRCIdx
+  io.toBypassNetworkRCData := DontCare // s1_RCReadData
+  // regCache.io.writePorts := io.fromBypassNetwork
 
   val s1_addrOHs = Reg(MixedVec(
     fromIQ.map(x => MixedVec(x.map(_.bits.addrOH.cloneType).toSeq)).toSeq

@@ -64,7 +64,7 @@ class Dispatch2Iq(val schdBlockParams : SchdBlockParams)(implicit p: Parameters)
     case _ => 0
   }
   val numRCTagTableStateRead = schdBlockParams.schdType match {
-    case IntScheduler() | MemScheduler() => numRegSrcInt * numIn
+    case IntScheduler() | MemScheduler() => 0 //numRegSrcInt * numIn
     case _ => 0
   }
 

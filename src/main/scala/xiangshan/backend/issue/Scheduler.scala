@@ -171,10 +171,10 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
   }
 
   // RegCacheTagTable Module
-  val rcTagTable = schdType match {
-    case IntScheduler() | MemScheduler() => Some(Module(new RegCacheTagTable(dispatch2Iq.numRCTagTableStateRead)))
-    case _ => None
-  }
+  // val rcTagTable = schdType match {
+  //   case IntScheduler() | MemScheduler() => Some(Module(new RegCacheTagTable(dispatch2Iq.numRCTagTableStateRead)))
+  //   case _ => None
+  // }
 
   dispatch2Iq.io match { case dp2iq =>
     dp2iq.redirect <> io.fromCtrlBlock.flush
@@ -183,7 +183,7 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     dp2iq.readVfState.foreach(_ <> vfBusyTable.get.io.read)
     dp2iq.readV0State.foreach(_ <> v0BusyTable.get.io.read)
     dp2iq.readVlState.foreach(_ <> vlBusyTable.get.io.read)
-    dp2iq.readRCTagTableState.foreach(_ <> rcTagTable.get.io.readPorts)
+    // dp2iq.readRCTagTableState.foreach(_ <> rcTagTable.get.io.readPorts)
   }
 
   intBusyTable match {
@@ -250,17 +250,17 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
     case None =>
   }
 
-  rcTagTable match {
-    case Some(rct) =>
-      rct.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
-        btAllocPregs.valid := dpAllocPregs.isInt
-        btAllocPregs.bits := dpAllocPregs.preg
-      }
-      rct.io.wakeupFromIQ := io.fromSchedulers.wakeupVec
-      rct.io.og0Cancel := io.fromDataPath.og0Cancel
-      rct.io.ldCancel := io.ldCancel
-    case None =>
-  }
+  // rcTagTable match {
+  //   case Some(rct) =>
+  //     rct.io.allocPregs.zip(io.fromDispatch.allocPregs).foreach { case (btAllocPregs, dpAllocPregs) =>
+  //       btAllocPregs.valid := dpAllocPregs.isInt
+  //       btAllocPregs.bits := dpAllocPregs.preg
+  //     }
+  //     rct.io.wakeupFromIQ := io.fromSchedulers.wakeupVec
+  //     rct.io.og0Cancel := io.fromDataPath.og0Cancel
+  //     rct.io.ldCancel := io.ldCancel
+  //   case None =>
+  // }
 
   val wakeupFromIntWBVec = Wire(params.genIntWBWakeUpSinkValidBundle)
   val wakeupFromVfWBVec = Wire(params.genVfWBWakeUpSinkValidBundle)

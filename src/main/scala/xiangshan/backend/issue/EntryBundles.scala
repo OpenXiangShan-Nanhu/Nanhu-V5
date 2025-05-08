@@ -470,12 +470,12 @@ object EntryBundles extends HasCircularQueuePtrHelper {
                                                             } else {
                                                               MuxCase(status.srcStatus(srcIdx).dataSources.value, Seq(
                                                                 wakeupByIQWithoutCancel                        -> DataSource.forward,
-                                                                useRegCache                                    -> DataSource.regcache,
+                                                                // useRegCache                                    -> DataSource.regcache,
                                                               ))
                                                             }
                                                           else {
                                                               MuxCase(status.srcStatus(srcIdx).dataSources.value, Seq(
-                                                                useRegCache                                    -> DataSource.regcache,
+                                                                // useRegCache                                    -> DataSource.regcache,
                                                               ))
                                                           })
     }

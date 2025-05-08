@@ -162,7 +162,7 @@ case class ExeUnitParams(
     */
   def fuLatencyMap: Map[FuType.Value, Int] = {
     if (latencyCertain)
-      if(isSharedVf) fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      fuConfigs.map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else if (hasUncertainLatencyVal)
       fuConfigs.map(x => (x.fuType, x.latency.uncertainLatencyVal)).toMap.filter(_._2.nonEmpty).map(x => (x._1, x._2.get))
     else
@@ -170,7 +170,7 @@ case class ExeUnitParams(
   }
   def wakeUpFuLatencyMap: Map[FuType.Value, Int] = {
     if (latencyCertain)
-      if(isSharedVf) fuConfigs.filterNot(_.hasNoDataWB).map(x => (x.fuType, x.latency.latencyVal.get + 1)).toMap else fuConfigs.filterNot(_.hasNoDataWB).map(x => (x.fuType, x.latency.latencyVal.get)).toMap
+      fuConfigs.filterNot(_.hasNoDataWB).map(x => (x.fuType, x.latency.latencyVal.get)).toMap
     else if (hasUncertainLatencyVal)
       fuConfigs.filterNot(_.hasNoDataWB).map(x => (x.fuType, x.latency.uncertainLatencyVal.get)).toMap
     else

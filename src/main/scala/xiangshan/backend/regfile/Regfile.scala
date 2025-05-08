@@ -266,7 +266,7 @@ object VfRegFile {
     wen          : Seq[Seq[Bool]],
     wenH         : Seq[Seq[Bool]],
     wenL         : Seq[Seq[Bool]],
-    waddr        : Seq[UInt],
+    waddr        : Seq[Seq[UInt]],
     wdata        : Seq[UInt],
     vecdebugReadAddr: Option[Seq[UInt]],
     vecdebugReadData: Option[Vec[UInt]],
@@ -278,7 +278,7 @@ object VfRegFile {
     require(splitNum == wen.length, "splitNum should be equal to length of wen vec")
     if (splitNum == 1) {
       Regfile(
-        name, numEntries, raddr, rdata, wen.head, waddr, wdata,
+        name, numEntries, raddr, rdata, wen.head, waddr.head, wdata,
         hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugReadData, fpdebugReadAddr, fpdebugReadData)
     } else {
       val dataWidth = 64
@@ -298,13 +298,13 @@ object VfRegFile {
         if(i == 0) {
           val realWen = (wen(i).asUInt & wenL(i).asUInt).asBools
           Regfile(
-            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr, wdataVec(i),
+            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr(i), wdataVec(i),
             hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
           )
         } else if(i == 1) {
           val realWen = (wen(i).asUInt & wenH(i).asUInt).asBools
           Regfile(
-            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr, wdataVec(i),
+            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr(i), wdataVec(i),
             hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
           )
         }

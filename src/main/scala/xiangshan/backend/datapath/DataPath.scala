@@ -299,7 +299,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val vfRfWen = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
   private val vfRfWenH = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
   private val vfRfWenL = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
-  private val vfRfWaddr = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W)))
+  private val vfRfWaddr = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W))))
   private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
 
   private val v0RfSplitNum = VLEN / XLEN
@@ -308,7 +308,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val v0RfWen = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
   private val v0RfWenH = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
   private val v0RfWenL = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
-  private val v0RfWaddr = Wire(Vec(io.fromV0Wb.length, UInt(log2Up(V0PhyRegs).W)))
+  private val v0RfWaddr = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, UInt(log2Up(V0PhyRegs).W))))
   private val v0RfWdata = Wire(Vec(io.fromV0Wb.length, UInt(V0Data().dataWidth.W)))
 
   private val vlRfRaddr = Wire(Vec(params.numPregRd(params.vlPregParams), UInt(log2Up(VlPhyRegs).W)))
@@ -403,9 +403,21 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
       intRfRaddr(portIdx) := 0.U
   }
 
-  vfRfWaddr := io.fromVfWb.map(x => RegEnable(x.addr, x.wen)).toSeq
+  val vfRfWaddr_dup = Reg(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W))))
+  vfRfWaddr_dup.foreach(_.lazyZip(io.fromVfWb).foreach { case (wen_dup, wb) =>
+    when(wb.wen) {
+      wen_dup := wb.addr
+    }
+  })
+
+  vfRfWaddr := vfRfWaddr_dup
   vfRfWdata := io.fromVfWb.map(x => RegEnable(x.data, x.wen)).toSeq
-  vfRfWen.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.wen))).foreach { case (wenSink, wenSource) => wenSink := wenSource } )
+
+  val vfRfWen_dup = Reg(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
+  vfRfWen_dup.foreach(_.lazyZip(io.fromVfWb.map(_.wen)).foreach { case (wen_dup, wen) => wen_dup := wen })
+  
+  vfRfWen.zip(vfRfWen_dup).foreach { case (wenSink, wenSource) => wenSink := wenSource }
+
   vfRfWenH.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenH))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
   vfRfWenL.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenL))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
 
@@ -416,7 +428,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
       vfRfRaddr(portIdx) := 0.U
   }
 
-  v0RfWaddr := io.fromV0Wb.map(x => RegEnable(x.addr, x.wen)).toSeq
+  v0RfWaddr.foreach(_ := io.fromV0Wb.map(x => RegEnable(x.addr, x.wen)).toSeq)
   v0RfWdata := io.fromV0Wb.map(x => RegEnable(x.data, x.wen)).toSeq
   v0RfWen.foreach(_.zip(io.fromV0Wb.map(x => RegNext(x.wen))).foreach { case (wenSink, wenSource) => wenSink := wenSource } )
   v0RfWenH.foreach(_.zip(io.fromV0Wb.map(x => RegNext(x.v0WenH))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
@@ -841,7 +853,7 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   vf_regcache_enqPtr := vf_regcache_enqPtr + PopCount(vfRfWen.head)
   for (i <- vfRfWen.indices) {
     when (vfRfWen.head(i)) {
-      vf_regcache_tag(vf_regcache_enqPtr + PopCount(vfRfWen.head.take(i))) := vfRfWaddr(i)
+      vf_regcache_tag(vf_regcache_enqPtr + PopCount(vfRfWen.head.take(i))) := vfRfWaddr.head(i)
     }
   }
 

@@ -168,34 +168,35 @@ class BloomFilter(n: Int, bypass: Boolean = true)(implicit p: Parameters) extend
     val resp = Vec(LoadPipelineWidth, ValidIO(new BloomRespBundle))
   })
 
-  val data = RegInit(0.U(n.W))
-  val data_next = Wire(Vec(n, Bool()))
-
-  for (i <- 0 until n) {
-    when(io.clr.valid && i.U === io.clr.bits.addr) {
-      data_next(i) := false.B
-    }.elsewhen(io.set.valid && i.U === io.set.bits.addr) {
-      data_next(i) := true.B
-    }.otherwise {
-      data_next(i) := data(i).asBool
-    }
-  }
-
-  // resp will valid in next cycle
-  for(i <- 0 until LoadPipelineWidth) {
-    io.resp(i).valid := GatedValidRegNext(io.query(i).valid)
-    if(bypass) {
-      io.resp(i).bits.res := RegEnable(data_next(io.query(i).bits.addr), io.query(i).valid)
-    }else {
-      io.resp(i).bits.res := RegEnable(data(io.query(i).bits.addr), io.query(i).valid)
-    }
-  }
-
-  data := data_next.asUInt
-
-  assert(PopCount(data ^ data_next.asUInt) <= 2.U)
-
-  XSPerfHistogram("valid_nums", PopCount(data), true.B, 0, n + 1, 20)
+//  val data = RegInit(0.U(n.W))
+//  val data_next = Wire(Vec(n, Bool()))
+//
+//  for (i <- 0 until n) {
+//    when(io.clr.valid && i.U === io.clr.bits.addr) {
+//      data_next(i) := false.B
+//    }.elsewhen(io.set.valid && i.U === io.set.bits.addr) {
+//      data_next(i) := true.B
+//    }.otherwise {
+//      data_next(i) := data(i).asBool
+//    }
+//  }
+//
+//  // resp will valid in next cycle
+//  for(i <- 0 until LoadPipelineWidth) {
+//    io.resp(i).valid := GatedValidRegNext(io.query(i).valid)
+//    if(bypass) {
+//      io.resp(i).bits.res := RegEnable(data_next(io.query(i).bits.addr), io.query(i).valid)
+//    }else {
+//      io.resp(i).bits.res := RegEnable(data(io.query(i).bits.addr), io.query(i).valid)
+//    }
+//  }
+//
+//  data := data_next.asUInt
+//
+//  assert(PopCount(data ^ data_next.asUInt) <= 2.U)
+//
+//  XSPerfHistogram("valid_nums", PopCount(data), true.B, 0, n + 1, 20)
+  io <> DontCare
 }
 
 class FDPrefetcherMonitorBundle()(implicit p: Parameters) extends XSBundle {

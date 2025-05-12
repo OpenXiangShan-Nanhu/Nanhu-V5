@@ -187,6 +187,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val intExuBlock = wrapper.intExuBlock.get.module
   private val vfExuBlock = wrapper.vfExuBlock.get.module
   private val bypassNetwork = Module(new BypassNetwork)
+  private val bypassNetworkVf = Module(new BypassNetworkVf)
   private val wbDataPath = Module(new WbDataPath(params))
   private val wbFuBusyTable = wrapper.wbFuBusyTable.module
   private val vecExcpMod = Module(new VecExcpDataMergeModule)
@@ -346,7 +347,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   println(s"[Backend] bypassNetwork.io.fromDataPath.mem: ${bypassNetwork.io.fromDataPath.mem.size}, dataPath.io.toMemExu: ${dataPath.io.toMemExu.size}")
   bypassNetwork.io.fromDataPath.int <> dataPath.io.toIntExu
-  bypassNetwork.io.fromDataPath.vf <> dataPath.io.toVfExu
+  
   bypassNetwork.io.fromDataPath.mem.zip(dataPath.io.toMemExu).map(x => (x._1, x._2)).foreach {
     case (bypassMem, datapathMem) => bypassMem <> datapathMem
   }
@@ -354,7 +355,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   bypassNetwork.io.fromDataPath.immInfo := dataPath.io.og1ImmInfo
   bypassNetwork.io.fromDataPath.rcData := dataPath.io.toBypassNetworkRCData
   bypassNetwork.io.fromExus.connectExuOutput(_.int)(intExuBlock.io.out)
-  bypassNetwork.io.fromExus.connectExuOutput(_.vf)(vfExuBlock.io.out)
 
   require(bypassNetwork.io.fromExus.mem.flatten.size == io.mem.writeBack.size,
     s"bypassNetwork.io.fromExus.mem.flatten.size(${bypassNetwork.io.fromExus.mem.flatten.size}: ${bypassNetwork.io.fromExus.mem.map(_.size)}, " +
@@ -440,14 +440,24 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   io.fenceio <> fenceio
 
   vfExuBlock.io.flush := ctrlBlock.io.toExuBlock.flush
+
+  bypassNetworkVf.io.fromDataPath.uop <> dataPath.io.toVfExu
+  bypassNetworkVf.io.fromDataPath.imm := dataPath.io.og1ImmInfoVf
+  bypassNetworkVf.io.fromVfExu.flatten.zip(vfExuBlock.io.out.flatten).foreach { case (sink, source) =>
+    sink.valid := source.valid
+    sink.bits.pdest := source.bits.pdest
+    sink.bits.intWen := DontCare
+    sink.bits.data := source.bits.data(0)
+  }
+
   for (i <- 0 until vfExuBlock.io.in.size) {
     for (j <- 0 until vfExuBlock.io.in(i).size) {
-      val shouldLdCancel = LoadShouldCancel(bypassNetwork.io.toExus.vf(i)(j).bits.loadDependency, io.mem.ldCancel)
+      val shouldLdCancel = LoadShouldCancel(bypassNetworkVf.io.toVfExu(i)(j).bits.loadDependency, io.mem.ldCancel)
       NewPipelineConnect(
-        bypassNetwork.io.toExus.vf(i)(j), vfExuBlock.io.in(i)(j), vfExuBlock.io.in(i)(j).fire,
+        bypassNetworkVf.io.toVfExu(i)(j), vfExuBlock.io.in(i)(j), vfExuBlock.io.in(i)(j).fire,
         Mux(
-          bypassNetwork.io.toExus.vf(i)(j).fire,
-          bypassNetwork.io.toExus.vf(i)(j).bits.robIdx.needFlush(ctrlBlock.io.toExuBlock.flush) || shouldLdCancel,
+          bypassNetworkVf.io.toVfExu(i)(j).fire,
+          bypassNetworkVf.io.toVfExu(i)(j).bits.robIdx.needFlush(ctrlBlock.io.toExuBlock.flush) || shouldLdCancel,
           vfExuBlock.io.in(i)(j).bits.robIdx.needFlush(ctrlBlock.io.toExuBlock.flush)
         ),
         Option("bypassNetwork2vfExuBlock")

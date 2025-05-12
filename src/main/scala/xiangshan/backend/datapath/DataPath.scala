@@ -67,7 +67,9 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
 
   val toMemExu: MixedVec[MixedVec[DecoupledIO[ExuInput]]] = memSchdParams.genExuInputBundle
 
-  val og1ImmInfo: Vec[ImmInfo] = Output(Vec(params.allExuParams.size, new ImmInfo))
+  val og1ImmInfo: Vec[ImmInfo] = Output(Vec((toIntExu.flatten ++ toMemExu.flatten).size, new ImmInfo))
+
+  val og1ImmInfoVf: Vec[ImmInfo] = Output(Vec((toVfExu.flatten).size, new ImmInfo))
 
   val fromIntWb: MixedVec[RfWritePortWithConfig] = MixedVec(params.genIntWriteBackBundle)
 
@@ -84,7 +86,7 @@ class DataPathIO()(implicit p: Parameters, params: BackendParams) extends XSBund
   )
 
   val toBypassNetworkRCData: MixedVec[MixedVec[Vec[UInt]]] = MixedVec(
-    Seq(intSchdParams, vfSchdParams, memSchdParams).map(schd => schd.issueBlockParams.map(iq => 
+    Seq(intSchdParams, memSchdParams).map(schd => schd.issueBlockParams.map(iq => 
       MixedVec(iq.exuBlockParams.map(exu => Output(Vec(exu.numRegSrc, UInt(exu.srcDataBitsMax.W)))))
     )).flatten
   )
@@ -542,19 +544,20 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     r.addr := req.addr
   }
 
-  val s1_RCReadData: MixedVec[MixedVec[Vec[UInt]]] = Wire(MixedVec(toExu.map(x => MixedVec(x.map(_.bits.src.cloneType).toSeq))))
+  val rcExu = (toIntExu ++ toMemExu).toSeq
+  val s1_RCReadData: MixedVec[MixedVec[Vec[UInt]]] = Wire(MixedVec(rcExu.map(x => MixedVec(x.map(_.bits.src.cloneType).toSeq))))
   s1_RCReadData.foreach(_.foreach(_.foreach(_ := 0.U)))
-  s1_RCReadData.zip(toExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten
+  s1_RCReadData.zip(rcExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten
     .zip(regCacheReadData.take(params.getIntExuRCReadSize)).foreach{ case (s1_data, rdata) => 
       s1_data := rdata
     }
-  s1_RCReadData.zip(toExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten
+  s1_RCReadData.zip(rcExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten
     .zip(regCacheReadData.takeRight(params.getMemExuRCReadSize)).foreach{ case (s1_data, rdata) => 
       s1_data := rdata
     }
 
-  println(s"[DataPath] s1_RCReadData.int.size: ${s1_RCReadData.zip(toExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.int.size: ${params.getIntExuRCReadSize}")
-  println(s"[DataPath] s1_RCReadData.mem.size: ${s1_RCReadData.zip(toExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.mem.size: ${params.getMemExuRCReadSize}")
+  println(s"[DataPath] s1_RCReadData.int.size: ${s1_RCReadData.zip(rcExu).filter(_._2.map(_.bits.params.isIntExeUnit).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.int.size: ${params.getIntExuRCReadSize}")
+  println(s"[DataPath] s1_RCReadData.mem.size: ${s1_RCReadData.zip(rcExu).filter(_._2.map(x => x.bits.params.isMemExeUnit && x.bits.params.readIntRf).reduce(_ || _)).flatMap(_._1).flatten.size}, RCRdata.mem.size: ${params.getMemExuRCReadSize}")
 
   io.toWakeupQueueRCIdx := regCache.io.toWakeupQueueRCIdx
   io.toBypassNetworkRCData := s1_RCReadData
@@ -567,14 +570,25 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     toExu.map(x => MixedVec(x.map(_.valid.cloneType).toSeq)).toSeq
   ))
   val s1_toExuData: MixedVec[MixedVec[ExuInput]] = Reg(MixedVec(toExu.map(x => MixedVec(x.map(_.bits.cloneType).toSeq)).toSeq))
-  val s1_immInfo = Reg(MixedVec(toExu.map(x => MixedVec(x.map(x => new ImmInfo).toSeq)).toSeq))
-  s1_immInfo.zip(fromIQ).map { case (s1Vec, s0Vec) =>
+  val s1_immInfo = Reg(MixedVec((toIntExu ++ toMemExu).map(x => MixedVec(x.map(x => new ImmInfo).toSeq)).toSeq))
+  s1_immInfo.zip(fromIntIQ ++ fromMemIQ).map { case (s1Vec, s0Vec) =>
     s1Vec.zip(s0Vec).map { case (s1, s0) =>
       s1.imm := Mux(s0.valid, s0.bits.common.imm, s1.imm)
       s1.immType := Mux(s0.valid, s0.bits.immType, s1.immType)
     }
   }
   io.og1ImmInfo.zip(s1_immInfo.flatten).map{ case(out, reg) =>
+    out := reg
+  }
+
+  val s1_immInfoVf = Reg(MixedVec(toVfExu.map(x => MixedVec(x.map(x => new ImmInfo).toSeq)).toSeq))
+  s1_immInfoVf.zip(fromVfIQ).map { case (s1Vec, s0Vec) =>
+    s1Vec.zip(s0Vec).map { case (s1, s0) =>
+      s1.imm := Mux(s0.valid, s0.bits.common.imm, s1.imm)
+      s1.immType := Mux(s0.valid, s0.bits.immType, s1.immType)
+    }
+  }
+  io.og1ImmInfoVf.zip(s1_immInfoVf.flatten).map{ case(out, reg) =>
     out := reg
   }
   val s1_toExuReady = Wire(MixedVec(toExu.map(x => MixedVec(x.map(_.ready.cloneType).toSeq))))

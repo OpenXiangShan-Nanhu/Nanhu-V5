@@ -30,12 +30,11 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.AsyncQueueParams
 
 import top.BusPerfMonitor
-import xiangshan.backend.fu.{MemoryRange, PMAConfigEntry, PMAConst}
-import xiangshan.{PMParameKey, XSTileKey}
+import xiangshan.backend.fu.{PMAConst}
+import xiangshan.{XSTileKey,PMParameKey}
 
 import coupledL2.tl2chi.CHIIssue
 import xs.utils.cache.EnableCHI
-import xiangshan.PMParameKey
 
 import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
 import xs.utils.perf.DebugOptionsKey
@@ -47,23 +46,6 @@ case class SoCParameters
 (
   EnableILA: Boolean = false,
   PAddrBits: Int = 48,
-  PmemRanges: Seq[MemoryRange] =  Seq(MemoryRange(0x80000000L, 0x80000000000L)), //p(SoCParamsKey).PmemRanges
-  PMAConfigs: Seq[PMAConfigEntry] = Seq(
-    PMAConfigEntry(0x0L, range = 0x1000000000000L, a = 3),
-    PMAConfigEntry(0x80000000000L, c = true, atomic = true, a = 1, x = true, w = true, r = true),
-    PMAConfigEntry(0x80000000L, a = 1, w = true, r = true),
-    PMAConfigEntry(0x3A000000L, a = 1),
-    PMAConfigEntry(0x39002000L, a = 1, w = true, r = true),
-    PMAConfigEntry(0x39000000L, a = 1),
-    PMAConfigEntry(0x38022000L, a = 1, w = true, r = true),
-    PMAConfigEntry(0x38021000L, a = 1, x = true, w = true, r = true),
-    PMAConfigEntry(0x38020000L, a = 1, w = true, r = true),
-    PMAConfigEntry(0x30050000L, a = 1, w = true, r = true), // FIXME: GPU space is cacheable?
-    PMAConfigEntry(0x30010000L, a = 1, w = true, r = true),
-    PMAConfigEntry(0x20000000L, a = 1, x = true, w = true, r = true),
-    PMAConfigEntry(0x10000000L, a = 1, w = true, r = true),
-    PMAConfigEntry(0)
-  ),
   CLINTRange: AddressSet = AddressSet(0x38000000L, CLINTConsts.size - 1),
   BEURange: AddressSet = AddressSet(0x38010000L, 0xfff),
   PLICRange: AddressSet = AddressSet(0x3c000000L, PLICConsts.size(PLICConsts.maxMaxHarts) - 1),

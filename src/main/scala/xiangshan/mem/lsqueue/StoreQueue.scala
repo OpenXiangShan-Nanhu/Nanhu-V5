@@ -853,7 +853,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     }
     is(s_req) {
       when (io.uncache.req.fire) {
-        when (io.uncacheOutstanding) {
+        when (io.uncache.req.bits.nc) {
           uncacheState := s_wb
         } .otherwise {
           uncacheState := s_resp
@@ -903,7 +903,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   mmioReq.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)
   mmioReq.bits.mask := shiftMaskToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).mask)
   mmioReq.bits.atomic := atomic(RegNext(rdataPtrExtNext(0)).value)
-  mmioReq.bits.nc := false.B
+  mmioReq.bits.nc := nc(RegNext(rdataPtrExtNext(0)).value)
   mmioReq.bits.id := rdataPtrExt(0).value
 
   mmioReq.ready := io.uncache.req.ready
@@ -927,11 +927,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     }
     is(nc_req) {
       when(ncDoReq) {
-        when(io.uncacheOutstanding) {
           ncState := nc_idle
-        }.otherwise {
-          ncState := nc_resp
-        }
       }
     }
     is(nc_resp) {
@@ -960,10 +956,11 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   ncResp.bits <> io.uncache.resp.bits
   ncReq.ready := io.uncache.req.ready && !mmioReq.valid
 
-  io.uncache.req.valid := mmioReq.valid || ncReq.valid
-  io.uncache.req.bits := Mux(mmioReq.valid, mmioReq.bits, ncReq.bits)
+  io.uncache.req.valid := mmioReq.valid
+  io.uncache.req.bits := mmioReq.bits
 
-
+  dontTouch(mmioReq)
+  dontTouch(ncReq)
 //  io.uncache.req.bits.cmd  := MemoryOpConstants.M_XWR
 //  io.uncache.req.bits.addr := addrModule.io.rdata_p(0) // data(deqPtr) -> rdata(0)
 //  io.uncache.req.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)

@@ -151,7 +151,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
       resp_nderr := io.mem_grant.bits.denied
       // TODO: consider corrupt
       assert(refill_done, "Uncache response should be one beat only!")
-      state := Mux(storeReq && io.enableOutstanding, s_invalid, s_send_resp)
+      state := Mux(storeReq && req.nc, s_invalid, s_send_resp)
     }
   }
 
@@ -268,7 +268,7 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   }
 
   io.lsq.req.ready := req_ready
-  when (io.enableOutstanding) {
+//  when (io.enableOutstanding) {
     //  Uncache Buffer is a circular queue, which contains UncacheBufferSize entries.
     //  Description:
     //    enqPtr: Point to an invalid (means that the entry is free) entry.
@@ -376,22 +376,24 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
     }
 
     //  Dequeue
-    when (mem_grant.fire) {
-      deqPtr := Mux(edge.hasData(mem_grant.bits), deqPtr /* Load */, deqPtr + 1.U /* Store */)
-    } .elsewhen (io.lsq.resp.fire /* Load */) {
+//    when (mem_grant.fire) {
+//      deqPtr := Mux(edge.hasData(mem_grant.bits), deqPtr /* Load */, deqPtr + 1.U /* Store */)
+//    } .else
+    when (io.lsq.resp.fire /* Load */) {
       deqPtr := deqPtr + 1.U
     }
 
     when (mem_grant.fire && fence) {
       fence := false.B
     }
-  } .otherwise {
-    when (io.lsq.resp.fire) {
-      enqPtr := enqPtr + 1.U
-      issPtr := issPtr + 1.U
-      deqPtr := deqPtr + 1.U
-    }
-  }
+//  }
+//    .otherwise {
+//    when (io.lsq.resp.fire) {
+//      enqPtr := enqPtr + 1.U
+//      issPtr := issPtr + 1.U
+//      deqPtr := deqPtr + 1.U
+//    }
+//  }
 
   TLArbiter.lowestFromSeq(edge, mem_acquire, entries.map(_.io.mem_acquire))
   val invalid_entries = PopCount(entries.map(_.io.invalid))

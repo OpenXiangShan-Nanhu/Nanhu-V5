@@ -1143,67 +1143,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   io.mem_to_ooo.lsqio.lqCanAccept  := lsq.io.lqCanAccept
   io.mem_to_ooo.lsqio.sqCanAccept  := lsq.io.sqCanAccept
 
-  // lsq.io.uncache        <> uncache.io.lsq
-  val s_idle :: s_scalar_uncache :: s_vector_uncache :: Nil = Enum(3)
-  val uncacheState = RegInit(s_idle)
-  val uncacheReq = Wire(Decoupled(new UncacheWordReq))
-  val uncacheResp = Wire(Decoupled(new UncacheWordResp))
-
-  uncacheReq.bits := DontCare
-  uncacheReq.valid := false.B
-  uncacheReq.ready := false.B
-  uncacheResp.bits := DontCare
-  uncacheResp.valid := false.B
-  uncacheResp.ready := false.B
-  lsq.io.uncache.req.ready := false.B
-  lsq.io.uncache.resp.valid := false.B
-  lsq.io.uncache.resp.bits := DontCare
-
-  switch (uncacheState) {
-    is (s_idle) {
-      when (uncacheReq.fire) {
-        when (lsq.io.uncache.req.valid) {
-          val isStore = lsq.io.uncache.req.bits.cmd === MemoryOpConstants.M_XWR
-          when (!isStore || !io.ooo_to_mem.csrCtrl.uncache_write_outstanding_enable) {
-            uncacheState := s_scalar_uncache
-          }
-        }.otherwise {
-          // val isStore = vsFlowQueue.io.uncache.req.bits.cmd === MemoryOpConstants.M_XWR
-          when (!io.ooo_to_mem.csrCtrl.uncache_write_outstanding_enable) {
-            uncacheState := s_vector_uncache
-          }
-        }
-      }
-    }
-
-    is (s_scalar_uncache) {
-      when (uncacheResp.fire) {
-        uncacheState := s_idle
-      }
-    }
-
-    is (s_vector_uncache) {
-      when (uncacheResp.fire) {
-        uncacheState := s_idle
-      }
-    }
-  }
-
-  when (lsq.io.uncache.req.valid) {
-    uncacheReq <> lsq.io.uncache.req
-  }
-  when (io.ooo_to_mem.csrCtrl.uncache_write_outstanding_enable) {
-    uncacheResp <> lsq.io.uncache.resp
-  }.otherwise {
-    when (uncacheState === s_scalar_uncache) {
-      uncacheResp <> lsq.io.uncache.resp
-    }
-  }
-  // delay dcache refill for 1 cycle for better timing
-  AddPipelineReg(uncacheReq, uncache.io.lsq.req, false.B)
-  AddPipelineReg(uncache.io.lsq.resp, uncacheResp, false.B)
-
-  //lsq.io.refill         := delayedDcacheRefill
+  lsq.io.uncache        <> uncache.io.lsq
   lsq.io.release        := dcache.io.lsu.release
   lsq.io.lqCancelCnt <> io.mem_to_ooo.lqCancelCnt
   lsq.io.sqCancelCnt <> io.mem_to_ooo.sqCancelCnt

@@ -940,7 +940,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   // cbo zero:
   val isCboZeroToSbVec = (0 until EnsbufferWidth).map{ i => 
-    RegNext(io.sbuffer(i).fire) && uop(deqPtrExt(i).value).fuOpType === LSUOpType.cbo_zero && allocated(deqPtrExt(i).value)
+     RegNext(io.sbuffer(i).fire && io.sbuffer(i).bits.vecValid) && uop(deqPtrExt(i).value).fuOpType === LSUOpType.cbo_zero && allocated(deqPtrExt(i).value)
   }
   assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
   
@@ -951,6 +951,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   
   val cboZeroValid        = RegInit(false.B)
   val cboZeroWaitFlushSb  = RegInit(false.B)
+  // assert((cboZeroValid && !hasException(cboZeroUop.sqIdx.value)), "cbo has exception cannot write to sbuffer")
 
   // start to flush sbuffer
   when (cboZeroFlushSb) {

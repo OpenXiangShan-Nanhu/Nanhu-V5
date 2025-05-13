@@ -63,23 +63,39 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
     bypassDataVec.zipWithIndex.map{ case (x, i) => RegEnable(x, validVecBp2(i)) }
   )
 
-  io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).foreach { case (sink, source) => NewPipelineConnect(source, sink, sink.fire, source.bits.robIdx.needFlush(io.flush)) }
-  io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).zip(io.fromDataPath.imm).zipWithIndex.foreach {
-    case (((exuInput, uop), immInfo), idx) => {
-      val isSharedVf = FuType.FuTypeOrR(exuInput.bits.fuType, FuType.sharedVf)
-      val needReadHi = isSharedVf && ((exuInput.bits.vecWen.getOrElse(false.B) &&
-                        exuInput.bits.vfWenH.getOrElse(false.B) && !exuInput.bits.vfWenL.getOrElse(false.B)) ||
-                        (exuInput.bits.v0Wen.getOrElse(false.B) && exuInput.bits.v0WenH.getOrElse(false.B) &&
-                        !exuInput.bits.v0WenL.getOrElse(false.B)))
-      val isWidenF_VV = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
-                        exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U &&
-                        !(exuInput.bits.fuType === FuType.vfalu.id.U && exuInput.bits.fuOpType(6))
-      val isWidenF_WV = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
-                        exuInput.bits.fuType =/= FuType.f2v.id.U && exuInput.bits.fuType =/= FuType.i2v.id.U &&
-                        !(exuInput.bits.fuType === FuType.vfalu.id.U && !exuInput.bits.fuOpType(6))
-      val isWidenF_REDOSUM = isSharedVf && exuInput.bits.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
-                        exuInput.bits.fuType === FuType.vfalu.id.U && exuInput.bits.fuOpType === VfaluType.vfwredosum
-      exuInput.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
+  val og2Uop = io.fromDataPath.uop.flatten.map(x => RegEnable(x.bits, x.valid))
+  io.fromDataPath.uop.flatten.zip(io.toVfExu.flatten).foreach { case (uop, exu) =>
+    if(!uop.bits.params.latencyCertain) {
+      println(s"vf uncertain latency ${uop.bits.params.name}")
+      uop.ready := uop.valid && exu.ready && !exu.valid
+    } else {
+      uop.ready := true.B
+    }
+  }
+
+  io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).foreach {
+    case (exu, uop) => {
+      val og2Valid = if(!uop.bits.params.latencyCertain) RegNext(uop.valid && exu.ready && !exu.valid) else RegNext(uop.valid)
+      exu.valid := og2Valid
+    }
+  }
+  io.toVfExu.flatten.zip(og2Uop).zip(io.fromDataPath.uop.flatten).zip(io.fromDataPath.imm).zipWithIndex.foreach {
+    case ((((exuIn, og2), uop), immInfo), idx) => {
+      exuIn.bits := og2
+      val isSharedVf = FuType.FuTypeOrR(og2.fuType, FuType.sharedVf)
+      val needReadHi = isSharedVf && ((og2.vecWen.getOrElse(false.B) &&
+                        og2.vfWenH.getOrElse(false.B) && !og2.vfWenL.getOrElse(false.B)) ||
+                        (og2.v0Wen.getOrElse(false.B) && og2.v0WenH.getOrElse(false.B) &&
+                        !og2.v0WenL.getOrElse(false.B)))
+      val isWidenF_VV = isSharedVf && og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+                        og2.fuType =/= FuType.f2v.id.U && og2.fuType =/= FuType.i2v.id.U &&
+                        !(og2.fuType === FuType.vfalu.id.U && og2.fuOpType(6))
+      val isWidenF_WV = isSharedVf && og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+                        og2.fuType =/= FuType.f2v.id.U && og2.fuType =/= FuType.i2v.id.U &&
+                        !(og2.fuType === FuType.vfalu.id.U && !og2.fuOpType(6))
+      val isWidenF_REDOSUM = isSharedVf && og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+                            og2.fuType === FuType.vfalu.id.U && og2.fuOpType === VfaluType.vfwredosum
+      exuIn.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
         val imm = ImmExtractor(
           immInfo.imm,
           immInfo.immType,
@@ -87,18 +103,18 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
           uop.bits.params.immType.map(_.litValue)
         )
         val immLoadSrc0 = SignExt(ImmUnion.U.toImm32(immInfo.imm(immInfo.imm.getWidth - 1, ImmUnion.I.len)), XLEN)
-        val exuParm = exuInput.bits.params
+        val exuParm = exuIn.bits.params
         val isIntScheduler = exuParm.isIntExeUnit
         val isReadVfRf= exuParm.readVfRf
         val isReadV0Rf= exuParm.readV0Rf
-        val dataSource = exuInput.bits.dataSources(srcIdx)
+        val dataSource = og2.dataSources(srcIdx)
         val isWakeUpSink = params.allIssueParams.filter(_.exuBlockParams.contains(exuParm)).head.exuBlockParams.map(_.isIQWakeUpSink).reduce(_ || _)
         val readForward = if (isWakeUpSink) dataSource.readForward else false.B
         val readBypass = if (isWakeUpSink) dataSource.readBypass else false.B
         val readBypass2 = if (isWakeUpSink) dataSource.readBypass2 else false.B
         val readV0 = if (srcIdx < 3 && isReadVfRf) dataSource.readV0 else false.B
-        val readRegOH = exuInput.bits.dataSources(srcIdx).readRegOH
-        val readImm = if (exuParm.immType.nonEmpty || exuParm.hasLoadExu) exuInput.bits.dataSources(srcIdx).readImm else false.B
+        val readRegOH = og2.dataSources(srcIdx).readRegOH
+        val readImm = if (exuParm.immType.nonEmpty || exuParm.hasLoadExu) og2.dataSources(srcIdx).readImm else false.B
         val forwardData = Mux1H(forwardOrBypassValidVec3(idx)(srcIdx), forwardDataVec)
         val bypassData = Mux1H(forwardOrBypassValidVec3(idx)(srcIdx), bypassDataVec)
         val bypass2Data = Mux1H(forwardOrBypassValidVec3(idx)(srcIdx), bypass2DataVec)

@@ -20,7 +20,6 @@ import chisel3.util.log2Ceil
 import org.chipsalliance.cde.config.{Field, Parameters}
 import xiangshan.backend.fu.{MMPMAConfig, MMPMAMethod}
 import xiangshan.backend.fu.{MemoryRange, PMAConfigEntry, PMAConst}
-import system.SoCParamsKey
 
 case object PMParameKey extends Field[PMParameters]
 

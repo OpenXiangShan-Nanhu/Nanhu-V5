@@ -64,7 +64,7 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
 
   private val privState = csrMod.io.status.privState
   // The real reg value in CSR, with no read mask
-  private val regOut = csrMod.io.out.bits.regOut
+  private val regOut = csrMod.io.currentRegout
   private val src = Mux(CSROpType.needImm(func), csri, src1)
   private val wdata = LookupTree(func, Seq(
     CSROpType.wrt  -> src1,
@@ -298,7 +298,7 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
 
   csrOut.isXRet := isXRetFlag
 
-  csrOut.trapTarget := csrMod.io.out.bits.targetPc
+  csrOut.trapTarget := csrMod.io.targetPc
   csrOut.interrupt := csrMod.io.status.interrupt
   csrOut.wfi_event := csrMod.io.status.wfiEvent
 

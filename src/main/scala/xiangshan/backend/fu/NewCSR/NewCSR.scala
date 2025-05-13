@@ -5,7 +5,7 @@ import chisel3.util._
 import difftest._
 import freechips.rocketchip.rocket.CSRs
 import org.chipsalliance.cde.config.Parameters
-import xs.utils.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt}
+import xs.utils.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt, PipelineConnect}
 import xs.utils.perf.{PerfEvent, HPerfMonitor}
 import utils.OptionWrapper
 import xiangshan.backend.fu.NewCSR.CSRBundles.{CSRCustomState, PrivState, RobCommitCSR}
@@ -213,6 +213,10 @@ class NewCSR(implicit val p: Parameters) extends Module
     val fetchMalTval = Input(UInt(XLEN.W))
 
     val distributedWenLegal = Output(Bool())
+
+    val currentRegout = UInt(64.W)
+
+    val targetPc = new TargetPCBundle
     // HW monitor to XSTop
     val csrMon = if(env.EnableHWMoniter) Some(Output(new CSRHWMonitor)) else None
   })
@@ -853,9 +857,9 @@ class NewCSR(implicit val p: Parameters) extends Module
   )
 
   // flush
-  val resetSatp = Cat(Seq(satp, vsatp, hgatp).map(_.addr.U === addr)).orR && wenLegal // write to satp will cause the pipeline be flushed
+  val resetSatp = RegEnable(Cat(Seq(satp, vsatp, hgatp).map(_.addr.U === addr)).orR && wenLegal, false.B, valid) // write to satp will cause the pipeline be flushed
 
-  val floatStatusOnOff = mstatus.w.wen && (
+  val floatStatusOnOff = RegEnable(mstatus.w.wen && (
     mstatus.w.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
     mstatus.w.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
   ) || mstatus.wAliasSstatus.wen && (
@@ -864,9 +868,9 @@ class NewCSR(implicit val p: Parameters) extends Module
   ) || vsstatus.w.wen && (
     vsstatus.w.wdataFields.FS === ContextStatus.Off && vsstatus.regOut.FS =/= ContextStatus.Off ||
     vsstatus.w.wdataFields.FS =/= ContextStatus.Off && vsstatus.regOut.FS === ContextStatus.Off
-  )
+  ), false.B, valid)
 
-  val vectorStatusOnOff = mstatus.w.wen && (
+  val vectorStatusOnOff = RegEnable(mstatus.w.wen && (
     mstatus.w.wdataFields.VS === ContextStatus.Off && mstatus.regOut.VS =/= ContextStatus.Off ||
     mstatus.w.wdataFields.VS =/= ContextStatus.Off && mstatus.regOut.VS === ContextStatus.Off
   ) || mstatus.wAliasSstatus.wen && (
@@ -875,21 +879,21 @@ class NewCSR(implicit val p: Parameters) extends Module
   ) || vsstatus.w.wen && (
     vsstatus.w.wdataFields.VS === ContextStatus.Off && vsstatus.regOut.VS =/= ContextStatus.Off ||
     vsstatus.w.wdataFields.VS =/= ContextStatus.Off && vsstatus.regOut.VS === ContextStatus.Off
-  )
+  ), false.B, valid)
 
-  val triggerFrontendChange = Wire(Bool())
+  val triggerFrontendChange = RegInit(false.B)
 
-  val vstartChange = vstart.w.wen && (
+  val vstartChange = RegEnable(vstart.w.wen && (
     vstart.w.wdata === 0.U && vstart.regOut.vstart.asUInt =/= 0.U ||
     vstart.w.wdata =/= 0.U && vstart.regOut.vstart.asUInt === 0.U
-  )
+  ),false.B, valid)
 
   // flush pipe when write frm and data > 4 or write fcsr and data[7:5] > 4 or write frm/fcsr and frm is reserved
   val frmIsReserved = fcsr.frm(2) && fcsr.frm(1, 0).orR
   val frmWdataReserved = fcsr.wAliasFfm.wdata(2) && fcsr.wAliasFfm.wdata(1, 0).orR
   val fcsrWdataReserved = fcsr.w.wdata(7) && fcsr.w.wdata(6, 5).orR
-  val frmChange = fcsr.wAliasFfm.wen && (!frmIsReserved && frmWdataReserved || frmIsReserved && !frmWdataReserved) ||
-    fcsr.w.wen && (!frmIsReserved && fcsrWdataReserved || frmIsReserved && !fcsrWdataReserved)
+  val frmChange = RegEnable(fcsr.wAliasFfm.wen && (!frmIsReserved && frmWdataReserved || frmIsReserved && !frmWdataReserved) ||
+    fcsr.w.wen && (!frmIsReserved && fcsrWdataReserved || frmIsReserved && !fcsrWdataReserved),false.B, valid)
 
   val flushPipe = resetSatp ||
     triggerFrontendChange || floatStatusOnOff || vectorStatusOnOff ||
@@ -999,9 +1003,9 @@ class NewCSR(implicit val p: Parameters) extends Module
    **/
 
   /** Data that have been read before,and should be stored because output not fired */
-  io.out.valid := state === s_idle && valid && !asyncAccess || state === s_finish ||
-                  state === s_waitIMSIC && aia_rvalid
-                  
+  io.out.valid := state === s_idle && valid && !asyncAccess ||
+                  state === s_waitIMSIC && aia_rvalid ||
+                  state === s_finish
   io.out.bits.EX_II := DataHoldBypass(permitMod.io.out.EX_II || noCSRIllegal, false.B, io.in.fire) ||
                        DataHoldBypass(imsic_EX_II, false.B, aia_rvalid)
   io.out.bits.EX_VI := DataHoldBypass(permitMod.io.out.EX_VI, false.B, io.in.fire) ||
@@ -1009,7 +1013,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   io.out.bits.flushPipe := DataHoldBypass(flushPipe, false.B, io.in.fire)
 
   /** Prepare read data for output */
-  io.out.bits.rData := DataHoldBypass(
+  outReg.bits.rData := DataHoldBypass(
     Mux1H(Seq(
       io.in.fire -> rdata,
       aia_rvalid -> aia_rdata
@@ -1030,8 +1034,29 @@ class NewCSR(implicit val p: Parameters) extends Module
       )
     ),
   needTargetUpdate)
-  io.out.bits.targetPcUpdate := needTargetUpdate
-  io.out.bits.isPerfCnt := DataHoldBypass(addrInPerfCnt, false.B, io.in.fire)
+  outReg.bits.targetPcUpdate := needTargetUpdate
+  outReg.bits.isPerfCnt := DataHoldBypass(addrInPerfCnt, false.B, io.in.fire)
+
+  PipelineConnect(outReg, io.out, io.out.ready,
+      false.B, moduleName = Some("csrOutPipe"))
+  io.out.bits.flushPipe := flushPipe
+
+  io.currentRegout := regOut
+  io.targetPc := DataHoldBypass(
+    Mux(trapEntryDEvent.out.targetPc.valid,
+      trapEntryDEvent.out.targetPc.bits,
+      Mux1H(Seq(
+        mnretEvent.out.targetPc.valid -> mnretEvent.out.targetPc.bits,
+        mretEvent.out.targetPc.valid  -> mretEvent.out.targetPc.bits,
+        sretEvent.out.targetPc.valid  -> sretEvent.out.targetPc.bits,
+        dretEvent.out.targetPc.valid  -> dretEvent.out.targetPc.bits,
+        trapEntryMEvent.out.targetPc.valid -> trapEntryMEvent.out.targetPc.bits,
+        trapEntryMNEvent.out.targetPc.valid -> trapEntryMNEvent.out.targetPc.bits,
+        trapEntryHSEvent.out.targetPc.valid -> trapEntryHSEvent.out.targetPc.bits,
+        trapEntryVSEvent.out.targetPc.valid -> trapEntryVSEvent.out.targetPc.bits)
+      )
+    ),
+  needTargetUpdate)
 
   io.status.privState := privState
   io.status.fpState.frm := fcsr.frm

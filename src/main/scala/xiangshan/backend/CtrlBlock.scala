@@ -120,6 +120,10 @@ class CtrlBlockImp(
 
   // Redirect will be RegNext at ExuBlocks and IssueBlocks
   val s2_s4_redirect = RegNextWithEnable(s1_s3_redirect)
+  val s2_s4_redirect_dup_toDq = RegNextWithEnable(s1_s3_redirect)
+  val s2_s4_redirect_dup__toExu = RegNextWithEnable(s1_s3_redirect)
+  val s2_s4_redirect_dup__toIq = RegNextWithEnable(s1_s3_redirect)
+  val s2_s4_redirect_dup__toDataPath = RegNextWithEnable(s1_s3_redirect)
   val s3_s5_redirect = RegNextWithEnable(s2_s4_redirect)
 
   private val delayedNotFlushedWriteBack = io_writeback.map(x => {
@@ -570,7 +574,7 @@ class CtrlBlockImp(
   )
 
   // pipeline between rename and dispatch
-  PipeGroupConnect(renameOut, dispatch.io.fromRename, s1_s3_redirect.valid, dispatch.io.toRenameAllFire, "renamePipeDispatch")
+  PipeGroupConnectLessFanOut(renameOut, dispatch.io.fromRename, s1_s3_redirect.valid, dispatch.io.toRenameAllFire, "renamePipeDispatch")
   dispatch.io.intIQValidNumVec := io.intIQValidNumVec
   // dispatch.io.fpIQValidNumVec := io.fpIQValidNumVec
   dispatch.io.fromIntDQ.intDQ0ValidDeq0Num := intDq0.io.validDeq0Num
@@ -590,28 +594,24 @@ class CtrlBlockImp(
   dispatch.io.singleStep := GatedValidRegNext(io.csrCtrl.singlestep)
 
   intDq0.io.enq <> dispatch.io.toIntDq
-  intDq0.io.redirect <> s2_s4_redirect
+  intDq0.io.redirect <> s2_s4_redirect_dup_toDq
 
   intDq1.io.enq <> dispatch.io.toIntDq1
-  intDq1.io.redirect <> s2_s4_redirect
-
-  // fpDq.io.enq <> dispatch.io.toFpDq
-  // fpDq.io.redirect <> s2_s4_redirect
+  intDq1.io.redirect <> s2_s4_redirect_dup_toDq
 
   vecDq.io.enq <> dispatch.io.toVecDq
-  vecDq.io.redirect <> s2_s4_redirect
+  vecDq.io.redirect <> s2_s4_redirect_dup_toDq
 
   lsDq.io.enq <> dispatch.io.toLsDq
-  lsDq.io.redirect <> s2_s4_redirect
+  lsDq.io.redirect <> s2_s4_redirect_dup_toDq
   io.toIssueBlock.intUops <> (intDq0.io.deq :++ intDq1.io.deq)
-  // io.toIssueBlock.fpUops <> fpDq.io.deq
   io.toIssueBlock.vfUops  <> vecDq.io.deq
   io.toIssueBlock.memUops <> lsDq.io.deq
   io.toIssueBlock.allocPregs <> dispatch.io.allocPregs
-  io.toIssueBlock.flush   <> s2_s4_redirect
+  io.toIssueBlock.flush   <> s2_s4_redirect_dup__toIq
 
-  io.toDataPath.flush := s2_s4_redirect
-  io.toExuBlock.flush := s2_s4_redirect
+  io.toDataPath.flush := s2_s4_redirect_dup__toDataPath
+  io.toExuBlock.flush := s2_s4_redirect_dup__toExu
 
 
   rob.io.hartId := io.fromTop.hartId

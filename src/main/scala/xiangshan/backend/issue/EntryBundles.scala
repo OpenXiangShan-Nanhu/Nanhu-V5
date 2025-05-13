@@ -405,10 +405,18 @@ object EntryBundles extends HasCircularQueuePtrHelper {
       srcStatusNext.psrc                              := srcStatus.psrc
       srcStatusNext.srcType                           := Mux(ignoreOldVd, SrcType.no, srcStatus.srcType)
       srcStatusNext.srcState                          := Mux(cancel, false.B, wakeup | srcStatus.srcState | ignoreOldVd)
-      srcStatusNext.dataSources.value                 := MuxCase(srcStatus.dataSources.value, Seq(
+      srcStatusNext.dataSources.value                 := (if(params.inVfSchd && params.readVfRf && params.hasIQWakeUp) {
+                                                            MuxCase(srcStatus.dataSources.value, Seq(
+                                                              wakeupByIQ                        -> DataSource.bypass,
+                                                              srcStatus.dataSources.readBypass  -> DataSource.bypass2,
+                                                              srcStatus.dataSources.readBypass2 -> DataSource.reg,
+                                                            ))
+                                                          }
+                                                          else { MuxCase(srcStatus.dataSources.value, Seq(
                                                               wakeupByIQ                         -> DataSource.bypass,
                                                               srcStatus.dataSources.readBypass   -> DataSource.reg,
                                                             ))
+                                                          })
       if(params.hasIQWakeUp) {
         ExuOHGen(srcStatusNext.srcWakeUpL1ExuOH.get, wakeupByIQOH, hasIQWakeupGet.srcWakeupL1ExuOH(srcIdx))
         srcStatusNext.srcLoadDependency               := Mux(wakeupByIQ,

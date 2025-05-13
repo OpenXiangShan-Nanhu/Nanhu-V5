@@ -449,6 +449,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     sink.bits.intWen := DontCare
     sink.bits.data := source.bits.data(0)
   }
+  bypassNetworkVf.io.flush := ctrlBlock.io.toExuBlock.flush
 
   for (i <- 0 until vfExuBlock.io.in.size) {
     for (j <- 0 until vfExuBlock.io.in(i).size) {

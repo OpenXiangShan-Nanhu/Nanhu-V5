@@ -1003,23 +1003,22 @@ class NewCSR(implicit val p: Parameters) extends Module
    **/
 
   /** Data that have been read before,and should be stored because output not fired */
-  io.out.valid := state === s_idle && valid && !asyncAccess ||
+  val outReg = WireInit(0.U.asTypeOf(Decoupled(new NewCSROutput)))
+  outReg.valid := state === s_idle && valid && !asyncAccess ||
                   state === s_waitIMSIC && aia_rvalid ||
                   state === s_finish
-  io.out.bits.EX_II := DataHoldBypass(permitMod.io.out.EX_II || noCSRIllegal, false.B, io.in.fire) ||
+  outReg.bits.EX_II := DataHoldBypass(permitMod.io.out.EX_II || noCSRIllegal, false.B, io.in.fire) ||
                        DataHoldBypass(imsic_EX_II, false.B, aia_rvalid)
-  io.out.bits.EX_VI := DataHoldBypass(permitMod.io.out.EX_VI, false.B, io.in.fire) ||
+  outReg.bits.EX_VI := DataHoldBypass(permitMod.io.out.EX_VI, false.B, io.in.fire) ||
                        DataHoldBypass(imsic_EX_VI, false.B, aia_rvalid)
-  io.out.bits.flushPipe := DataHoldBypass(flushPipe, false.B, io.in.fire)
-
   /** Prepare read data for output */
   outReg.bits.rData := DataHoldBypass(
     Mux1H(Seq(
       io.in.fire -> rdata,
       aia_rvalid -> aia_rdata
     )), 0.U(64.W), io.in.fire || aia_rvalid)
-  io.out.bits.regOut := regOut
-  io.out.bits.targetPc := DataHoldBypass(
+  outReg.bits.regOut := regOut
+  outReg.bits.targetPc := DataHoldBypass(
     Mux(trapEntryDEvent.out.targetPc.valid,
       trapEntryDEvent.out.targetPc.bits,
       Mux1H(Seq(

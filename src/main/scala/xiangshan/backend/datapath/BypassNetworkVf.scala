@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.{SignExt, ZeroExt}
-import xiangshan.{XSBundle, XSModule}
+import xiangshan._
 import xiangshan.backend.BackendParams
 import xiangshan.backend.Bundles.{VPUCtrlSignals, ImmInfo, ExuVec}
 import xiangshan.backend.decode.ImmUnion
@@ -16,6 +16,7 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
   private val vfSchdParams = params.schdParams(VfScheduler())
 
   val io = IO(new Bundle {
+    val flush = Flipped(ValidIO(new Redirect))
     val fromDataPath = new Bundle {
       val uop = Flipped(vfSchdParams.genExuInputBundle)
       val imm = Input(Vec(vfSchdParams.issueBlockParams.map(_.exuBlockParams).flatten.size, new ImmInfo))
@@ -44,19 +45,25 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
       ).zip(mask).map{ case (l,m) =>
         VecInit(l.zip(m).map(x => x._1 && x._2))
       })
-      VecInit(validVec2.map(v => VecInit(v.drop(intExuNum).take(vfExuNum))))
+      RegNext(VecInit(validVec2.map(v => VecInit(v.drop(intExuNum).take(vfExuNum)))))
     }
   )
 
   private val forwardDataVec: Vec[UInt] = VecInit(
-    io.fromVfExu.flatten.map(_.bits.data)
+    io.fromVfExu.flatten.map(x => x.bits.data)
   )
 
+  val validVec = io.fromVfExu.flatten.map(x => x.valid)
   private val bypassDataVec = VecInit(
-    io.fromVfExu.flatten.map(x => RegEnable(x.bits.data, x.valid))
+    forwardDataVec.zipWithIndex.map{ case (x, i) => RegEnable(x, validVec(i)) }
   )
 
-  io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).foreach { case (sink, source) => sink <> source }
+  val validVecBp2 = io.fromVfExu.flatten.map(x => RegNext(x.valid))
+  val bypass2DataVec = VecInit(
+    bypassDataVec.zipWithIndex.map{ case (x, i) => RegEnable(x, validVecBp2(i)) }
+  )
+
+  io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).foreach { case (sink, source) => NewPipelineConnect(source, sink, sink.fire, source.bits.robIdx.needFlush(io.flush)) }
   io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).zip(io.fromDataPath.imm).zipWithIndex.foreach {
     case (((exuInput, uop), immInfo), idx) => {
       val isSharedVf = FuType.FuTypeOrR(exuInput.bits.fuType, FuType.sharedVf)
@@ -76,8 +83,8 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
         val imm = ImmExtractor(
           immInfo.imm,
           immInfo.immType,
-          exuInput.bits.params.destDataBitsMax,
-          exuInput.bits.params.immType.map(_.litValue)
+          uop.bits.params.destDataBitsMax,
+          uop.bits.params.immType.map(_.litValue)
         )
         val immLoadSrc0 = SignExt(ImmUnion.U.toImm32(immInfo.imm(immInfo.imm.getWidth - 1, ImmUnion.I.len)), XLEN)
         val exuParm = exuInput.bits.params
@@ -88,17 +95,20 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
         val isWakeUpSink = params.allIssueParams.filter(_.exuBlockParams.contains(exuParm)).head.exuBlockParams.map(_.isIQWakeUpSink).reduce(_ || _)
         val readForward = if (isWakeUpSink) dataSource.readForward else false.B
         val readBypass = if (isWakeUpSink) dataSource.readBypass else false.B
+        val readBypass2 = if (isWakeUpSink) dataSource.readBypass2 else false.B
         val readV0 = if (srcIdx < 3 && isReadVfRf) dataSource.readV0 else false.B
         val readRegOH = exuInput.bits.dataSources(srcIdx).readRegOH
         val readImm = if (exuParm.immType.nonEmpty || exuParm.hasLoadExu) exuInput.bits.dataSources(srcIdx).readImm else false.B
         val forwardData = Mux1H(forwardOrBypassValidVec3(idx)(srcIdx), forwardDataVec)
         val bypassData = Mux1H(forwardOrBypassValidVec3(idx)(srcIdx), bypassDataVec)
+        val bypass2Data = Mux1H(forwardOrBypassValidVec3(idx)(srcIdx), bypass2DataVec)
         val srcData = Mux1H(
           Seq(
             readForward    -> forwardData,
             readBypass     -> bypassData,
-            readRegOH      -> uop.bits.src(srcIdx),
-            readImm        -> (if (exuParm.hasLoadExu && srcIdx == 0) immLoadSrc0 else imm)
+            readBypass2    -> bypass2Data,
+            readRegOH      -> RegNext(uop.bits.src(srcIdx)),
+            readImm        -> RegNext(imm)
           )
         ) 
         if(srcIdx == 0) {

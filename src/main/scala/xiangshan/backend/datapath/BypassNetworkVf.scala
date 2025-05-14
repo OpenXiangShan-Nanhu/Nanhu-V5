@@ -75,7 +75,7 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
 
   io.toVfExu.flatten.zip(io.fromDataPath.uop.flatten).foreach {
     case (exu, uop) => {
-      val og2Valid = if(!uop.bits.params.latencyCertain) RegNext(uop.valid && exu.ready && !exu.valid) else RegNext(uop.valid)
+      val og2Valid = if(!uop.bits.params.latencyCertain) RegNext(uop.valid && exu.ready && !exu.valid && !(uop.bits.robIdx.needFlush(io.flush))) else RegNext(uop.valid && !(uop.bits.robIdx.needFlush(io.flush)))
       exu.valid := og2Valid
     }
   }

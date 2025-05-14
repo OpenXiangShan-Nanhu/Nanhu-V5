@@ -93,9 +93,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
     val rob = Flipped(new RobLsqIO)
     val nuke_rollback = Vec(StorePipelineWidth, Output(Valid(new Redirect)))
-    // val nack_rollback = Output(Valid(new Redirect))
     val release = Flipped(Valid(new Release))
-   // val refill = Flipped(Valid(new Refill))
     val tl_d_channel  = Input(new DcacheToLduForwardIO)
     val maControl     = Flipped(new StoreMaBufToSqControlIO)
     val uncacheOutstanding = Input(Bool())
@@ -138,12 +136,6 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.hartId := io.hartId
   storeQueue.io.uncacheOutstanding := io.uncacheOutstanding
   io.mdpTrainUpdate := storeQueue.io.mdpTrainUpdate
-
-
-  dontTouch(loadQueue.io.tlbReplayDelayCycleCtrl)
-  // Todo: imm
-  val tlbReplayDelayCycleCtrl = WireInit(VecInit(Seq(14.U(ReSelectLen.W), 0.U(ReSelectLen.W), 125.U(ReSelectLen.W), 0.U(ReSelectLen.W))))
-  loadQueue.io.tlbReplayDelayCycleCtrl := tlbReplayDelayCycleCtrl
 
   // io.enq logic
   // LSQ: send out canAccept when both load queue and store queue are ready
@@ -205,9 +197,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   loadQueue.io.ld_raw_data         <> io.ld_raw_data
   loadQueue.io.rob                 <> io.rob
   loadQueue.io.nuke_rollback       <> io.nuke_rollback
-  // loadQueue.io.nack_rollback       <> io.nack_rollback
   loadQueue.io.replay              <> io.replay
- // loadQueue.io.refill              <> io.refill
   loadQueue.io.tl_d_channel        <> io.tl_d_channel
   loadQueue.io.release             <> io.release
   loadQueue.io.exceptionAddr.isStore := DontCare

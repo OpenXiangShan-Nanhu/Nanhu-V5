@@ -187,7 +187,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
     // queue-based replay
     val replay = Vec(LoadPipelineWidth, Decoupled(new LsPipelineBundle))
-   // val refill = Flipped(ValidIO(new Refill))
     val tl_d_channel = Input(new DcacheToLduForwardIO)
 
     // from StoreQueue
@@ -196,15 +195,12 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val stDataReadySqPtr = Input(new SqPtr)
     val stDataReadyVec   = Input(Vec(StoreQueueSize, Bool()))
 
-    //
     val sqEmpty = Input(Bool())
     val lqFull  = Output(Bool())
     val ldWbPtr = Input(new LqPtr)
-    // val rarFull = Input(Bool())
     val rawFull = Input(Bool())
     val l2_hint  = Input(Valid(new L2ToL1Hint()))
     val tlb_hint = Flipped(new TlbHintIO)
-    val tlbReplayDelayCycleCtrl = Vec(4, Input(UInt(ReSelectLen.W)))
 
     // to IssueQueue
     val validCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
@@ -242,15 +238,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   })
 
   println("LoadQueueReplay size: " + LoadQueueReplaySize)
-  //  LoadQueueReplay field:
-  //  +-----------+---------+-------+-------------+--------+
-  //  | Allocated | MicroOp | VAddr |    Cause    |  Flags |
-  //  +-----------+---------+-------+-------------+--------+
-  //  Allocated   : entry has been allocated already
-  //  MicroOp     : inst's microOp
-  //  VAddr       : virtual address
-  //  Cause       : replay cause
-  //  Flags       : rar/raw queue allocate flags
   val allocated = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B))) // The control signals need to explicitly indicate the initial value
   // scheduled: the entry has beed issued
   val scheduled = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
@@ -270,7 +257,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val cause = RegInit(VecInit(List.fill(LoadQueueReplaySize)(0.U(LoadReplayCauses.allCauses.W))))
   // blocking: the entry's reply cause has not been resolved yet
   val blocking = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
-  val strict = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val isMMIO = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val isNc = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
 
@@ -351,7 +337,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     // dequeue
     //  FIXME: store*Ptr is not accurate
     dataNotBlockVec(i) := isAfter(io.stDataReadySqPtr, blockSqIdx(i).asTypeOf(new SqPtr)) || stDataReadyVec(blockSqIdx(i)((new SqPtr).getWidth-2,0)) || io.sqEmpty // for better timing
-    addrNotBlockVec(i) := isAfter(io.stAddrReadySqPtr, blockSqIdx(i).asTypeOf(new SqPtr)) || !strict(i) && stAddrReadyVec(blockSqIdx(i)((new SqPtr).getWidth-2,0)) || io.sqEmpty // for better timing
+    addrNotBlockVec(i) := isAfter(io.stAddrReadySqPtr, blockSqIdx(i).asTypeOf(new SqPtr)) || stAddrReadyVec(blockSqIdx(i)((new SqPtr).getWidth-2,0)) || io.sqEmpty // for better timing
     // store address execute
     storeAddrInSameCycleVec(i) := VecInit((0 until StorePipelineWidth).map(w => {
       io.storeAddrIn(w).valid &&
@@ -399,10 +385,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     when (cause(i)(LoadReplayCauses.C_DM)) {
       blocking(i) := Mux(io.tl_d_channel.valid && io.tl_d_channel.mshrid === missMSHRId(i), false.B, blocking(i))
     }
-    // // case C_RAR
-    // when (cause(i)(LoadReplayCauses.C_RAR)) {
-    //   blocking(i) := Mux((!io.rarFull || !isAfter(uop(i).lqIdx, io.ldWbPtr)), false.B, blocking(i))
-    // }
     // case C_RAW
     when (cause(i)(LoadReplayCauses.C_RAW)) {
       blocking(i) := Mux((!io.rawFull || !isAfter(uop(i).sqIdx, io.stAddrReadySqPtr)), false.B, blocking(i))
@@ -700,7 +682,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       }
       // init
       blocking(enqIndex)     := true.B
-      strict(enqIndex)       := false.B
 
       // update blocking pointer
       when (replayInfo.cause(LoadReplayCauses.C_BC) ||

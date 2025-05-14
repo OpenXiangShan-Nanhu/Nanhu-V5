@@ -81,13 +81,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   })
 
   println("VirtualLoadQueue: size: " + VirtualLoadQueueSize)
-  //  VirtualLoadQueue field
-  //  +-----------+---------+-------+
-  //  | Allocated | MicroOp | Flags |
-  //  +-----------+---------+-------+
-  //  Allocated   : entry has been allocated already
-  //  MicroOp     : inst's microOp
-  //  Flags       : load flags
   val allocated = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // The control signals need to explicitly indicate the initial value
   val uop = Reg(Vec(VirtualLoadQueueSize, new DynInst))
   val addrvalid = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // non-mmio addr is valid
@@ -96,14 +89,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   val isvec = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // vector load flow
   val veccommitted = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // vector load uop has commited
 
-  //  LoadQueueRAR field
-  //  +-------+-------+-------+----------+--------------+
-  //  | Valid |  Uop  | PAddr | Released | isfromDCache
-  //  +-------+-------+-------+----------+--------------+
-  //
-  //  Field descriptions:
-  //  PAddr       : physical address.
-  //  Released    : DCache released.
   val paddrModule = Module(new LqPAddrModule(
     gen = UInt(PAddrBits.W),
     numEntries = VirtualLoadQueueSize,

@@ -56,18 +56,7 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
   })
 
   println("LoadQueueRAW: size " + LoadQueueRAWSize)
-  //  LoadQueueRAW field
-  //  +-------+--------+-------+-------+-----------+
-  //  | Valid |  uop   |PAddr  | Mask  | Datavalid |
-  //  +-------+--------+-------+-------+-----------+
-  //
-  //  Field descriptions:
-  //  Allocated   : entry has been allocated already
-  //  MicroOp     : inst's microOp
-  //  PAddr       : physical address.
-  //  Mask        : data mask
-  //  Datavalid   : data valid
-  //
+
   val allocated = RegInit(VecInit(List.fill(LoadQueueRAWSize)(false.B))) // The control signals need to explicitly indicate the initial value
   val uop = Reg(Vec(LoadQueueRAWSize, new DynInst))
   val paddrModule = Module(new LqPAddrModule(

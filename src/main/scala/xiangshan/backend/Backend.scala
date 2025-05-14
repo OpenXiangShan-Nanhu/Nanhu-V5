@@ -211,8 +211,8 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   private val og0Cancel = dataPath.io.og0Cancel
   private val vlFromIntIsZero = intExuBlock.io.vlIsZero.get
   private val vlFromIntIsVlmax = intExuBlock.io.vlIsVlmax.get
-  private val vlFromVfIsZero = vfExuBlock.io.vlIsZero.get
-  private val vlFromVfIsVlmax = vfExuBlock.io.vlIsVlmax.get
+  private val vlFromVfIsZero = vfExuBlock.io.vlIsZero.getOrElse(0.U)
+  private val vlFromVfIsVlmax = vfExuBlock.io.vlIsVlmax.getOrElse(0.U)
 
   ctrlBlock.io.intIQValidNumVec := intScheduler.io.intIQValidNumVec
   ctrlBlock.io.fromTop.hartId := io.fromTop.hartId

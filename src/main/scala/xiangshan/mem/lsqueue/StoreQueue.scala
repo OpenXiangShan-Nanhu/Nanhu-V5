@@ -1010,6 +1010,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 
   val cboZeroFlushSb      = GatedRegNext(deqCanDoCboZero)
   val cboZeroUop          = RegEnable(PriorityMux(isCboZeroToSbVec, deqPtrExt.map(x=>uop(x.value))), deqCanDoCboZero)
+  val cboZeroSqIdx        = RegEnable(PriorityMux(isCboZeroToSbVec, deqPtrExt), deqCanDoCboZero)
   
   val cboZeroValid        = RegInit(false.B)
   val cboZeroWaitFlushSb  = RegInit(false.B)
@@ -1071,8 +1072,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.mmioStout.valid := mmioStout_valid | cboZeroStout_valid
   assert( !(mmioStout_valid & cboZeroStout_valid), "mmiostout and cbozerostout can not be valid simtanuesly")
   io.mmioStout.bits.uop := Mux(mmioStout_valid, uncacheUop, cboZeroUop)
-  io.mmioStout.bits.uop.sqIdx := deqPtrExt(0)
-  io.mmioStout.bits.uop.flushPipe := deqCanDoCbo // flush Pipeline to keep order in CMO
+  io.mmioStout.bits.uop.sqIdx := Mux(mmioStout_valid, deqPtrExt(0), cboZeroSqIdx)
+  io.mmioStout.bits.uop.flushPipe := Mux(mmioStout_valid, deqCanDoCbo, false.B) // cbom instr need flush Pipeline to keep order in CMO but cboz dont
   io.mmioStout.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
   io.mmioStout.bits.isFromLoadUnit := DontCare
   io.mmioStout.bits.debug.isMMIO := Mux(mmioStout_valid, true.B, false.B)
@@ -1082,7 +1083,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // Remove MMIO inst from store queue after MMIO request is being sent
   // That inst will be traced by uncache state machine
   when (io.mmioStout.fire) {
-    allocated(deqPtr) := false.B
+    allocated(io.mmioStout.bits.uop.sqIdx.value) := false.B
     when(cboZeroStout_valid) {
       cboZeroValid := false.B
     }

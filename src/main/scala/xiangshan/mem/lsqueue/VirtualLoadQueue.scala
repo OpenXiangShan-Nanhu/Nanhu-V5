@@ -302,12 +302,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   paddrModule.io.releaseMdataValid.takeRight(1)(0) := release1Cycle.valid
   paddrModule.io.releaseMdata.takeRight(1)(0) := Mux(release1Cycle.valid,release1Cycle.bits.paddr,0.U)
 
-  val bypassPAddr2Cycle = RegNext(bypassPAddr)
   val lastCanAccept = RegNext(acceptedVec)
   val lastAllocIndex = RegNext(enqIndexVec)
   val lastAllocIndexOH = lastAllocIndex.map(UIntToOH(_))
   val lastReleasePAddrMatch = VecInit((0 until LoadPipelineWidth).map(i => {
-    (bypassPAddr2Cycle(i)(PAddrBits-1, DCacheLineOffset) === release1Cycle.bits.paddr(PAddrBits-1, DCacheLineOffset)) && release1Cycle.valid
+    (bypassPAddr(i)(PAddrBits-1, DCacheLineOffset) === release1Cycle.bits.paddr(PAddrBits-1, DCacheLineOffset)) && release1Cycle.valid
   }))
 
   (0 until VirtualLoadQueueSize).map(i => {

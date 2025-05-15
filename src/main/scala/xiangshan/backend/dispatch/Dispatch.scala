@@ -255,15 +255,17 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       }
     })
     
+  }
 
-    if (env.EnableDifftest) {
+  for (i <- 0 until RenameWidth) {
+      if (env.EnableDifftest) {
       // debug runahead hint
       val debug_runahead_checkpoint_id = Wire(checkpoint_id.cloneType)
       if(i == 0){
         debug_runahead_checkpoint_id := checkpoint_id
       } else {
-        debug_runahead_checkpoint_id := checkpoint_id + PopCount((0 until i).map(i =>
-          io.fromRename(1)(i).fire
+        debug_runahead_checkpoint_id := checkpoint_id + PopCount((0 until RenameWidth).map(j =>
+          io.fromRename(1)(j).fire
         ))
       }
     }

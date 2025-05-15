@@ -56,10 +56,10 @@ class PipeGroupConnect[T <: Data](n: Int, gen: => T) extends Module {
   }
 }
 
-class PipeGroupConnectLessFanOut[T <: Data](n: Int, gen: => T) extends Module {
+class PipeGroupConnectLessFanOut[T <: Data](n: Int, fanoutNum: Int, gen: => T) extends Module {
   val io = IO(new Bundle {
     val in = Vec(n, Flipped(DecoupledIO(gen)))
-    val out = Vec(n, Vec(n, DecoupledIO(gen)))
+    val out = Vec(fanoutNum, Vec(n, DecoupledIO(gen)))
     val flush = Input(Bool())
     val outAllFire = Input(Bool())
   })
@@ -72,8 +72,8 @@ class PipeGroupConnectLessFanOut[T <: Data](n: Int, gen: => T) extends Module {
   private[this] val outReadySeq = io.out(0).map(_.ready)
 
   // Regs
-  private[this] val validVec_dup = RegInit(VecInit.fill(n)(VecInit.fill(n)(false.B)))
-  private[this] val dataVec_dup  = Reg(Vec(n, Vec(n, gen)))
+  private[this] val validVec_dup = RegInit(VecInit.fill(fanoutNum)(VecInit.fill(n)(false.B)))
+  private[this] val dataVec_dup  = Reg(Vec(fanoutNum, Vec(n, gen)))
 
   // Logic
   private[this] val valids    = Cat(validVec_dup(0).reverse)
@@ -106,12 +106,14 @@ class PipeGroupConnectLessFanOut[T <: Data](n: Int, gen: => T) extends Module {
   }
 
   // Output connections
-  for (i <- 0 until n) {
-    io.in(i).ready  := canAcc
+  for (i <- 0 until fanoutNum) {
     io.out(i).zipWithIndex.foreach{case (out, j) =>
       out.valid := validVec_dup(i)(j)
       out.bits := dataVec_dup(i)(j)
     }
+  }
+  for (i <- 0 until n) {
+    io.in(i).ready  := canAcc
   }
 }
 
@@ -149,10 +151,11 @@ object PipeGroupConnectLessFanOut {
     flush: Bool,
     rightAllFire: Bool,
     suggestName: String = null,
+    fanoutNum: Int = 4,
   ): Unit =  {
     require(left.size == right.head.size, "The sizes of left and right Vec Bundle should be equal in PipeGroupConnect")
     require(left.size > 0, "The size of Vec Bundle in PipeGroupConnect should be more than 0")
-    val mod = Module(new PipeGroupConnectLessFanOut(left.size, chiselTypeOf(left.head.bits)))
+    val mod = Module(new PipeGroupConnectLessFanOut(left.size, fanoutNum, chiselTypeOf(left.head.bits)))
     mod.io.flush := flush
     mod.io.in.zipWithIndex.foreach { case (in, i) =>
       in.valid := left(i).valid

@@ -50,11 +50,12 @@ class CoreDispatchTopDownIO extends Bundle {
 
 // read rob and enqueue
 class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
+  private val fanoutNum = 4 // 0 to identify and ready  1 to rob   2 to dq   3 to perf & busytable
   val io = IO(new Bundle() {
     val hartId = Input(UInt(hartIdLen.W))
     // from rename
     // 0 to identify and ready  1 to rob   2 to dq   3 to perf & busytable
-    val fromRename = Vec(RenameWidth, Vec(RenameWidth, Flipped(DecoupledIO(new DynInst))))
+    val fromRename = Vec(fanoutNum, Vec(RenameWidth, Flipped(DecoupledIO(new DynInst))))
     val toRenameAllFire = Output(Bool())
     // enq Rob
     val enqRob = Flipped(new RobEnqIO)
@@ -220,14 +221,14 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   }
 
   // 0 to identify and ready  1 to rob   2 to dq   3 to perf & busytable
-  val updatedUop = Wire(Vec(RenameWidth, Vec(RenameWidth, new DynInst)))
+  val updatedUop = Wire(Vec(fanoutNum, Vec(RenameWidth, new DynInst)))
   val checkpoint_id = RegInit(0.U(64.W))
   checkpoint_id := checkpoint_id + PopCount((0 until RenameWidth).map(i =>
     io.fromRename(0)(i).fire
   ))
 
 
-  for (i <- 0 until RenameWidth) {
+  for (i <- 0 until fanoutNum) {
     updatedUop(i).zipWithIndex.foreach({case (update, j) =>
       update := io.fromRename(i)(j).bits
       update.debugInfo.eliminatedMove := io.fromRename(i)(j).bits.eliminatedMove

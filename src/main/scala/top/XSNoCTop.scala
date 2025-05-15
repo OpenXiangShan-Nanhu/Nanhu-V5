@@ -103,6 +103,10 @@ class XSNoCTop()(implicit p: Parameters) extends BaseXSSoc with HasSoCParameter
         def toFirrtl = NestedPrefixModulesAnnotation(mod, prefix, true)
       })
     }
+    FileRegisters.add("dts", dts)
+    FileRegisters.add("graphml", graphML)
+    FileRegisters.add("json", json)
+    FileRegisters.add("plusArgs", freechips.rocketchip.util.PlusArgArtefacts.serialize_cHeader())
 
     val clock = IO(Input(Clock()))
     val reset = IO(Input(AsyncReset()))

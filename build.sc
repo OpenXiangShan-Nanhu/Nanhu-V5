@@ -350,7 +350,11 @@ object xiangshan extends XiangShanModule with HasChisel {
   }
 
   object test extends SbtModuleTests with TestModule.ScalaTest {
-    override def forkArgs = Seq("-Xmx40G", "-Xss256m")
+
+    override def forkArgs = Seq(
+      s"-Xmx${sys.props.getOrElse("jvm-xmx", "40G")}",
+      s"-Xss${sys.props.getOrElse("jvm-xss", "256m")}"
+    )
     override def moduleDeps = super.moduleDeps ++ Seq(
       difftestModule.test
     )

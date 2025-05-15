@@ -184,6 +184,10 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
         def toFirrtl = NestedPrefixModulesAnnotation(mod, prefix, true)
       })
     }
+    FileRegisters.add("dts", dts)
+    FileRegisters.add("graphml", graphML)
+    FileRegisters.add("json", json)
+    FileRegisters.add("plusArgs", freechips.rocketchip.util.PlusArgArtefacts.serialize_cHeader())
 
     val dma = socMisc.map(m => IO(Flipped(new VerilogAXI4Record(m.dma.elts.head.params))))
     val peripheral = IO(new VerilogAXI4Record(misc.peripheral.elts.head.params))
@@ -358,7 +362,7 @@ object TopMain extends App {
 
     // generate difftest bundles (w/o DifftestTopIO)
     if (enableDifftest) {
-      DifftestModule.finish("XiangShan", false)
+      DifftestModule.finish("XiangShan", false, Seq())
     }
   }
 

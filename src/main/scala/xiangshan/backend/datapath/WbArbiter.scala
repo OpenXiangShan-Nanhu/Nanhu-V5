@@ -13,6 +13,7 @@ import xiangshan.{Redirect, XSBundle, XSModule}
 import xiangshan.SrcType.v0
 import xiangshan.backend.fu.vector.Bundles.Vstart
 import xiangshan.backend.datapath.WbConfig._
+import difftest.DiffVecV0Writeback
 
 class WbArbiterDispatcherIO[T <: Data](private val gen: T, n: Int) extends Bundle {
   val in = Flipped(DecoupledIO(gen))
@@ -373,7 +374,19 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
       difftest.coreid := io.fromTop.hartId
       difftest.valid := out.fire
       difftest.address := out.bits.pdest
-      difftest.data := out.bits.data
+      difftest.data(0) := out.bits.data(63, 0)
+      difftest.data(1) := out.bits.data(127, 64)
+    })
+  }
+
+  if (env.EnableDifftest || env.AlwaysBasicDiff) {
+    v0WbArbiterOut.foreach(out => {
+      val difftest = DifftestModule(new DiffVecV0Writeback(V0PhyRegs))
+      difftest.coreid := io.fromTop.hartId
+      difftest.valid := out.fire
+      difftest.address := out.bits.pdest
+      difftest.data(0) := out.bits.data(63, 0)
+      difftest.data(1) := out.bits.data(127, 64)
     })
   }
 }

@@ -1546,6 +1546,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
         difftestLoadEvent.opType   := uop.fuOpType
         difftestLoadEvent.isAtomic := FuType.isAMO(uop.fuType)
         difftestLoadEvent.isLoad   := FuType.isLoad(uop.fuType)
+        difftestLoadEvent.isVLoad  := FuType.isVLoad(uop.fuType)
       }
     }
   }

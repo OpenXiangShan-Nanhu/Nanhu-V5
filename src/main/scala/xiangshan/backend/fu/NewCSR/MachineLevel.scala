@@ -528,7 +528,7 @@ class MisaBundle extends CSRBundle {
   val E = RO( 4).withReset(0.U) // RV32E/64E base ISA
   val F = RO( 5).withReset(1.U) // Single-precision floating-point extension
   val G = RO( 6).withReset(0.U) // Reserved
-  val H = RO( 7).withReset(0.U) // Hypervisor extension
+  val H = RO( 7).withReset(1.U) // Hypervisor extension
   val I = RO( 8).withReset(1.U) // RV32I/64I/128I base ISA
   val J = RO( 9).withReset(0.U) // Reserved
   val K = RO(10).withReset(0.U) // Reserved
@@ -542,7 +542,7 @@ class MisaBundle extends CSRBundle {
   val S = RO(18).withReset(1.U) // Supervisor mode implemented
   val T = RO(19).withReset(0.U) // Reserved
   val U = RO(20).withReset(1.U) // User mode implemented
-  val V = RO(21).withReset(0.U) // Vector extension
+  val V = RO(21).withReset(1.U) // Vector extension
   val W = RO(22).withReset(0.U) // Reserved
   val X = RO(23).withReset(0.U) // Non-standard extensions present
   val Y = RO(24).withReset(0.U) // Reserved

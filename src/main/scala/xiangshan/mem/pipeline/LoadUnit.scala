@@ -828,9 +828,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                     (s0_src_valid_vec(super_rep_idx) ||
                       s0_src_valid_vec(fast_rep_idx) ||
                       s0_src_valid_vec(lsq_rep_idx) ||
-                      s0_src_valid_vec(replay_low_idx) ||
                       ((s0_src_valid_vec(int_iss_idx) && !s0_sel_src.prf) && !s0_src_valid_vec(vec_iss_idx) && !s0_src_valid_vec(high_pf_idx))) ||
-                      s0_mmio_fire
+                      s0_mmio_fire ||
+                      s0_src_ready_vec(replay_low_idx) && s0_src_valid_vec(replay_low_idx)
 
   io.wakeup.bits := s0_wakeup_uop
 

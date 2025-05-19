@@ -450,7 +450,8 @@ class MstatusBundle extends CSRBundle {
   val UBE  = CSRROField     (6).withReset(0.U)
   val MPIE = CSRRWField     (7).withReset(0.U)
   val SPP  = CSRRWField     (8).withReset(0.U)
-  val VS   = ContextStatus  (10,  9).withReset(ContextStatus.Off)
+  // val VS   = ContextStatus  (10,  9).withReset(ContextStatus.Off)
+  val VS   = CSRROField     (10,  9).withReset(0.U)
   val MPP  = PrivMode       (12, 11).withReset(PrivMode.U)
   val FS   = ContextStatus  (14, 13).withReset(ContextStatus.Off)
   val XS   = ContextStatusRO(16, 15).withReset(0.U)
@@ -467,7 +468,7 @@ class MstatusBundle extends CSRBundle {
   val GVA  = CSRRWField     (38).withReset(0.U)
   val MPV  = VirtMode       (39).withReset(0.U)
   val SD   = CSRROField     (63,
-    (_, _) => FS === ContextStatus.Dirty || VS === ContextStatus.Dirty
+    (_, _) => FS === ContextStatus.Dirty // || VS === ContextStatus.Dirty
   )
 }
 
@@ -500,10 +501,10 @@ class MstatusModule(implicit override val p: Parameters) extends CSRModule("MSta
     reg.FS := ContextStatus.Dirty
   }
 
-  when (robCommit.vsDirty || writeVCSR) {
-    assert(reg.VS =/= ContextStatus.Off, "The [m|s]status.VS should not be Off when set dirty, please check decode")
-    reg.VS := ContextStatus.Dirty
-  }
+  // when (robCommit.vsDirty || writeVCSR) {
+  //   assert(reg.VS =/= ContextStatus.Off, "The [m|s]status.VS should not be Off when set dirty, please check decode")
+  //   reg.VS := ContextStatus.Dirty
+  // }
 
   // read connection
   mstatus :|= reg
@@ -542,7 +543,7 @@ class MisaBundle extends CSRBundle {
   val S = RO(18).withReset(1.U) // Supervisor mode implemented
   val T = RO(19).withReset(0.U) // Reserved
   val U = RO(20).withReset(1.U) // User mode implemented
-  val V = RO(21).withReset(1.U) // Vector extension
+  val V = RO(21).withReset(0.U) // Vector extension
   val W = RO(22).withReset(0.U) // Reserved
   val X = RO(23).withReset(0.U) // Non-standard extensions present
   val Y = RO(24).withReset(0.U) // Reserved

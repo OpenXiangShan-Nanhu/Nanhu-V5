@@ -420,7 +420,8 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   
   vfRfWen.zip(vfRfWen_dup).foreach { case (wenSink, wenSource) => wenSink := wenSource }
 
-  vfRfWenH.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenH))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
+  // vfRfWenH.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenH))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
+  vfRfWenH.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenH))).foreach { case (wenSink, wenSource) => wenSink := false.B })
   vfRfWenL.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenL))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
 
   for (portIdx <- vfRfRaddr.indices) {
@@ -846,9 +847,9 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     difftestArchFpRegState.coreid := io.hartId
     difftestArchFpRegState.value := fpDiffReadData.get
 
-    val difftestArchVecRegState = DifftestModule(new DiffArchVecRegState, delay = delayedCnt)
-    difftestArchVecRegState.coreid := io.hartId
-    difftestArchVecRegState.value := vecDiffReadData.get
+    // val difftestArchVecRegState = DifftestModule(new DiffArchVecRegState, delay = delayedCnt)
+    // difftestArchVecRegState.coreid := io.hartId
+    // difftestArchVecRegState.value := vecDiffReadData.get
   }
 
   val int_regcache_size = 48

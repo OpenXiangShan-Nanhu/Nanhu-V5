@@ -302,11 +302,14 @@ object VfRegFile {
             hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
           )
         } else if(i == 1) {
-          val realWen = (wen(i).asUInt & wenH(i).asUInt).asBools
-          Regfile(
-            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr(i), wdataVec(i),
-            hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
-          )
+          // val realWen = (wen(i).asUInt & wenH(i).asUInt).asBools
+          // Regfile(
+          //   name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr(i), wdataVec(i),
+          //   hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
+          // )
+          rdataVec(i).foreach(_ := 0.U)
+          vecdebugRDataVec.get(i).foreach(_ := 0.U)
+          fpdebugRDataVec.get(i).foreach(_ := 0.U)
         }
       }
       for (i <- 0 until rdata.length) {

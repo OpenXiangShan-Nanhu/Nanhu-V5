@@ -205,13 +205,14 @@ class SstatusBundle extends CSRBundle {
   val SPIE = CSRWARLField   (5, wNoFilter)
   val UBE  = CSRROField     (6).withReset(0.U)
   val SPP  = CSRWARLField   (8, wNoFilter).withReset(0.U)
-  val VS   = ContextStatus  (10, 9).withReset(ContextStatus.Off)
+  // val VS   = ContextStatus  (10, 9).withReset(ContextStatus.Off)
+  val VS   = CSRROField     (10,  9).withReset(0.U)
   val FS   = ContextStatus  (14, 13).withReset(ContextStatus.Off)
   val XS   = ContextStatusRO(16, 15).withReset(0.U)
   val SUM  = CSRWARLField   (18, wNoFilter).withReset(0.U)
   val MXR  = CSRWARLField   (19, wNoFilter).withReset(0.U)
   val UXL  = XLENField      (33, 32).withReset(XLENField.XLEN64)
-  val SD   = CSRROField     (63, (_, _) => FS === ContextStatus.Dirty || VS === ContextStatus.Dirty)
+  val SD   = CSRROField     (63, (_, _) => FS === ContextStatus.Dirty) // || VS === ContextStatus.Dirty)
 }
 
 class SieBundle extends InterruptEnableBundle {

@@ -59,16 +59,14 @@ object LoadReplayCauses {
   val C_DR  = 3
   // dcache miss check
   val C_DM  = 4
-  // wpu predict fail
-  val C_WF  = 5
   // dcache bank conflict check
-  val C_BC  = 6
+  val C_BC  = 5
   // RAW queue accept check
-  val C_RAW = 7
+  val C_RAW = 6
   // st-ld violation
-  val C_NK  = 8
+  val C_NK  = 7
   // total causes
-  val allCauses = 9
+  val allCauses = 8
 }
 
 class VecReplayInfo(implicit p: Parameters) extends XSBundle with HasVLSUParameters {
@@ -686,8 +684,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       // update blocking pointer
       when (replayInfo.cause(LoadReplayCauses.C_BC) ||
             replayInfo.cause(LoadReplayCauses.C_NK) ||
-            replayInfo.cause(LoadReplayCauses.C_DR) ||
-            replayInfo.cause(LoadReplayCauses.C_WF)) {
+            replayInfo.cause(LoadReplayCauses.C_DR)) {
         // normal case: bank conflict or schedule error or dcache replay
         // can replay next cycle
         blocking(enqIndex) := false.B

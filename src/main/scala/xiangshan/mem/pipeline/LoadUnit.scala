@@ -67,7 +67,6 @@ class LoadToLsqReplayIO(implicit p: Parameters) extends XSBundle
   def fwd_fail      = cause(LoadReplayCauses.C_FF)
   def dcache_rep    = cause(LoadReplayCauses.C_DR)
   def dcache_miss   = cause(LoadReplayCauses.C_DM)
-  def wpu_fail      = cause(LoadReplayCauses.C_WF)
   def bank_conflict = cause(LoadReplayCauses.C_BC)
   // def rar_nack      = cause(LoadReplayCauses.C_RAR)
   def raw_nack      = cause(LoadReplayCauses.C_RAW)
@@ -1250,7 +1249,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s2_out.rep_info.dcache_rep      := s2_mq_nack && s2_troublem
   s2_out.rep_info.dcache_miss     := s2_dcache_miss && s2_troublem
   s2_out.rep_info.bank_conflict   := s2_bank_conflict && s2_troublem
-  s2_out.rep_info.wpu_fail        := s2_wpu_pred_fail && s2_troublem
   // s2_out.rep_info.rar_nack        := s2_rar_nack && s2_troublem
   s2_out.rep_info.raw_nack        := s2_raw_nack && s2_troublem
   s2_out.rep_info.nuke            := s2_nuke && s2_troublem

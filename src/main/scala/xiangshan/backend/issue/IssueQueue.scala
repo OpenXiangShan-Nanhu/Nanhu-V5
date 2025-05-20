@@ -760,6 +760,8 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     deq.bits.common.perfDebugInfo := deqEntryVec(i).bits.payload.debugInfo
     deq.bits.common.perfDebugInfo.selectTime := GTimer()
     deq.bits.common.perfDebugInfo.issueTime := GTimer() + 1.U
+    
+    deq.bits.common.rfForAssert.foreach(_ := DontCare)
   }
 
   val deqDelay = Reg(params.genIssueValidBundle)

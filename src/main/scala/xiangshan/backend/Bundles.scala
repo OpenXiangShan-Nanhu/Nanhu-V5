@@ -610,6 +610,13 @@ object Bundles {
           makeValid(issueValid, rfRd.head)
       }.toSeq
     }
+
+    def getRfForAssert: Seq[UInt] = {
+      rf.zip(srcType).map {
+        case (rfRd: MixedVec[RfReadPortWithConfig], t: UInt) =>
+          rfRd.head.addr
+      }.toSeq
+    }
   }
 
   class OGRespBundle(implicit p:Parameters, params: IssueBlockParams) extends XSBundle {
@@ -725,6 +732,8 @@ object Bundles {
 
     val perfDebugInfo = new PerfDebugInfo()
 
+    val rfForAssert = OptionWrapper(params.backendParam.debugEn, Vec(params.numRegSrc, UInt(params.rdPregIdxWidth.W)))
+
     def exuIdx = this.params.exuIdx
 
     def needCancel(og0CancelOH: UInt, og1CancelOH: UInt) : Bool = {
@@ -777,6 +786,7 @@ object Bundles {
       this.numLsElem     .foreach(_ := source.common.numLsElem.get)
       this.srcTimer      .foreach(_ := source.common.srcTimer.get)
       this.loadDependency.foreach(_ := source.common.loadDependency.get.map(_ << 1))
+      this.rfForAssert   .foreach(_ := source.getRfForAssert)
     }
   }
 

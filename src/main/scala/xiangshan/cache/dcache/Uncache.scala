@@ -25,7 +25,7 @@ import xs.utils.perf._
 import xiangshan._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
-import xs.utils.cache.{MemBackTypeMM, MemPageTypeNC}
+import xs.utils.cache.{MemBackTypeMM, MemBackTypeMMField, MemPageTypeNC, MemPageTypeNCField}
 
 class UncachePtr(implicit p: Parameters) extends CircularQueuePtr[UncachePtr](
   p => p(XSCoreParamsKey).UncacheBufferSize
@@ -196,7 +196,8 @@ class Uncache()(implicit p: Parameters) extends LazyModule with HasXSParameter {
     clients = Seq(TLMasterParameters.v1(
       "uncache",
       sourceId = IdRange(0, idRange)
-    ))
+    )),
+    requestFields = Seq(MemBackTypeMMField(), MemPageTypeNCField())
   )
   val clientNode = TLClientNode(Seq(clientParameters))
 

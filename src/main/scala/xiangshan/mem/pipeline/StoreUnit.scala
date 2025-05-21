@@ -267,6 +267,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s1_tlb_miss  = io.tlb.resp.bits.miss
   val s1_isCboAll  = RegEnable(s0_isCboAll, s0_fire)
   val s1_pbmt      = Mux(!s1_tlb_miss, io.tlb.resp.bits.pbmt.head, 0.U(Pbmt.width.W))
+  val s1_tlb_hit   = !io.tlb.resp.bits.miss && io.tlb.resp.valid && s1_valid
   val s1_exception = ExceptionNO.selectByFu(s1_out.uop.exceptionVec, StaCfg).asUInt.orR
   val s1_isvec     = RegEnable(s0_out.isvec, false.B, s0_fire)
   // val s1_isLastElem = RegEnable(s0_isLastElem, false.B, s0_fire)
@@ -319,8 +320,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.isHyper   := s1_isHyper
   s1_out.miss      := false.B
   s1_out.nc        := Pbmt.isNC(s1_pbmt)
-  // s1_out.mmio      := Pbmt.isIO(s1_pbmt)
-  s1_out.mmio      := false.B
+  s1_out.mmio      := Pbmt.isIO(s1_pbmt)
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.atomic    := false.B
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
@@ -405,6 +405,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
                      s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_in.uop.exceptionVec(breakPoint) && !s2_trigger_debug_mode
   val s2_isCboAll = RegEnable(s1_isCboAll, s1_fire)
   val s2_isCboNoZero = LSUOpType.isCbo(s2_in.uop.fuOpType)
+  val s2_tlb_hit = RegEnable(s1_tlb_hit, s1_fire)
 
   s2_ready := !s2_valid || s2_kill || s3_ready
   when (s1_fire) { s2_valid := true.B }
@@ -418,13 +419,22 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_mmio = (s2_in.mmio || s2_pmp.mmio || Pbmt.isUncache(s2_pbmt)) && RegNext(s1_feedback.bits.hit)
   s2_kill := ((s2_mmio && !s2_exception) && !s2_in.isvec) || s2_in.uop.robIdx.needFlush(io.redirect)
 
+  // The response signal of `pmp/pma` is credible only after the physical address is actually generated.
+  // Therefore, the response signals of pmp/pma generated after an address translation has produced an `access fault` or a `page fault` are completely unreliable.
+  val s2_un_access_exception =  s2_vecActive && (
+    s2_in.uop.exceptionVec(storeAccessFault) ||
+    s2_in.uop.exceptionVec(storePageFault)   ||
+    s2_in.uop.exceptionVec(storeGuestPageFault)
+  )
+  val s2_actually_uncache = s2_tlb_hit && !s2_un_access_exception && (Pbmt.isPMA(s2_pbmt) && s2_pmp.mmio || s2_in.nc || s2_in.mmio) && RegNext(s1_feedback.bits.hit)
+
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
   s2_out.mmio   := (s2_mmio || s2_isCboNoZero) && !s2_exception
   s2_out.atomic := s2_in.atomic || s2_pmp.atomic
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_pmp.st ||
-                                                ((s2_in.isvec || s2_isCboAll) && s2_pmp.mmio && RegNext(s1_feedback.bits.hit))
+                                                ((s2_in.isvec || s2_isCboAll) && s2_actually_uncache && RegNext(s1_feedback.bits.hit))
                                                 ) && s2_vecActive
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew
 

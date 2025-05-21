@@ -108,7 +108,9 @@ import xs.utils.queue.QPtrMatchMatrix
   }
 
 class DispatchQueueIO(enqnum: Int, deqnum: Int, size: Int)(implicit p: Parameters) extends XSBundle {
+  val fanoutNum= 4
   val enq = new Bundle {
+    val canAccept_fanout = Vec(fanoutNum, Output(Bool()))
     // output: dispatch queue can accept new requests
     val canAccept = Output(Bool())
     // input: need to allocate new entries (for address computing)
@@ -126,6 +128,7 @@ class DispatchQueueIO(enqnum: Int, deqnum: Int, size: Int)(implicit p: Parameter
 // dispatch queue: accepts at most enqnum uops from dispatch1 and dispatches deqnum uops at every clock cycle
 class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(implicit p: Parameters)
   extends XSModule with HasCircularQueuePtrHelper with HasPerfEvents {
+  val fanoutNum= 4
   val io = IO(new DispatchQueueIO(enqnum, deqnum, size))
   // require(dpParams.IntDqDeqWidth == 8, "dpParams.IntDqDeqWidth must be 8")
   // require(backendParams.intSchdParams.get.issueBlockParams.size == 4, "int issueBlockParams must be 4")
@@ -161,6 +164,7 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
   // valid entries counter
   val validCounter = RegInit(0.U(log2Ceil(size + 1).W))
   val allowEnqueue = RegInit(true.B)
+  val allowEnqueue_dup_fanout = RegInit((VecInit.fill(fanoutNum)(false.B)))
 
   val isTrueEmpty = !VecInit(stateEntries.map(_ === s_valid)).asUInt.orR
   val canEnqueue = allowEnqueue
@@ -179,6 +183,9 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
    */
   // enqueue: from s_invalid to s_valid
   io.enq.canAccept := canEnqueue
+  for (i <- 0 until fanoutNum) {
+    io.enq.canAccept_fanout(i) := allowEnqueue_dup_fanout(i)
+  }
   val enqOffset = (0 until enqnum).map(i => PopCount(io.enq.needAlloc.take(i)))
   val enqIndexOH = (0 until enqnum).map(i => tailPtrOHVec(enqOffset(i)))
   for (i <- 0 until size) {
@@ -301,6 +308,9 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
       validCounter + numEnq - numDeq)
   )
   allowEnqueue := (numNeedAlloc +& currentValidCounter <= (size - enqnum).U) || (numNeedAlloc +& currentValidCounter - (size - enqnum).U <= numDeq)
+  for (i <- 0 until fanoutNum) {
+    allowEnqueue_dup_fanout(i) := (numNeedAlloc +& currentValidCounter <= (size - enqnum).U) || (numNeedAlloc +& currentValidCounter - (size - enqnum).U <= numDeq)
+  }
 
   /**
    * Part 3: set output valid and data bits

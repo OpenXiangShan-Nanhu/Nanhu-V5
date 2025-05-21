@@ -109,10 +109,10 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
   )
 
   private val forwardPdestVec: Vec[UInt] = VecInit(fromExus.map(_.bits.pdest))
-  private val forwardValidVec: Vec[Bool] = VecInit(fromExus.map(_.valid))
+  // private val forwardValidVec: Vec[Bool] = VecInit(fromExus.map(_.valid))
 
   private val bypassPdestVec: Vec[UInt] = VecInit(fromExus.map(x => RegEnable(x.bits.pdest, x.valid)))
-  private val bypassValidVec: Vec[Bool] = VecInit(fromExus.map(x => RegNext(x.valid)))
+  // private val bypassValidVec: Vec[Bool] = VecInit(fromExus.map(x => RegNext(x.valid)))
 
   toExus.zip(fromDPs).foreach { case (sink, source) =>
     sink <> source
@@ -143,12 +143,14 @@ class BypassNetwork()(implicit p: Parameters, params: BackendParams) extends XSM
         if(params.debugEn && exuInput.bits.params.isIQWakeUpSink) {
           when(readForward && exuInput.fire) {
             val forwardPdest = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), forwardPdestVec)
-            val forwardValid = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), forwardValidVec)
-            assert(forwardValid && forwardPdest === exuInput.bits.rfForAssert.get(srcIdx))
+            assert(forwardPdest === exuInput.bits.rfForAssert.get(srcIdx))
+            // val forwardValid = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), forwardValidVec)
+            // assert(forwardValid && forwardPdest === exuInput.bits.rfForAssert.get(srcIdx))
           }.elsewhen(readBypass && exuInput.fire) {
             val bypassPdest = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassPdestVec)
-            val bypassValid = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassValidVec)
-            assert(bypassValid && bypassPdest === exuInput.bits.rfForAssert.get(srcIdx))
+            assert(bypassPdest === exuInput.bits.rfForAssert.get(srcIdx))
+            // val bypassValid = Mux1H(forwardOrBypassValidVec3(exuIdx)(srcIdx), bypassValidVec)
+            // assert(bypassValid && bypassPdest === exuInput.bits.rfForAssert.get(srcIdx))
           }
         }
 

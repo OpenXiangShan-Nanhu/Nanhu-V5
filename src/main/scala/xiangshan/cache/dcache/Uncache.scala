@@ -25,6 +25,7 @@ import xs.utils.perf._
 import xiangshan._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
+import xs.utils.cache.{MemBackTypeMM, MemBackTypeMMField, MemPageTypeNC, MemPageTypeNCField}
 
 class UncachePtr(implicit p: Parameters) extends CircularQueuePtr[UncachePtr](
   p => p(XSCoreParamsKey).UncacheBufferSize
@@ -136,6 +137,8 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   when (state === s_refill_req) {
     io.mem_acquire.valid := true.B && io.select
     io.mem_acquire.bits := Mux(storeReq, store, load)
+    io.mem_acquire.bits.user.lift(MemBackTypeMM).foreach(_ := req.nc)
+    io.mem_acquire.bits.user.lift(MemPageTypeNC).foreach(_ := req.nc)
 
     when (io.mem_acquire.fire) {
       state := s_refill_resp
@@ -149,7 +152,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     when (io.mem_grant.fire) {
       resp_data := io.mem_grant.bits.data
       resp_nderr := io.mem_grant.bits.denied
-      // TODO: consider corrupt
+      io.resp.valid := req.nc && storeReq
       assert(refill_done, "Uncache response should be one beat only!")
       state := Mux(storeReq && req.nc, s_invalid, s_send_resp)
     }
@@ -193,7 +196,8 @@ class Uncache()(implicit p: Parameters) extends LazyModule with HasXSParameter {
     clients = Seq(TLMasterParameters.v1(
       "uncache",
       sourceId = IdRange(0, idRange)
-    ))
+    )),
+    requestFields = Seq(MemBackTypeMMField(), MemPageTypeNCField())
   )
   val clientNode = TLClientNode(Seq(clientParameters))
 

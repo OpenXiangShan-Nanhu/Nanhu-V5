@@ -308,8 +308,12 @@ object VfRegFile {
           //   hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
           // )
           rdataVec(i).foreach(_ := 0.U)
-          vecdebugRDataVec.get(i).foreach(_ := 0.U)
-          fpdebugRDataVec.get(i).foreach(_ := 0.U)
+          if(vecdebugReadData.nonEmpty) {
+            vecdebugRDataVec.get(i).foreach(_ := 0.U)
+          }
+          if(fpdebugReadData.nonEmpty) {
+            fpdebugRDataVec.get(i).foreach(_ := 0.U)
+          }
         }
       }
       for (i <- 0 until rdata.length) {

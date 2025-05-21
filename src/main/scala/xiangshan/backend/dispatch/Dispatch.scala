@@ -63,11 +63,13 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     val allocPregs = Vec(RenameWidth, Output(new ResetPregStateReq))
     // to dispatch queue
     val toIntDq = new Bundle {
+      val canAccept_fanout = Vec(fanoutNum, Input(Bool()))
       val canAccept = Input(Bool())
       val needAlloc = Vec(RenameWidth, Output(Bool()))
       val req = Vec(RenameWidth, ValidIO(new DynInst))
     }
     val toIntDq1 = new Bundle {
+      val canAccept_fanout = Vec(fanoutNum, Input(Bool()))
       val canAccept = Input(Bool())
       val needAlloc = Vec(RenameWidth, Output(Bool()))
       val req = Vec(RenameWidth, ValidIO(new DynInst))
@@ -86,11 +88,13 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     //   val req = Vec(RenameWidth, ValidIO(new DynInst))
     // }
     val toVecDq = new Bundle {
+      val canAccept_fanout = Vec(fanoutNum, Input(Bool()))
       val canAccept = Input(Bool())
       val needAlloc = Vec(RenameWidth, Output(Bool()))
       val req = Vec(RenameWidth, ValidIO(new DynInst))
     }
     val toLsDq = new Bundle {
+      val canAccept_fanout = Vec(fanoutNum, Input(Bool()))
       val canAccept = Input(Bool())
       val needAlloc = Vec(RenameWidth, Output(Bool()))
       val req = Vec(RenameWidth, ValidIO(new DynInst))
@@ -326,11 +330,15 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
 
   // Todo: use decode2dispatch bypass infos to loose `can accept` condition
   val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
+  val dqCanAccept_toRob = io.toIntDq.canAccept_fanout(0) && io.toIntDq1.canAccept_fanout(0) && io.toVecDq.canAccept_fanout(0) && io.toLsDq.canAccept_fanout(0)
+  val dqCanAccept_tointDq = io.toIntDq.canAccept_fanout(1) && io.toIntDq1.canAccept_fanout(1) && io.toVecDq.canAccept_fanout(1) && io.toLsDq.canAccept_fanout(1)
+  val dqCanAccept_tovecDq = io.toIntDq.canAccept_fanout(2) && io.toIntDq1.canAccept_fanout(2) && io.toVecDq.canAccept_fanout(2) && io.toLsDq.canAccept_fanout(2)
+  val dqCanAccept_tolsDq = io.toIntDq.canAccept_fanout(3) && io.toIntDq1.canAccept_fanout(3) && io.toVecDq.canAccept_fanout(3) && io.toLsDq.canAccept_fanout(3)
 
   // input for ROB, LSQ, Dispatch Queue
   for (i <- 0 until RenameWidth) {
     io.enqRob.needAlloc(i) := io.fromRename(2)(i).valid
-    io.enqRob.req(i).valid := io.fromRename(2)(i).valid && thisCanActualOut(i) && dqCanAccept
+    io.enqRob.req(i).valid := io.fromRename(2)(i).valid && thisCanActualOut(i) && dqCanAccept_toRob
     io.enqRob.req(i).bits := updatedUop(2)(i)
     io.enqRob.req(i).bits.hasException := updatedUop(2)(i).hasException || updatedUop(2)(i).singleStep
     io.enqRob.req(i).bits.numWB := Mux(updatedUop(2)(i).singleStep, 0.U, updatedUop(2)(i).numWB)
@@ -345,21 +353,21 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     val doesNotNeedExec = io.fromRename(1)(i).bits.eliminatedMove
     io.toIntDq.needAlloc(i) := io.fromRename(1)(i).valid && !doesNotNeedExec && isIntDq0(i) && toIntDq0Valid(i)
     io.toIntDq.req(i).valid := io.fromRename(1)(i).valid && !doesNotNeedExec && isIntDq0(i) && toIntDq0Valid(i) &&
-      canEnterDpq && dqCanAccept
+      canEnterDpq && dqCanAccept_tointDq
     io.toIntDq.req(i).bits := updatedUop(1)(i)
 
     io.toIntDq1.needAlloc(i) := io.fromRename(1)(i).valid && isIntDq1(i) && !doesNotNeedExec && toIntDq1Valid(i)
     io.toIntDq1.req(i).valid := io.fromRename(1)(i).valid && isIntDq1(i) && !doesNotNeedExec && toIntDq1Valid(i) && 
-      canEnterDpq && dqCanAccept
+      canEnterDpq && dqCanAccept_tointDq
     io.toIntDq1.req(i).bits := updatedUop(1)(i)
 
     io.toVecDq.needAlloc(i)  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i))
-    io.toVecDq.req(i).valid  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i)) && canEnterDpq && dqCanAccept
+    io.toVecDq.req(i).valid  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i)) && canEnterDpq && dqCanAccept_tovecDq
     io.toVecDq.req(i).bits   := updatedUop(1)(i)
 
     io.toLsDq.needAlloc(i)  := io.fromRename(1)(i).valid && isMem(i)
     io.toLsDq.req(i).valid  := io.fromRename(1)(i).valid && isMem(i) &&
-                                canEnterDpq && dqCanAccept
+                                canEnterDpq && dqCanAccept_tolsDq
     io.toLsDq.req(i).bits   := updatedUop(1)(i)
 
     //delete trigger message from frontend

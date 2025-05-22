@@ -151,7 +151,10 @@ class PTW()(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   val source = RegEnable(io.req.bits.req_info.source, io.req.fire)
 
   val sent_to_pmp = idle === false.B && (s_pmp_check === false.B || mem_addr_update) && !finish && !(find_pte && pte_valid)
-  val accessFault = RegEnable(io.pmp.resp.ld || io.pmp.resp.mmio, false.B, sent_to_pmp)
+  val sent_to_pmp_delay = RegNext(sent_to_pmp)  // 同步 1 clk
+//  val accessFault = RegEnable(io.pmp.resp.ld || io.pmp.resp.mmio, false.B, sent_to_pmp)
+  val accessFault = RegEnable(io.pmp.resp.ld || io.pmp.resp.mmio, false.B, sent_to_pmp_delay)
+
 
 //  val l3addr = Wire(UInt(PAddrBits.W))
 //  val l2addr = Wire(UInt(PAddrBits.W))

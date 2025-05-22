@@ -823,14 +823,17 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     io.ldin.bits.uop,
     io.replay.bits.uop
   )
+  val s0_src_fire_vec = WireInit(VecInit((0 until SRC_NUM).map{i => s0_src_valid_vec(i) && s0_src_ready_vec(i)}))
+
   val s0_wakeup_uop = ParallelPriorityMux(s0_wakeup_selector, s0_wakeup_format)
-  io.wakeup.valid := s0_fire && !s0_sel_src.isvec && !s0_sel_src.frm_mabuf &&
-                    (s0_src_valid_vec(super_rep_idx) ||
-                      s0_src_valid_vec(fast_rep_idx) ||
-                      s0_src_valid_vec(lsq_rep_idx) ||
-                      ((s0_src_valid_vec(int_iss_idx) && !s0_sel_src.prf) && !s0_src_valid_vec(vec_iss_idx) && !s0_src_valid_vec(high_pf_idx))) ||
-                      s0_mmio_fire ||
-                      s0_src_ready_vec(replay_low_idx) && s0_src_valid_vec(replay_low_idx)
+  io.wakeup.valid := !s0_sel_src.isvec && (
+    s0_src_valid_vec(super_rep_idx) && io.replay.ready ||
+    s0_src_valid_vec(fast_rep_idx) && io.fast_rep_in.ready ||
+    s0_src_valid_vec(lsq_rep_idx) && io.replay.ready ||
+    s0_src_valid_vec(int_iss_idx) && io.ldin.ready && !s0_sel_src.prf ||
+    s0_src_valid_vec(replay_low_idx) && io.replay.ready ||
+    s0_mmio_fire
+  )
 
   io.wakeup.bits := s0_wakeup_uop
 

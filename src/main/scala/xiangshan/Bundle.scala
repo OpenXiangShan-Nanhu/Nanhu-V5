@@ -304,6 +304,7 @@ class Redirect(implicit p: Parameters) extends XSBundle {
   val ftqOffset = UInt(log2Up(PredictWidth).W)
   val level = RedirectLevel()
   val interrupt = Bool()
+  val isException = Bool()
   val cfiUpdate = new CfiUpdateInfo
   val fullTarget = UInt(XLEN.W) // only used for tval storage in backend
 

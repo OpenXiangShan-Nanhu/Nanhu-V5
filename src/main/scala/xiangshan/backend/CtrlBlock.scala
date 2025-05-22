@@ -294,6 +294,7 @@ class CtrlBlockImp(
   val s5_trapTargetIGPF = Mux(s3_csrIsTrap, s3_trapTargetFromCsr.raiseIGPF, false.B)
   when (s4_flushFromRobValid) {
     io.frontend.toFtq.redirect.bits.level := RedirectLevel.flush
+    io.frontend.toFtq.redirect.bits.isException := true.B
     io.frontend.toFtq.redirect.bits.cfiUpdate.target := RegEnable(flushTarget, s3_flushFromRobValidAhead)
     io.frontend.toFtq.redirect.bits.cfiUpdate.backendIAF := RegEnable(s5_trapTargetIAF, s3_flushFromRobValidAhead)
     io.frontend.toFtq.redirect.bits.cfiUpdate.backendIPF := RegEnable(s5_trapTargetIPF, s3_flushFromRobValidAhead)

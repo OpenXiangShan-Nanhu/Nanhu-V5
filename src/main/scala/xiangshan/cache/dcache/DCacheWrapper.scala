@@ -455,7 +455,6 @@ class DCacheWordResp(implicit p: Parameters) extends BaseDCacheWordResp
   val real_miss = Bool()
   // s3: 1 cycle after data resp
   val error_delayed = Bool() // all kinds of errors, include tag error
-  val replacementUpdated = Bool()
 }
 
 class BankedDCacheWordResp(implicit p: Parameters) extends DCacheWordResp
@@ -593,8 +592,6 @@ class DCacheLoadIO(implicit p: Parameters) extends DCacheWordIO
   val s0_pc             = Output(UInt(VAddrBits.W))
   val s1_pc             = Output(UInt(VAddrBits.W))
   val s2_pc             = Output(UInt(VAddrBits.W))
-  // cycle 0: load has updated replacement before
-  val replacementUpdated = Output(Bool())
   val is128Req = Bool()
   // cycle 0: prefetch source bits
   val pf_source = Output(UInt(L1PfSourceBits.W))

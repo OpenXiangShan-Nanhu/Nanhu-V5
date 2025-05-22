@@ -509,7 +509,6 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   // error_delayed signal will be used to update uop.exception 1 cycle after load writeback
   resp.bits.error_delayed := s3_error && (s3_hit || s3_tag_error) && s3_valid
   resp.bits.data_delayed := s3_banked_data_resp_word
-  resp.bits.replacementUpdated := io.replace_access.valid
 
   // report tag / data / l2 error (with paddr) to bus error unit
   io.error := 0.U.asTypeOf(ValidIO(new L1CacheErrorInfo))

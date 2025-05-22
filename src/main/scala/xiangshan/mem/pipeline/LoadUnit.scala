@@ -137,11 +137,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     val lsq           = new LoadToLsqIO
     val tl_d_channel  = Input(new DcacheToLduForwardIO)
     val forward_mshr  = Flipped(new LduToMissqueueForwardIO)
-   // val refill        = Flipped(ValidIO(new Refill))
-    val l2_hint       = Input(Valid(new L2ToL1Hint))
     val tlb_hint      = Flipped(new TlbHintReq)
     // fast wakeup
-    // TODO: implement vector fast wakeup
     val fast_uop = ValidIO(new DynInst) // early wakeup signal generated in load_s1, send to RS in load_s2
 
     // trigger
@@ -166,7 +163,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     val l2l_fwd_out   = Output(new LoadToLoadIO)
 
     // rs feedback
-    val replayQValidCount = Input(UInt(log2Up(LoadQueueReplaySize + 1).W))
     val wakeup = ValidIO(new DynInst)
     val feedback_fast = ValidIO(new RSFeedback) // stage 0
     val feedback_slow = ValidIO(new RSFeedback) // stage 3
@@ -180,7 +176,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
 
     // queue-based replay
     val replay       = Flipped(Decoupled(new LsPipelineBundle))
-    val lq_rep_full  = Input(Bool())
 
     // misc
     val s2_ptr_chasing = Output(Bool()) // provide right pc for hw prefetch
@@ -201,7 +196,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     // perf
     val debug_ls         = Output(new DebugLsInfoBundle)
     val lsTopdownInfo    = Output(new LsTopdownInfo)
-    val correctMissTrain = Input(Bool())
   })
 
   val s1_ready, s2_ready, s3_ready = WireInit(false.B)
@@ -253,7 +247,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     val reg_offset    = UInt(vOffsetBits.W)
     val vecActive     = Bool() // 1: vector active element or scala mem operation, 0: vector not active element
     val is_first_ele  = Bool()
-    // val flowPtr       = new VlflowPtr
     val usSecondInv   = Bool()
     val mbIndex       = UInt(vlmBindexBits.W)
     val elemIdx       = UInt(elemIdxBits.W)
@@ -550,12 +543,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     out.uop           := src.uop
     out.try_l2l       := false.B
     out.has_rob_entry := true.B
-    // TODO: VLSU, implement replay carry
     out.rep_carry     := 0.U.asTypeOf(out.rep_carry)
     out.mshrid        := 0.U
     out.frm_mabuf     := false.B
-    // TODO: VLSU, implement first issue
-//    out.isFirstIssue  := src.isFirstIssue
     out.fast_rep      := false.B
     out.ld_rep        := false.B
     out.l2l_fwd       := false.B
@@ -752,11 +742,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s0_out.paddr         := Mux(s0_src_valid_vec(fast_rep_idx), io.fast_rep_in.bits.paddr,
     Mux(s0_src_select_vec(int_iss_idx) && s0_sel_src.prf_i, 0.U, io.prefetch_req.bits.paddr)) // only for prefetch and fast_rep
   s0_out.tlbNoQuery    := s0_tlb_no_query
-  // s0_out.rob_idx_valid   := s0_rob_idx_valid
-  // s0_out.inner_idx       := s0_inner_idx
-  // s0_out.rob_idx         := s0_rob_idx
   s0_out.reg_offset      := s0_sel_src.reg_offset
-  // s0_out.offset          := s0_offset
   s0_out.vecActive             := s0_sel_src.vecActive
   s0_out.usSecondInv    := s0_sel_src.usSecondInv
   s0_out.is_first_ele   := s0_sel_src.is_first_ele
@@ -767,7 +753,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s0_out.vecBaseVaddr   := s0_sel_src.vecBaseVaddr
   s0_out.feedbacked := io.feedback_fast.valid
   s0_out.isReplayForRAW := s0_sel_src.isReplayForRAW
-  // s0_out.flowPtr         := s0_sel_src.flowPtr
   s0_out.uop.exceptionVec(loadAddrMisaligned) := (!s0_addr_aligned || s0_sel_src.uop.exceptionVec(loadAddrMisaligned)) && s0_sel_src.vecActive
   s0_out.forward_tlDchannel := s0_src_select_vec(super_rep_idx)
   when(io.tlb.req.valid && s0_sel_src.isFirstIssue) {
@@ -802,10 +787,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   // for hw prefetch load flow feedback, to be added later
   // io.prefetch_in.ready := s0_hw_prf_select
 
-  // dcache replacement extra info
-  // TODO: should prefetch load update replacement?
-  io.dcache.replacementUpdated := Mux(s0_src_select_vec(lsq_rep_idx) || s0_src_select_vec(super_rep_idx), io.replay.bits.replacementUpdated, false.B)
-
   // load wakeup
   val s0_wakeup_selector = Seq(
     s0_src_valid_vec(super_rep_idx),
@@ -823,7 +804,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
     io.ldin.bits.uop,
     io.replay.bits.uop
   )
-  val s0_src_fire_vec = WireInit(VecInit((0 until SRC_NUM).map{i => s0_src_valid_vec(i) && s0_src_ready_vec(i)}))
 
   val s0_wakeup_uop = ParallelPriorityMux(s0_wakeup_selector, s0_wakeup_format)
   io.wakeup.valid := !s0_sel_src.isvec && (
@@ -926,7 +906,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.sbuffer.uop   := s1_in.uop
   io.sbuffer.sqIdx := s1_in.uop.sqIdx
   io.sbuffer.mask  := s1_in.mask
-  io.sbuffer.pc    := s1_in.uop.pc // FIXME: remove it
+  io.sbuffer.pc    := DontCare
   io.sbuffer.mdpFoldPc := DontCare
 
   val enableNewMDP = true.B
@@ -1086,8 +1066,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   }
   val s2_exception = s2_vecActive &&
                     (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_exception_vec, LduCfg).asUInt.orR)
-//  val s2_mis_align = s2_valid && GatedValidRegNext(io.csrCtrl.hd_misalign_ld_enable) && !s2_in.isvec &&
-//                     s2_exception_vec(loadAddrMisaligned) && !s2_exception_vec(breakPoint) && !s2_trigger_debug_mode
   val (s2_fwd_frm_d_chan, s2_fwd_data_frm_d_chan) = io.tl_d_channel.forward(s1_valid && s1_out.forward_tlDchannel, s1_out.mshrid, s1_out.paddr)
   val (s2_fwd_data_valid, s2_fwd_frm_mshr, s2_fwd_data_frm_mshr) = io.forward_mshr.forward()
   val s2_fwd_frm_d_chan_or_mshr = s2_fwd_data_valid && (s2_fwd_frm_d_chan || s2_fwd_frm_mshr)
@@ -1169,7 +1147,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                            !s2_dcache_miss &&
                            !s2_bank_conflict &&
                            !s2_wpu_pred_fail &&
-                          //  !s2_rar_nack &&
                            !s2_raw_nack &&
                            s2_nuke
 
@@ -1252,7 +1229,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s2_out.rep_info.dcache_rep      := s2_mq_nack && s2_troublem
   s2_out.rep_info.dcache_miss     := s2_dcache_miss && s2_troublem
   s2_out.rep_info.bank_conflict   := s2_bank_conflict && s2_troublem
-  // s2_out.rep_info.rar_nack        := s2_rar_nack && s2_troublem
   s2_out.rep_info.raw_nack        := s2_raw_nack && s2_troublem
   s2_out.rep_info.nuke            := s2_nuke && s2_troublem
   s2_out.rep_info.full_fwd        := s2_data_fwded
@@ -1356,7 +1332,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val s3_safe_wakeup  = RegEnable(s2_safe_wakeup, s2_fire)
   val s3_safe_writeback = RegEnable(s2_safe_writeback, s2_fire) || s3_dly_ld_err
   val s3_exception = RegEnable(s2_exception, s2_fire)
-//  val s3_mis_align = RegEnable(s2_mis_align, s2_fire)
   val s3_trigger_debug_mode = RegEnable(s2_trigger_debug_mode, false.B, s2_fire)
   // TODO: Fix vector load merge buffer nack
   val s3_vec_mb_nack  = Wire(Bool())
@@ -1375,18 +1350,14 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.fast_rep_out.bits := s3_in
 
   io.lsq.ldin.valid := s3_valid && (!s3_fast_rep || s3_fast_rep_canceled || s3_in.mmio) && !s3_frm_mabuf
-  // TODO: check this --by hx
-  // io.lsq.ldin.valid := s3_valid && (!s3_fast_rep || !io.fast_rep_out.ready) && !s3_in.feedbacked && !s3_in.lateKill
   io.lsq.ldin.bits := s3_in
   io.lsq.ldin.bits.miss := s3_in.miss
 
   // connect to misalignBuffer
-  io.misalign_buf.valid := io.lsq.ldin.valid && GatedValidRegNext(io.csrCtrl.hd_misalign_ld_enable) && !io.lsq.ldin.bits.isvec
-  io.misalign_buf.bits  := s3_in
+  io.misalign_buf := DontCare
 
   /* <------- DANGEROUS: Don't change sequence here ! -------> */
   io.lsq.ldin.bits.data_wen_dup := s3_ld_valid_dup.asBools
-  io.lsq.ldin.bits.replacementUpdated := io.dcache.resp.bits.replacementUpdated
   io.lsq.ldin.bits.missDbUpdated := GatedValidRegNext(s2_fire && s2_in.hasROBEntry && !s2_in.tlbMiss && !s2_in.missDbUpdated)
 
   io.s3_dly_ld_err := false.B // s3_dly_ld_err && s3_valid
@@ -1429,15 +1400,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s3_vecout.isvec             := s3_isvec
   s3_vecout.vecdata           := 0.U // Data will be assigned later
   s3_vecout.mask              := s3_in.mask
-  // s3_vecout.rob_idx_valid     := s3_in.rob_idx_valid
-  // s3_vecout.inner_idx         := s3_in.inner_idx
-  // s3_vecout.rob_idx           := s3_in.rob_idx
-  // s3_vecout.offset            := s3_in.offset
   s3_vecout.reg_offset        := s3_in.reg_offset
   s3_vecout.vecActive         := s3_vecActive
   s3_vecout.is_first_ele      := s3_in.is_first_ele
-  // s3_vecout.uopQueuePtr       := DontCare // uopQueuePtr is already saved in flow queue
-  // s3_vecout.flowPtr           := s3_in.flowPtr
   s3_vecout.elemIdx           := s3_in.elemIdx // elemIdx is already saved in flow queue // TODO:
   s3_vecout.elemIdxInsideVd   := s3_in.elemIdxInsideVd
   s3_vecout.trigger           := s3_in.uop.trigger
@@ -1484,7 +1449,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.feedback_slow.bits.sourceType       := RSFeedbackType.lrqFull
   io.feedback_slow.bits.dataInvalidSqIdx := DontCare
 
-  // TODO: vector wakeup?
   io.ldCancel.ld2Cancel := s3_valid && !s3_safe_wakeup && !s3_isvec && !s3_frm_mabuf
 
   val s3_ld_wb_meta = Mux(s3_valid, s3_out.bits, s3_mmio.bits)
@@ -1569,9 +1533,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   }))
   val s3_ld_data_frm_cache = newRdataHelper(s3_data_select, s3_picked_data_frm_cache(0))
 
-  // FIXME: add 1 cycle delay ?
-  // io.lsq.uncache.ready := !s3_valid
-  val s3_outexception = ExceptionNO.selectByFu(s3_out.bits.uop.exceptionVec, LduCfg).asUInt.orR && s3_vecActive
   io.ldout.bits        := s3_ld_wb_meta
   io.ldout.bits.data   := Mux(s3_valid, s3_ld_data_frm_cache, s3_ld_data_frm_uncache)
   io.ldout.valid       := (s3_mmio.valid ||
@@ -1579,12 +1540,11 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.ldout.bits.uop.exceptionVec := ExceptionNO.selectByFu(s3_ld_wb_meta.uop.exceptionVec, LduCfg)
   io.ldout.bits.isFromLoadUnit := true.B
 
-  // TODO: check this --hx
-  // io.ldout.valid       := s3_out.valid && !s3_out.bits.uop.robIdx.needFlush(io.redirect) && !s3_vecout.isvec ||
-  //   io.lsq.uncache.valid && !io.lsq.uncache.bits.uop.robIdx.needFlush(io.redirect) && !s3_out.valid && !io.lsq.uncache.bits.isVls
-  //  io.ldout.bits.data   := Mux(s3_out.valid, s3_ld_data_frm_cache, s3_ld_data_frm_uncache)
-  //  io.ldout.valid       := s3_out.valid && !s3_out.bits.uop.robIdx.needFlush(io.redirect) ||
-  //                         s3_mmio.valid && !s3_mmio.bits.uop.robIdx.needFlush(io.redirect) && !s3_out.valid
+  val s3_wakeUpValid = RegNextN(io.wakeup.valid,3)
+  val s3_wakeUpBits = RegNextN(io.wakeup.bits,3)
+  when(io.ldout.valid && s3_wakeUpValid){
+    assert(s3_wakeUpBits.pdest === io.ldout.bits.uop.pdest)
+  }
 
   // s3 load fast replay
   io.fast_rep_out.valid := s3_valid && s3_fast_rep
@@ -1597,7 +1557,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.vecldout.bits.alignedType := s3_vec_alignedType
   // vec feedback
   io.vecldout.bits.vecFeedback := vecFeedback
-  // TODO: VLSU, uncache data logic
   val vecdata = rdataVecHelper(s3_vec_alignedType(1,0), s3_picked_data_frm_cache(1))
   io.vecldout.bits.vecdata.get := Mux(s3_in.is128bit, s3_merged_data_frm_cache, vecdata)
   io.vecldout.bits.isvec := s3_vecout.isvec
@@ -1621,9 +1580,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.vecldout.bits.vecTriggerMask := s3_vecout.vecTriggerMask
 
   io.vecldout.valid := s3_out.valid && !s3_out.bits.uop.robIdx.needFlush(io.redirect) && s3_vecout.isvec ||
-  // TODO: check this, why !io.lsq.uncache.bits.isVls before?
     io.lsq.uncache.valid && !io.lsq.uncache.bits.uop.robIdx.needFlush(io.redirect) && !s3_out.valid && io.lsq.uncache.bits.isVls
-    //io.lsq.uncache.valid && !io.lsq.uncache.bits.uop.robIdx.needFlush(io.redirect) && !s3_out.valid && !io.lsq.uncache.bits.isVls
 
   io.misalign_ldout.valid     := s3_valid && (!s3_fast_rep || s3_fast_rep_canceled) && s3_frm_mabuf
   io.misalign_ldout.bits      := io.lsq.ldin.bits

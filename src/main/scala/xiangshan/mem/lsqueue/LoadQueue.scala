@@ -338,14 +338,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   loadQueueReplay.io.ld_raw_data  <> io.ld_raw_data
   loadQueueReplay.io.rob        <> io.rob
   loadQueueReplay.io.uncache    <> io.uncache
-  // for ((buff, w) <- uncacheBuffer.io.req.zipWithIndex) {
-  //   buff.valid := io.ldu.ldin(w).valid // from load_s3
-  //   buff.bits := io.ldu.ldin(w).bits // from load_s3
-  // }
-
-
   io.nuke_rollback := loadQueueRAW.io.rollback
-  // io.nack_rollback := false.B
 
   /* <------- DANGEROUS: Don't change sequence here ! -------> */
 
@@ -357,7 +350,6 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   loadQueueReplay.io.storeAddrIn      <> io.sta.storeAddrIn // from store_s1
   loadQueueReplay.io.storeDataIn      <> io.std.storeDataIn // from store_s0
   loadQueueReplay.io.replay           <> io.replay
-  //loadQueueReplay.io.refill           <> io.refill
   loadQueueReplay.io.tl_d_channel     <> io.tl_d_channel
   loadQueueReplay.io.stAddrReadySqPtr <> io.sq.stAddrReadySqPtr
   loadQueueReplay.io.stAddrReadyVec   <> io.sq.stAddrReadyVec
@@ -367,8 +359,6 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   loadQueueReplay.io.lqFull           <> io.lq_rep_full
   loadQueueReplay.io.ldWbPtr          <> virtualLoadQueue.io.ldWbPtr
   loadQueueReplay.io.mmioLqIdx        <> virtualLoadQueue.io.mmioLqIdx
-
-  // loadQueueReplay.io.rarFull          <> virtualLoadQueue.io.lqFull
   loadQueueReplay.io.rawFull          <> loadQueueRAW.io.lqFull
   loadQueueReplay.io.l2_hint          <> io.l2_hint
   loadQueueReplay.io.tlb_hint         <> io.tlb_hint

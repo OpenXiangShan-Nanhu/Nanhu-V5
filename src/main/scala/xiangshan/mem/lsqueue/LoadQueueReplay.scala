@@ -280,7 +280,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   val tlbHintId = replayID
 
   // Has this load already updated dcache replacement?
-  val replacementUpdated = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val missDbUpdated = RegInit(VecInit(List.fill(LoadQueueReplaySize)(false.B)))
   val trueCacheMissReplay = WireInit(VecInit(cause.map(_(LoadReplayCauses.C_DM))))
   val replayCarryReg = RegInit(VecInit(List.fill(LoadQueueReplaySize)(ReplayCarry(nWays, 0.U, false.B))))
@@ -537,7 +536,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val s2_replayUop = RegEnable(uop(s1_replayIdx), s1_can_go(i))
     val s2_vecReplay = RegEnable(vecReplay(s1_replayIdx), s1_can_go(i))
     val s2_replayMSHRId = RegEnable(missMSHRId(s1_replayIdx), s1_can_go(i))
-    val s2_replacementUpdated = RegEnable(replacementUpdated(s1_replayIdx), s1_can_go(i))
     val s2_missDbUpdated = RegEnable(missDbUpdated(s1_replayIdx), s1_can_go(i))
     val s2_replayCauses = RegEnable(cause(s1_replayIdx), s1_can_go(i))
     val s2_replayCarry = RegEnable(replayCarryReg(s1_replayIdx), s1_can_go(i))
@@ -566,7 +564,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     replay_req(i).bits.isLoadReplay := true.B
     replay_req(i).bits.replayCarry  := s2_replayCarry
     replay_req(i).bits.mshrid       := s2_replayMSHRId
-    replay_req(i).bits.replacementUpdated := s2_replacementUpdated
     replay_req(i).bits.missDbUpdated := s2_missDbUpdated
     replay_req(i).bits.forward_tlDchannel := s2_replayCauses(LoadReplayCauses.C_DM)
     replay_req(i).bits.schedIndex   := s2_oldestSel(i).bits
@@ -715,7 +712,6 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       }
       // extra info
       replayCarryReg(enqIndex) := replayInfo.rep_carry
-      replacementUpdated(enqIndex) := enq.bits.replacementUpdated
       missDbUpdated(enqIndex) := enq.bits.missDbUpdated
       dataInLastBeatReg(enqIndex) := dataInLastBeat
       //dataInLastBeatReg(enqIndex) := Mux(io.l2_hint.bits.isKeyword, !dataInLastBeat, dataInLastBeat)

@@ -888,83 +888,21 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   val mmioReq = Wire(chiselTypeOf(io.uncache.req))
 
-  val ncWaitRespPtrReg = RegInit(0.U(uncacheIdxBits.W)) // it's valid only in non-outstanding situation
-  val ncReq = Wire(chiselTypeOf(io.uncache.req))
-  val ncResp = Wire(chiselTypeOf(io.uncache.resp))
-  val ncDoReq = Wire(Bool())
-  val ncDoResp = Wire(Bool())
-
   mmioReq.valid := uncacheState === s_req
-
   mmioReq.bits := DontCare
   mmioReq.bits.cmd := MemoryOpConstants.M_XWR
-  mmioReq.bits.addr := addrModule.io.rdata_p(0) // data(deqPtr) -> rdata(0)
-//  mmioReq.bits.vaddr := vaddrModule.io.rdata(0)
+  mmioReq.bits.addr := addrModule.io.rdata_p(0)
   mmioReq.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)
   mmioReq.bits.mask := shiftMaskToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).mask)
   mmioReq.bits.atomic := atomic(RegNext(rdataPtrExtNext(0)).value)
   mmioReq.bits.nc := nc(RegNext(rdataPtrExtNext(0)).value)
   mmioReq.bits.id := rdataPtrExt(0).value
-
   mmioReq.ready := io.uncache.req.ready
-
-
-  /**
-   * NC Store
-   * (1) req: when it has been commited, it can be sent to lower level.
-   * (2) resp: because SQ data forward is required, it can only be deq when ncResp is received
-   */
-  // TODO: CAN NOT deal with vector nc now!
-  val nc_idle :: nc_req :: nc_resp :: Nil = Enum(3)
-  val ncState = RegInit(nc_idle)
-  val rptr0 = rdataPtrExt(0).value
-  switch(ncState) {
-    is(nc_idle) {
-      when(nc(rptr0) && allocated(rptr0) && committed(rptr0) && !mmio(rptr0) && !isVec(rptr0)) {
-        ncState := nc_req
-        ncWaitRespPtrReg := rptr0
-      }
-    }
-    is(nc_req) {
-      when(ncDoReq) {
-          ncState := nc_idle
-      }
-    }
-    is(nc_resp) {
-      when(ncResp.fire) {
-        ncState := nc_idle
-      }
-    }
-  }
-
-  ncDoReq := io.uncache.req.fire && io.uncache.req.bits.nc
-  ncDoResp := ncResp.fire
-
-  ncReq.valid := ncState === nc_req
-  ncReq.bits := DontCare
-  ncReq.bits.cmd := MemoryOpConstants.M_XWR
-  ncReq.bits.addr := addrModule.io.rdata_p(0)
-//  ncReq.bits.vaddr := vaddrModule.io.rdata(0)
-  ncReq.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)
-  ncReq.bits.mask := shiftMaskToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).mask)
-  ncReq.bits.atomic := atomic(GatedRegNext(rdataPtrExtNext(0)).value)
-  ncReq.bits.nc := true.B
-  ncReq.bits.id := rptr0
-
-  ncResp.ready := io.uncache.resp.ready
-  ncResp.valid := io.uncache.resp.fire
-  ncResp.bits <> io.uncache.resp.bits
-  ncReq.ready := io.uncache.req.ready && !mmioReq.valid
 
   io.uncache.req.valid := mmioReq.valid
   io.uncache.req.bits := mmioReq.bits
 
   dontTouch(mmioReq)
-  dontTouch(ncReq)
-//  io.uncache.req.bits.cmd  := MemoryOpConstants.M_XWR
-//  io.uncache.req.bits.addr := addrModule.io.rdata_p(0) // data(deqPtr) -> rdata(0)
-//  io.uncache.req.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)
-//  io.uncache.req.bits.mask := shiftMaskToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).mask)
 
   // CBO op type check can be delayed for 1 cycle,
   // as uncache op will not start in s_idle

@@ -150,7 +150,6 @@ class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   // For dcache miss load
   val mshrid = UInt(log2Up(cfg.nMissEntries).W)
   val handledByMSHR = Bool()
-  val replacementUpdated = Bool()
   val missDbUpdated = Bool()
 
   val forward_tlDchannel = Bool()
@@ -227,7 +226,6 @@ class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
     isFastPath := DontCare
     isFastReplay := DontCare
     handledByMSHR := DontCare
-    replacementUpdated := DontCare
     missDbUpdated := DontCare
     delayedLoadError := DontCare
     lateKill := DontCare
@@ -291,7 +289,6 @@ class LqWriteBundle(implicit p: Parameters) extends LsPipelineBundle {
     if(latch) dcacheRequireReplay := RegEnable(input.dcacheRequireReplay, enable) else dcacheRequireReplay := input.dcacheRequireReplay
     if(latch) schedIndex := RegEnable(input.schedIndex, enable) else schedIndex := input.schedIndex
     if(latch) handledByMSHR := RegEnable(input.handledByMSHR, enable) else handledByMSHR := input.handledByMSHR
-    if(latch) replacementUpdated := RegEnable(input.replacementUpdated, enable) else replacementUpdated := input.replacementUpdated
     if(latch) missDbUpdated := RegEnable(input.missDbUpdated, enable) else missDbUpdated := input.missDbUpdated
     if(latch) delayedLoadError := RegEnable(input.delayedLoadError, enable) else delayedLoadError := input.delayedLoadError
     if(latch) lateKill := RegEnable(input.lateKill, enable) else lateKill := input.lateKill

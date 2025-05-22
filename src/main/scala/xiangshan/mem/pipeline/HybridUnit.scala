@@ -506,7 +506,6 @@ class HybridUnit(implicit p: Parameters) extends XSModule
 
   // dcache replacement extra info
   // TODO: should prefetch load update replacement?
-  io.ldu_io.dcache.replacementUpdated := Mux(s0_src_select_vec(lsq_rep_idx) || s0_src_select_vec(super_rep_idx), io.ldu_io.replay.bits.replacementUpdated, false.B)
 
   io.stu_io.prefetch_req.ready := s1_ready && io.stu_io.dcache.req.ready && !io.lsin.valid
 
@@ -1142,7 +1141,6 @@ class HybridUnit(implicit p: Parameters) extends XSModule
 
   /* <------- DANGEROUS: Don't change sequence here ! -------> */
   io.ldu_io.lsq.ldin.bits.data_wen_dup := s3_ld_valid_dup.asBools
-  io.ldu_io.lsq.ldin.bits.replacementUpdated := io.ldu_io.dcache.resp.bits.replacementUpdated
   io.ldu_io.lsq.ldin.bits.missDbUpdated := RegNext(s2_fire && s2_in.hasROBEntry && !s2_in.tlbMiss && !s2_in.missDbUpdated)
 
   val s3_dly_ld_err =

@@ -713,14 +713,12 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   for (i <- 0 until LduCnt) {
     loadUnits(i).io.redirect <> redirectReg(s"LoadUnit_${i}")
-    loadUnits(i).io.replayQValidCount := lsq.io.replayQValidCount
     mdp.io.ldReq(i) := loadUnits(i).io.s0_reqMDP
     loadUnits(i).io.s1_respMDP := mdp.io.ldResp(i)
     // get input form dispatch
     loadUnits(i).io.ldin <> io.ooo_to_mem.issueLda(i)
     io.mem_to_ooo.ldaIqFeedback(i).feedbackSlow := loadUnits(i).io.feedback_slow
     io.mem_to_ooo.ldaIqFeedback(i).feedbackFast := loadUnits(i).io.feedback_fast
-    loadUnits(i).io.correctMissTrain := correctMissTrain
     io.mem_to_ooo.ldCancel.drop(HyuCnt)(i) := loadUnits(i).io.ldCancel
     io.mem_to_ooo.wakeup.drop(HyuCnt)(i) := loadUnits(i).io.wakeup
 
@@ -807,7 +805,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     for (s <- 0 until StorePipelineWidth) {
       loadUnits(i).io.stld_nuke_query(s) := stld_nuke_query(s)
     }
-    loadUnits(i).io.lq_rep_full <> lsq.io.lq_rep_full
     // load prefetch train
     prefetcherOpt.foreach(pf => {
       // sms will train on all miss load sources
@@ -834,7 +831,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     // L2 Hint for DCache
     dcache.io.l2_hint <> l2_hint
 
-    loadUnits(i).io.l2_hint <> l2_hint
     loadUnits(i).io.tlb_hint.id := dtlbRepeater.io.hint.get.req(i).id
     loadUnits(i).io.tlb_hint.full := dtlbRepeater.io.hint.get.req(i).full ||
       tlbreplay_reg(i) || dtlb_ld0_tlbreplay_reg(i)

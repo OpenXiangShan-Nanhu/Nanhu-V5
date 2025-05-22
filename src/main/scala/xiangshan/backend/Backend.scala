@@ -692,6 +692,21 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     dontTouch(wbDataPath.io.fromMemExu)
   }
 
+  if(backendParams.debugEn && (backendParams.svaAssertEn || backendParams.svaCoverEn)) {
+    import xiangshan.backend.assertion._
+    io.mem.wakeup.zip(io.mem.ldCancel).zip(io.mem.writebackLda).foreach {
+      case ((wkup, cancel), wb) =>
+        AssertLoadWakeUp(
+          backendParams.svaAssertEn,
+          backendParams.svaCoverEn,
+          clock = clock,
+          disable = reset.asDisable,
+          ctrlBlock.io.redirect, wkup, cancel, wb
+        )
+    }
+
+  }
+
   // reset tree
   if (p(DebugOptionsKey).ResetGen) {
     val rightResetTree = ResetGenNode(Seq(

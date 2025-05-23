@@ -137,7 +137,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   when (state === s_refill_req) {
     io.mem_acquire.valid := true.B && io.select
     io.mem_acquire.bits := Mux(storeReq, store, load)
-    io.mem_acquire.bits.user.lift(MemBackTypeMM).foreach(_ := !req.nc)
+    io.mem_acquire.bits.user.lift(MemBackTypeMM).foreach(_ := req.nc)
     io.mem_acquire.bits.user.lift(MemPageTypeNC).foreach(_ := req.nc)
 
     when (io.mem_acquire.fire) {

@@ -468,6 +468,9 @@ class PTWFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameters) 
 
   val canEnqueue = Wire(Bool()) // NOTE: actually enqueue
   val ptwResp = RegEnable(io.ptw.resp.bits, io.ptw.resp.fire)
+  //for fanout
+  val ptwResp_s2xlate_dup = ptwResp.s2xlate
+
   val ptwResp_OldMatchVec = vpn.zip(v).zip(s2xlate).map { case (((vpn, v), s2xlate)) =>{
     v && ptwResp_hit(vpn, s2xlate, io.ptw.resp.bits)
   }
@@ -538,7 +541,7 @@ class PTWFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameters) 
   val tlb_req_flushed = reqs.map(a => io.ptw.resp.valid && ptwResp_hit(a.bits.vpn, a.bits.s2xlate, io.ptw.resp.bits))
 
   io.tlb.resp.valid := ptwResp_valid
-  io.tlb.resp.bits.data.s2xlate := ptwResp.s2xlate
+  io.tlb.resp.bits.data.s2xlate := ptwResp_s2xlate_dup
   io.tlb.resp.bits.data.s1 := ptwResp.s1
   io.tlb.resp.bits.data.s2 := ptwResp.s2
   io.tlb.resp.bits.data.memidx := RegNext(PriorityMux(ptwResp_OldMatchVec, memidx))

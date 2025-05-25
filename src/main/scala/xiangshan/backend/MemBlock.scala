@@ -619,6 +619,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
 
   val ptw_resp_next = RegEnable(ptwio.resp.bits, ptwio.resp.valid)
+  //for fanout
+  val pte_resp_next_data_dup = ptw_resp_next.data
+
   val ptw_resp_v = RegNext(ptwio.resp.valid && !(sfence.valid && tlbcsr.satp.changed && tlbcsr.vsatp.changed && tlbcsr.hgatp.changed), init = false.B)
   ptwio.resp.ready := true.B
 
@@ -640,11 +643,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         val vector_hit = Cat(ptw_resp_next.vector).orR
         tlb.ready := ptwio.req(i).ready
         ptwio.req(i).bits := tlb.bits
-        ptwio.req(i).valid := tlb.valid && !(ptw_resp_v && vector_hit && ptw_resp_next.data.hit(tlb.bits.vpn, tlbcsr.satp.asid, tlbcsr.vsatp.asid, tlbcsr.hgatp.vmid, allType = true, ignoreAsid = true))
+        ptwio.req(i).valid := tlb.valid && !(ptw_resp_v && vector_hit && pte_resp_next_data_dup.hit(tlb.bits.vpn, tlbcsr.satp.asid, tlbcsr.vsatp.asid, tlbcsr.hgatp.vmid, allType = true, ignoreAsid = true))
     }
 
 
-  dtlbIO.ptw.resp.bits := ptw_resp_next.data
+  dtlbIO.ptw.resp.bits := pte_resp_next_data_dup
   dtlbIO.ptw.resp.valid := ptw_resp_v && Cat(ptw_resp_next.vector).orR
   dtlbIO.ptw.resp.bits.getGpa := false.B //todo tmp
 

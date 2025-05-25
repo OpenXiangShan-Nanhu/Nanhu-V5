@@ -147,8 +147,8 @@ class PtwCacheIO()(implicit p: Parameters) extends MMUIOBaseBundle with HasPtwCo
       }
     }
     // duplicate level and sel_pte for each page caches, for better fanout
-    val req_info_dup = Vec(3, new L2TlbInnerBundle())
-    val level_dup = Vec(3, UInt(log2Up(Level + 1).W))
+    val req_info_dup = Vec(4, new L2TlbInnerBundle())
+    val level_dup = Vec(4, UInt(log2Up(Level + 1).W))
     val sel_pte_dup = Vec(3, UInt(XLEN.W))
   }))
   val sfence_dup = Vec(4, Input(new SfenceBundle()))
@@ -615,6 +615,14 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
         io.resp.fire)
   )
 
+  //dup for fanout
+  val resp_res_l0_hit_dup_1 = resp_res.l0.hit
+  val resp_res_sp_hit_dup_1 = resp_res.sp.hit
+  val resp_res_l1_hit_dup_1 = resp_res.l1.hit
+  val resp_res_l2_hit_dup_1 = resp_res.l2.hit
+  val resp_res_sp_v_dup_1 = resp_res.sp.v
+  val resp_res_l0_v_dup_1 = resp_res.l0.v
+
   val isAllStage = stageResp.bits.req_info.s2xlate === allStage
   val isOnlyStage2 = stageResp.bits.req_info.s2xlate === onlyStage2
   val stage1Hit = (resp_res.l0.hit || resp_res.sp.hit) && isAllStage
@@ -643,9 +651,9 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   }
   io.resp.bits.toHptw.id := stageResp.bits.hptwId
   io.resp.bits.toHptw.l3Hit.map(_ := resp_res.l3.get.hit && stageResp.bits.isHptwReq)
-  io.resp.bits.toHptw.l2Hit := resp_res.l2.hit && stageResp.bits.isHptwReq
+  io.resp.bits.toHptw.l2Hit := resp_res_l2_hit_dup_1 && stageResp.bits.isHptwReq
   io.resp.bits.toHptw.l1Hit := resp_res.l1.hit && stageResp.bits.isHptwReq
-  io.resp.bits.toHptw.ppn := Mux(resp_res.l1.hit, resp_res.l1.ppn, Mux(resp_res.l2.hit, resp_res.l2.ppn, resp_res.l3.getOrElse(0.U.asTypeOf(new PageCachePerPespBundle)).ppn))(ppnLen - 1, 0)
+  io.resp.bits.toHptw.ppn := Mux(resp_res.l1.hit, resp_res.l1.ppn, Mux(resp_res_l2_hit_dup_1, resp_res.l2.ppn, resp_res.l3.getOrElse(0.U.asTypeOf(new PageCachePerPespBundle)).ppn))(ppnLen - 1, 0)
   io.resp.bits.toHptw.resp.entry.tag := stageResp.bits.req_info.vpn
   io.resp.bits.toHptw.resp.entry.asid := DontCare
   io.resp.bits.toHptw.resp.entry.vmid.map(_ := io.csr_dup(0).hgatp.vmid)
@@ -662,57 +670,57 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   io.resp.bits.stage1.entry.map(_.asid := Mux(stageResp.bits.req_info.hasS2xlate(), io.csr_dup(0).vsatp.asid, io.csr_dup(0).satp.asid)) // DontCare
   io.resp.bits.stage1.entry.map(_.vmid.map(_ := io.csr_dup(0).hgatp.vmid))
   if (EnableSv48) {
-    io.resp.bits.stage1.entry.map(_.level.map(_ := Mux(resp_res.l0.hit, 0.U,
-      Mux(resp_res.sp.hit, resp_res.sp.level,
-        Mux(resp_res.l1.hit, 1.U,
-          Mux(resp_res.l2.hit, 2.U, 3.U))))))
+    io.resp.bits.stage1.entry.map(_.level.map(_ := Mux(resp_res_l0_hit_dup_1, 0.U,
+      Mux(resp_res_sp_hit_dup_1, resp_res.sp.level,
+        Mux(resp_res_l1_hit_dup_1, 1.U,
+          Mux(resp_res_l2_hit_dup_1, 2.U, 3.U))))))
   } else {
-    io.resp.bits.stage1.entry.map(_.level.map(_ := Mux(resp_res.l0.hit, 0.U,
-      Mux(resp_res.sp.hit, resp_res.sp.level,
-        Mux(resp_res.l1.hit, 1.U, 2.U)))))
+    io.resp.bits.stage1.entry.map(_.level.map(_ := Mux(resp_res_l0_hit_dup_1, 0.U,
+      Mux(resp_res_sp_hit_dup_1, resp_res.sp.level,
+        Mux(resp_res_l1_hit_dup_1, 1.U, 2.U)))))
   }
   io.resp.bits.stage1.entry.map(_.prefetch := from_pre(stageResp.bits.req_info.source))
   for (i <- 0 until tlbcontiguous) {
     if (EnableSv48) {
-      io.resp.bits.stage1.entry(i).ppn := Mux(resp_res.l0.hit, resp_res.l0.ppn(i)(gvpnLen - 1, sectortlbwidth),
+      io.resp.bits.stage1.entry(i).ppn := Mux(resp_res_l0_hit_dup_1, resp_res.l0.ppn(i)(gvpnLen - 1, sectortlbwidth),
         Mux(resp_res.sp.hit, resp_res.sp.ppn(gvpnLen - 1, sectortlbwidth),
-          Mux(resp_res.l1.hit, resp_res.l1.ppn(gvpnLen - 1, sectortlbwidth),
-            Mux(resp_res.l2.hit, resp_res.l2.ppn(gvpnLen - 1, sectortlbwidth),
+          Mux(resp_res_l1_hit_dup_1, resp_res.l1.ppn(gvpnLen - 1, sectortlbwidth),
+            Mux(resp_res_l2_hit_dup_1, resp_res.l2.ppn(gvpnLen - 1, sectortlbwidth),
               resp_res.l3.get.ppn(gvpnLen - 1, sectortlbwidth)))))
-      io.resp.bits.stage1.entry(i).ppn_low := Mux(resp_res.l0.hit, resp_res.l0.ppn(i)(sectortlbwidth - 1, 0),
+      io.resp.bits.stage1.entry(i).ppn_low := Mux(resp_res_l0_hit_dup_1, resp_res.l0.ppn(i)(sectortlbwidth - 1, 0),
         Mux(resp_res.sp.hit, resp_res.sp.ppn(sectortlbwidth - 1, 0),
-          Mux(resp_res.l1.hit, resp_res.l1.ppn(sectortlbwidth - 1, 0),
-            Mux(resp_res.l2.hit, resp_res.l2.ppn(sectortlbwidth - 1, 0),
+          Mux(resp_res_l1_hit_dup_1, resp_res.l1.ppn(sectortlbwidth - 1, 0),
+            Mux(resp_res_l2_hit_dup_1, resp_res.l2.ppn(sectortlbwidth - 1, 0),
               resp_res.l3.get.ppn(sectortlbwidth - 1, 0)))))
-      io.resp.bits.stage1.entry(i).v := Mux(resp_res.l0.hit, resp_res.l0.v(i),
-        Mux(resp_res.sp.hit, resp_res.sp.v,
-          Mux(resp_res.l1.hit, resp_res.l1.v,
-            Mux(resp_res.l2.hit, resp_res.l2.v,
+      io.resp.bits.stage1.entry(i).v := Mux(resp_res_l0_hit_dup_1, resp_res_l0_v_dup_1(i),
+        Mux(resp_res.sp.hit, resp_res_sp_v_dup_1,
+          Mux(resp_res_l1_hit_dup_1, resp_res.l1.v,
+            Mux(resp_res_l2_hit_dup_1, resp_res.l2.v,
               resp_res.l3.get.v))))
     } else {
-      io.resp.bits.stage1.entry(i).ppn := Mux(resp_res.l0.hit, resp_res.l0.ppn(i)(gvpnLen - 1, sectortlbwidth),
-        Mux(resp_res.sp.hit, resp_res.sp.ppn(gvpnLen - 1, sectortlbwidth),
-          Mux(resp_res.l1.hit, resp_res.l1.ppn(gvpnLen - 1, sectortlbwidth),
+      io.resp.bits.stage1.entry(i).ppn := Mux(resp_res_l0_hit_dup_1, resp_res.l0.ppn(i)(gvpnLen - 1, sectortlbwidth),
+        Mux(resp_res_sp_hit_dup_1, resp_res.sp.ppn(gvpnLen - 1, sectortlbwidth),
+          Mux(resp_res_l1_hit_dup_1, resp_res.l1.ppn(gvpnLen - 1, sectortlbwidth),
             resp_res.l2.ppn(gvpnLen - 1, sectortlbwidth))))
-      io.resp.bits.stage1.entry(i).ppn_low := Mux(resp_res.l0.hit, resp_res.l0.ppn(i)(sectortlbwidth - 1, 0),
-        Mux(resp_res.sp.hit, resp_res.sp.ppn(sectortlbwidth - 1, 0),
-          Mux(resp_res.l1.hit, resp_res.l1.ppn(sectortlbwidth - 1, 0),
+      io.resp.bits.stage1.entry(i).ppn_low := Mux(resp_res_l0_hit_dup_1, resp_res.l0.ppn(i)(sectortlbwidth - 1, 0),
+        Mux(resp_res_sp_hit_dup_1, resp_res.sp.ppn(sectortlbwidth - 1, 0),
+          Mux(resp_res_l1_hit_dup_1, resp_res.l1.ppn(sectortlbwidth - 1, 0),
             resp_res.l2.ppn(sectortlbwidth - 1, 0))))
-      io.resp.bits.stage1.entry(i).v := Mux(resp_res.l0.hit, resp_res.l0.v(i),
-        Mux(resp_res.sp.hit, resp_res.sp.v,
-          Mux(resp_res.l1.hit, resp_res.l1.v,
+      io.resp.bits.stage1.entry(i).v := Mux(resp_res_l0_hit_dup_1, resp_res_l0_v_dup_1(i),
+        Mux(resp_res_sp_hit_dup_1, resp_res_sp_v_dup_1,
+          Mux(resp_res_l1_hit_dup_1, resp_res.l1.v,
             resp_res.l2.v)))
     }
-    io.resp.bits.stage1.entry(i).pbmt := Mux(resp_res.l0.hit, resp_res.l0.pbmt(i),
-      Mux(resp_res.sp.hit, resp_res.sp.pbmt,
-        Mux(resp_res.l1.hit, resp_res.l1.pbmt,
+    io.resp.bits.stage1.entry(i).pbmt := Mux(resp_res_l0_hit_dup_1, resp_res.l0.pbmt(i),
+      Mux(resp_res_sp_hit_dup_1, resp_res.sp.pbmt,
+        Mux(resp_res_l1_hit_dup_1, resp_res.l1.pbmt,
           resp_res.l2.pbmt)))
-    io.resp.bits.stage1.entry(i).perm.map(_ := Mux(resp_res.l0.hit, resp_res.l0.perm(i),  Mux(resp_res.sp.hit, resp_res.sp.perm, 0.U.asTypeOf(new PtePermBundle))))
+    io.resp.bits.stage1.entry(i).perm.map(_ := Mux(resp_res_l0_hit_dup_1, resp_res.l0.perm(i),  Mux(resp_res_sp_hit_dup_1, resp_res.sp.perm, 0.U.asTypeOf(new PtePermBundle))))
     io.resp.bits.stage1.entry(i).pf := !io.resp.bits.stage1.entry(i).v
     io.resp.bits.stage1.entry(i).af := false.B
   }
   io.resp.bits.stage1.pteidx := UIntToOH(idx).asBools
-  io.resp.bits.stage1.not_super := Mux(resp_res.l0.hit, true.B, false.B)
+  io.resp.bits.stage1.not_super := Mux(resp_res_l0_hit_dup_1, true.B, false.B)
   io.resp.bits.stage1.not_merge := false.B
   io.resp.valid := stageResp.valid
   XSError(stageResp.valid && resp_res.l0.hit && resp_res.sp.hit, "normal page and super page both hit")
@@ -916,19 +924,19 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   when (
     !flush_dup(0) &&
     (refill.levelOH.sp || (refill.levelOH.l0 && memPte(0).isNapot(refill.level_dup(0)))) &&
-    ((memPte(0).isLeaf() && memPte(0).canRefill(refill.level_dup(0), refill.req_info_dup(0).s2xlate, pbmte, io.csr_dup(0).hgatp.mode)) ||
-    memPte(0).onlyPf(refill.level_dup(0), refill.req_info_dup(0).s2xlate, pbmte))
+    ((memPte(0).isLeaf() && memPte(0).canRefill(refill.level_dup(3), refill.req_info_dup(3).s2xlate, pbmte, io.csr_dup(0).hgatp.mode)) ||
+    memPte(0).onlyPf(refill.level_dup(0), refill.req_info_dup(3).s2xlate, pbmte))
   ) {
     val refillIdx = spreplace.way// LFSR64()(log2Up(l2tlbParams.spSize)-1,0) // TODO: may be LRU
     val rfOH = UIntToOH(refillIdx)
     sp(refillIdx).refill(
-      refill.req_info_dup(0).vpn,
-      Mux(refill.req_info_dup(0).s2xlate =/= noS2xlate, io.csr_dup(0).vsatp.asid, io.csr_dup(0).satp.asid),
+      refill.req_info_dup(3).vpn,
+      Mux(refill.req_info_dup(3).s2xlate =/= noS2xlate, io.csr_dup(0).vsatp.asid, io.csr_dup(0).satp.asid),
       io.csr_dup(0).hgatp.vmid,
       memSelData(0),
-      refill.level_dup(0),
+      refill.level_dup(3),
       refill_prefetch_dup(0),
-      !memPte(0).onlyPf(refill.level_dup(0), refill.req_info_dup(0).s2xlate, pbmte)
+      !memPte(0).onlyPf(refill.level_dup(3), refill.req_info_dup(3).s2xlate, pbmte)
     )
     spreplace.access(refillIdx)
     spv := spv | rfOH
@@ -939,7 +947,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       spRefillPerf(i) := i.U === refillIdx
     }
 
-    XSDebug(p"[sp refill] refillIdx:${refillIdx} refillEntry:${sp(refillIdx).genPtwEntry(refill.req_info_dup(0).vpn, Mux(refill.req_info_dup(0).s2xlate =/= noS2xlate, io.csr_dup(0).vsatp.asid, io.csr_dup(0).satp.asid), memSelData(0), refill.level_dup(0), refill_prefetch_dup(0))}\n")
+    XSDebug(p"[sp refill] refillIdx:${refillIdx} refillEntry:${sp(refillIdx).genPtwEntry(refill.req_info_dup(3).vpn, Mux(refill.req_info_dup(3).s2xlate =/= noS2xlate, io.csr_dup(0).vsatp.asid, io.csr_dup(0).satp.asid), memSelData(0), refill.level_dup(0), refill_prefetch_dup(0))}\n")
     XSDebug(p"[sp refill] spv:${Binary(spv)}->${Binary(spv | rfOH)} spg:${Binary(spg)}->${Binary(spg & ~rfOH | Mux(memPte(0).perm.g, rfOH, 0.U))}\n")
 
     refillIdx.suggestName(s"sp_refillIdx")

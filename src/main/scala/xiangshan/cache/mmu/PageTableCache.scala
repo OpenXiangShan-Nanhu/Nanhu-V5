@@ -209,15 +209,25 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val l2vmids = l2.map(_.vmid)
   val l2h = Reg(Vec(l2tlbParams.l2Size, UInt(2.W)))
 
-  // l1: level 1 non-leaf pte
-  val l1 = Module(new SRAMTemplate(
-    l1EntryType,
-    set = l2tlbParams.l1nSets,
-    way = l2tlbParams.l1nWays,
-    singlePort = sramSinglePort,
-    hasMbist = hasMbist,
-    suffix = "_ptw_l1"
-    ))
+//  // l1: level 1 non-leaf pte
+//  val l1 = Module(new SRAMTemplate(
+//    l1EntryType,
+//    set = l2tlbParams.l1nSets,
+//    way = l2tlbParams.l1nWays,
+//    singlePort = sramSinglePort,
+//    hasMbist = hasMbist,
+//    suffix = "_ptw_l1"
+//    ))
+
+  val l1RegModule = Module(new SyncDataModuleTemplate(
+    gen = l1EntryType,
+    numEntries= l2tlbParams.l1nSets * l2tlbParams.l1nWays,
+    numRead = l2tlbParams.l1nWays,
+    numWrite = l2tlbParams.l1nWays,
+    hasRen = true
+  ))
+
+
   val mbistPlL1 = MbistPipeline.PlaceMbistPipeline(1, s"MbistPipePtwL1", hasMbist)
   val l1v = RegInit(0.U((l2tlbParams.l1nSets * l2tlbParams.l1nWays).W))
   val l1g = Reg(UInt((l2tlbParams.l1nSets * l2tlbParams.l1nWays).W))
@@ -395,8 +405,12 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val ptwl1replace = ReplacementPolicy.fromString(l2tlbParams.l1Replacer,l2tlbParams.l1nWays,l2tlbParams.l1nSets)
   val (l1Hit, l1HitPPN, l1HitPbmt, l1Pre, l1eccError) = {
     val ridx = genPtwL1SetIdx(vpn_search)
-    l1.io.r.req.valid := stageReq.fire
-    l1.io.r.req.bits.apply(setIdx = ridx)
+//    l1.io.r.req.valid := stageReq.fire
+//    l1.io.r.req.bits.apply(setIdx = ridx)
+    l1RegModule.io.ren.get.foreach(_ := stageReq.fire)
+    l1RegModule.io.raddr.zipWithIndex.foreach({ case (addr, i) =>
+      addr := ridx * l2tlbParams.l1nWays.U + i.U
+    })
     val vVec_req = getl1vSet(vpn_search)
     val hVec_req = getl1hSet(vpn_search)
 
@@ -410,8 +424,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       onlyStage2 -> onlyStage2
     ))
 
-    val ramDatas = Wire(l1.io.r.resp.data.cloneType)  //delay 1 cycle from data_resp
-    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
+//    val ramDatas = Wire(l1.io.r.resp.data.cloneType)  //delay 1 cycle from data_resp
+    val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
+    //    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
+    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1RegModule.io.rdata, ramDatas)
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
     val hVec_delay = RegEnable(hVec_req, stageReq.fire)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(hVec_delay).map { case ((wayData, v), h) =>
@@ -714,9 +730,12 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   spRefillPerf.map(_ := false.B)
 
   // refill
-  l1.io.w.req <> DontCare
+//  l1.io.w.req <> DontCare
+//  l1.io.w.req.valid := false.B
+  l1RegModule.io.wen.foreach(_ := false.B)
+  l1RegModule.io.wdata.foreach(_ := DontCare)
+  l1RegModule.io.waddr.foreach(_ := DontCare)
   l0.io.w.req <> DontCare
-  l1.io.w.req.valid := false.B
   l0.io.w.req.valid := false.B
 
   val memRdata = refill.ptes
@@ -815,12 +834,19 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       pbmte,
       io.csr_dup(1).hgatp.mode
     )
-    l1.io.w.apply(
-      valid = true.B,
-      setIdx = refillIdx,
-      data = wdata,
-      waymask = victimWayOH
-    )
+//    l1.io.w.apply(
+//      valid = true.B,
+//      setIdx = refillIdx,
+//      data = wdata,
+//      waymask = victimWayOH
+//    )
+
+    for(i <- 0 until victimWayOH.getWidth){
+      l1RegModule.io.wen(i) := victimWayOH(i)
+      l1RegModule.io.waddr(i) := refillIdx * l2tlbParams.l1nWays.U + i.U
+      l1RegModule.io.wdata(i) := wdata
+    }
+
     ptwl1replace.access(refillIdx, victimWay)
     l1v := l1v | rfvOH
     l1g := l1g & ~rfvOH | Mux(Cat(memPtes.map(_.perm.g)).andR, rfvOH, 0.U)

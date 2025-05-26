@@ -632,7 +632,7 @@ class CtrlBlockImp(
   rob.io.csr.wfiEvent := io.robio.csr.wfiEvent
   rob.io.wfi_enable := decode.io.csrCtrl.wfi_enable
 
-  io.toTop.cpuHalt := DelayN(rob.io.cpu_halt, 5)
+  io.toTop.cpuHalt := RegNextN(rob.io.cpu_halt, 5, Some(false.B))
 
   io.robio.csr.perfinfo.retiredInstr <> RegNext(rob.io.csr.perfinfo.retiredInstr)
   io.robio.exception := rob.io.exception

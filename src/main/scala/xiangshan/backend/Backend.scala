@@ -384,7 +384,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
     }
   }
 
-  pcTargetMem.io.fromFrontendFtq := io.frontend.fromFtq
+  pcTargetMem.io.fromFrontendFtq := ctrlBlock.io.frontend.fromFtq
   pcTargetMem.io.toDataPath <> dataPath.io.fromPcTargetMem
 
   private val csrin = intExuBlock.io.csrin.get

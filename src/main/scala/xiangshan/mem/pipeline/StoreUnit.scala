@@ -125,6 +125,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s0_alignedType  = s0_vecstin.alignedType
   val s0_mBIndex      = s0_vecstin.mBIndex
   val s0_vecBaseVaddr = s0_vecstin.basevaddr
+  // cbo instr type
+  val s0_isCboAll = s0_use_flow_rs && LSUOpType.isCboAll(s0_stin.uop.fuOpType)  // cbo zero and cbom(cbo.inval, cbo.flush, cbo.clean)
+  val s0_isCboM = s0_use_flow_rs && LSUOpType.isCbom(s0_stin.uop.fuOpType)      // cbom: (cbo.inval, cbo.flush, cbo.clean)
 
   // generate addr
   val s0_saddr = s0_stin.src(0) + SignExt(s0_uop.imm(11,0), VAddrBits)
@@ -171,7 +174,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   io.tlb.req.bits.vaddr              := s0_vaddr
   io.tlb.req.bits.fullva             := s0_fullva
   io.tlb.req.bits.checkfullva        := s0_use_flow_rs || s0_use_flow_vec
-  io.tlb.req.bits.cmd                := TlbCmd.write
+  io.tlb.req.bits.cmd                := Mux(s0_isCboM, TlbCmd.read, TlbCmd.write)
   io.tlb.req.bits.isPrefetch         := s0_use_flow_prf
   io.tlb.req.bits.size               := s0_size
   io.tlb.req.bits.kill               := false.B
@@ -223,7 +226,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   }
   s0_out.isFrmMisAlignBuf := s0_use_flow_ma
 
-  val s0_isCboAll = s0_use_flow_rs && LSUOpType.isCboAll(s0_stin.uop.fuOpType)
   // exception check
   val s0_addr_aligned = LookupTree(Mux(s0_use_flow_vec, s0_vecstin.alignedType(1,0), s0_uop.fuOpType(1, 0)), List(
     "b00".U   -> true.B,              //b
@@ -331,9 +333,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 //    s1_out.uop.exceptionVec(storeAddrMisaligned) := false.B
 //  }
 
-  s1_out.uop.exceptionVec(storePageFault)      := io.tlb.resp.bits.excp(0).pf.st && s1_vecActive
-  s1_out.uop.exceptionVec(storeAccessFault)    := io.tlb.resp.bits.excp(0).af.st && s1_vecActive
-  s1_out.uop.exceptionVec(storeGuestPageFault) := io.tlb.resp.bits.excp(0).gpf.st && s1_vecActive
+  s1_out.uop.exceptionVec(storePageFault)      := (io.tlb.resp.bits.excp(0).pf.st  || io.tlb.resp.bits.excp(0).pf.ld)&& s1_vecActive
+  s1_out.uop.exceptionVec(storeAccessFault)    := (io.tlb.resp.bits.excp(0).af.st  || io.tlb.resp.bits.excp(0).pf.ld)&& s1_vecActive
+  s1_out.uop.exceptionVec(storeGuestPageFault) := (io.tlb.resp.bits.excp(0).gpf.st || io.tlb.resp.bits.excp(0).pf.ld) && s1_vecActive
 
   when(s1_in.uop.exceptionVec(storeAddrMisaligned)){
     s1_out.uop.exceptionVec(storePageFault) := false.B
@@ -404,7 +406,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_mis_align = GatedValidRegNext(io.csrCtrl.hd_misalign_st_enable) && !s2_in.isvec &&
                      s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_in.uop.exceptionVec(breakPoint) && !s2_trigger_debug_mode
   val s2_isCboAll = RegEnable(s1_isCboAll, s1_fire)
-  val s2_isCboNoZero = LSUOpType.isCbo(s2_in.uop.fuOpType)
+  val s2_isCboM = LSUOpType.isCbom(s2_in.uop.fuOpType)
   val s2_tlb_hit = RegEnable(s1_tlb_hit, s1_fire)
 
   s2_ready := !s2_valid || s2_kill || s3_ready
@@ -430,10 +432,11 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
-  s2_out.mmio   := (s2_mmio || s2_isCboNoZero) && !s2_exception
+  s2_out.mmio   := (s2_mmio || s2_isCboM) && !s2_exception
   s2_out.atomic := s2_in.atomic || s2_pmp.atomic
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_pmp.st ||
+                                                (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception
                                                 ((s2_in.isvec || s2_isCboAll) && s2_actually_uncache && RegNext(s1_feedback.bits.hit))
                                                 ) && s2_vecActive
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew

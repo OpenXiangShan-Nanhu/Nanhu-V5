@@ -583,11 +583,11 @@ package object xiangshan {
     def cbo_flush = "b1101".U
     def cbo_inval = "b1110".U
 
-    def isCbo(op: UInt): Bool = op(3, 2) === "b11".U && (op(6, 4) === "b000".U)
-    def isCboAll(op: UInt): Bool = isCbo(op) || op(3,0) === cbo_zero
-    def isCboClean(op: UInt): Bool = isCbo(op) && (op(3, 0) === cbo_clean)
-    def isCboFlush(op: UInt): Bool = isCbo(op) && (op(3, 0) === cbo_flush)
-    def isCboInval(op: UInt): Bool = isCbo(op) && (op(3, 0) === cbo_inval)
+    def isCbom(op: UInt): Bool = op(3, 2) === "b11".U && (op(6, 4) === "b000".U)
+    def isCboAll(op: UInt): Bool = isCbom(op) || op(3,0) === cbo_zero
+    def isCboClean(op: UInt): Bool = isCbom(op) && (op(3, 0) === cbo_clean)
+    def isCboFlush(op: UInt): Bool = isCbom(op) && (op(3, 0) === cbo_flush)
+    def isCboInval(op: UInt): Bool = isCbom(op) && (op(3, 0) === cbo_inval)
 
     // atomics
     // bit(1, 0) are size

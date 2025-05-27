@@ -910,7 +910,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // CBO op type check can be delayed for 1 cycle,
   // as uncache op will not start in s_idle
   val cboMmioAddr = get_block_addr(addrModule.io.rdata_p(0))
-  val deqCanDoCbo = GatedRegNext(LSUOpType.isCbo(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr))
+  val deqCanDoCbo = GatedRegNext(LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr))
   dontTouch(deqCanDoCbo)
   // cbo inval/clean/flush: 
   when (deqCanDoCbo) {

@@ -17,13 +17,6 @@ trait CSRCustom { self: NewCSR =>
   val spfctl = Module(new CSRModule("Spfctl", new SpfctlBundle))
     .setAddr(0x5C1)
 
-  // slvpredctl: load violation predict settings
-  // Default reset period: 2^16
-  // why this number: reset more frequently while keeping the overhead low
-  // Overhead: extra two redirections in every 64K cycles => ~0.1% overhead
-  val slvpredctl = Module(new CSRModule("Slvpredctl", new SlvpredctlBundle))
-    .setAddr(0x5C2)
-
   // smblockctl: memory block configurations
   val smblockctl = Module(new CSRModule("Smblockctl", new SmblockctlBundle))
     .setAddr(0x5C3)
@@ -37,7 +30,6 @@ trait CSRCustom { self: NewCSR =>
   val customCSRMods = Seq(
     sbpctl,
     spfctl,
-    slvpredctl,
     smblockctl,
     srnctl,
     sfetchctl,
@@ -74,14 +66,6 @@ class SpfctlBundle extends CSRBundle {
   val L1D_PF_ENABLE           = RW(     2).withReset(true.B)      // L1D Cache Prefetcher Enable
   val L2_PF_ENABLE            = RW(     1).withReset(true.B)      // L2  Cache Prefetcher Enable
   val L1I_PF_ENABLE           = RW(     0).withReset(true.B)      // L1I Cache Prefetcher Enable
-}
-
-class SlvpredctlBundle extends CSRBundle {
-  val LVPRED_TIMEOUT          = SlvpredCtlTimeOut(8, 4).withReset(SlvpredCtlTimeOut.initValue)
-  val STORESET_NO_FAST_WAKEUP = RW(3).withReset(false.B)
-  val STORESET_WAIT_STORE     = RW(2).withReset(false.B)
-  val NO_SPEC_LOAD            = RW(1).withReset(false.B)
-  val LVPRED_DISABLE          = RW(0).withReset(true.B)
 }
 
 class SmblockctlBundle extends CSRBundle {

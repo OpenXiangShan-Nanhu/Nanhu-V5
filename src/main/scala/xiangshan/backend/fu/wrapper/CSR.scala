@@ -322,12 +322,6 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
       custom.l2_pf_store_only         := csrMod.io.status.custom.l2_pf_store_only
       // ICache
       custom.icache_parity_enable     := csrMod.io.status.custom.icache_parity_enable
-      // Load violation predictor
-      custom.lvpred_disable           := csrMod.io.status.custom.lvpred_disable
-      custom.no_spec_load             := csrMod.io.status.custom.no_spec_load
-      custom.storeset_wait_store      := csrMod.io.status.custom.storeset_wait_store
-      custom.storeset_no_fast_wakeup  := csrMod.io.status.custom.storeset_no_fast_wakeup
-      custom.lvpred_timeout           := csrMod.io.status.custom.lvpred_timeout
       // Branch predictor
       custom.bp_ctrl                  := csrMod.io.status.custom.bp_ctrl
       // Memory Block

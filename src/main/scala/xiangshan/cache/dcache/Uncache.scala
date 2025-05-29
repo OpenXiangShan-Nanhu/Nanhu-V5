@@ -153,6 +153,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
       resp_data := io.mem_grant.bits.data
       resp_nderr := io.mem_grant.bits.denied
       io.resp.valid := req.nc && storeReq
+      io.resp.bits.isNC  := req.nc
       assert(refill_done, "Uncache response should be one beat only!")
       state := Mux(storeReq && req.nc, s_invalid, s_send_resp)
     }
@@ -169,6 +170,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     io.resp.bits.tag_error := false.B
     io.resp.bits.error := false.B
     io.resp.bits.nderr := resp_nderr
+    io.resp.bits.isNC  := req.nc
 
     when (io.resp.fire) {
       state := s_invalid

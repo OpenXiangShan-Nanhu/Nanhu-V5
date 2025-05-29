@@ -864,7 +864,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       }
     }
     is(s_resp) {
-      when(io.uncache.resp.fire) {
+      when(io.uncache.resp.fire && !io.uncache.resp.bits.isNC) {
         uncacheState := s_wb
 
         when (io.uncache.resp.bits.nderr) {

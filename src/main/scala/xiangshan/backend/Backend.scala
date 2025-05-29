@@ -699,12 +699,12 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
         AssertLoadWakeUp(
           backendParams.svaAssertEn,
           backendParams.svaCoverEn,
+          backendParams.cvlLongSequence,
           clock = clock,
-          disable = reset.asDisable,
+          reset = reset,
           ctrlBlock.io.redirect, wkup, cancel, wb
         )
     }
-
   }
 
   // reset tree

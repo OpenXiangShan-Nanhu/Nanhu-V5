@@ -44,6 +44,7 @@ case class BackendParams(
 
   def svaAssertEn(implicit p: Parameters): Boolean = false
   def svaCoverEn(implicit p: Parameters): Boolean = false
+  def cvlLongSequence(implicit p: Parameters): Boolean = false
 
   def basicDebugEn(implicit p: Parameters): Boolean = p(DebugOptionsKey).AlwaysBasicDiff || debugEn
 

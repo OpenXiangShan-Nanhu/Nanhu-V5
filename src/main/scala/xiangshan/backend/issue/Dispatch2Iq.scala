@@ -481,6 +481,24 @@ class Dispatch2IqIntImp(override val wrapper: Dispatch2Iq)(implicit p: Parameter
   uopsOutDq0(2).valid := Mux1H(IQ1Enq0Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
   uopsOutDq0(3).valid := Mux1H(IQ1Enq1Select.zip(dq0Block).map(x => x._1 && !x._2), uopsInDq0.map(_.valid))
 
+  if(backendParams.debugEn && (backendParams.svaAssertEn || backendParams.svaCoverEn)) {
+    import xs.utils.cvl.advanced.CVL_ASSERT_LEGAL_CODE
+    uopsOutDq0.zipWithIndex.foreach { case (u, i) =>
+      val fuType = Wire(Valid(FuType()))
+      fuType.valid := u.valid
+      fuType.bits := u.bits.fuType
+      CVL_ASSERT_LEGAL_CODE(
+        params.backendParam.svaAssertEn,
+        params.backendParam.svaCoverEn,
+        params.backendParam.cvlLongSequence,
+        clock,
+        reset,
+        "IQ_0_1_LEGAL_FUTYPE",
+        params.issueBlockParams(i / 2).getFuCfgs.map(_.fuType.id.U),
+        fuType
+      )
+    }
+  }
 
   val IQ2Deq0IsLess = IQ3Deq0Num > IQ2Deq0Num
   val IQ2Deq1IsLess = IQ3Deq1Num > IQ2Deq1Num
@@ -612,7 +630,24 @@ class Dispatch2IqIntImp(override val wrapper: Dispatch2Iq)(implicit p: Parameter
   uopsOutDq1(1).valid := Mux1H(IQ2Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
   uopsOutDq1(2).valid := Mux1H(IQ3Enq0Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
   uopsOutDq1(3).valid := Mux1H(IQ3Enq1Select.zip(dq1Block).map(x => x._1 && !x._2), uopsInDq1.map(_.valid))
-
+  if(backendParams.debugEn && (backendParams.svaAssertEn || backendParams.svaCoverEn)) {
+    import xs.utils.cvl.advanced.CVL_ASSERT_LEGAL_CODE
+    uopsOutDq1.zipWithIndex.foreach { case (u, i) =>
+      val fuType = Wire(Valid(FuType()))
+      fuType.valid := u.valid
+      fuType.bits := u.bits.fuType
+      CVL_ASSERT_LEGAL_CODE(
+        params.backendParam.svaAssertEn,
+        params.backendParam.svaCoverEn,
+        params.backendParam.cvlLongSequence,
+        clock,
+        reset,
+        "IQ_2_3_LEGAL_FUTYPE",
+        params.issueBlockParams(2 + (i / 2)).getFuCfgs.map(_.fuType.id.U),
+        fuType
+      )
+    }
+  }
 
   XSPerfAccumulate("not_ready_iq0", PopCount(!uopsOutDq0(0).ready))
   XSPerfAccumulate("not_ready_iq1", PopCount(!uopsOutDq0(2).ready))
@@ -638,7 +673,6 @@ class Dispatch2IqArithImp(override val wrapper: Dispatch2Iq)(implicit p: Paramet
   println(s"[Dispatch2IqArithImp] mergedFuDeqMap: $mergedFuDeqMap")
   val expendedFuDeqMap = expendFuDeqMap(mergedFuDeqMap, params.issueBlockParams.map(_.numEnq))
   println(s"[Dispatch2IqArithImp] expendedFuDeqMap: $expendedFuDeqMap")
-  println(FuType.vfalu.id)
 
   // sort by count of port. Port less, priority higher.
   val finalFuDeqMap = expendedFuDeqMap.toSeq.sortBy(_._2.length)
@@ -699,6 +733,24 @@ class Dispatch2IqArithImp(override val wrapper: Dispatch2Iq)(implicit p: Paramet
   uopsIn.foreach(_.ready := false.B)
   uopsIn.zipWithIndex.foreach{ case (uopIn, idx) => uopIn.ready := outReadyMatrix.map(_(idx)).reduce(_ | _) }
 
+  if(backendParams.debugEn && (backendParams.svaAssertEn || backendParams.svaCoverEn)) {
+    import xs.utils.cvl.advanced.CVL_ASSERT_LEGAL_CODE
+    outs.zipWithIndex.foreach { case (o, i) =>
+      val fuType = Wire(Valid(FuType()))
+      fuType.valid := o.valid
+      fuType.bits := o.bits.fuType
+      CVL_ASSERT_LEGAL_CODE(
+        params.backendParam.svaAssertEn,
+        params.backendParam.svaCoverEn,
+        params.backendParam.cvlLongSequence,
+        clock,
+        reset,
+        "IQ_LEGAL_FUTYPE",
+        params.issueBlockParams.map(_.getFuCfgs.map(_.fuType.id.U)).flatten,
+        fuType
+      )
+    }
+  }
 
   XSPerfAccumulate("in_valid", PopCount(io.in.map(_.valid)))
   XSPerfAccumulate("in_fire", PopCount(io.in.map(_.fire)))

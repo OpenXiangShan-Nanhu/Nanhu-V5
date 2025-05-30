@@ -236,58 +236,21 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   io.exceptionAddr.isForVSnonLeafPTE:= Mux(RegNext(io.exceptionAddr.isStore), storeQueue.io.exceptionAddr.isForVSnonLeafPTE, loadQueue.io.exceptionAddr.isForVSnonLeafPTE)
   io.issuePtrExt := storeQueue.io.stAddrReadySqPtr
 
-  // naive uncache arbiter
-  val s_idle :: s_load :: s_store :: Nil = Enum(3)
-  val pendingstate = RegInit(s_idle)
+  loadQueue.io.uncache.req.ready := io.uncache.req.ready
+  storeQueue.io.uncache.req.ready := io.uncache.req.ready
+  io.uncache.req.valid := loadQueue.io.uncache.req.valid || storeQueue.io.uncache.req.valid
+  io.uncache.req.bits := Mux(loadQueue.io.uncache.req.valid, loadQueue.io.uncache.req.bits, storeQueue.io.uncache.req.bits)
 
-  switch(pendingstate){
-    is(s_idle){
-      when(io.uncache.req.fire){
-        pendingstate := Mux(loadQueue.io.uncache.req.valid, s_load,
-                          Mux(storeQueue.io.uncache.req.bits.nc, s_idle, s_store))
-      }
-    }
-    is(s_load){
-      when(io.uncache.resp.fire){
-        pendingstate := s_idle
-      }
-    }
-    is(s_store){
-      when(io.uncache.resp.fire){
-        pendingstate := s_idle
-      }
-    }
-  }
-
-  loadQueue.io.uncache := DontCare
-  storeQueue.io.uncache := DontCare
-  loadQueue.io.uncache.req.ready := false.B
-  storeQueue.io.uncache.req.ready := false.B
-  loadQueue.io.uncache.resp.valid := false.B
-  storeQueue.io.uncache.resp.valid := false.B
-  when(pendingstate === s_idle){
-    when(loadQueue.io.uncache.req.valid){
-      io.uncache.req <> loadQueue.io.uncache.req
-    }.otherwise{
-      io.uncache.req <> storeQueue.io.uncache.req
-    }
-  }.otherwise{
-    io.uncache.req.valid := false.B
-    io.uncache.req.bits := DontCare
-  }
-  when(pendingstate === s_load){
-    io.uncache.resp <> loadQueue.io.uncache.resp
-  }.otherwise{
-    io.uncache.resp <> storeQueue.io.uncache.resp
-  }
+  loadQueue.io.uncache.resp.valid := io.uncache.resp.valid && !io.uncache.resp.bits.isStore
+  storeQueue.io.uncache.resp.valid := io.uncache.resp.valid && io.uncache.resp.bits.isStore
+  loadQueue.io.uncache.resp.bits := io.uncache.resp.bits
+  storeQueue.io.uncache.resp.bits := io.uncache.resp.bits
+  io.uncache.resp.ready := true.B
 
   loadQueue.io.debugTopDown <> io.debugTopDown
 
-  assert(!(loadQueue.io.uncache.req.valid && storeQueue.io.uncache.req.valid))
-  assert(!(loadQueue.io.uncache.resp.valid && storeQueue.io.uncache.resp.valid))
-  when (!io.uncacheOutstanding) {
-    assert(!((loadQueue.io.uncache.resp.valid || storeQueue.io.uncache.resp.valid) && pendingstate === s_idle))
-  }
+  assert(!(loadQueue.io.uncache.req.fire && storeQueue.io.uncache.req.fire))
+  assert(!(loadQueue.io.uncache.resp.fire && storeQueue.io.uncache.resp.fire))
 
 
   val perfEvents = Seq(loadQueue, storeQueue).flatMap(_.getPerfEvents)

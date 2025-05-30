@@ -360,6 +360,12 @@ trait MachineLevel { self: NewCSR =>
 
   val mstateen0 = Module(new CSRModule("Mstateen", new MstateenBundle0)).setAddr(CSRs.mstateen0)
 
+  val mstateen1 = Module(new CSRModule("Mstateen1", new MstateenNonZeroBundle)).setAddr(CSRs.mstateen1)
+
+  val mstateen2 = Module(new CSRModule("Mstateen2", new MstateenNonZeroBundle)).setAddr(CSRs.mstateen2)
+
+  val mstateen3 = Module(new CSRModule("Mstateen3", new MstateenNonZeroBundle)).setAddr(CSRs.mstateen3)
+
   // smrnmi extension
   val mnepc = Module(new CSRModule("Mnepc", new Epc) with TrapEntryMNEventSinkBundle {
     rdata := SignExt(Cat(reg.epc.asUInt, 0.U(1.W)), XLEN)
@@ -412,6 +418,9 @@ trait MachineLevel { self: NewCSR =>
     mhartid,
     mconfigptr,
     mstateen0,
+    mstateen1,
+    mstateen2,
+    mstateen3,
     mnepc,
     mncause,
     mnstatus,
@@ -465,8 +474,11 @@ class MstatusBundle extends CSRBundle {
   val SXL  = XLENField      (35, 34).withReset(XLENField.XLEN64)
   val SBE  = CSRROField     (36).withReset(0.U)
   val MBE  = CSRROField     (37).withReset(0.U)
-  val GVA  = CSRRWField     (38).withReset(0.U)
-  val MPV  = VirtMode       (39).withReset(0.U)
+  // val GVA  = CSRRWField     (38).withReset(0.U)
+  // val MPV  = VirtMode       (39).withReset(0.U)
+  // NHV5 current do not need to support H extension, set the GVA & MPV to read-only
+  val GVA  = CSRROField     (38).withReset(0.U)
+  val MPV  = CSRROField     (39).withReset(0.U)
   val SD   = CSRROField     (63,
     (_, _) => FS === ContextStatus.Dirty // || VS === ContextStatus.Dirty
   )

@@ -46,8 +46,11 @@ class CSRPermitModule(enableAIA: Boolean) extends Module {
     io.in.status.scounteren,
   )
 
-  private val (mstateen0, hstateen0, sstateen0) = (
+  private val (mstateen0, mstateen1, mstateen2, mstateen3, hstateen0, sstateen0) = (
     io.in.status.mstateen0,
+    io.in.status.mstateen1,
+    io.in.status.mstateen2,
+    io.in.status.mstateen3,
     io.in.status.hstateen0,
     io.in.status.sstateen0,
   )
@@ -142,10 +145,21 @@ class CSRPermitModule(enableAIA: Boolean) extends Module {
    * Sm/Ssstateen0 begin
    */
   // SE0 bit 63
+  // SE bit 63
+  private val accessStateen_EX_II = (
+    mstateen0.SE0.asBool +: Seq(mstateen1, mstateen2, mstateen3).map(_.SE.asBool)
+    ).zipWithIndex.map{ case(se, i) => {
+    val csrIsHstateen = addr === (CSRs.hstateen0 + i).U
+    val csrIsSstateen = addr === (CSRs.sstateen0 + i).U
+    val csrIsStateen = csrIsHstateen || csrIsSstateen
+    csrIsStateen && !privState.isModeM && !se
+  }}.reduce(_ || _)
+
+  dontTouch(accessStateen_EX_II)
+  
   private val csrIsHstateen0 = (addr === CSRs.hstateen0.U)
   private val csrIsSstateen0 = (addr === CSRs.sstateen0.U)
   private val csrIsStateen0 = csrIsHstateen0 || csrIsSstateen0
-  private val accessStateen0_EX_II = csrIsStateen0 && !privState.isModeM && !mstateen0.SE0.asBool
   private val accessStateen0_EX_VI = csrIsSstateen0 && mstateen0.SE0.asBool && privState.isVirtual && !hstateen0.SE0.asBool ||
     csrIsHstateen0 && mstateen0.SE0.asBool && privState.isVirtual
 
@@ -182,7 +196,7 @@ class CSRPermitModule(enableAIA: Boolean) extends Module {
   // [0x5c0, 0x5ff], [0x9c0, 0x9ff], [0xdc0, 0xdff]
   private val csrIsSCustom   = (addr(11, 10) =/= "b00".U) && (addr(9, 8) === "b01".U) && (addr(7, 6) === "b11".U)
   // [0x800, 0x8ff], [0xcc0, 0xcff]
-  private val csrIsUCustom   = (addr(11, 8) =/= "b1000".U) || (addr(11, 6) =/= "b100011".U)
+  private val csrIsUCustom   = (addr(11, 8) === "b1000".U) || (addr(11, 6) === "b100011".U)
   private val allCustom      = csrIsHVSCustom || csrIsSCustom || csrIsUCustom
   private val accessCustom_EX_II = allCustom && (
     !privState.isModeM && !mstateen0.C.asBool ||
@@ -236,7 +250,7 @@ class CSRPermitModule(enableAIA: Boolean) extends Module {
     dontTouch(stopi_EX_VI.get)
   }
 
-  val xstateControlAccess_EX_II = csrAccess && (accessStateen0_EX_II || accessEnvcfg_EX_II || accessIND_EX_II ||
+  val xstateControlAccess_EX_II = csrAccess && (accessStateen_EX_II || accessEnvcfg_EX_II || accessIND_EX_II ||
                                                 accessContext_EX_II || accessCustom_EX_II  ||
                                                 aia_EX_II.getOrElse(false.B) || stopi_EX_II.getOrElse(false.B))
   val xstateControlAccess_EX_VI = csrAccess && (accessStateen0_EX_VI || accessEnvcfg_EX_VI || accessIND_EX_VI ||
@@ -353,6 +367,9 @@ class CSRPermitIO(enableAIA: Boolean) extends Bundle {
       val vsstatusVSOff = Bool()
       // Sm/Ssstateen: to control state access
       val mstateen0 = new MstateenBundle0
+      val mstateen1 = new MstateenNonZeroBundle
+      val mstateen2 = new MstateenNonZeroBundle
+      val mstateen3 = new MstateenNonZeroBundle
       val hstateen0 = new HstateenBundle0
       val sstateen0 = new SstateenBundle0
     }

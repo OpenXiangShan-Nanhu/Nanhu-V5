@@ -109,7 +109,7 @@ class TrapEntryMEventModule(implicit val p: Parameters) extends Module with CSRE
   out.targetPc .valid := valid
 
   out.privState.bits            := PrivState.ModeM
-  out.mstatus.bits.MPV          := current.privState.V
+  out.mstatus.bits.MPV          := current.privState.V.asUInt
   out.mstatus.bits.MPP          := current.privState.PRVM
   out.mstatus.bits.GVA          := tvalFillGVA
   out.mstatus.bits.MPIE         := current.mstatus.MIE

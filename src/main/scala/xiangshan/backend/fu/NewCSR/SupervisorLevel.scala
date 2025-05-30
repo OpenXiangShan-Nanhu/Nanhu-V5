@@ -171,6 +171,13 @@ trait SupervisorLevel { self: NewCSR with MachineLevel =>
     regOut := Mux(privState.isVirtual, fromHstateen0.asUInt, fromMstateen0.asUInt) & reg.asUInt
   }).setAddr(CSRs.sstateen0)
 
+  // sstateen[1|2|3] read-only zero
+  val sstateen1 = Module(new CSRModule("Sstateen1", new SstateenNonZeroBundle)).setAddr(CSRs.sstateen1)
+
+  val sstateen2 = Module(new CSRModule("Sstateen2", new SstateenNonZeroBundle)).setAddr(CSRs.sstateen2)
+
+  val sstateen3 = Module(new CSRModule("Sstateen3", new SstateenNonZeroBundle)).setAddr(CSRs.sstateen3)
+
   val supervisorLevelCSRMods: Seq[CSRModule[_]] = Seq(
     sie,
     stvec,
@@ -185,6 +192,9 @@ trait SupervisorLevel { self: NewCSR with MachineLevel =>
     satp,
     scountovf,
     sstateen0,
+    sstateen1,
+    sstateen2,
+    sstateen3,
   )
 
   val supervisorLevelCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap(

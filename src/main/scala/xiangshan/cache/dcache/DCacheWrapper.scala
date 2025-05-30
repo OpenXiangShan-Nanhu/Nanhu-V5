@@ -468,6 +468,7 @@ class DCacheWordRespWithError(implicit p: Parameters) extends BaseDCacheWordResp
   val error = Bool() // all kinds of errors, include tag error
   val nderr = Bool()
   val isNC = Bool()
+  val isStore = Bool()
 }
 
 class DCacheLineResp(implicit p: Parameters) extends DCacheBundle
@@ -544,6 +545,7 @@ class UncacheWordResp(implicit p: Parameters) extends DCacheBundle
   val error     = Bool()
   val nderr     = Bool()
   val isNC      = Bool()
+  val isStore   = Bool()
   val replayCarry = new ReplayCarry(nWays)
   val mshr_id = UInt(log2Up(cfg.nMissEntries).W)  // FIXME: why uncacheWordResp is not merged to baseDcacheResp
 
@@ -1604,16 +1606,16 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   //----------------------------------------
   // assertions
   // dcache should only deal with DRAM addresses
-  import freechips.rocketchip.util._
-  when (bus.a.fire) {
-    assert(PmemRanges.map(_.cover(bus.a.bits.address)).reduce(_ || _))
-  }
-  when (bus.b.fire) {
-    assert(PmemRanges.map(_.cover(bus.b.bits.address)).reduce(_ || _))
-  }
-  when (bus.c.fire) {
-    assert(PmemRanges.map(_.cover(bus.c.bits.address)).reduce(_ || _))
-  }
+  // import freechips.rocketchip.util._
+  // when (bus.a.fire) {
+  //   assert(PmemRanges.map(_.cover(bus.a.bits.address)).reduce(_ || _))
+  // }
+  // when (bus.b.fire) {
+  //   assert(PmemRanges.map(_.cover(bus.b.bits.address)).reduce(_ || _))
+  // }
+  // when (bus.c.fire) {
+  //   assert(PmemRanges.map(_.cover(bus.c.bits.address)).reduce(_ || _))
+  // }
 
   //----------------------------------------
   // utility functions

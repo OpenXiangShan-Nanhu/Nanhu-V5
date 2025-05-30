@@ -89,6 +89,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   io.req.ready := false.B
   io.resp.valid := false.B
   io.resp.bits := DontCare
+  io.resp.bits.isStore := req.cmd === MemoryOpConstants.M_XWR
 
   io.mem_acquire.valid := false.B
   io.mem_acquire.bits := DontCare

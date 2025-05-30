@@ -248,12 +248,12 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
       }
     }
     is(s_load){
-      when(io.uncache.resp.fire){
+      when(io.uncache.resp.fire && !io.uncache.resp.bits.isStore){
         pendingstate := s_idle
       }
     }
     is(s_store){
-      when(io.uncache.resp.fire){
+      when(io.uncache.resp.fire && (io.uncache.resp.bits.isStore && !io.uncache.resp.bits.isNC)){
         pendingstate := s_idle
       }
     }
@@ -286,7 +286,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   assert(!(loadQueue.io.uncache.req.valid && storeQueue.io.uncache.req.valid))
   assert(!(loadQueue.io.uncache.resp.valid && storeQueue.io.uncache.resp.valid))
   when (!io.uncacheOutstanding) {
-    assert(!((loadQueue.io.uncache.resp.valid || storeQueue.io.uncache.resp.valid) && pendingstate === s_idle))
+    assert(!((loadQueue.io.uncache.resp.valid || (storeQueue.io.uncache.resp.valid && !io.uncache.resp.bits.isNC)) && pendingstate === s_idle))
   }
 
 

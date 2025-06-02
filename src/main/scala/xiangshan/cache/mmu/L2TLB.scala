@@ -470,8 +470,12 @@ class L2TLBImp(outer: L2TLB)(implicit p: Parameters) extends PtwModule(outer) wi
   //pmp_check(0).req <> ptw.io.pmp.req
   pmp_check(0).req <> ptw_io_pmp_req_delay
   ptw.io.pmp.resp <> pmp_check(0).resp
-  pmp_check(1).req <> llptw.io.pmp.req
+
+  val llptw_io_pmp_req_delay = RegNext(llptw.io.pmp.req)
+//  pmp_check(1).req <> llptw.io.pmp.req
+  pmp_check(1).req <> llptw_io_pmp_req_delay
   llptw.io.pmp.resp <> pmp_check(1).resp
+
   pmp_check(2).req <> hptw.io.pmp.req
   hptw.io.pmp.resp <> pmp_check(2).resp
 

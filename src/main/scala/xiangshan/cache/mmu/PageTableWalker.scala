@@ -674,14 +674,15 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   io.pmp.req.bits.addr := Mux(hptw_need_addr_check, hpaddr, addr)
   io.pmp.req.bits.cmd := TlbCmd.read
   io.pmp.req.bits.size := 3.U // TODO: fix it
-  val pmp_resp_valid = io.pmp.req.valid // same cycle
+  val pmp_resp_valid = RegNext(io.pmp.req.valid) // next cycle
+  val ptr = Mux(hptw_need_addr_check, hptw_resp_ptr_reg, enq_ptr_reg);
+  val ptr_d = RegNext(ptr)
   when (pmp_resp_valid) {
     // NOTE: when pmp resp but state is not addr check, then the entry is dup with other entry, the state was changed before
     //       when dup with the req-ing entry, set to mem_waiting (above codes), and the ld must be false, so dontcare
-    val ptr = Mux(hptw_need_addr_check, hptw_resp_ptr_reg, enq_ptr_reg);
     val accessFault = io.pmp.resp.ld || io.pmp.resp.mmio
-    entries(ptr).af := accessFault
-    state(ptr) := Mux(accessFault, state_mem_out, state_mem_req)
+    entries(ptr_d).af := accessFault
+    state(ptr_d) := Mux(accessFault, state_mem_out, state_mem_req)
   }
 
   when (mem_arb.io.out.fire) {

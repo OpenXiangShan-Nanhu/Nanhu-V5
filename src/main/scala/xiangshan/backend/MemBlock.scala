@@ -662,7 +662,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   ptw.io.pmpInfo.pmp := pmp.io.pmp
   ptw.io.pmpInfo.pma := pmp.io.pma
 
-  val pmp_checkers = Seq.fill(DTlbSize)(Module(new PMPChecker(4, leaveHitMux = true)))
+  val pmp_checkers = Seq.fill(DTlbSize)(Module(new PMPChecker(4, leaveHitMux = false)))
   val pmp_check = pmp_checkers.map(_.io)
   for ((p,d) <- pmp_check zip dtlb_pmps) {
     p.apply(tlbcsr.priv.dmode, pmp.io.pmp, pmp.io.pma, d)

@@ -902,9 +902,14 @@ class NewCSR(implicit val p: Parameters) extends Module
   val frmChange = RegEnable(fcsr.wAliasFfm.wen && (!frmIsReserved && frmWdataReserved || frmIsReserved && !frmWdataReserved) ||
     fcsr.w.wen && (!frmIsReserved && fcsrWdataReserved || frmIsReserved && !fcsrWdataReserved),false.B, valid)
 
+  //flush pipe when modify the pmp/pma setting
+  val pmpModify = wenLegal && (Cat(pmpCSRMap.keys.toSeq.sorted.map(csrAddr => !(addr === csrAddr.U))).andR)
+  val pmaModify = wenLegal && (Cat(pmaCSRMap.keys.toSeq.sorted.map(csrAddr => !(addr === csrAddr.U))).andR)
+  val pmpOrpmaChange = RegEnable(pmpModify || pmaModify,false.B, valid)
+
   val flushPipe = resetSatp ||
     triggerFrontendChange || floatStatusOnOff || vectorStatusOnOff ||
-    vstartChange || frmChange
+    vstartChange || frmChange || pmpOrpmaChange
 
   private val rdata = Mux1H(csrRwMap.map { case (id, (_, rdata)) =>
     if (vsMapS.contains(id)) {

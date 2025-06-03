@@ -3,6 +3,7 @@ package xiangshan.backend.fu.NewCSR
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
+import xiangshan.cache.HasDCacheParameters
 import xiangshan.backend.fu.NewCSR.CSRBundles.PrivState
 import xiangshan.backend.fu.util.CSRConst
 import xiangshan.backend.fu.util.SdtrigExt
@@ -207,11 +208,12 @@ class BaseTriggerIO(implicit p: Parameters) extends XSBundle{
 }
 
 
-abstract class BaseTrigger()(implicit val p: Parameters) extends Module with HasXSParameter with SdtrigExt with HasDCacheParameters {
+abstract class BaseTrigger()(implicit val p: Parameters) extends Module with HasXSParameter with SdtrigExt with HasDCacheParameters{
   lazy val io = IO(new BaseTriggerIO)
 
   def getTriggerHitVec(): Vec[Bool]
   def highBitsEq(): Vec[Bool]
+  def DcacheLineBitsEq(): (Bool, Vec[Bool])
 
   val tdataVec      = io.fromCsrTrigger.tdataVec
   val tEnableVec    = io.fromCsrTrigger.tEnableVec
@@ -230,6 +232,8 @@ abstract class BaseTrigger()(implicit val p: Parameters) extends Module with Has
   val isVectorStride = io.fromLoadStore.isVectorUnitStride
   val mask = io.fromLoadStore.mask
 
+  val (isCacheLine, cacheLineEq) = DcacheLineBitsEq()
+
   val highEq = highBitsEq()
 
   val lowMatch = tdataVec.map(tdata => UIntToOH(tdata.tdata2(lowBitWidth-1, 0)) & mask)
@@ -237,7 +241,8 @@ abstract class BaseTrigger()(implicit val p: Parameters) extends Module with Has
 
   val hitVecVectorStride  = VecInit(highEq.zip(lowEq).map{case(hi, lo) => hi && lo})
 
-  TriggerCheckCanFire(TriggerNum, triggerCanFireVec, Mux(isVectorStride, hitVecVectorStride, triggerHitVec), triggerTimingVec, triggerChainVec)
+  val tiggerVaddrHit = Mux(isCacheLine, cacheLineEq, Mux(isVectorStride, hitVecVectorStride, triggerHitVec))
+  TriggerCheckCanFire(TriggerNum, triggerCanFireVec, tiggerVaddrHit, triggerTimingVec, triggerChainVec)
   val triggerFireOH = PriorityEncoderOH(triggerCanFireVec)
   val triggerVaddr  = PriorityMux(triggerFireOH, VecInit(tdataVec.map(_.tdata2))).asUInt
   val triggerMask   = PriorityMux(triggerFireOH, VecInit(tdataVec.map(x => UIntToOH(x.tdata2(lowBitWidth-1, 0))))).asUInt
@@ -271,6 +276,17 @@ class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Param
       )
     }
     triggerHitVec
+  }
+
+  def DcacheLineBitsEq(): (Bool, Vec[Bool])= {
+    (
+    io.isCbo.getOrElse(false.B),
+    VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
+      !tdata.select && !debugMode && en &&
+        tdata.store && io.isCbo.getOrElse(false.B) &&
+        (vaddr >> DCacheLineOffset) === (tdata.tdata2 >> DCacheLineOffset)
+    })
+    )
   }
 
   override def highBitsEq(): Vec[Bool] = {
@@ -320,5 +336,10 @@ class VSegmentTrigger(override implicit val p: Parameters) extends BaseTrigger {
         Mux(io.memType === MemType.LOAD.asBool, tdata.load, tdata.store) &&
         (vaddr >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
     })
+  }
+
+  // vector segment does not have a cbo
+  def DcacheLineBitsEq(): (Bool, Vec[Bool]) = {
+    (false.B, VecInit(Seq.fill(tdataVec.length)(false.B)))
   }
 }

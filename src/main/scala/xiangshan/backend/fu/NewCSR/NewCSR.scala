@@ -353,6 +353,9 @@ class NewCSR(implicit val p: Parameters) extends Module
   intrMod.io.in.mnstatusNMIE := mnstatus.regOut.NMIE.asBool
   intrMod.io.in.nmi := nmip.asUInt.orR
   intrMod.io.in.nmiVec := nmip.asUInt
+  intrMod.io.in.debugMode := debugMode
+  intrMod.io.in.debugIntr := debugIntr
+  intrMod.io.in.dcsr      := dcsr.regOut
 
   when(intrMod.io.out.nmi && intrMod.io.out.interruptVec.valid) {
     nmip.NMI_31 := nmip.NMI_31 & !intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_31).asBool
@@ -724,6 +727,11 @@ class NewCSR(implicit val p: Parameters) extends Module
         m.fromMstateen3 := mstateen3.regOut
         m.fromHstateen0 := hstateen0.regOut
         m.privState     := privState
+      case _ =>
+    }
+    mod match {
+      case m: HasNmipBundle =>
+        m.nmip := nmip.asUInt.orR
       case _ =>
     }
   }
@@ -1150,11 +1158,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   trapEntryDEvent.in.hasDebugEbreakException  := debugMod.io.out.hasDebugEbreakException
   trapEntryDEvent.in.breakPoint               := debugMod.io.out.breakPoint
 
-  trapHandleMod.io.in.trapInfo.bits.singleStep  := debugMod.io.out.hasSingleStep
-
-  intrMod.io.in.debugMode := debugMode
-  intrMod.io.in.debugIntr := debugIntr
-  intrMod.io.in.dcsr      := dcsr.regOut
+  trapHandleMod.io.in.trapInfo.bits.singleStep  := hasTrap && !trapIsInterrupt && singleStep
 
   for(idx <- 0 until TriggerNum) {
      val tdata1Pre = Wire(new Tdata1Bundle)

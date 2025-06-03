@@ -204,7 +204,7 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     peripheral.viewAs[AXI4Bundle] <> misc.peripheral.elements.head._2
 
     val io = IO(new Bundle {
-      val clock = Input(Bool())
+      val clock = Input(Clock())
       val reset = Input(AsyncReset())
       val sram_config = Input(UInt(16.W))
       val extIntrs = Input(UInt(NrExtIntr.W))
@@ -239,11 +239,11 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       })
     })
 
-    val reset_sync = withClockAndReset(io.clock.asClock, io.reset) { ResetGen(2, None) }
+    val reset_sync = withClockAndReset(io.clock, io.reset) { ResetGen(2, None) }
     val jtag_reset_sync = withClockAndReset(io.systemjtag.jtag.TCK, io.systemjtag.reset) { ResetGen(2, None) }
 
     // override LazyRawModuleImp's clock and reset
-    childClock := io.clock.asClock
+    childClock := io.clock
     childReset := reset_sync
 
     // output
@@ -310,12 +310,12 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       }
     }
 
-    misc.module.debug_module_io.resetCtrl.hartIsInReset := core_with_l2.map(_.module.reset.asBool)
+    misc.module.debug_module_io.resetCtrl.hartIsInReset := core_with_l2.map(_.module.io.hartIsInReset)
     misc.module.debug_module_io.clock := io.clock
     misc.module.debug_module_io.reset := reset_sync
 
     misc.module.debug_module_io.debugIO.reset := misc.module.reset
-    misc.module.debug_module_io.debugIO.clock := io.clock.asClock
+    misc.module.debug_module_io.debugIO.clock := io.clock
     // TODO: delay 3 cycles?
     misc.module.debug_module_io.debugIO.dmactiveAck := misc.module.debug_module_io.debugIO.dmactive
     // jtag connector
@@ -327,11 +327,17 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       x.version     := io.systemjtag.version
     }
 
-    withClockAndReset(io.clock.asClock, reset_sync) {
+    withClockAndReset(io.clock, reset_sync) {
       // Modules are reset one by one
       // reset ----> SYNC --> {SoCMisc, L3 Cache, Cores}
-      val resetChain = Seq(Seq(misc.module) ++ l3cacheOpt.map(_.module) ++ core_with_l2.map(_.module))
+      val resetChain = Seq(Seq(misc.module) ++ l3cacheOpt.map(_.module))
       ResetGen(resetChain, reset_sync, None, !debugOpts.ResetGen)
+      // Ensure that cores could be reset when DM disable `hartReset` or l3cacheOpt.isEmpty.
+      val dmResetReqVec = misc.module.debug_module_io.resetCtrl.hartResetReq.getOrElse(0.U.asTypeOf(Vec(core_with_l2.map(_.module).length, Bool())))
+      val syncResetCores = if(l3cacheOpt.nonEmpty) l3cacheOpt.map(_.module).get.reset.asBool else misc.module.reset.asBool
+      (core_with_l2.map(_.module)).zip(dmResetReqVec).map { case(core, dmResetReq) =>
+        ResetGen(Seq(Seq(core)), (syncResetCores || dmResetReq).asAsyncReset, None, !debugOpts.ResetGen)
+      }
     }
 
   }

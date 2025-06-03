@@ -555,8 +555,10 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
 
   val flush = io.sfence.valid || io.csr.satp.changed || io.csr.vsatp.changed || io.csr.hgatp.changed
   val entries = RegInit(VecInit(Seq.fill(l2tlbParams.llptwsize)(0.U.asTypeOf(new LLPTWEntry()))))
-  val state_idle :: state_hptw_req :: state_hptw_resp :: state_addr_check :: state_mem_req :: state_mem_waiting :: state_mem_out :: state_last_hptw_req :: state_last_hptw_resp :: state_cache :: Nil = Enum(10)
+  val state_idle :: state_hptw_req :: state_hptw_resp :: state_addr_check :: state_mem_req :: state_mem_waiting :: state_mem_out :: state_last_hptw_req :: state_last_hptw_resp :: state_cache :: state_pmp_wait :: Nil = Enum(11)
   val state = RegInit(VecInit(Seq.fill(l2tlbParams.llptwsize)(state_idle)))
+  //for pmp delay
+  val is_pmp_wait = state.map(_ === state_pmp_wait)
 
   val is_emptys = state.map(_ === state_idle)
   val is_mems = state.map(_ === state_mem_req)
@@ -598,6 +600,11 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   val dup_vec = state.indices.map(i =>
     dup(io.in.bits.req_info.vpn, entries(i).req_info.vpn) && io.in.bits.req_info.s2xlate === entries(i).req_info.s2xlate
   )
+  //for pmp delay
+//  val dup_vec_addr_check = dup_vec.zip(state).map{ case(d,s) => d && (s === state_addr_check) }
+  val dup_vec_addr_check = state.indices.map(i => dup_vec(i) && state(i)===state_addr_check)
+  val to_wait_pmp = Cat(dup_vec_addr_check).orR
+
   val dup_req_fire = mem_arb.io.out.fire && dup(io.in.bits.req_info.vpn, mem_arb.io.out.bits.req_info.vpn) && io.in.bits.req_info.s2xlate === mem_arb.io.out.bits.req_info.s2xlate // dup with the req fire entry
   val dup_vec_wait = dup_vec.zip(is_waiting).map{case (d, w) => d && w} // dup with "mem_waiting" entries, sending mem req already
   val dup_vec_having = dup_vec.zipWithIndex.map{case (d, i) => d && is_having(i)} // dup with the "mem_out" entry recv the data just now
@@ -605,6 +612,8 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   val wait_id = Mux(dup_req_fire, mem_arb.io.chosen, ParallelMux(dup_vec_wait zip entries.map(_.wait_id)))
   val dup_wait_resp = io.mem.resp.fire && VecInit(dup_vec_wait)(io.mem.resp.bits.id) && !io.mem.flush_latch(io.mem.resp.bits.id) // dup with the entry that data coming next cycle
   val to_wait = Cat(dup_vec_wait).orR || dup_req_fire
+
+
 //  val to_mem_out = dup_wait_resp && ((entries(io.mem.resp.bits.id).req_info.s2xlate === noS2xlate) || (entries(io.mem.resp.bits.id).req_info.s2xlate === onlyStage1))
 //  val to_cache = Cat(dup_vec_having).orR || Cat(dup_vec_last_hptw).orR
 //  val to_hptw_req = io.in.bits.req_info.s2xlate === allStage
@@ -638,6 +647,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     to_mem_out -> state_mem_out, // same to the blew, but the mem resp now
     to_last_hptw_req -> state_last_hptw_req,
     to_wait -> state_mem_waiting,
+    to_wait_pmp -> state_pmp_wait,  //for pmp delay
     to_cache -> state_cache,
     to_hptw_req -> state_hptw_req
   ))
@@ -655,7 +665,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).hptw_resp := Mux(to_last_hptw_req, entries(last_hptw_req_id).hptw_resp, Mux(to_wait, entries(wait_id).hptw_resp, entries(enq_ptr).hptw_resp))
     entries(enq_ptr).hptw_resp.gpf := Mux(last_hptw_excp, last_hptw_gStagePf, false.B)
     entries(enq_ptr).first_s2xlate_fault := false.B
-    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req
+    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
   }
 
   val enq_ptr_reg = RegNext(enq_ptr)
@@ -677,17 +687,31 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   val pmp_resp_valid = RegNext(io.pmp.req.valid) // next cycle
   val ptr = Mux(hptw_need_addr_check, hptw_resp_ptr_reg, enq_ptr_reg);
   val ptr_d = RegNext(ptr)
-  when (pmp_resp_valid) {
-    // NOTE: when pmp resp but state is not addr check, then the entry is dup with other entry, the state was changed before
-    //       when dup with the req-ing entry, set to mem_waiting (above codes), and the ld must be false, so dontcare
-    val accessFault = io.pmp.resp.ld || io.pmp.resp.mmio
-    entries(ptr_d).af := accessFault
-    state(ptr_d) := Mux(accessFault, state_mem_out, state_mem_req)
+//  when (pmp_resp_valid) {
+//    // NOTE: when pmp resp but state is not addr check, then the entry is dup with other entry, the state was changed before
+//    //       when dup with the req-ing entry, set to mem_waiting (above codes), and the ld must be false, so dontcare
+//    val accessFault = io.pmp.resp.ld || io.pmp.resp.mmio
+//    entries(ptr_d).af := accessFault
+//    state(ptr_d) := Mux(accessFault, state_mem_out, state_mem_req)
+//  }
+  when (state(ptr_d) === state_addr_check) {
+    when (pmp_resp_valid) {
+      val accessFault = io.pmp.resp.ld || io.pmp.resp.mmio
+      state(ptr_d) := Mux(accessFault, state_mem_out, state_mem_req)
+      entries(ptr_d).af := accessFault
+    } .otherwise {
+      state(ptr_d) := state_addr_check
+    }
   }
 
   when (mem_arb.io.out.fire) {
     for (i <- state.indices) {
-      when (state(i) =/= state_idle && state(i) =/= state_mem_out && state(i) =/= state_last_hptw_req && state(i) =/= state_last_hptw_resp
+      when (state(i) === state_pmp_wait && dup(entries(i).req_info.vpn, mem_arb.io.out.bits.req_info.vpn)
+        && entries(i).req_info.s2xlate === mem_arb.io.out.bits.req_info.s2xlate) {
+        state(i) := state_mem_waiting
+        entries(i).hptw_resp := entries(mem_arb.io.chosen).hptw_resp
+        entries(i).wait_id := mem_arb.io.chosen
+      }.elsewhen(state(i) =/= state_idle && state(i) =/= state_mem_out && state(i) =/= state_last_hptw_req && state(i) =/= state_last_hptw_resp
       && entries(i).req_info.s2xlate === mem_arb.io.out.bits.req_info.s2xlate
       && dup(entries(i).req_info.vpn, mem_arb.io.out.bits.req_info.vpn)) {
         // NOTE: "dup enq set state to mem_wait" -> "sending req set other dup entries to mem_wait"
@@ -762,7 +786,19 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
       }
     }
   }
+//  when (io.out.fire) {
+//    assert(state(mem_ptr) === state_mem_out)
+//    state(mem_ptr) := state_idle
+//  }
   when (io.out.fire) {
+    for (i <- state.indices) {
+      when (state(i) === state_pmp_wait &&
+        dup(entries(i).req_info.vpn, entries(mem_ptr).req_info.vpn) &&
+        entries(i).req_info.s2xlate === entries(mem_ptr).req_info.s2xlate) {
+        state(i) := state_mem_out
+        entries(i).af := entries(mem_ptr).af
+      }
+    }
     assert(state(mem_ptr) === state_mem_out)
     state(mem_ptr) := state_idle
   }

@@ -63,6 +63,7 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
       val msiInfo = Input(ValidIO(new MsiInfoBundle))
       val reset_vector = Input(UInt(PAddrBits.W))
       val cpu_halt = Output(Bool())
+      val hartResetReq = Input(Bool())
       val hartIsInReset = Output(Bool())
       val traceCoreInterface = new TraceCoreInterface
       val debugTopDown = new Bundle {
@@ -84,7 +85,7 @@ class XSTileWrap()(implicit p: Parameters) extends LazyModule
       }
     })
 
-    val reset_sync = withClockAndReset(clock, reset)(ResetGen(2, io.dft.reset))
+    val reset_sync = withClockAndReset(clock, (reset.asBool || io.hartResetReq).asAsyncReset)(ResetGen(2, io.dft.reset))
     val noc_reset_sync = EnableCHIAsyncBridge.map(_ => withClockAndReset(clock, noc_reset.get)(ResetGen(2, io.dft.reset)))
     val soc_reset_sync = withClockAndReset(clock, soc_reset)(ResetGen(2, io.dft.reset))
 

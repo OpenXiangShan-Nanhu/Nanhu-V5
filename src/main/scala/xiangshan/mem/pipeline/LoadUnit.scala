@@ -1340,7 +1340,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
 
   s3_ready := !s3_valid || s3_kill || io.ldout.ready
   s3_mmio.valid := RegNextN(io.lsq.uncache.fire, 3, Some(false.B))
-  s3_mmio.bits  := RegNextN(io.lsq.uncache.bits, 3)
+  s3_mmio.bits  := RegNextN(io.lsq.uncache.bits, 3, Some(0.U.asTypeOf(new MemExuOutput)))
 
   // forwrad last beat
   val s3_fast_rep_canceled = io.replay.valid && io.replay.bits.forward_tlDchannel || io.misalign_ldin.valid || !io.dcache.req.ready

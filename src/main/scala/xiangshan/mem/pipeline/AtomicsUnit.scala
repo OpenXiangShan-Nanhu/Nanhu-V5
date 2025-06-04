@@ -383,7 +383,7 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
 
   // atomic trigger
   val csrCtrl = io.csrCtrl
-  val tdata = Reg(Vec(TriggerNum, new MatchTriggerIO))
+  val tdata = RegInit(VecInit(Seq.fill(TriggerNum)(0.U.asTypeOf(new MatchTriggerIO))))
   val tEnableVec = RegInit(VecInit(Seq.fill(TriggerNum)(false.B)))
   tEnableVec := csrCtrl.mem_trigger.tEnableVec
   when(csrCtrl.mem_trigger.tUpdate.valid) {

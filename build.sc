@@ -1,19 +1,19 @@
 /***************************************************************************************
-* Copyright (c) 2024 Beijing Institute of Open Source Chip (BOSC)
-* Copyright (c) 2020-2024 Institute of Computing Technology, Chinese Academy of Sciences
-* Copyright (c) 2020-2021 Peng Cheng Laboratory
-*
-* XiangShan is licensed under Mulan PSL v2.
-* You can use this software according to the terms and conditions of the Mulan PSL v2.
-* You may obtain a copy of Mulan PSL v2 at:
-*          http://license.coscl.org.cn/MulanPSL2
-*
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-* EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-* MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-*
-* See the Mulan PSL v2 for more details.
-***************************************************************************************/
+ * Copyright (c) 2024 Beijing Institute of Open Source Chip (BOSC)
+ * Copyright (c) 2020-2024 Institute of Computing Technology, Chinese Academy of Sciences
+ * Copyright (c) 2020-2021 Peng Cheng Laboratory
+ *
+ * XiangShan is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ *
+ * See the Mulan PSL v2 for more details.
+ ***************************************************************************************/
 
 import mill._
 import scalalib._
@@ -21,8 +21,6 @@ import $file.`rocket-chip`.common
 import $file.`rocket-chip`.dependencies.cde.common
 import $file.`rocket-chip`.dependencies.hardfloat.common
 import $file.`rocket-chip`.dependencies.diplomacy.common
-import $file.huancun.common
-import $file.openLLC.common
 
 /* for publishVersion */
 import $ivy.`de.tototec::de.tobiasroeser.mill.vcs.version::0.4.0`
@@ -126,16 +124,6 @@ object rocketchip
   }
 }
 
-object utility extends HasChisel {
-
-  override def millSourcePath = os.pwd / "utility"
-
-  override def moduleDeps = super.moduleDeps ++ Seq(
-    rocketchip
-  )
-
-}
-
 object xsutils extends HasChisel {
 
   override def millSourcePath = os.pwd / "xs-utils"
@@ -149,55 +137,11 @@ object xsutils extends HasChisel {
 object yunsuan extends HasChisel {
 
   override def millSourcePath = os.pwd / "YunSuan"
-
-}
-
-object huancun extends millbuild.huancun.common.HuanCunModule with HasChisel {
-
-  override def millSourcePath = os.pwd / "huancun"
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
-
-  def xsutilsModule: ScalaModule = xsutils
-
-}
-
-object coupledL2 extends HasChisel {
-
-  override def millSourcePath = os.pwd / "coupledL2"
-
-  override def moduleDeps = super.moduleDeps ++ Seq(rocketchip, xsutils, huancun, utility)
-
-}
-
-object openLLC extends millbuild.openLLC.common.OpenLLCModule with HasChisel {
-
-  override def millSourcePath = os.pwd / "openLLC"
-
-  def coupledL2Module: ScalaModule = coupledL2
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
 }
 
 object difftest extends HasChisel {
 
   override def millSourcePath = os.pwd / "difftest"
-
-  object test extends SbtModuleTests with TestModule.ScalaTest {
-    override def sources = T.sources {
-      super.sources() ++ Seq(PathRef(millSourcePath / "src" / "generator" / "chisel"))
-    }
-  }
-
-}
-
-object fudian extends HasChisel {
-
-  override def millSourcePath = os.pwd / "fudian"
 
 }
 
@@ -219,16 +163,6 @@ trait XiangShanModule extends ScalaModule {
 
   def difftestModule: ScalaModule
 
-  def huancunModule: ScalaModule
-
-  def coupledL2Module: ScalaModule
-
-  def openLLCModule: ScalaModule
-
-  def fudianModule: ScalaModule
-
-  def utilityModule: ScalaModule
-
   def xsutilsModule: ScalaModule
 
   def yunsuanModule: ScalaModule
@@ -238,12 +172,7 @@ trait XiangShanModule extends ScalaModule {
   override def moduleDeps = super.moduleDeps ++ Seq(
     rocketModule,
     difftestModule,
-    huancunModule,
-    coupledL2Module,
-    openLLCModule,
     yunsuanModule,
-    fudianModule,
-    utilityModule,
     xsutilsModule,
     macrosModule,
   )
@@ -262,16 +191,6 @@ object xiangshan extends XiangShanModule with HasChisel {
 
   def difftestModule = difftest
 
-  def huancunModule = huancun
-
-  def coupledL2Module = coupledL2
-
-  def openLLCModule = openLLC
-
-  def fudianModule = fudian
-
-  def utilityModule = utility
-
   def xsutilsModule = xsutils
 
   def yunsuanModule = yunsuan
@@ -282,6 +201,7 @@ object xiangshan extends XiangShanModule with HasChisel {
 
   override def ivyDeps = super.ivyDeps() ++ Agg(
     defaultVersions("chiseltest"),
+    ivy"org.chipsalliance:llvm-firtool:1.62.1"
   )
 
   override def scalacOptions = super.scalacOptions() ++ Agg("-deprecation", "-feature")
@@ -293,7 +213,7 @@ object xiangshan extends XiangShanModule with HasChisel {
     countSep = "",
     tagModifier = (tag: String) => "[Rr]elease.*".r.findFirstMatchIn(tag) match {
       case Some(_) => "NanhuV5-Release-" + LocalDateTime.now().format(
-                                 DateTimeFormatter.ofPattern("MMM-dd-yyyy").withLocale(new Locale("en")))
+        DateTimeFormatter.ofPattern("MMM-dd-yyyy").withLocale(new Locale("en")))
       case None => "NanhuV5-dev"
     },
     /* add "username, buildhost, buildtime" for non-release version */
@@ -313,7 +233,7 @@ object xiangshan extends XiangShanModule with HasChisel {
     val gitStatusProcess = gitStatusBuilder.start()
     val gitStatusReader = new BufferedReader(new InputStreamReader(gitStatusProcess.getInputStream))
     val status = gitStatusReader.readLine()
-    val gitDirty = if (status == null) 0 else 1 
+    val gitDirty = if (status == null) 0 else 1
 
     val str =
       s"""|SHA=$sha
@@ -326,17 +246,10 @@ object xiangshan extends XiangShanModule with HasChisel {
   def packDifftestResources(destDir: os.Path): Unit = {
     // package difftest source as resources, only git tracked files were collected
     val difftest_srcs = os.proc("git", "ls-files").call(cwd = pwd / "difftest").out
-                          .text().split("\n").filter(_.nonEmpty).toSeq
-                          .map(os.RelPath(_))
+      .text().split("\n").filter(_.nonEmpty).toSeq
+      .map(os.RelPath(_))
     difftest_srcs.foreach { f =>
       os.copy(pwd / "difftest" / f, destDir / "difftest-src" / f, createFolders = true)
-    }
-
-    // package ready-to-run binary as resources
-    val ready_to_run = Seq("riscv64-nemu-interpreter-so",
-                           "riscv64-spike-so")
-    ready_to_run.foreach { f =>
-      os.copy(pwd / "ready-to-run" / f, destDir / "ready-to-run" / f, createFolders = true)
     }
   }
 
@@ -346,27 +259,5 @@ object xiangshan extends XiangShanModule with HasChisel {
     os.write(T.dest / "gitModules", os.proc("git", "submodule", "status").call().out.text())
     packDifftestResources(T.dest)
     super.resources() ++ Seq(PathRef(T.dest))
-  }
-
-  object test extends SbtModuleTests with TestModule.ScalaTest {
-
-    override def forkArgs = Seq(
-      s"-Xmx${sys.props.getOrElse("jvm-xmx", "40G")}",
-      s"-Xss${sys.props.getOrElse("jvm-xss", "256m")}"
-    )
-    override def moduleDeps = super.moduleDeps ++ Seq(
-      difftestModule.test
-    )
-
-    override def ivyDeps = super.ivyDeps() ++ Agg(
-      defaultVersions("chiseltest")
-    )
-
-    override def scalacOptions = super.scalacOptions() ++ Agg("-deprecation", "-feature")
-
-    val resourcesPATH = os.pwd.toString() + "/src/main/resources"
-    val envPATH = sys.env("PATH") + ":" + resourcesPATH
-
-    override def forkEnv = Map("PATH" -> envPATH)
   }
 }

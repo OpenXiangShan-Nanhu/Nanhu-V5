@@ -171,7 +171,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 {
   val io = IO(new Bundle() {
     // control
-    val redirect = Flipped(ValidIO(new Redirect))
+    val redirect_dup = Vec(2, Flipped(ValidIO(new Redirect)))
     val vecFeedback = Vec(VecLoadPipelineWidth, Flipped(ValidIO(new FeedbackToLsqIO)))
 
     // from load unit s3
@@ -296,12 +296,12 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
    * Enqueue
    */
   val canEnqueue = io.enq.map(_.valid)
-  val cancelEnq = io.enq.map(enq => enq.bits.uop.robIdx.needFlush(io.redirect))
+  val cancelEnq = io.enq.map(enq => enq.bits.uop.robIdx.needFlush(io.redirect_dup(0)))
   val needReplay = io.enq.map(enq => enq.bits.rep_info.need_rep)
   val hasExceptions = io.enq.map(enq => ExceptionNO.selectByFu(enq.bits.uop.exceptionVec, LduCfg).asUInt.orR && !enq.bits.tlbMiss)
   val loadReplay = io.enq.map(enq => enq.bits.isLoadReplay)
   val loadMMIO = io.enq.map(enq => enq.bits.mmio)
-  val mmio_can_direct_exu = VecInit(io.enq.map(e => e.valid & e.bits.mmio_can_direct_exu & !e.bits.uop.robIdx.needFlush(io.redirect)))
+  val mmio_can_direct_exu = VecInit(io.enq.map(e => e.valid & e.bits.mmio_can_direct_exu & !e.bits.uop.robIdx.needFlush(io.redirect_dup(0))))
 
   val needEnqueue = VecInit((0 until LoadPipelineWidth).map(w => {
     canEnqueue(w) && !cancelEnq(w) && (needReplay(w) || loadMMIO(w)) && !hasExceptions(w) && !mmio_can_direct_exu(w)
@@ -506,8 +506,8 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   for (i <- 0 until LoadPipelineWidth) {
     val s0_can_go = s1_can_go(i) ||
-                    uop(s1_oldestSel(i).bits).robIdx.needFlush(io.redirect) ||
-                    uop(s1_oldestSel(i).bits).robIdx.needFlush(RegNext(io.redirect))
+                    uop(s1_oldestSel(i).bits).robIdx.needFlush(io.redirect_dup(0)) ||
+                    uop(s1_oldestSel(i).bits).robIdx.needFlush(RegNext(io.redirect_dup(0)))
     val s0_oldestSelIndexOH = s0_oldestSel(i).bits // one-hot
     s1_oldestSel(i).valid := RegEnable(s0_oldestSel(i).valid, false.B, s0_can_go)
     s1_oldestSel(i).bits := RegEnable(OHToUInt(s0_oldestSel(i).bits), s0_can_go)
@@ -520,8 +520,8 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   }
   val s2_cancelReplay = Wire(Vec(LoadPipelineWidth, Bool()))
   for (i <- 0 until LoadPipelineWidth) {
-    val s1_cancel = uop(s1_oldestSel(i).bits).robIdx.needFlush(io.redirect) ||
-                    uop(s1_oldestSel(i).bits).robIdx.needFlush(RegNext(io.redirect))
+    val s1_cancel = uop(s1_oldestSel(i).bits).robIdx.needFlush(io.redirect_dup(1)) ||
+                    uop(s1_oldestSel(i).bits).robIdx.needFlush(RegNext(io.redirect_dup(1)))
     val s1_oldestSelV = s1_oldestSel(i).valid && !s1_cancel
     s1_can_go(i)          := replayCanFire(i) && (!s2_oldestSel(i).valid || replay_req(i).fire) || s2_cancelReplay(i)
     s2_oldestSel(i).valid := RegEnable(Mux(s1_can_go(i), s1_oldestSelV, false.B), false.B, (s1_can_go(i) || replay_req(i).fire))
@@ -540,7 +540,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     val s2_replayCauses = RegEnable(cause(s1_replayIdx), s1_can_go(i))
     val s2_replayCarry = RegEnable(replayCarryReg(s1_replayIdx), s1_can_go(i))
     val s2_replayCacheMissReplay = RegEnable(trueCacheMissReplay(s1_replayIdx), s1_can_go(i))
-    s2_cancelReplay(i) := s2_replayUop.robIdx.needFlush(io.redirect)
+    s2_cancelReplay(i) := s2_replayUop.robIdx.needFlush(io.redirect_dup(1))
 
     s2_can_go(i) := DontCare
     replay_req(i).valid             := s2_oldestSel(i).valid
@@ -748,7 +748,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
 
   // misprediction recovery / exception redirect
   for (i <- 0 until LoadQueueReplaySize) {
-    needCancel(i) := uop(i).robIdx.needFlush(io.redirect) && allocated(i)
+    needCancel(i) := uop(i).robIdx.needFlush(io.redirect_dup(1)) && allocated(i)
     when (needCancel(i)) {
       allocated(i) := false.B
       freeMaskVec(i) := true.B

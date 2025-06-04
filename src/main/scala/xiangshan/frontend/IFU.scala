@@ -131,6 +131,149 @@ class IfuWbToFtqDB extends Bundle {
   val checkInvalidTaken = Bool()
 }
 
+class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters {
+  val io = IO(new Bundle {
+    val mmioLastCommit = Input(Bool())
+    val itlbReqFire = Input(Bool())
+    val itlbRespFire = Input(Bool())
+    val itlbRespBits = Flipped(new TlbResp(1))
+    val pmpResp = Input(new PMPRespBundle())
+    val toUncacheFire = Input(Bool())
+    val fromUncache = Flipped(DecoupledIO(new InsUncacheResp))
+
+    val f3_fire = Input(Bool())
+    val f3_req_is_mmio = Input(Bool())
+    val f3_paddrs = Input(Vec(PortNumber, UInt(PAddrBits.W)))
+    val mmio_commit = Input(Bool())
+    val f3_ftq_flush_self = Input(Bool())
+    val f3_ftq_flush_by_older = Input(Bool())
+
+    val mmio_state = Output(UInt(4.W))
+    val f3_mmio_data = Output(Vec(2, UInt(16.W)))
+    val mmio_is_RVC = Output(Bool())
+    val mmio_resend_addr = Output(UInt(PAddrBits.W))
+    val mmio_resend_exception = Output(UInt(ExceptionType.width.W))
+    val mmio_resend_gpaddr = Output(UInt(GPAddrBits.W))
+    val mmio_resend_isForVSnonLeafPTE = Output(Bool())
+  })
+
+  val f3_fire = io.f3_fire
+  val f3_req_is_mmio = io.f3_req_is_mmio
+  val f3_paddrs = io.f3_paddrs
+  val mmio_commit = io.mmio_commit
+  val f3_ftq_flush_self = io.f3_ftq_flush_self
+  val f3_ftq_flush_by_older = io.f3_ftq_flush_by_older
+
+  /** * MMIO State Machine** */
+  val f3_mmio_data = Reg(Vec(2, UInt(16.W)))
+  val mmio_is_RVC = RegInit(false.B)
+  val mmio_resend_addr = RegInit(0.U(PAddrBits.W))
+  val mmio_resend_exception = RegInit(0.U(ExceptionType.width.W))
+  val mmio_resend_gpaddr = RegInit(0.U(GPAddrBits.W))
+  val mmio_resend_isForVSnonLeafPTE = RegInit(false.B)
+
+  //last instuction finish
+  val is_first_instr = RegInit(true.B)
+  val m_idle :: m_waitLastCmt :: m_sendReq :: m_waitResp :: m_sendTLB :: m_tlbResp :: m_sendPMP :: m_resendReq :: m_waitResendResp :: m_waitCommit :: m_commited :: Nil = Enum(11)
+  val mmio_state = RegInit(m_idle)
+
+  // mmio state machine
+  switch(mmio_state) {
+    is(m_idle) {
+      when(f3_req_is_mmio) {
+        mmio_state := m_waitLastCmt
+      }
+    }
+    is(m_waitLastCmt) {
+      when(is_first_instr) {
+        mmio_state := m_sendReq
+      }.otherwise {
+        mmio_state := Mux(io.mmioLastCommit, m_sendReq, m_waitLastCmt)
+      }
+    }
+    is(m_sendReq) {
+      mmio_state := Mux(io.toUncacheFire, m_waitResp, m_sendReq)
+    }
+    is(m_waitResp) {
+      when(io.fromUncache.fire) {
+        val isRVC = io.fromUncache.bits.data(1, 0) =/= 3.U
+        val needResend = !isRVC && f3_paddrs(0)(2, 1) === 3.U
+        mmio_state := Mux(needResend, m_sendTLB, m_waitCommit)
+        mmio_is_RVC := isRVC
+        f3_mmio_data(0) := io.fromUncache.bits.data(15, 0)
+        f3_mmio_data(1) := io.fromUncache.bits.data(31, 16)
+      }
+    }
+    is(m_sendTLB) {
+      mmio_state := Mux(io.itlbReqFire, m_tlbResp, m_sendTLB)
+    }
+    is(m_tlbResp) {
+      when(io.itlbRespFire) {
+        // we are using a blocked tlb, so resp.fire must have !resp.bits.miss
+        assert(!io.itlbRespBits.miss, "blocked mode iTLB miss when resp.fire")
+        val tlb_exception = ExceptionType.fromTlbResp(io.itlbRespBits)
+        // if tlb has exception, abort checking pmp, just send instr & exception to ibuffer and wait for commit
+        mmio_state := Mux(tlb_exception === ExceptionType.none, m_sendPMP, m_waitCommit)
+        // also save itlb response
+        mmio_resend_addr := io.itlbRespBits.paddr(0)
+        mmio_resend_exception := tlb_exception
+        mmio_resend_gpaddr := io.itlbRespBits.gpaddr(0)
+        mmio_resend_isForVSnonLeafPTE := io.itlbRespBits.isForVSnonLeafPTE(0)
+      }
+    }
+    is(m_sendPMP) {
+      // if pmp re-check does not respond mmio, must be access fault
+      val pmp_exception = Mux(io.pmpResp.mmio, ExceptionType.fromPMPResp(io.pmpResp), ExceptionType.af)
+      // if pmp has exception, abort sending request, just send instr & exception to ibuffer and wait for commit
+      mmio_state := Mux(pmp_exception === ExceptionType.none, m_resendReq, m_waitCommit)
+      // also save pmp response
+      mmio_resend_exception := pmp_exception
+    }
+    is(m_resendReq) {
+      mmio_state := Mux(io.toUncacheFire, m_waitResendResp, m_resendReq)
+    }
+    is(m_waitResendResp) {
+      when(io.fromUncache.fire) {
+        mmio_state := m_waitCommit
+        f3_mmio_data(1) := io.fromUncache.bits.data(15, 0)
+      }
+    }
+    is(m_waitCommit) {
+      mmio_state := Mux(mmio_commit, m_commited, m_waitCommit)
+    }
+    //normal mmio instruction
+    is(m_commited) {
+      mmio_state := m_idle
+      mmio_is_RVC := false.B
+      mmio_resend_addr := 0.U
+      mmio_resend_exception := ExceptionType.none
+      mmio_resend_gpaddr := 0.U
+      mmio_resend_isForVSnonLeafPTE := false.B
+    }
+  }
+  // Exception or flush by older branch prediction
+  // Condition is from RegNext(fromFtq.redirect), 1 cycle after backend rediect
+  when(f3_ftq_flush_self || f3_ftq_flush_by_older) {
+    mmio_state := m_idle
+    mmio_is_RVC := false.B
+    mmio_resend_addr := 0.U
+    mmio_resend_exception := ExceptionType.none
+    mmio_resend_gpaddr := 0.U
+    mmio_resend_isForVSnonLeafPTE := false.B
+    f3_mmio_data.map(_ := 0.U)
+  }
+
+  io.fromUncache.ready := true.B
+  io.mmio_state := mmio_state
+  io.f3_mmio_data := f3_mmio_data
+  io.mmio_is_RVC := mmio_is_RVC
+  io.mmio_resend_addr := mmio_resend_addr
+  io.mmio_resend_exception := mmio_resend_exception
+  io.mmio_resend_gpaddr := mmio_resend_gpaddr
+  io.mmio_resend_isForVSnonLeafPTE := mmio_resend_isForVSnonLeafPTE
+}
+
+
 class NewIFU(implicit p: Parameters) extends XSModule
   with HasICacheParameters
   with HasXSParameter
@@ -581,21 +724,20 @@ class NewIFU(implicit p: Parameters) extends XSModule
     assert(f3_ftq_req_startAddr + (2*PredictWidth).U >= f3_ftq_req_nextStartAddr, s"More tha ${2*PredictWidth} Bytes fetch is not allowed!")
   }
 
-  /*** MMIO State Machine***/
-  val f3_mmio_data          = Reg(Vec(2, UInt(16.W)))
-  val mmio_is_RVC           = RegInit(false.B)
-  val mmio_resend_addr      = RegInit(0.U(PAddrBits.W))
-  val mmio_resend_exception = RegInit(0.U(ExceptionType.width.W))
-  val mmio_resend_gpaddr    = RegInit(0.U(GPAddrBits.W))
-  val mmio_resend_isForVSnonLeafPTE    = RegInit(false.B)
+  val mmioFsm = Module(new MmioFsm)
 
-  //last instuction finish
-  val is_first_instr = RegInit(true.B)
+  val mmio_state = mmioFsm.io.mmio_state
+  val f3_mmio_data = mmioFsm.io.f3_mmio_data
+  val mmio_is_RVC = mmioFsm.io.mmio_is_RVC
+  val mmio_resend_addr = mmioFsm.io.mmio_resend_addr
+  val mmio_resend_exception = mmioFsm.io.mmio_resend_exception
+  val mmio_resend_gpaddr = mmioFsm.io.mmio_resend_gpaddr
+  val mmio_resend_isForVSnonLeafPTE = mmioFsm.io.mmio_resend_isForVSnonLeafPTE
+
   /*** Determine whether the MMIO instruction is executable based on the previous prediction block ***/
   io.mmioCommitRead.mmioFtqPtr := RegNext(f3_ftq_req.ftqIdx - 1.U)
 
   val m_idle :: m_waitLastCmt:: m_sendReq :: m_waitResp :: m_sendTLB :: m_tlbResp :: m_sendPMP :: m_resendReq :: m_waitResendResp :: m_waitCommit :: m_commited :: Nil = Enum(11)
-  val mmio_state = RegInit(m_idle)
 
   val f3_req_is_mmio     = f3_mmio && f3_valid
   val mmio_commit = VecInit(io.rob_commits.map{commit => commit.valid && commit.bits.ftqIdx === f3_ftq_req.ftqIdx &&  commit.bits.ftqOffset === 0.U}).asUInt.orR
@@ -614,15 +756,27 @@ class NewIFU(implicit p: Parameters) extends XSModule
 
   val f3_need_not_flush = f3_req_is_mmio && fromFtqRedirectReg.valid && !f3_ftq_flush_self && !f3_ftq_flush_by_older
 
+  mmioFsm.io.mmioLastCommit := io.mmioCommitRead.mmioLastCommit
+  mmioFsm.io.itlbReqFire := io.iTLBInter.req.fire
+  mmioFsm.io.itlbRespFire := io.iTLBInter.resp.fire
+  mmioFsm.io.itlbRespBits := io.iTLBInter.resp.bits
+  mmioFsm.io.pmpResp := io.pmp.resp
+  mmioFsm.io.toUncacheFire := io.uncacheInter.toUncache.fire
+  mmioFsm.io.fromUncache <> io.uncacheInter.fromUncache
+
+  mmioFsm.io.f3_fire := f3_fire
+  mmioFsm.io.f3_req_is_mmio := f3_req_is_mmio
+  mmioFsm.io.f3_paddrs := f3_paddrs
+  mmioFsm.io.mmio_commit := mmio_commit
+  mmioFsm.io.f3_ftq_flush_self := f3_ftq_flush_self
+  mmioFsm.io.f3_ftq_flush_by_older := f3_ftq_flush_by_older
+
   /**
     **********************************************************************************
     * We want to defer instruction fetching when encountering MMIO instructions to ensure that the MMIO region is not negatively impacted.
     * This is the exception when the first instruction is an MMIO instruction.
     **********************************************************************************
     */
-  when(is_first_instr && f3_fire){
-    is_first_instr := false.B
-  }
 
   when(f3_flush && !f3_req_is_mmio)                                                 {f3_valid := false.B}
   .elsewhen(mmioF3Flush && f3_req_is_mmio && !f3_need_not_flush)                    {f3_valid := false.B}
@@ -639,103 +793,6 @@ class NewIFU(implicit p: Parameters) extends XSModule
   .elsewhen(redirect_mmio_req)                                 { f3_mmio_use_seq_pc := false.B }
 
   f3_ready := (io.toIbuffer.ready && (f3_mmio_req_commit || !f3_req_is_mmio)) || !f3_valid
-
-  // mmio state machine
-  switch(mmio_state){
-    is(m_idle){
-      when(f3_req_is_mmio){
-        mmio_state := m_waitLastCmt
-      }
-    }
-
-    is(m_waitLastCmt){
-      when(is_first_instr){
-        mmio_state := m_sendReq
-      }.otherwise{
-        mmio_state := Mux(io.mmioCommitRead.mmioLastCommit, m_sendReq, m_waitLastCmt)
-      }
-    }
-
-    is(m_sendReq){
-      mmio_state := Mux(toUncache.fire, m_waitResp, m_sendReq)
-    }
-
-    is(m_waitResp){
-      when(fromUncache.fire){
-          val isRVC = fromUncache.bits.data(1,0) =/= 3.U
-          val needResend = !isRVC && f3_paddrs(0)(2,1) === 3.U
-          mmio_state      := Mux(needResend, m_sendTLB, m_waitCommit)
-          mmio_is_RVC     := isRVC
-          f3_mmio_data(0) := fromUncache.bits.data(15,0)
-          f3_mmio_data(1) := fromUncache.bits.data(31,16)
-      }
-    }
-
-    is(m_sendTLB){
-      mmio_state := Mux(io.iTLBInter.req.fire, m_tlbResp, m_sendTLB)
-    }
-
-    is(m_tlbResp){
-      when(io.iTLBInter.resp.fire) {
-        // we are using a blocked tlb, so resp.fire must have !resp.bits.miss
-        assert(!io.iTLBInter.resp.bits.miss, "blocked mode iTLB miss when resp.fire")
-        val tlb_exception = ExceptionType.fromTlbResp(io.iTLBInter.resp.bits)
-        // if tlb has exception, abort checking pmp, just send instr & exception to ibuffer and wait for commit
-        mmio_state := Mux(tlb_exception === ExceptionType.none, m_sendPMP, m_waitCommit)
-        // also save itlb response
-        mmio_resend_addr      := io.iTLBInter.resp.bits.paddr(0)
-        mmio_resend_exception := tlb_exception
-        mmio_resend_gpaddr    := io.iTLBInter.resp.bits.gpaddr(0)
-        mmio_resend_isForVSnonLeafPTE   := io.iTLBInter.resp.bits.isForVSnonLeafPTE(0)
-      }
-    }
-
-    is(m_sendPMP){
-      // if pmp re-check does not respond mmio, must be access fault
-      val pmp_exception = Mux(io.pmp.resp.mmio, ExceptionType.fromPMPResp(io.pmp.resp), ExceptionType.af)
-      // if pmp has exception, abort sending request, just send instr & exception to ibuffer and wait for commit
-      mmio_state := Mux(pmp_exception === ExceptionType.none, m_resendReq, m_waitCommit)
-      // also save pmp response
-      mmio_resend_exception := pmp_exception
-    }
-
-    is(m_resendReq){
-      mmio_state := Mux(toUncache.fire, m_waitResendResp, m_resendReq)
-    }
-
-    is(m_waitResendResp) {
-      when(fromUncache.fire) {
-        mmio_state      := m_waitCommit
-        f3_mmio_data(1) := fromUncache.bits.data(15,0)
-      }
-    }
-
-    is(m_waitCommit) {
-      mmio_state := Mux(mmio_commit, m_commited, m_waitCommit)
-    }
-
-    //normal mmio instruction
-    is(m_commited) {
-      mmio_state            := m_idle
-      mmio_is_RVC           := false.B
-      mmio_resend_addr      := 0.U
-      mmio_resend_exception := ExceptionType.none
-      mmio_resend_gpaddr    := 0.U
-      mmio_resend_isForVSnonLeafPTE   := false.B
-    }
-  }
-
-  // Exception or flush by older branch prediction
-  // Condition is from RegNext(fromFtq.redirect), 1 cycle after backend rediect
-  when(f3_ftq_flush_self || f3_ftq_flush_by_older) {
-    mmio_state            := m_idle
-    mmio_is_RVC           := false.B
-    mmio_resend_addr      := 0.U
-    mmio_resend_exception := ExceptionType.none
-    mmio_resend_gpaddr    := 0.U
-    mmio_resend_isForVSnonLeafPTE   := false.B
-    f3_mmio_data.map(_ := 0.U)
-  }
 
   toUncache.valid     := ((mmio_state === m_sendReq) || (mmio_state === m_resendReq)) && f3_req_is_mmio
   toUncache.bits.addr := Mux((mmio_state === m_resendReq), mmio_resend_addr, f3_paddrs(0))

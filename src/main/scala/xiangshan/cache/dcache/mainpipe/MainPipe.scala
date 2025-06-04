@@ -641,9 +641,9 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val writeback_param = Mux(probe_wb, probe_shrink_param, miss_shrink_param)
   val writeback_data = if (dcacheParameters.alwaysReleaseData) {
     s3_tag_match && s3_req.probe && s3_req.probe_need_data ||
-      s3_coh === ClientStates.Dirty || (miss_wb || replace_wb) && s3_coh.state =/= ClientStates.Nothing
+      s3_coh_dup === ClientStates.Dirty || (miss_wb || replace_wb) && s3_coh_dup.state =/= ClientStates.Nothing
   } else {
-    s3_tag_match && s3_req.probe && s3_req.probe_need_data || s3_coh === ClientStates.Dirty
+    s3_tag_match && s3_req.probe && s3_req.probe_need_data || s3_coh_dup === ClientStates.Dirty
   }
 
   val s3_probe_can_go = s3_req.probe && (io.tag_write.ready || !probe_update_meta)
@@ -655,7 +655,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     (s3_s_amoalu || !amo_wait_amoalu) &&
     io.tag_write.ready &&
     io.wb.ready
-  val s3_replace_nothing = s3_req.replace && s3_coh.state === ClientStates.Nothing
+  val s3_replace_nothing = s3_req.replace && s3_coh_dup.state === ClientStates.Nothing
   val s3_replace_can_go = s3_req.replace && (s3_replace_nothing || io.wb.ready)
   val s3_can_go = s3_probe_can_go || s3_store_can_go || s3_amo_can_go || s3_miss_can_go || s3_replace_can_go
   val s3_update_data_cango = s3_store_can_go || s3_amo_can_go || s3_miss_can_go // used to speed up data_write gen
@@ -775,7 +775,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     )
   ).asUInt
 
-  io.amo_hit_resp.valid := s3_valid && s3_miss_can_go && s3_req.isAMO
+  io.amo_hit_resp.valid := s3_valid_dup && s3_miss_can_go && s3_req.isAMO
   io.amo_hit_resp.bits.data := DontCare
   io.amo_hit_resp.bits.miss := false.B
   io.amo_hit_resp.bits.replay := false.B
@@ -801,7 +801,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   atomic_replay_resp.id := DontCare
 
   val atomic_replay_resp_valid = s2_valid && s2_can_go_to_mq && replay && s2_req.isAMO
-  val atomic_hit_resp_valid = s3_valid && (s3_amo_can_go || s3_miss_can_go && s3_req.isAMO)
+  val atomic_hit_resp_valid = s3_valid_dup && (s3_amo_can_go || s3_miss_can_go && s3_req.isAMO)
 
   io.atomic_resp.valid := atomic_replay_resp_valid || atomic_hit_resp_valid
   io.atomic_resp.bits := Mux(atomic_replay_resp_valid, atomic_replay_resp, atomic_hit_resp)
@@ -850,7 +850,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.tag_write.bits.tag := Cat(new_coh.asUInt, get_tag(s3_req.addr))
   io.tag_write.bits.vaddr := s3_req.vaddr
   io.tag_write.bits.ecc := DontCare // generate ecc code in tagArray
-  io.tag_write_intend := update_meta && s3_valid
+  io.tag_write_intend := update_meta && s3_valid_dup
 
   XSPerfAccumulate("fake_tag_write_intend", io.tag_write_intend && !io.tag_write.valid)
   XSPerfAccumulate("mainpipe_tag_write", io.tag_write.valid)
@@ -860,7 +860,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
 
   assert(!RegNext(io.tag_write.valid && !io.tag_write_intend))// when there is tag_write operation but is without write intend.
 
-  io.data_write.valid := s3_valid && s3_update_data_cango && update_data
+  io.data_write.valid := s3_valid_dup && s3_update_data_cango && update_data
   io.data_write.bits.way_en := s3_way_en
   io.data_write.bits.addr := s3_req.vaddr
   io.data_write.bits.wmask := banked_wmask
@@ -876,7 +876,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   assert(RegNext(!io.tag_write.valid || !s3_req.replace))
   assert(RegNext(!io.data_write.valid || !s3_req.replace))
 
-  io.wb.valid := s3_valid && (
+  io.wb.valid := s3_valid_dup && (
     // replace
     s3_req.replace && !s3_replace_nothing ||
     // probe can go to wbq
@@ -925,7 +925,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.status.s2.valid := s2_valid && !s2_req.replace
   io.status.s2.bits.set := s2_idx
   io.status.s2.bits.way_en := s2_way_en
-  io.status.s3.valid := s3_valid && !s3_req.replace
+  io.status.s3.valid := s3_valid_dup && !s3_req.replace
   io.status.s3.bits.set := s3_idx
   io.status.s3.bits.way_en := s3_way_en
 
@@ -933,7 +933,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.mainpipe_info.s2_valid := s2_valid && s2_req.miss
   io.mainpipe_info.s2_miss_id := s2_req.miss_id
   io.mainpipe_info.s2_replay_to_mq := s2_valid && s2_can_go_to_mq_replay
-  io.mainpipe_info.s3_valid := s3_valid
+  io.mainpipe_info.s3_valid := s3_valid_dup
   io.mainpipe_info.s3_miss_id := s3_req.miss_id
   io.mainpipe_info.s3_refill_resp := RegNext(s2_valid && s2_req.miss && s2_fire_to_s3)
 

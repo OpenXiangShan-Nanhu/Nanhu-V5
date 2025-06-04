@@ -132,6 +132,13 @@ class SbufferData(implicit p: Parameters) extends DCacheModule with HasSbufferCo
 
   val req = io.writeReq
   //s1
+  val w_valid_s1 = req.map(a => RegNext(a.valid))
+  val w_data_s1 = req.map(a => RegEnable(a.bits.data, a.valid))
+  val w_wline_s1 = req.map(a => RegEnable(a.bits.wline, a.valid))
+  val w_mask_s1 = req.map(a => RegEnable(a.bits.mask, a.valid))
+  val w_addr_s1 = req.map(a => RegEnable(OHToUInt(a.bits.wvec), a.valid))
+  val w_word_offset_s1 = req.map(a => RegEnable(a.bits.vwordOffset(VWordsWidth - 1, 0), a.valid))
+
   val w_valid_s1_dup = req.map(a => RegNext(a.valid))
   val w_data_s1_dup  = req.map(a => RegEnable(a.bits.data, a.valid))
   val w_wline_s1_dup = req.map(a => RegEnable(a.bits.wline, a.valid))
@@ -139,7 +146,9 @@ class SbufferData(implicit p: Parameters) extends DCacheModule with HasSbufferCo
   val w_addr_s1_dup  = req.map(a => RegEnable(OHToUInt(a.bits.wvec), a.valid))
   val w_word_offset_s1_dup = req.map(a => RegEnable(a.bits.vwordOffset(VWordsWidth - 1, 0), a.valid))
 
-  for(entry <- 0 until StoreBufferSize){
+  require(StoreBufferSize % 2 == 0)
+
+  for(entry <- 0 until StoreBufferSize / 2){
     w_valid_s1_dup.zipWithIndex.foreach({ case (valid, i) =>
       for (word <- 0 until CacheLineVWords) {
         for (byte <- 0 until VDataBytes) {
@@ -157,6 +166,28 @@ class SbufferData(implicit p: Parameters) extends DCacheModule with HasSbufferCo
       }
     })
   }
+
+  for (entry <- StoreBufferSize / 2 until StoreBufferSize) {
+    w_valid_s1.zipWithIndex.foreach({ case (valid, i) =>
+      for (word <- 0 until CacheLineVWords) {
+        for (byte <- 0 until VDataBytes) {
+          val wen = valid && (
+            (w_mask_s1(i)(byte) && (w_word_offset_s1(i) === word.U)) ||
+              w_wline_s1(i)
+            )
+          when(wen) {
+            when(w_addr_s1(i) === entry.U) {
+              data(entry)(word)(byte) := w_data_s1(i)(byte * 8 + 7, byte * 8)
+              mask(entry)(word)(byte) := true.B
+            }
+          }
+        }
+      }
+    })
+  }
+
+
+
   io.dataOut := data
   io.maskOut := mask
 }

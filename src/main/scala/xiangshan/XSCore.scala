@@ -23,10 +23,9 @@ import chisel3.util._
 import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tile.HasFPUParameters
-import xiangshan.XSL1BusErrors
 import xs.utils._
 import xs.utils.perf._
-import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.sram.{SramBroadcastBundle, SramCtrlBundle, SramHelper}
 import xs.utils.mbist.MbistInterface
 import xiangshan.backend._
 import xiangshan.backend.fu.PMPRespBundle
@@ -108,6 +107,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
       val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
       val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
     }
+    val ramctl = Input(new SramCtrlBundle)
     val hwMon = if(env.EnableHWMoniter) Some(Output(new HardwareMonitor)) else None
   })
 
@@ -290,6 +290,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     backend.io.dft.func.get := memBlock.io.dftBypass.toBackend.func.get
     backend.io.dft.reset.get := memBlock.io.dftBypass.toBackend.reset.get
   }
+  SramHelper.genSramCtrlBundleTop() := io.ramctl
 
 //  if (debugOpts.ResetGen) {
 //    backend.reset := memBlock.io.reset_backend

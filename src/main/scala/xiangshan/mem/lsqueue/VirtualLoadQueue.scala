@@ -329,16 +329,17 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     paddrModule.io.releaseViolationMdata(w) := query.req.bits.paddr
     query.resp.valid := RegNext(query.req.valid)
 
+    val enqMask = UIntToMask(enqPtrExt(0).value, VirtualLoadQueueSize)
     val queryMask = UIntToMask(query.req.bits.uop.lqIdx.value, VirtualLoadQueueSize)
-    val different_flag = deqPtr.flag =/= query.req.bits.uop.lqIdx.flag
-    val lqIdxMask1 = Mux(different_flag, ~deqMask, deqMask ^ queryMask)
-    val lqIdxMask2 = Mux(different_flag, queryMask, 0.U(VirtualLoadQueueSize.W))
+    val different_flag = enqPtrExt(0).flag =/= query.req.bits.uop.lqIdx.flag
+    val lqIdxMask1 = Mux(different_flag, ~queryMask, enqMask ^ queryMask)
+    val lqIdxMask2 = Mux(different_flag, enqMask, 0.U(VirtualLoadQueueSize.W))
     val lqIdxMask = (lqIdxMask1 | lqIdxMask2).asBools
     // val lqIdxMask = lqIdxMask1.asBools.zip(lqIdxMask2.asBools).map { case ( lq1, lq2 ) => lq1 || lq2}
     val matchMask = (0 until VirtualLoadQueueSize).map(i => {
       RegNext(
         isFromDCache(i) &
-        (allocated(i) & 
+        (allocated(i) &
       paddrModule.io.releaseViolationMmask(w)(i) &
       lqIdxMask(i) &
       released(i)))

@@ -24,7 +24,7 @@ import xs.utils._
 import xs.utils.perf._
 import xiangshan._
 import xiangshan.cache.{AtomicWordIO, HasDCacheParameters, MemoryOpConstants}
-import xiangshan.cache.mmu.{TlbCmd, TlbRequestIO}
+import xiangshan.cache.mmu.{Pbmt, TlbCmd, TlbRequestIO}
 import difftest._
 import xiangshan.ExceptionNO._
 import xiangshan.backend.fu.PMPRespBundle
@@ -198,15 +198,17 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
     }
   }
 
+  val pbmtReg = RegEnable(io.dtlb.resp.bits.pbmt(0), io.dtlb.resp.fire && !io.dtlb.resp.bits.miss)
   when (state === s_pm) {
     val pmp = WireInit(io.pmpResp)
-    is_mmio := pmp.mmio
+    is_mmio := Pbmt.isIO(pbmtReg) || (Pbmt.isPMA(pbmtReg) && pmp.mmio)
 
     // NOTE: only handle load/store exception here, if other exception happens, don't send here
     val exception_va = exceptionVec(storePageFault) || exceptionVec(loadPageFault) ||
       exceptionVec(storeGuestPageFault) || exceptionVec(loadGuestPageFault) ||
       exceptionVec(storeAccessFault) || exceptionVec(loadAccessFault)
-    val exception_pa = pmp.st || pmp.ld || pmp.mmio
+    val exception_pa_mmio_nc = pmp.mmio || Pbmt.isIO(pbmtReg) || Pbmt.isNC(pbmtReg)
+    val exception_pa = pmp.st || pmp.ld || exception_pa_mmio_nc
     when (exception_va || exception_pa) {
       state := s_finish
       out_valid := true.B
@@ -216,8 +218,10 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
       state := Mux(sbuffer_empty, s_cache_req, s_wait_flush_sbuffer_resp);
     }
     // update storeAccessFault bit
-    exceptionVec(loadAccessFault) := exceptionVec(loadAccessFault) || (pmp.ld || pmp.mmio) && isLr
-    exceptionVec(storeAccessFault) := exceptionVec(storeAccessFault) || pmp.st || (pmp.ld || pmp.mmio) && !isLr
+    exceptionVec(loadAccessFault) := exceptionVec(loadAccessFault) ||
+      (pmp.ld || exception_pa_mmio_nc) && isLr
+    exceptionVec(storeAccessFault) := exceptionVec(storeAccessFault) || pmp.st ||
+      (pmp.ld || exception_pa_mmio_nc) && !isLr
   }
 
   when (state === s_wait_flush_sbuffer_resp) {

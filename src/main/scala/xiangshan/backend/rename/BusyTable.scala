@@ -159,6 +159,48 @@ class BusyTable(numReadPorts: Int, numWritePorts: Int, numPhyPregs: Int, pregWB:
     res.loadDependency := loadDependency(res.req)
   }
 
+  // SVA
+  if(backendParams.debugEn && (backendParams.svaAssertEn || backendParams.svaCoverEn)) {
+    import xs.utils.cvl.basic._
+    table.asBools.zip(tableUpdate).zipWithIndex.foreach{ case ((t, up), idx) =>
+      // Init
+      val alloc_to_busy = allocMask(idx) && up
+      // The cancel operation must occur after wakeup
+      val ldCancel_ready_to_busy = ldCancelMask(idx) && up && !t
+      // The wake operation must occur after alloc
+      val wakeup_busy_to_ready = wakeUpMask(idx) && t && !up
+      // May be set to ready due to wakeup before being written back
+      val wb_to_ready = wbMask(idx) && !up
+      val update = allocMask(idx) || ldCancelMask(idx) || wakeUpMask(idx) || wbMask(idx)
+
+      dontTouch(alloc_to_busy)
+      dontTouch(ldCancel_ready_to_busy)
+      dontTouch(wakeup_busy_to_ready)
+      dontTouch(wb_to_ready)
+      dontTouch(update)
+      
+      CVL_ASSERT_ZERO_ONE_HOT(
+        assertEn = backendParams.svaAssertEn,
+        coverEn = backendParams.svaCoverEn,
+        cvlLongSequence = backendParams.cvlLongSequence,
+        clock = clock,
+        reset = reset,
+        name = s"busy_table_ctrl_onehot_${idx}",
+        test_expr = Cat(alloc_to_busy, ldCancel_ready_to_busy, wakeup_busy_to_ready, wb_to_ready)
+      )
+
+      CVL_ASSERT_NEVER(
+        assertEn = backendParams.svaAssertEn,
+        coverEn = backendParams.svaCoverEn,
+        cvlLongSequence = backendParams.cvlLongSequence,
+        clock = clock,
+        reset = reset,
+        name = s"busy_table_high_to_high_${idx}",
+        test_expr = update && !(alloc_to_busy || ldCancel_ready_to_busy || wakeup_busy_to_ready || wb_to_ready)
+      )
+    }
+  }
+
   val oddTable = table.asBools.zipWithIndex.filter(_._2 % 2 == 1).map(_._1)
   val evenTable = table.asBools.zipWithIndex.filter(_._2 % 2 == 0).map(_._1)
   val busyCount = RegNext(RegNext(PopCount(oddTable)) + RegNext(PopCount(evenTable)))

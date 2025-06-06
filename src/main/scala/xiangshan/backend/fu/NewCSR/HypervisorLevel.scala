@@ -260,12 +260,12 @@ class HedelegBundle extends ExceptionBundle {
   this.getALL.foreach(_.setRW().withReset(0.U))
   // The default configs are RW
   this.EX_HSCALL.setRO().withReset(0.U)
-  this.EX_VSCALL.setRO().withReset(0.U)
+  // this.EX_VSCALL.setRO().withReset(0.U)
   this.EX_MCALL .setRO().withReset(0.U)
-  this.EX_IGPF  .setRO().withReset(0.U)
-  this.EX_LGPF  .setRO().withReset(0.U)
-  this.EX_VI    .setRO().withReset(0.U)
-  this.EX_SGPF  .setRO().withReset(0.U)
+  // this.EX_IGPF  .setRO().withReset(0.U)
+  // this.EX_LGPF  .setRO().withReset(0.U)
+  // this.EX_VI    .setRO().withReset(0.U)
+  // this.EX_SGPF  .setRO().withReset(0.U)
   this.EX_DBLTRP.setRO().withReset(0.U) // double trap is not delegatable
 }
 

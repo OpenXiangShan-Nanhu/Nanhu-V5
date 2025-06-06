@@ -12,6 +12,7 @@ import device._
 import xiangshan.ExceptionNO._
 import xiangshan.backend.Bundles.TrapInstInfo
 import xiangshan.backend.decode.Imm_Z
+import xiangshan.backend.rob.RobPtr
 
 class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
   with HasCircularQueuePtrHelper
@@ -85,6 +86,15 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
     CSROpType.isCSRRSorRC(func)
   )
 
+  private val robIdxReg = RegEnable(io.in.bits.ctrl.robIdx, io.in.fire)
+  private val thisRobIdx = Wire(new RobPtr)
+  when (io.in.valid) {
+    thisRobIdx := io.in.bits.ctrl.robIdx
+  }.otherwise {
+    thisRobIdx := robIdxReg
+  }
+  private val redirectFlush = thisRobIdx.needFlush(io.flush)
+
   csrMod.io.in match {
     case in =>
       in.valid := valid
@@ -98,6 +108,7 @@ class CSR(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg)
       in.bits.mnret := isMNret
       in.bits.sret := isSret
       in.bits.dret := isDret
+      in.bits.redirectFlush := redirectFlush
   }
   csrMod.io.trapInst := trapInstMod.io.currentTrapInst
   csrMod.io.fetchMalTval := trapTvalMod.io.tval

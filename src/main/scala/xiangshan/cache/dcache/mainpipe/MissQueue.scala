@@ -375,7 +375,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val mem_grant = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
     val mem_finish = DecoupledIO(new TLBundleE(edge.bundle))
 
-    val queryME = Vec(reqNum, Flipped(new DCacheMEQueryIOBundle))
+//    val queryME = Vec(reqNum, Flipped(new DCacheMEQueryIOBundle))
 
     // send refill info to load queue, useless now
     val refill_to_ldq = ValidIO(new Refill)
@@ -692,16 +692,16 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   io.secondary_reject := should_reject(io.req.bits)
 
   // generate primary_ready & secondary_(ready | reject) for each miss request
-  for (i <- 0 until reqNum) {
-    when(GatedValidRegNext(io.id >= ((cfg.nMissEntries).U - io.nMaxPrefetchEntry))) {
-      io.queryME(i).primary_ready := !req_valid && !GatedValidRegNext(primary_fire)
-    }.otherwise {
-      io.queryME(i).primary_ready := !req_valid && !GatedValidRegNext(primary_fire) &&
-                                    (!io.queryME(i).req.bits.isFromPrefetch || io.memSetPattenDetected)
-    }
-    io.queryME(i).secondary_ready  := should_merge(io.queryME(i).req.bits)
-    io.queryME(i).secondary_reject := should_reject(io.queryME(i).req.bits)
-  }
+//  for (i <- 0 until reqNum) {
+//    when(GatedValidRegNext(io.id >= ((cfg.nMissEntries).U - io.nMaxPrefetchEntry))) {
+//      io.queryME(i).primary_ready := !req_valid && !GatedValidRegNext(primary_fire)
+//    }.otherwise {
+//      io.queryME(i).primary_ready := !req_valid && !GatedValidRegNext(primary_fire) &&
+//                                    (!io.queryME(i).req.bits.isFromPrefetch || io.memSetPattenDetected)
+//    }
+//    io.queryME(i).secondary_ready  := should_merge(io.queryME(i).req.bits)
+//    io.queryME(i).secondary_reject := should_reject(io.queryME(i).req.bits)
+//  }
   
   // should not allocate, merge or reject at the same time
   assert(RegNext(PopCount(Seq(io.primary_ready, io.secondary_ready, io.secondary_reject)) <= 1.U || !io.req.valid))
@@ -865,7 +865,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val resp = Output(new MissResp)
     val refill_to_ldq = ValidIO(new Refill)
 
-    val queryMQ = Vec(reqNum, Flipped(new DCacheMQQueryIOBundle))
+//    val queryMQ = Vec(reqNum, Flipped(new DCacheMQQueryIOBundle))
 
     val mem_acquire = DecoupledIO(new TLBundleA(edge.bundle))
     val mem_grant = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
@@ -941,18 +941,18 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val alloc = !reject && !merge && ParallelORR(Cat(primary_ready_vec))
   val accept = alloc || merge
 
-  // generate req_ready for each miss request for better timing
-  for (i <- 0 until reqNum) {
-    val _primary_ready_vec = entries.map(_.io.queryME(i).primary_ready)
-    val _secondary_ready_vec = entries.map(_.io.queryME(i).secondary_ready)
-    val _secondary_reject_vec = entries.map(_.io.queryME(i).secondary_reject)
-    val _merge = ParallelORR(Cat(_secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.queryMQ(i).req.bits))))
-    val _reject = ParallelORR(Cat(_secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.queryMQ(i).req.bits))))
-    val _alloc = !_reject && !_merge && ParallelORR(Cat(_primary_ready_vec))
-    val _accept = _alloc || _merge
-
-    io.queryMQ(i).ready := _accept
-  }
+//   generate req_ready for each miss request for better timing
+//  for (i <- 0 until reqNum) {
+//    val _primary_ready_vec = entries.map(_.io.queryME(i).primary_ready)
+//    val _secondary_ready_vec = entries.map(_.io.queryME(i).secondary_ready)
+//    val _secondary_reject_vec = entries.map(_.io.queryME(i).secondary_reject)
+//    val _merge = ParallelORR(Cat(_secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.queryMQ(i).req.bits))))
+//    val _reject = ParallelORR(Cat(_secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.queryMQ(i).req.bits))))
+//    val _alloc = !_reject && !_merge && ParallelORR(Cat(_primary_ready_vec))
+//    val _accept = _alloc || _merge
+//
+//    io.queryMQ(i).ready := _accept
+//  }
 
   val req_mshr_handled_vec = entries.map(_.io.req_handled_by_this_entry)
   // merged to pipeline reg
@@ -1122,10 +1122,10 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       e.io.main_pipe_req.ready := io.main_pipe_req.ready
 
-      for (j <- 0 until reqNum) {
-        e.io.queryME(j).req.valid := io.queryMQ(j).req.valid
-        e.io.queryME(j).req.bits  := io.queryMQ(j).req.bits.toMissReqWoStoreData()
-      }
+//      for (j <- 0 until reqNum) {
+//        e.io.queryME(j).req.valid := io.queryMQ(j).req.valid
+//        e.io.queryME(j).req.bits  := io.queryMQ(j).req.bits.toMissReqWoStoreData()
+//      }
 
       when(io.l2_hint.bits.sourceId === i.U) {
         e.io.l2_hint <> io.l2_hint

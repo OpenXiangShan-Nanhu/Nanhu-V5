@@ -1402,13 +1402,13 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // Request
   val missReqArb = Module(new TreeArbiter(new MissReq, MissReqPortCount))
   // seperately generating miss queue enq ready for better timeing
-  val missReadyGen = Module(new MissReadyGen(MissReqPortCount))
+//  val missReadyGen = Module(new MissReadyGen(MissReqPortCount))
 
   missReqArb.io.in(MainPipeMissReqPort) <> mainPipe.io.miss_req
-  missReadyGen.io.in(MainPipeMissReqPort) <> mainPipe.io.miss_req
+//  missReadyGen.io.in(MainPipeMissReqPort) <> mainPipe.io.miss_req
   for (w <- 0 until backendParams.LduCnt) {
     missReqArb.io.in(w + 1) <> ldu(w).io.miss_req
-    missReadyGen.io.in(w + 1) <> ldu(w).io.miss_req
+//    missReadyGen.io.in(w + 1) <> ldu(w).io.miss_req
   }
 
   for (w <- 0 until LoadPipelineWidth) { ldu(w).io.miss_resp := missQueue.io.resp }
@@ -1417,7 +1417,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   if(StorePrefetchL1Enabled) {
     for (w <- 0 until backendParams.StaCnt) {
       missReqArb.io.in(1 + backendParams.LduCnt + w) <> stu(w).io.miss_req
-      missReadyGen.io.in(1 + backendParams.LduCnt + w) <> stu(w).io.miss_req
+//      missReadyGen.io.in(1 + backendParams.LduCnt + w) <> stu(w).io.miss_req
     }
   }else {
     for (w <- 0 until backendParams.StaCnt) { stu(w).io.miss_req.ready := false.B }
@@ -1437,7 +1437,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   missQueue.io.wbq_block_miss_req := wb.io.block_miss_req(3)
 
   missReqArb.io.out <> missQueue.io.req
-  missReadyGen.io.queryMQ <> missQueue.io.queryMQ
+//  missReadyGen.io.queryMQ <> missQueue.io.queryMQ
 
   for (w <- 0 until LoadPipelineWidth) { ldu(w).io.mq_enq_cancel := missQueue.io.mq_enq_cancel }
 

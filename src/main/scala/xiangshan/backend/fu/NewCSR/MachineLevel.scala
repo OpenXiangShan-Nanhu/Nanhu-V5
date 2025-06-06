@@ -578,7 +578,7 @@ class MidelegBundle extends InterruptBundle {
   // Ref: 13.4.2. Machine Interrupt Delegation Register (mideleg)
   // When the hypervisor extension is implemented, bits 10, 6, and 2 of mideleg (corresponding to the standard VS-level
   // interrupts) are each read-only one.
-  this.getVS.foreach(_.setRO().withReset(1.U))
+  // this.getVS.foreach(_.setRO().withReset(1.U))
   // bit 12 of mideleg (corresponding to supervisor-level guest external interrupts) is also read-only one.
   // VS-level interrupts and guest external interrupts are always delegated past M-mode to HS-mode.
   this.SGEI.setRO().withReset(1.U)

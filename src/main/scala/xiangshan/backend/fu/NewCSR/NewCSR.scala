@@ -82,6 +82,7 @@ class NewCSRInput(implicit p: Parameters) extends Bundle {
   val mret = Input(Bool())
   val sret = Input(Bool())
   val dret = Input(Bool())
+  val redirectFlush = Input(Bool())
 }
 
 class NewCSROutput(implicit p: Parameters) extends Bundle {
@@ -243,6 +244,9 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   val ren   = io.in.bits.ren && valid
   val raddr = io.in.bits.addr
+
+  // flush
+  val redirectFlush = io.in.bits.redirectFlush
 
   val hasTrap = io.fromRob.trap.valid
   val trapVec = io.fromRob.trap.bits.trapVec
@@ -834,14 +838,14 @@ class NewCSR(implicit val p: Parameters) extends Module
     }
   )
 
-  V := MuxCase(
-    V,
-    events.filter(_.out.isInstanceOf[EventUpdatePrivStateOutput]).map {
-      x => x.out match {
-        case xx: EventUpdatePrivStateOutput => (xx.privState.valid -> xx.privState.bits.V)
-      }
-    }
-  )
+  // V := MuxCase(
+  //   V,
+  //   events.filter(_.out.isInstanceOf[EventUpdatePrivStateOutput]).map {
+  //     x => x.out match {
+  //       case xx: EventUpdatePrivStateOutput => (xx.privState.valid -> xx.privState.bits.V)
+  //     }
+  //   }
+  // )
 
   debugMode := MuxCase(
     debugMode,
@@ -969,14 +973,18 @@ class NewCSR(implicit val p: Parameters) extends Module
     state := stateNext
     switch(state) {
       is(s_idle) {
-        when(valid && asyncAccess) {
+        when(valid && redirectFlush) {
+          stateNext := s_idle
+        }.elsewhen(valid && asyncAccess) {
           stateNext := s_waitIMSIC
         }.elsewhen(valid && !io.out.ready) {
           stateNext := s_finish
         }
       }
       is(s_waitIMSIC) {
-        when(fromAIA.rdata.get.valid) {
+        when(redirectFlush) {
+          stateNext := s_idle
+        }.elsewhen(fromAIA.rdata.get.valid) {
           when(io.out.ready) {
             stateNext := s_idle
           }.otherwise {
@@ -985,13 +993,15 @@ class NewCSR(implicit val p: Parameters) extends Module
         }
       }
       is(s_finish) {
-        when(io.out.ready) {
+        when(redirectFlush || io.out.ready) {
           stateNext := s_idle
         }
       }
     }
   } else {
-    when(valid && !io.out.ready) {
+    when(valid && redirectFlush) {
+      state := s_idle
+    }.elsewhen(valid && !io.out.ready) {
       state := s_finish
     }.elsewhen(state === s_finish && io.out.ready) {
       state := s_idle
@@ -1021,9 +1031,9 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   /** Data that have been read before,and should be stored because output not fired */
   val outReg = WireInit(0.U.asTypeOf(Decoupled(new NewCSROutput)))
-  outReg.valid := state === s_idle && valid && !asyncAccess ||
+  outReg.valid := (state === s_idle && valid && !asyncAccess ||
                   state === s_waitIMSIC && aia_rvalid ||
-                  state === s_finish
+                  state === s_finish) && !redirectFlush
   outReg.bits.EX_II := DataHoldBypass(permitMod.io.out.EX_II || noCSRIllegal, false.B, io.in.fire) ||
                        DataHoldBypass(imsic_EX_II, false.B, aia_rvalid)
   outReg.bits.EX_VI := DataHoldBypass(permitMod.io.out.EX_VI, false.B, io.in.fire) ||
@@ -1568,7 +1578,8 @@ trait IpIeAliasConnect {
 
   mip.fromMvip  := mvip.toMip
   mip.fromSip   := sip.toMip
-  mip.fromVSip  := vsip.toMip
+  // mip.fromVSip  := vsip.toMip
+  mip.fromVSip  := DontCare
   mvip.fromMip  := mip.toMvip
   mvip.fromSip  := sip.toMvip
   mvip.fromVSip := vsip.toMvip

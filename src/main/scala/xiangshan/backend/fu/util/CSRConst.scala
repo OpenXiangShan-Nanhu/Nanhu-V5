@@ -18,6 +18,7 @@ package xiangshan.backend.fu.util
 
 import chisel3._
 import chisel3.util._
+import freechips.rocketchip.rocket.CSRs
 
 trait HasCSRConst {
 
@@ -315,6 +316,41 @@ trait HasCSRConst {
     Mimpid,
     Mhartid,
     Mconfigptr
+  )
+
+  val waitForwardInOrderCsrReadList = List(
+    CSRs.fflags,
+    CSRs.fcsr,
+    CSRs.vxsat,
+    CSRs.vcsr,
+    CSRs.vstart,
+    CSRs.sstatus,
+    CSRs.vsstatus,
+    CSRs.mstatus,
+    CSRs.hstatus,
+    CSRs.mnstatus,
+    CSRs.dcsr,
+    CSRs.vtype,
+    CSRs.mireg,
+    CSRs.sireg,
+    CSRs.vsireg,
+    CSRs.mtopi,
+    CSRs.stopi,
+    CSRs.vstopi,
+    CSRs.mtopei,
+    CSRs.stopei,
+    CSRs.vstopei,
+  )
+  val blockBackwardInOrderCsrReadList = List(
+    CSRs.mireg,
+    CSRs.sireg,
+    CSRs.vsireg,
+    CSRs.mtopi,
+    CSRs.stopi,
+    CSRs.vstopi,
+    CSRs.mtopei,
+    CSRs.stopei,
+    CSRs.vstopei,
   )
 
   def privEcall  = 0x000.U

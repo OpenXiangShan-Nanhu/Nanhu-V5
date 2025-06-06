@@ -15,7 +15,8 @@ class ExceptionBundle extends CSRBundle {
   val EX_SAF    = RW(7)
   val EX_UCALL  = RW(8)
   val EX_HSCALL = RW(9)
-  val EX_VSCALL = RW(10)
+  // 10 reserved for not supposed H extension
+  // val EX_VSCALL = RW(10)
   val EX_MCALL  = RW(11)
   val EX_IPF    = RW(12)
   val EX_LPF    = RW(13)
@@ -28,10 +29,11 @@ class ExceptionBundle extends CSRBundle {
   val EX_SWC    = RW(18)
   // hardware error
   val EX_HWE    = RW(19)
-  val EX_IGPF   = RW(20)
-  val EX_LGPF   = RW(21)
-  val EX_VI     = RW(22)
-  val EX_SGPF   = RW(23)
+  // 20-23 reserved for not supposed H extension
+  // val EX_IGPF   = RW(20)
+  // val EX_LGPF   = RW(21)
+  // val EX_VI     = RW(22)
+  // val EX_SGPF   = RW(23)
   // 24-31 Designated for custom use
   // 32-47 Reserved
   // 48-63 Designated for custom use
@@ -43,9 +45,11 @@ class ExceptionBundle extends CSRBundle {
 
   def getPageFault = Seq(EX_IPF, EX_LPF, EX_SPF)
 
-  def getGuestPageFault = Seq(EX_IGPF, EX_LGPF, EX_SGPF)
+  // def getGuestPageFault = Seq(EX_IGPF, EX_LGPF, EX_SGPF)
+  def getGuestPageFault = Seq()
 
-  def getLSGuestPageFault = Seq(EX_LGPF, EX_SGPF)
+  // def getLSGuestPageFault = Seq(EX_LGPF, EX_SGPF)
+  def getLSGuestPageFault = Seq()
 
   def getFetchFault = Seq(EX_IAM, EX_IAF, EX_IPF)
 
@@ -53,6 +57,6 @@ class ExceptionBundle extends CSRBundle {
 
   def getStoreFault = Seq(EX_SAM, EX_SAF, EX_SPF)
 
-  def getALL = Seq(EX_SGPF, EX_VI, EX_LGPF, EX_IGPF, EX_HWE, EX_SWC, EX_DBLTRP, EX_SPF, EX_LPF, EX_IPF, EX_MCALL, EX_VSCALL,
+  def getALL = Seq(EX_HWE, EX_SWC, EX_DBLTRP, EX_SPF, EX_LPF, EX_IPF, EX_MCALL,
     EX_HSCALL, EX_UCALL, EX_SAF, EX_SAM, EX_LAF, EX_LAM, EX_BP, EX_II, EX_IAF, EX_IAM)
 }

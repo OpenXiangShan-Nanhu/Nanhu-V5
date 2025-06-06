@@ -282,6 +282,10 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
   def block_match(release_addr: UInt): Bool = {
     reg_valid() && get_block(req.addr) === get_block(release_addr)
   }
+
+   def block_and_alias_match(releaseReq: MissQueueBlockReqBundle): Bool = {
+     reg_valid() && get_block(req.addr) === get_block(releaseReq.addr) && is_alias_match(req.vaddr, releaseReq.vaddr)
+   }
 }
 
 class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
@@ -347,6 +351,18 @@ class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   assert(!(cmoState =/= s_resp && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
 }
 
+class MissQueueBlockReqBundle(implicit p: Parameters) extends XSBundle {
+  val addr = UInt(PAddrBits.W)
+  val vaddr = UInt(VAddrBits.W)
+}
+
+
+class MissQueueBlockIO(implicit p: Parameters) extends XSBundle {
+  val req = ValidIO(new MissQueueBlockReqBundle)
+  val block = Input(Bool())
+}
+
+
 
 class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DCacheModule 
   with HasCircularQueuePtrHelper
@@ -396,6 +412,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val refill_info = ValidIO(new MissQueueRefillInfo)
 
     val block_addr = ValidIO(UInt(PAddrBits.W))
+    val replace = Flipped(new MissQueueBlockIO)
 
     val req_addr = ValidIO(UInt(PAddrBits.W))
 
@@ -499,13 +516,18 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   // for perf use
   val secondary_fired = RegInit(false.B)
- 
+
   io.perf_pending_prefetch := req_valid && prefetch && !secondary_fired
   io.perf_pending_normal   := req_valid && (!prefetch || secondary_fired)
 
   io.rob_head_query.resp   := io.rob_head_query.hit(req.vaddr) && req_valid
 
   io.req_handled_by_this_entry := req_handled_by_this_entry
+
+
+   io.replace.block := req_valid &&
+     get_block_addr(req.addr) === get_block_addr(io.replace.req.bits.addr) &&
+     is_alias_match(req.vaddr, io.replace.req.bits.vaddr)
 
   when (release_entry && req_valid) {
     req_valid := false.B
@@ -886,8 +908,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val probe_block = Output(Bool())
 
     // block replace when release an addr valid in mshr
-    val replace_addr = Flipped(ValidIO(UInt(PAddrBits.W)))
-    val replace_block = Output(Bool())
+//    val replace_addr = Flipped(ValidIO(UInt(PAddrBits.W)))
+    val replace_block_query = Flipped(new MissQueueBlockIO)
 
     // req blocked by wbq
     val wbq_block_miss_req = Input(Bool())
@@ -1074,6 +1096,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       e.io.mem_grant.valid := false.B
       e.io.mem_grant.bits := DontCare
+      e.io.replace.req <> io.replace_block_query.req
 
       when(io.mem_grant.valid && io.mem_grant.bits.source === i.U) {
         when(e.io.req_source === STORE_SOURCE.U || e.io.req_source === AMO_SOURCE.U) {
@@ -1173,7 +1196,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   io.probe_block := Cat(probe_block_vec).orR
 
-  io.replace_block := io.replace_addr.valid && Cat(entries.map(e => e.io.req_addr.valid && e.io.req_addr.bits === io.replace_addr.bits) ++ Seq(miss_req_pipe_reg.block_match(io.replace_addr.bits))).orR
+  io.replace_block_query.block := io.replace_block_query.req.valid &&
+    Cat(entries.map(e => e.io.replace.block) :+ miss_req_pipe_reg.block_and_alias_match(io.replace_block_query.req.bits)).orR
 
   io.full := ~Cat(entries.map(_.io.primary_ready)).andR
 

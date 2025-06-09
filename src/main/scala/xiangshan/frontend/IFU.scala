@@ -174,6 +174,9 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
 
   //last instuction finish
   val is_first_instr = RegInit(true.B)
+  when(is_first_instr && f3_fire){
+    is_first_instr := false.B
+  }
   val m_idle :: m_waitLastCmt :: m_sendReq :: m_waitResp :: m_sendTLB :: m_tlbResp :: m_sendPMP :: m_resendReq :: m_waitResendResp :: m_waitCommit :: m_commited :: Nil = Enum(11)
   val mmio_state = RegInit(m_idle)
 

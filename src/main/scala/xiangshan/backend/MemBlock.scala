@@ -132,6 +132,7 @@ class mem_to_ooo(implicit p: Parameters) extends MemBlockBundle {
 
   val memoryViolation = ValidIO(new Redirect)
   val sbIsEmpty = Output(Bool())
+  val cmoFinish = Output(Bool())
 
   val lsTopdownInfo = Vec(LdExuCnt, Output(new LsTopdownInfo))
 
@@ -1341,6 +1342,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val atomicsFlush = atomicsUnit.io.flush_sbuffer.valid || vSegmentUnit.io.flush_sbuffer.valid
   val stIsEmpty = sbuffer.io.flush.empty && uncache.io.flush.empty
   io.mem_to_ooo.sbIsEmpty := RegNext(stIsEmpty)
+  io.mem_to_ooo.cmoFinish := true.B //todo
 
   // if both of them tries to flush sbuffer at the same time
   // something must have gone wrong

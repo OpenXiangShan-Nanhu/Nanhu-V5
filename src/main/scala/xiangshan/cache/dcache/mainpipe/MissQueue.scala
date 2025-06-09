@@ -422,6 +422,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     // replace pipe
     val l2_hint = Input(Valid(new L2ToL1Hint())) // Hint from L2 Cache
+    val isCMO = Output(Bool())
 
     // main pipe: amo miss
     val main_pipe_req = DecoupledIO(new MainPipeReq)
@@ -481,6 +482,8 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val req_primary_fire = Reg(new MissReqWoStoreData) // for perf use
   val req_store_mask = Reg(UInt(cfg.blockBytes.W))
   val req_valid = RegInit(false.B)
+  io.isCMO := req.isCMO && req_valid
+
   val set = addr_to_dcache_set(req.vaddr)
   // initial keyword
   val isKeyword = RegInit(false.B)
@@ -987,7 +990,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     val debugTopDown = new DCacheTopDownIO
   })
-  io.cmofinish := true.B
   // 128KBL1: FIXME: provide vaddr for l2
 
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
@@ -1120,6 +1122,9 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   // cmoUnit.io.cmo_req <> io.cmoOpReq
   // cmoUnit.io.cmo_resp <> io.cmoOpResp
+  val pipeHasCmo = miss_req_pipe_reg.req.isCMO
+  val mshrHasCmo = entries.map { e => e.io.isCMO }.reduce(_ || _)
+  io.cmofinish := !pipeHasCmo && !mshrHasCmo
 
   val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = 14)
   entries.zipWithIndex.foreach {

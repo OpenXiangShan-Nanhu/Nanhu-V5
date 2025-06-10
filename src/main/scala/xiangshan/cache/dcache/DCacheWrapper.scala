@@ -1400,7 +1400,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // atomicsReplayUnit.io.block_lr <> mainPipe.io.block_lr
 
   // Request
-  val missReqArb = Module(new TreeArbiter(new MissReq, MissReqPortCount-1))
+  val missReqArb = Module(new TreeArbiter(new MissReq, MissReqPortCount))
   // seperately generating miss queue enq ready for better timeing
 //  val missReadyGen = Module(new MissReadyGen(MissReqPortCount))
 
@@ -1410,8 +1410,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     missReqArb.io.in(w + 1) <> ldu(w).io.miss_req
 //    missReadyGen.io.in(w + 1) <> ldu(w).io.miss_req
   }
-  // missReqArb.io.in(MissReqPortCount-1) <> io.cmoOpReq
-  io.cmoOpReq := DontCare
+  missReqArb.io.in(MissReqPortCount-1) <> io.cmoOpReq
 
   for (w <- 0 until LoadPipelineWidth) { ldu(w).io.miss_resp := missQueue.io.resp }
   mainPipe.io.miss_resp := missQueue.io.resp

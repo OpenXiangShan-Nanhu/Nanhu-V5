@@ -620,6 +620,9 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   when (io.mem_acquire.fire) {
     s_acquire := true.B
+    when (req.isCMO) {
+      assert(!req.cancel, "CMO Acquire: entry must not be canceled")
+    }
   }
 
   val hasData = RegInit(true.B)
@@ -979,12 +982,12 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
         val total_prefetch = Output(Bool())
       }
     }
-
+    val cmofinish = Output(Bool())
     val mq_enq_cancel = Output(Bool())
 
     val debugTopDown = new DCacheTopDownIO
   })
-
+  io.cmofinish := true.B
   // 128KBL1: FIXME: provide vaddr for l2
 
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
@@ -1006,7 +1009,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val reject = !isCMOReq && ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits))))
   val alloc = (isCMOReq || (!reject && !merge)) && ParallelORR(Cat(primary_ready_vec))
   val accept = alloc || merge
-
+  assert(!(io.req.valid && isCMOReq && merge), "CMO should never be merged into an existing MSHR")
 //   generate req_ready for each miss request for better timing
 //  for (i <- 0 until reqNum) {
 //    val _primary_ready_vec = entries.map(_.io.queryME(i).primary_ready)

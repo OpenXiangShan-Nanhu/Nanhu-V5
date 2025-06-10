@@ -511,7 +511,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   // store misalign will not writeback to rob now
   when (s2_fire) {
-    s3_valid := ((!s2_mmio && !s2_isCboAll) || s2_exception) && !s2_out.isHWPrefetch
+    s3_valid := (!s2_mmio || s2_exception) && !s2_out.isHWPrefetch
   } .elsewhen (s3_fire) {
       s3_valid := false.B
   } .elsewhen (s3_kill) {

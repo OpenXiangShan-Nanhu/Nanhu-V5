@@ -929,7 +929,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   // cmoreq from sq send to MissQueue
   lsq.io.cmoOpReq <> dcache.io.cmoOpReq
-  lsq.io.cmoOpResp <> dcache.io.cmoOpResp
+  // lsq.io.cmoOpResp <> dcache.io.cmoOpResp
 
   // Prefetcher
 //  val StreamDTLBPortIndex = TlbStartVec(dtlb_ld_idx) + LduCnt + HyuCnt

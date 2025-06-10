@@ -333,6 +333,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.rob.mmio := DontCare
   io.rob.uop := DontCare
 
+  val mmioStout_fire = io.mmioStout.fire || io.vecmmioStout.fire
+  // val cmoCanDeq = io.cmoOpReq.fire || (LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && hasException(deqPtr))
   // Read dataModule
   assert(EnsbufferWidth <= 2)
   // rdataPtrExtNext and rdataPtrExtNext+1 entry will be read from dataModule
@@ -361,7 +363,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       deqPtrExt
     )
   )
-  val mmioStout_fire = io.mmioStout.fire || io.vecmmioStout.fire
+
   io.sqDeq := RegNext(Mux(RegNext(io.sbuffer(1).fire && !misalignBlock), 2.U,
     Mux((RegNext(io.sbuffer(0).fire && !misalignBlock)) || mmioStout_fire || io.cmoOpReq.fire || finishMisalignSt, 1.U, 0.U)
   ))
@@ -910,7 +912,11 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val cmoAddr = get_block_addr(addrModule.io.rdata_p(0))
   // val deqCanDoCbom = GatedRegNext(LSUOpType.isCbom(uop(deqPtr).fuOpType) && cmo(deqPtr) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr))
   // dontTouch(deqCanDoCbom)
-  when(RegNext(committed(deqPtr) && allocated(deqPtr) && addrvalid(deqPtr) && LSUOpType.isCbom(uop(deqPtr).fuOpType))) {
+  val deqCanDoCbom = GatedRegNext(LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && !hasException(deqPtr))
+  dontTouch(deqCanDoCbom)
+
+  when(deqCanDoCbom) {
+    assert(!hasException(deqPtr),"why cbo has exception but wanna send req?")
     cbomValid := true.B
     cbomWaitFlushSb := true.B
   }
@@ -926,7 +932,12 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   when(io.cmoOpReq.fire) {
     allocated(uop(deqPtr).sqIdx.value) := false.B
   }
-
+  when (io.cmoOpReq.fire) {
+    // Assert that this entry is exactly the one we expected
+    assert(deqCanDoCbom, "CBO fire only when deqCanDoCbom is true")
+    // Assert the uop matches a CBO encoding
+    assert(LSUOpType.isCbom(uop(deqPtr).fuOpType), "Firing CBO req for non-CBO uop")
+  }
   when(cbomWaitFlushSb && cbomValid && io.flushSbuffer.empty) {
     cbomWaitFlushSb := false.B
   }

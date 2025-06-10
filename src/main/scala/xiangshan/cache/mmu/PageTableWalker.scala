@@ -152,7 +152,12 @@ class PTW()(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
 
   val sent_to_pmp = idle === false.B && (s_pmp_check === false.B || mem_addr_update) && !finish && !(find_pte && pte_valid)
   val sent_to_pmp_delay = RegNext(sent_to_pmp)  // delay 1 clk
+  val sent_to_pmp_delay2 = RegNext(sent_to_pmp_delay)  // delay 2 clk
   val accessFault = RegEnable(io.pmp.resp.ld || io.pmp.resp.mmio, false.B, sent_to_pmp_delay)
+
+  val pmp_resp_done = RegInit(true.B)
+  when (sent_to_pmp)       { pmp_resp_done := false.B }
+  when (sent_to_pmp_delay2) { pmp_resp_done := true.B  }
 
 
 //  val l3addr = Wire(UInt(PAddrBits.W))
@@ -243,7 +248,7 @@ class PTW()(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   io.pmp.req.bits.size := 3.U // TODO: fix it
   io.pmp.req.bits.cmd := TlbCmd.read
 
-  mem.req.valid := s_mem_req === false.B && !mem.mask && !accessFault && s_pmp_check
+  mem.req.valid := s_mem_req === false.B && !mem.mask && !accessFault && s_pmp_check && pmp_resp_done
   mem.req.bits.addr := Mux(s2xlate, hpaddr, mem_addr)
   mem.req.bits.id := FsmReqID.U(bMemID.W)
   mem.req.bits.hptw_bypassed := false.B
@@ -457,6 +462,7 @@ class PTW()(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     w_hptw_resp := true.B
     s_last_hptw_req := true.B
     w_last_hptw_resp := true.B
+    pmp_resp_done := true.B
   }
 
 

@@ -209,7 +209,7 @@ case class XSCoreParameters
   VFOFBufferSize: Int = 8,
   VLFOFWritebackWidth: Int = 1,
   // ==============================
-  UncacheBufferSize: Int = 4,
+  UncacheBufferSize: Int = 16,
   EnableLoadToLoadForward: Boolean = false,
   EnableFastForward: Boolean = true,
   EnableLdVioCheckAfterReset: Boolean = true,

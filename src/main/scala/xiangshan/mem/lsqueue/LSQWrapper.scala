@@ -119,8 +119,8 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val issuePtrExt = Output(new SqPtr)
     val l2_hint = Input(Valid(new L2ToL1Hint()))
     val tlb_hint = Flipped(new TlbHintIO)
-    val cmoOpReq  = DecoupledIO(new CMOReq)
-    val cmoOpResp = Flipped(DecoupledIO(new CMOResp))
+    val cmoOpReq  = DecoupledIO(new MissReq)
+    // val cmoOpResp = Flipped(DecoupledIO(new CMOResp))
     val flushSbuffer = new SbufferFlushBundle
     val force_write = Output(Bool())
     val lqEmpty = Output(Bool())
@@ -186,7 +186,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.forward      <> io.forward // overlap forwardMask & forwardData, DO NOT CHANGE SEQUENCE
   storeQueue.io.force_write  <> io.force_write
   storeQueue.io.cmoOpReq     <> io.cmoOpReq
-  storeQueue.io.cmoOpResp    <> io.cmoOpResp
+  // storeQueue.io.cmoOpResp    <> io.cmoOpResp
   storeQueue.io.flushSbuffer <> io.flushSbuffer
   storeQueue.io.maControl    <> io.maControl
 

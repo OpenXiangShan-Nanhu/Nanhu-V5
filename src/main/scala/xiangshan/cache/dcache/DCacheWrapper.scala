@@ -104,7 +104,7 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
 
   def blockProbeAfterGrantCycles = 8 // give the processor some time to issue a request after a grant
 
-  def nSourceType = 10
+  def nSourceType = 11
   def sourceTypeWidth = log2Up(nSourceType)
   // non-prefetch source < 3
   def LOAD_SOURCE = 0
@@ -120,7 +120,7 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   def HW_PREFETCH_PHT_DEC = 8
   def HW_PREFETCH_BOP = 9
   def HW_PREFETCH_STRIDE = 10
-
+  def CMO_SOURCE = 11
   def BLOOM_FILTER_ENTRY_NUM = 4096
 
   // each source use a id to distinguish its multiple reqs
@@ -803,8 +803,9 @@ class DCacheIO(implicit p: Parameters) extends DCacheBundle {
   val debugTopDown = new DCacheTopDownIO
   val debugRolling = Flipped(new RobDebugRollingIO)
   val l2_hint = Input(Valid(new L2ToL1Hint()))
-  val cmoOpReq = Flipped(DecoupledIO(new CMOReq))
-  val cmoOpResp = DecoupledIO(new CMOResp)
+  val cmoOpReq = Flipped(DecoupledIO(new MissReq))
+  // val cmoOpResp = DecoupledIO(new CMOResp)
+  val cmofinish = Bool()
 }
 
 private object ArbiterCtrl {
@@ -981,10 +982,10 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   //----------------------------------------
   // miss queue
   // missReqArb port:
-  // enableStorePrefetch: main pipe * 1 + load pipe * 2 + store pipe * 1 +
+  // enableStorePrefetch: main pipe * 1 + load pipe * 2 + store pipe * 1 + storequeue-cmoreq * 1
   // hybrid * 1; disable: main pipe * 1 + load pipe * 2 + hybrid * 1
   // higher priority is given to lower indices
-  val MissReqPortCount = if(StorePrefetchL1Enabled) 1 + backendParams.LduCnt + backendParams.StaCnt  else 1 + backendParams.LduCnt 
+  val MissReqPortCount = if(StorePrefetchL1Enabled) 1 + backendParams.LduCnt + backendParams.StaCnt + 1 else 1 + backendParams.LduCnt + 1
   val MainPipeMissReqPort = 0
   // val HybridMissReqBase = MissReqPortCount 
 
@@ -998,8 +999,9 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   val probeQueue   = Module(new ProbeQueue(edge))
   val wb           = Module(new WritebackQueue(edge))
 
-  missQueue.io.cmoOpReq <> io.cmoOpReq
-  missQueue.io.cmoOpResp <> io.cmoOpResp
+  // missQueue.io.cmoOpReq <> io.cmoOpReq
+  // missQueue.io.cmoOpResp <> io.cmoOpResp
+  io.cmofinish := missQueue.io.cmofinish
   missQueue.io.lqEmpty := io.lqEmpty
   missQueue.io.hartId := io.hartId
   missQueue.io.l2_pf_store_only := RegNext(io.l2_pf_store_only, false.B)
@@ -1410,6 +1412,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     missReqArb.io.in(w + 1) <> ldu(w).io.miss_req
 //    missReadyGen.io.in(w + 1) <> ldu(w).io.miss_req
   }
+  missReqArb.io.in(MissReqPortCount-1) <> io.cmoOpReq
 
   for (w <- 0 until LoadPipelineWidth) { ldu(w).io.miss_resp := missQueue.io.resp }
   mainPipe.io.miss_resp := missQueue.io.resp

@@ -27,6 +27,7 @@ class FenceIO(implicit p: Parameters) extends XSBundle {
   val sfence = Output(new SfenceBundle)
   val fencei = Output(Bool())
   val sbuffer = new FenceToSbuffer
+  val cmoFinish = Input(Bool())
 }
 
 class FenceToSbuffer extends Bundle {
@@ -58,6 +59,7 @@ class Fence(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg) {
 
   val sbuffer = toSbuffer.flushSb
   val sbEmpty = toSbuffer.sbIsEmpty
+  val cmoFinish = io.fenceio.get.cmoFinish
   val uop = RegEnable(io.in.bits, io.in.fire)
   val func = uop.ctrl.fuOpType
 
@@ -76,7 +78,7 @@ class Fence(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg) {
   when (state === s_idle && io.in.valid) { state := s_wait }
   when (state === s_wait && func === FenceOpType.fencei && sbEmpty) { state := s_icache }
   when (state === s_wait && ((func === FenceOpType.sfence || func === FenceOpType.hfence_g || func === FenceOpType.hfence_v) && sbEmpty)) { state := s_tlb }
-  when (state === s_wait && func === FenceOpType.fence  && sbEmpty) { state := s_fence }
+  when (state === s_wait && func === FenceOpType.fence  && sbEmpty && cmoFinish) { state := s_fence }
   when (state === s_wait && func === FenceOpType.nofence  && sbEmpty) { state := s_nofence }
   when (state =/= s_idle && state =/= s_wait) { state := s_idle }
 

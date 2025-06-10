@@ -8,17 +8,17 @@ import xiangshan.backend.fu.NewCSR.ChiselRecordForField.AddRecordSpecifyFields
 class InterruptBundle extends CSRBundle {
   // Software Interrupt
   val SSI      = RW(1)
-  val VSSI     = RW(2)
+  val VSSI     = RO(2)
   val MSI      = RW(3)
   // Time Interrupt
   val STI      = RW(5)
-  val VSTI     = RW(6)
+  val VSTI     = RO(6)
   val MTI      = RW(7)
   // External Interrupt
   val SEI      = RW(9)
-  val VSEI     = RW(10)
+  val VSEI     = RO(10)
   val MEI      = RW(11)
-  val SGEI     = RW(12)
+  val SGEI     = RO(12)
   // SoC
   val LCOFI    = RW(13) // Counter overflow interrupt
   val LC14I    = RO(14)
@@ -79,10 +79,9 @@ class InterruptBundle extends CSRBundle {
   def getM = Seq(MSI, MTI, MEI)
 
   def getNonLocal = Seq(
-    SSI, VSSI, MSI,
-    STI, VSTI, MTI,
-    SEI, VSEI, MEI,
-    SGEI
+    SSI, MSI,
+    STI, MTI,
+    SEI, MEI
   )
 
   def getLocal = Seq(
@@ -271,6 +270,12 @@ class InterruptEnableBundle extends CSRBundle {
     STIE, VSTIE, MTIE,
     SEIE, VSEIE, MEIE,
     SGEIE
+  )
+
+  def getNonLocalNoH = Seq(
+    SSIE, MSIE,
+    STIE, MTIE,
+    SEIE, MEIE
   )
 
   def getLocal = Seq(

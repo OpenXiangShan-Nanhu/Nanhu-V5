@@ -756,7 +756,8 @@ class NewCSR(implicit val p: Parameters) extends Module
         in.iMode.V := V
         // when NMIE is zero, force to behave as MPRV is zero
         in.dMode.PRVM := Mux(mstatus.regOut.MPRV.asBool && mnstatus.regOut.NMIE.asBool, mstatus.regOut.MPP, PRVM)
-        in.dMode.V := V.asUInt.asBool || mstatus.regOut.MPRV && mnstatus.regOut.NMIE.asBool && (mstatus.regOut.MPP =/= PrivMode.M) && mstatus.regOut.MPV
+        // in.dMode.V := V.asUInt.asBool || mstatus.regOut.MPRV && mnstatus.regOut.NMIE.asBool && (mstatus.regOut.MPP =/= PrivMode.M) && mstatus.regOut.MPV
+        in.dMode.V := V.asUInt.asBool
 
         in.privState := privState
         in.mstatus := mstatus.regOut
@@ -1355,7 +1356,8 @@ class NewCSR(implicit val p: Parameters) extends Module
   )
   io.tlb.dvirt := Mux(
     (debugMode && dcsr.regOut.MPRVEN || !debugMode) && mstatus.regOut.MPRV && mnstatus.regOut.NMIE && mstatus.regOut.MPP =/= PrivMode.M,
-    mstatus.regOut.MPV.asUInt,
+    // mstatus.regOut.MPV.asUInt,
+    0.U,
     V.asUInt
   )
   io.tlb.mPBMTE := RegNext(menvcfg.regOut.PBMTE.asBool)
@@ -1587,10 +1589,10 @@ trait IpIeAliasConnect {
   hvip.fromHip  := hip.toHvip
   hvip.fromVSip := vsip.toHvip
 
-  mie.fromHie  := hie.toMie
+  mie.fromHie  := 0.U.asTypeOf(new HieToMie)
   mie.fromSie  := sie.toMie
-  mie.fromVSie := vsie.toMie
-  sie.fromVSie := vsie.toSie
+  mie.fromVSie := 0.U.asTypeOf(new VSieToMie)
+  sie.fromVSie := 0.U.asTypeOf(new VSieToMie)
 }
 
 //import top.{ArgParser, Generator}

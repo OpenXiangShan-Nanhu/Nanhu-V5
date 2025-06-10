@@ -41,6 +41,9 @@ class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   val vaddr = UInt(VAddrBits.W)
   val pc = UInt(VAddrBits.W)
 
+  val isCMO = Bool()
+  val cmoOpcode = UInt(3.W)   // 0-cbo.clean, 1-cbo.flush, 2-cbo.inval, 3-cbo.zero
+
   val lqIdx = new LqPtr
   // store
   val full_overwrite = Bool()
@@ -69,6 +72,7 @@ class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   def isFromLoad = source === LOAD_SOURCE.U
   def isFromStore = source === STORE_SOURCE.U
   def isFromAMO = source === AMO_SOURCE.U
+  def isFromCMO = source === CMO_SOURCE.U
   def isFromPrefetch = source >= DCACHE_PREFETCH_SOURCE.U
   def isPrefetchWrite = source === DCACHE_PREFETCH_SOURCE.U && cmd === MemoryOpConstants.M_PFW
   def isPrefetchRead = source === DCACHE_PREFETCH_SOURCE.U && cmd === MemoryOpConstants.M_PFR
@@ -118,6 +122,8 @@ class MissReq(implicit p: Parameters) extends MissReqWoStoreData {
     out.cancel := cancel
     out.pc := pc
     out.lqIdx := lqIdx
+    out.isCMO := isCMO
+    out.cmoOpcode := cmoOpcode
     out
   }
 }
@@ -196,7 +202,7 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
         alloc,
         block_match && alias_match && (merge_load || merge_store),
         false.B
-      )
+      ) && !req.isCMO
   }
   
   def merge_isKeyword(new_req: MissReq): Bool = {
@@ -246,7 +252,22 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
       lgSize = (log2Up(cfg.blockBytes)).U,
       growPermissions = grow_param
     )._2
-    acquire := Mux(req.full_overwrite, acquirePerm, acquireBlock)
+    val acquireCMO = edge.CacheBlockOperation(
+      fromSource = mshr_id, // source is the # of MissEntries + 1
+      toAddress = get_block_addr(req.addr),
+      lgSize = (log2Up(cfg.blockBytes)).U,
+      opcode = req.cmoOpcode
+    )._2
+    val sel = Wire(chiselTypeOf(acquireBlock))
+    when (req.isCMO) {
+      sel := acquireCMO
+    } .elsewhen (req.full_overwrite) {
+      sel := acquirePerm
+    } .otherwise {
+      sel := acquireBlock
+    }
+    acquire := sel
+    // acquire := Mux(req.isCMO, acquireCMO, Mux(req.full_overwrite, acquirePerm, acquireBlock))
     // resolve cache alias by L2
     acquire.user.lift(AliasKey).foreach(_ := req.vaddr(13, 12))
     // pass vaddr to l2
@@ -480,7 +501,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   val mainpipe_req_fired = RegInit(true.B)
 
-  val release_entry = s_grantack && w_mainpipe_resp && w_refill_resp
+  val release_entry = s_grantack && w_mainpipe_resp && w_refill_resp && !req.isCMO || req.isCMO && w_grantlast
 
   val acquire_not_sent = !s_acquire && !io.mem_acquire.ready
   val data_not_refilled = !w_grantfirst
@@ -604,6 +625,11 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val hasData = RegInit(true.B)
   val isDirty = RegInit(false.B)
   when (io.mem_grant.fire) {
+    when(req.isCMO && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
+    w_grantfirst := true.B
+    w_grantlast  := true.B
+    hasData      := false.B
+  } .otherwise {
     w_grantfirst := true.B
     grant_param := io.mem_grant.bits.param
     when (edge.hasData(io.mem_grant.bits)) {
@@ -615,6 +641,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
       w_grantlast := true.B
       hasData := false.B
     }
+  }
 
     error := io.mem_grant.bits.denied || io.mem_grant.bits.corrupt || error
 
@@ -710,8 +737,8 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     // cannot accept prefetch req except when a memset patten is detected
     io.primary_ready := !req_valid && (!io.req.bits.isFromPrefetch || io.memSetPattenDetected) && !GatedValidRegNext(primary_fire)
   }
-  io.secondary_ready := should_merge(io.req.bits)
-  io.secondary_reject := should_reject(io.req.bits)
+  io.secondary_ready := should_merge(io.req.bits) && req.isCMO
+  io.secondary_reject := should_reject(io.req.bits) && req.isCMO
 
   // generate primary_ready & secondary_(ready | reject) for each miss request
 //  for (i <- 0 until reqNum) {
@@ -756,7 +783,22 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     lgSize = (log2Up(cfg.blockBytes)).U,
     growPermissions = grow_param
   )._2
-  io.mem_acquire.bits := Mux(full_overwrite, acquirePerm, acquireBlock)
+  val acquireCMO = edge.CacheBlockOperation(
+      fromSource = io.id, // source is the # of MissEntries + 1
+      toAddress = get_block_addr(req.addr),
+      lgSize = (log2Up(cfg.blockBytes)).U,
+      opcode = req.cmoOpcode
+    )._2
+    val sel = Wire(chiselTypeOf(acquireBlock))
+    when (req.isCMO) {
+      sel := acquireCMO
+    } .elsewhen (req.full_overwrite) {
+      sel := acquirePerm
+    } .otherwise {
+      sel := acquireBlock
+    }
+    io.mem_acquire.bits := sel
+  // io.mem_acquire.bits := Mux(req.isCMO, acquireCMO, Mux(req.full_overwrite, acquirePerm, acquireBlock))
   // resolve cache alias by L2
   io.mem_acquire.bits.user.lift(AliasKey).foreach( _ := req.vaddr(13, 12))
   // pass vaddr to l2
@@ -920,8 +962,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val forward = Vec(LoadPipelineWidth, new LduToMissqueueForwardIO)
     val l2_pf_store_only = Input(Bool())
 
-    val cmoOpReq = Flipped(DecoupledIO(new CMOReq))
-    val cmoOpResp = DecoupledIO(new CMOResp)
+    // val cmoOpReq = Flipped(DecoupledIO(new CMOReq))
+    // val cmoOpResp = DecoupledIO(new CMOResp)
 
     val memSetPattenDetected = Output(Bool())
     val lqEmpty = Input(Bool())
@@ -948,7 +990,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
   val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
-  val cmoUnit = Module(new CMOUnit(edge))
+  // val cmoUnit = Module(new CMOUnit(edge))
 
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))
   val acquire_from_pipereg = Wire(chiselTypeOf(io.mem_acquire))
@@ -958,9 +1000,11 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val secondary_reject_vec = entries.map(_.io.secondary_reject)
   val probe_block_vec = entries.map { case e => e.io.block_addr.valid && e.io.block_addr.bits === io.probe_addr }
 
-  val merge = ParallelORR(Cat(secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.req.bits))))
-  val reject = ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits))))
-  val alloc = !reject && !merge && ParallelORR(Cat(primary_ready_vec))
+  // cmo instr will not be merged or rejected
+  val isCMOReq = io.req.bits.isCMO
+  val merge = !isCMOReq && ParallelORR(Cat(secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.req.bits))))
+  val reject = !isCMOReq && ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits))))
+  val alloc = (isCMOReq || (!reject && !merge)) && ParallelORR(Cat(primary_ready_vec))
   val accept = alloc || merge
 
 //   generate req_ready for each miss request for better timing
@@ -994,7 +1038,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   // miss_req_pipe_reg.req     := io.req.bits
   miss_req_pipe_reg.alloc   := alloc && io.req.valid && !io.req.bits.cancel && !io.wbq_block_miss_req
   miss_req_pipe_reg.merge   := merge && io.req.valid && !io.req.bits.cancel && !io.wbq_block_miss_req
-  miss_req_pipe_reg.cancel  := io.wbq_block_miss_req
+  miss_req_pipe_reg.cancel  := io.wbq_block_miss_req && !isCMOReq
   miss_req_pipe_reg.mshr_id := io.resp.id
 
   assert(PopCount(Seq(alloc && io.req.valid, merge && io.req.valid)) <= 1.U, "allocate and merge a mshr in same cycle!")
@@ -1071,8 +1115,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val diff_refill = Wire(Bool())
   diff_refill := merge && io.req.valid && !io.req.bits.cancel && io.req.bits.isFromLoad
 
-  cmoUnit.io.cmo_req <> io.cmoOpReq
-  cmoUnit.io.cmo_resp <> io.cmoOpResp
+  // cmoUnit.io.cmo_req <> io.cmoOpReq
+  // cmoUnit.io.cmo_resp <> io.cmoOpResp
 
   val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = 14)
   entries.zipWithIndex.foreach {
@@ -1179,17 +1223,17 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   XSPerfAccumulate("acquire_fire_from_pipereg", acquire_from_pipereg.fire)
   XSPerfAccumulate("pipereg_valid", miss_req_pipe_reg.reg_valid())
 
-  val acquire_sources = Seq(cmoUnit.io.req_TLA, acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
+  val acquire_sources = Seq(acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
   TLArbiter.lowest(edge, io.mem_acquire, acquire_sources:_*)
   TLArbiter.lowest(edge, io.mem_finish, entries.map(_.io.mem_finish):_*)
 
-  // cmo resp
-  when (io.mem_grant.valid && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
-    cmoUnit.io.resp_TLD <> io.mem_grant
-  } .otherwise {
-    cmoUnit.io.resp_TLD.valid := false.B
-    cmoUnit.io.resp_TLD.bits  := DontCare
-  }
+  // // cmo resp
+  // when (io.mem_grant.valid && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
+  //   cmoUnit.io.resp_TLD <> io.mem_grant
+  // } .otherwise {
+  //   cmoUnit.io.resp_TLD.valid := false.B
+  //   cmoUnit.io.resp_TLD.bits  := DontCare
+  // }
 
   // amo's main pipe req out
   fastArbiter(entries.map(_.io.main_pipe_req), io.main_pipe_req, Some("main_pipe_req"))
@@ -1228,6 +1272,13 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     difftest.addr := io.refill_to_ldq.bits.addr
     difftest.data := difftest_data_raw.asTypeOf(difftest.data)
     difftest.idtfr := DontCare
+
+    // commit cbo.inval to difftest
+    val cmoInvalEvent = DifftestModule(new DiffCMOInvalEvent)
+    cmoInvalEvent.coreid := io.hartId
+    cmoInvalEvent.valid  := io.mem_acquire.fire && io.mem_acquire.bits.opcode === TLMessages.CBOInval
+    cmoInvalEvent.addr   := io.mem_acquire.bits.address
+
   }
 
   // Perf count

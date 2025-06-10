@@ -13,7 +13,7 @@ import xiangshan.AddrTransType
 
 class TrapEntryMEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase  {
 
-  val mstatus   = ValidIO((new MstatusBundle ).addInEvent(_.MPV, _.MPP, _.GVA, _.MPIE, _.MIE))
+  val mstatus   = ValidIO((new MstatusBundle ).addInEvent(_.MPP, _.MPIE, _.MIE))
   val mepc      = ValidIO((new Epc           ).addInEvent(_.epc))
   val mcause    = ValidIO((new CauseBundle   ).addInEvent(_.Interrupt, _.ExceptionCode))
   val mtval     = ValidIO((new OneFieldBundle).addInEvent(_.ALL))
@@ -109,9 +109,9 @@ class TrapEntryMEventModule(implicit val p: Parameters) extends Module with CSRE
   out.targetPc .valid := valid
 
   out.privState.bits            := PrivState.ModeM
-  out.mstatus.bits.MPV          := current.privState.V.asUInt
+  // out.mstatus.bits.MPV          := current.privState.V.asUInt
   out.mstatus.bits.MPP          := current.privState.PRVM
-  out.mstatus.bits.GVA          := tvalFillGVA
+  // out.mstatus.bits.GVA          := tvalFillGVA
   out.mstatus.bits.MPIE         := current.mstatus.MIE
   out.mstatus.bits.MIE          := 0.U
   out.mepc.bits.epc             := Mux(isFetchMalAddr, in.fetchMalTval(63, 1), trapPC(63, 1))

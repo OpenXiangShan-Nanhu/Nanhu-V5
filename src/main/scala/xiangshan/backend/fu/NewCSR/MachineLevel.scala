@@ -477,8 +477,6 @@ class MstatusBundle extends CSRBundle {
   // val GVA  = CSRRWField     (38).withReset(0.U)
   // val MPV  = VirtMode       (39).withReset(0.U)
   // NHV5 current do not need to support H extension, set the GVA & MPV to read-only
-  val GVA  = CSRROField     (38).withReset(0.U)
-  val MPV  = CSRROField     (39).withReset(0.U)
   val SD   = CSRROField     (63,
     (_, _) => FS === ContextStatus.Dirty // || VS === ContextStatus.Dirty
   )
@@ -587,7 +585,7 @@ class MidelegBundle extends InterruptBundle {
 }
 
 class MieBundle extends InterruptEnableBundle {
-  this.getNonLocal.foreach(_.setRW().withReset(0.U))
+  this.getNonLocalNoH.foreach(_.setRW().withReset(0.U))
   this.LCOFIE.setRW().withReset(0.U)
 }
 
@@ -600,8 +598,8 @@ class MipBundle extends InterruptPendingBundle {
   //
   // Ref: riscv interrupt spec - 2.1 Machine-level CSRs
   // Existing CSRs mie, mip, and mideleg are widended to 64 bits to support a total of 64 interrupt causes.
-  this.getHS.foreach(_.setRW().withReset(0.U))
-  this.getVS.foreach(_.setRW().withReset(0.U))
+  // this.getHS.foreach(_.setRW().withReset(0.U))
+  // this.getVS.foreach(_.setRW().withReset(0.U))
   this.LCOFIP.setRW().withReset(0.U)
 }
 

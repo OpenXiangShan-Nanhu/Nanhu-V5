@@ -230,6 +230,7 @@ class PredictorIO(implicit p: Parameters) extends XSBundle {
   val ftq_to_bpu = Flipped(new FtqToBpuIO)
   val ctrl = Input(new BPUCtrl)
   val reset_vector = Input(UInt(PAddrBits.W))
+  val halt = Input(Bool())
 }
 
 class Predictor(implicit p: Parameters) extends XSModule 
@@ -389,7 +390,7 @@ class Predictor(implicit p: Parameters) extends XSModule
 
   s1_components_ready_dup.map(_ := predictors.io.s1_ready)
   for (((s1_ready, s1_fire), s1_valid) <- s1_ready_dup zip s1_fire_dup zip s1_valid_dup)
-    s1_ready := s1_fire || !s1_valid
+    s1_ready := (s1_fire || !s1_valid) && !io.halt
   for (((s0_fire, s1_components_ready), s1_ready) <- s0_fire_dup zip s1_components_ready_dup zip s1_ready_dup)
     s0_fire := s1_components_ready && s1_ready
   predictors.io.s0_fire := s0_fire_dup

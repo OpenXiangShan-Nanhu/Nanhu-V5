@@ -633,6 +633,8 @@ class CtrlBlockImp(
   rob.io.wfi_enable := decode.io.csrCtrl.wfi_enable
 
   io.toTop.cpuHalt := RegNextN(rob.io.cpu_halt, 5, Some(false.B))
+  io.power.timeout := RegNextN(rob.io.power.timeout, 5, Some(false.B))
+  rob.io.power.wfiCtrRst := io.power.wfiCtrRst
 
   io.robio.csr.perfinfo.retiredInstr <> RegNext(rob.io.csr.perfinfo.retiredInstr)
   io.robio.exception := rob.io.exception
@@ -760,6 +762,11 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
   val memPredPcRead = new FtqRead(UInt(VAddrBits.W))
   val exceptionPcRead = new FtqRead(UInt(VAddrBits.W))
   val tracePcRead = Vec(TraceGroupNum, new FtqRead(UInt(VAddrBits.W)))
+
+  val power = new Bundle {
+    val wfiCtrRst = Input(Bool())
+    val timeout = Output(Bool())
+  }
 
   val csrCtrl = Input(new CustomCSRCtrlIO)
   val robio = new Bundle {

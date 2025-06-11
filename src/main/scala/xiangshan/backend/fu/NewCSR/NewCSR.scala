@@ -1065,7 +1065,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   outReg.bits.isPerfCnt := DataHoldBypass(addrInPerfCnt, false.B, io.in.fire)
 
   PipelineConnect(outReg, io.out, io.out.ready,
-      false.B, moduleName = Some("csrOutPipe"))
+      redirectFlush, moduleName = Some("csrOutPipe"))
   io.out.bits.flushPipe := flushPipe
 
   io.currentRegout := regOut

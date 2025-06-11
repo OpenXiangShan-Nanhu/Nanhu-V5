@@ -579,7 +579,7 @@ class MidelegBundle extends InterruptBundle {
   // this.getVS.foreach(_.setRO().withReset(1.U))
   // bit 12 of mideleg (corresponding to supervisor-level guest external interrupts) is also read-only one.
   // VS-level interrupts and guest external interrupts are always delegated past M-mode to HS-mode.
-  this.SGEI.setRO().withReset(1.U)
+  this.SGEI.setRO().withReset(0.U)
   this.getLocal.foreach(_.setRO().withReset(0.U))
   this.LCOFI.setRW().withReset(0.U)
 }

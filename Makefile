@@ -38,6 +38,15 @@ ABS_WORK_DIR := $(shell pwd)
 CONFIG ?= NanhuV5_3Config
 NUM_CORES ?= 1
 ISSUE ?= E.b
+DEBUG ?= 0
+WAVE  ?= 0
+EMU_TRACE ?= 1
+FST_VCD ?= vcd
+ifeq ($(EMU_TRACE),fst)
+FST_VCD = fst
+endif
+WAVE_PATH ?= $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/tb_top.$(FST_VCD)
+
 
 SUPPORT_CHI_ISSUE = B E.b
 ifeq ($(findstring $(ISSUE), $(SUPPORT_CHI_ISSUE)),)
@@ -220,14 +229,21 @@ emu-run: emu
 
 emu_rtl: sim-verilog
 	$(MAKE) -C ./difftest emu SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) \
-	WITH_DRAMSIM3=$(WITH_DRAMSIM3) EMU_TRACE=1 EMU_THREADS=16 SIMDIR=1
+	WITH_DRAMSIM3=$(WITH_DRAMSIM3) EMU_TRACE=$(EMU_TRACE) EMU_THREADS=16 SIMDIR=1
 
 RANDOM = $(shell echo $$RANDOM)
 RUN_BIN_DIR ?= $(ABS_WORK_DIR)/ready-to-run
 EMU_RUN_OPTS = -i $(RUN_BIN_DIR)/$(RUN_BIN)
-EMU_RUN_OPTS += --diff $(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
-EMU_RUN_OPTS += --wave-path $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/tb_top.vcd
+ifeq ($(WAVE),1)
+EMU_RUN_OPTS += --dump-wave-full
+else
 EMU_RUN_OPTS += --enable-fork --fork-interval=15 -s 0
+endif
+ifeq ($(DEBUG),1)
+EMU_RUN_OPTS += --no-diff --enable-jtag --remote-jtag-port 23334
+else
+EMU_RUN_OPTS += --diff $(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
+endif
 emu_rtl-run:
 	$(shell if [ ! -e $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN) ];then mkdir -p $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN); fi)
 	touch ./sim/emu/$(RUN_BIN)/sim.log

@@ -333,7 +333,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.rob.mmio := DontCare
   io.rob.uop := DontCare
 
-  val mmioStout_fire = io.mmioStout.fire || io.vecmmioStout.fire
+  val mmioStout_fire = io.mmioStout.fire
   // val cmoCanDeq = io.cmoOpReq.fire || (LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && hasException(deqPtr))
   // Read dataModule
   assert(EnsbufferWidth <= 2)
@@ -341,7 +341,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val rdataPtrExtNext = Wire(Vec(EnsbufferWidth, new SqPtr))
   rdataPtrExtNext := WireInit(Mux(dataBuffer.io.enq(1).fire,
     VecInit(rdataPtrExt.map(_ + 2.U)),
-    Mux(dataBuffer.io.enq(0).fire || io.mmioStout.fire || io.vecmmioStout.fire || io.cmoOpReq.fire,
+    Mux(dataBuffer.io.enq(0).fire || io.mmioStout.fire || io.cmoOpReq.fire,
       VecInit(rdataPtrExt.map(_ + 1.U)),
       rdataPtrExt
     )
@@ -358,7 +358,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val deqPtrExtNext = Wire(Vec(EnsbufferWidth, new SqPtr))
   deqPtrExtNext := Mux(RegNext(io.sbuffer(1).fire),
     VecInit(deqPtrExt.map(_ + 2.U)),
-    Mux((RegNext(io.sbuffer(0).fire)) || io.mmioStout.fire || io.vecmmioStout.fire || io.cmoOpReq.fire,
+    Mux((RegNext(io.sbuffer(0).fire)) || io.mmioStout.fire || io.cmoOpReq.fire,
       VecInit(deqPtrExt.map(_ + 1.U)),
       deqPtrExt
     )
@@ -367,7 +367,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.sqDeq := RegNext(Mux(RegNext(io.sbuffer(1).fire && !misalignBlock), 2.U,
     Mux((RegNext(io.sbuffer(0).fire && !misalignBlock)) || mmioStout_fire || io.cmoOpReq.fire || finishMisalignSt, 1.U, 0.U)
   ))
-  assert(!RegNext(RegNext(io.sbuffer(0).fire) && (io.mmioStout.fire || io.vecmmioStout.fire || io.cmoOpReq.fire)))
+  assert(!RegNext(RegNext(io.sbuffer(0).fire) && (io.mmioStout.fire || io.cmoOpReq.fire)))
 
   for (i <- 0 until EnsbufferWidth) {
     dataModule.io.raddr(i) := rdataPtrExtNext(i).value
@@ -870,7 +870,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       }
     }
     is(s_wb) {
-      when ((io.mmioStout.fire) || io.vecmmioStout.fire) {
+      when (io.mmioStout.fire) {
         when (uncacheUop.exceptionVec(storeAccessFault)) {
           uncacheState := s_idle
         }.otherwise {
@@ -1019,19 +1019,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // (4) or vector store:
   // TODO: implement it!
   io.vecmmioStout := DontCare
-  io.vecmmioStout.valid := false.B //uncacheState === s_wb && isVec(deqPtr)
-  io.vecmmioStout.bits.uop := uop(deqPtr)
-  io.vecmmioStout.bits.uop.sqIdx := deqPtrExt(0)
-  io.vecmmioStout.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
-  io.vecmmioStout.bits.debug.isMMIO := true.B
-  io.vecmmioStout.bits.debug.paddr := DontCare
-  io.vecmmioStout.bits.debug.isPerfCnt := false.B
-  io.vecmmioStout.bits.debug.vaddr := DontCare
-  // Remove MMIO inst from store queue after MMIO request is being sent
-  // That inst will be traced by uncache state machine
-  when (io.vecmmioStout.fire) {
-    allocated(deqPtr) := false.B
-  }
 
   /**
     * ROB commits store instructions (mark them as committed)
@@ -1342,8 +1329,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.sqFull := !allowEnqueue
   XSPerfAccumulate("mmioCycle", uncacheState =/= s_idle) // lq is busy dealing with uncache req
   XSPerfAccumulate("mmioCnt", io.uncache.req.fire)
-  XSPerfAccumulate("mmio_wb_success", (io.mmioStout.fire) || io.vecmmioStout.fire)
-  XSPerfAccumulate("mmio_wb_blocked", (io.mmioStout.valid && !io.mmioStout.ready) || (io.vecmmioStout.valid && !io.vecmmioStout.ready))
+  XSPerfAccumulate("mmio_wb_success", io.mmioStout.fire)
+  XSPerfAccumulate("mmio_wb_blocked", io.mmioStout.valid && !io.mmioStout.ready)
   XSPerfAccumulate("validEntryCnt", distanceBetween(enqPtrExt(0), deqPtrExt(0)))
   XSPerfAccumulate("cmtEntryCnt", distanceBetween(cmtPtrExt(0), deqPtrExt(0)))
   XSPerfAccumulate("nCmtEntryCnt", distanceBetween(enqPtrExt(0), cmtPtrExt(0)))

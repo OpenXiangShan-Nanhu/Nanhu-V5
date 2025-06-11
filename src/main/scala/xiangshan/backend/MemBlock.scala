@@ -314,6 +314,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     val outer_hc_perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val memPredUpdate = Input(new MemPredUpdateReq)
 
+    val power = new Bundle{
+      val flushSb = Input(Bool())
+      val sbIsEmpty = Output(Bool())
+    }
+
     // reset signals of frontend & backend are generated in memblock
     val reset_backend = Output(Reset())
     // Reset singal from frontend.
@@ -1328,14 +1333,16 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // flush sbuffer
   val cmoFlush = lsq.io.flushSbuffer.valid
   val fenceFlush = io.ooo_to_mem.flushSb
+  val shutOffFlush = io.power.flushSb
   val atomicsFlush = atomicsUnit.io.flush_sbuffer.valid || vSegmentUnit.io.flush_sbuffer.valid
   val stIsEmpty = sbuffer.io.flush.empty && uncache.io.flush.empty
   io.mem_to_ooo.sbIsEmpty := RegNext(stIsEmpty)
+  io.power.sbIsEmpty := RegNext(stIsEmpty)
 
   // if both of them tries to flush sbuffer at the same time
   // something must have gone wrong
   assert(!(fenceFlush && atomicsFlush && cmoFlush))
-  sbuffer.io.flush.valid := RegNext(fenceFlush || atomicsFlush || cmoFlush)
+  sbuffer.io.flush.valid := RegNext(fenceFlush || atomicsFlush || cmoFlush || shutOffFlush)
   uncache.io.flush.valid := sbuffer.io.flush.valid
 
   // AtomicsUnit: AtomicsUnit will override other control signials,

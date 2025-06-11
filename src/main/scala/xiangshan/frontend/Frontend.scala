@@ -61,6 +61,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
 {
   val io = IO(new Bundle() {
     val hartId = Input(UInt(hartIdLen.W))
+    val halt = Input(Bool())
     val reset_vector = Input(UInt(PAddrBits.W))
     val fencei = Input(Bool())
     val ptw = new TlbPtwIO()
@@ -76,6 +77,9 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
         val bpRight = Output(UInt(XLEN.W))
         val bpWrong = Output(UInt(XLEN.W))
       }
+    }
+    val power = new Bundle {
+      val fencei = Input(Bool())
     }
     val resetInFrontend = Output(Bool())
     val debugTopDown = new Bundle {
@@ -117,6 +121,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   // bpu ctrl
   bpu.io.ctrl := csrCtrl.bp_ctrl
   bpu.io.reset_vector := io.reset_vector
+  bpu.io.halt := io.halt
 
   // pmp
   val PortNumber = ICacheParameters().PortNumber
@@ -177,7 +182,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   icache.io.csr_pf_enable     := RegNext(csrCtrl.l1I_pf_enable)
   icache.io.csr_parity_enable := RegNext(csrCtrl.icache_parity_enable)
 
-  icache.io.fencei := RegNext(io.fencei)
+  icache.io.fencei := RegNext(io.fencei || io.power.fencei)
 
   //IFU-Ibuffer
   ifu.io.toIbuffer    <> ibuffer.io.in

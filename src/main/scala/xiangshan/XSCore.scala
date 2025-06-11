@@ -92,6 +92,13 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     val l2_tlb_req = Flipped(new TlbRequestIO(nRespDups = 2))
     val l2_pmp_resp = new PMPRespBundle
     val l2PfqBusy = Input(Bool())
+    val power = new Bundle {
+      val wfiCtrRst = Input(Bool())
+      val timeout = Output(Bool())
+      val flushSb = Input(Bool())
+      val sbIsEmpty = Output(Bool())
+      val fencei = Input(Bool())
+    }
     val debugTopDown = new Bundle {
       val robTrueCommit = Output(UInt(64.W))
       val robHeadPaddr = Valid(UInt(PAddrBits.W))
@@ -112,6 +119,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   val memBlock = outer.memBlock.module
 
   frontend.io.hartId := memBlock.io.inner_hartId
+  frontend.io.halt := backend.io.toTop.cpuHalted
   frontend.io.reset_vector := memBlock.io.inner_reset_vector
   frontend.io.softPrefetch <> memBlock.io.ifetchPrefetch
   frontend.io.backend <> backend.io.frontend
@@ -119,6 +127,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   frontend.io.tlbCsr <> backend.io.frontendTlbCsr
   frontend.io.csrCtrl <> backend.io.frontendCsrCtrl
   frontend.io.fencei <> backend.io.fenceio.fencei
+  frontend.io.power.fencei := io.power.fencei
 
   backend.io.fromTop := memBlock.io.mem_to_ooo.topToBackendBypass
 
@@ -176,6 +185,8 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   backend.io.perf.perfEventsBackend := DontCare
   backend.io.perf.retiredInstr := DontCare
   backend.io.perf.ctrlInfo := DontCare
+  backend.io.power.wfiCtrRst := io.power.wfiCtrRst
+  io.power.timeout := backend.io.power.timeout
 
   // top -> memBlock
   memBlock.io.fromTopToBackend.clintTime := io.clintTime
@@ -228,6 +239,9 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.l2_pmp_resp <> io.l2_pmp_resp
   memBlock.io.l2_hint.bits.isKeyword := io.l2_hint.bits.isKeyword
   memBlock.io.l2PfqBusy := io.l2PfqBusy
+
+  memBlock.io.power.flushSb := io.power.flushSb
+  io.power.sbIsEmpty := memBlock.io.power.sbIsEmpty
 
   // if l2 prefetcher use stream prefetch, it should be placed in XSCore
 

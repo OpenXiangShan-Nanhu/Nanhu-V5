@@ -244,6 +244,8 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   ctrlBlock.io.redirectPcRead <> pcTargetMem.io.toCtrl.redirectRead
   ctrlBlock.io.exceptionPcRead <> pcTargetMem.io.toCtrl.exceptionRead
   ctrlBlock.io.tracePcRead <> pcTargetMem.io.toCtrl.tracePcRead
+  ctrlBlock.io.power <> io.power
+
   io.memPredUpdate := ctrlBlock.io.memPredUpdate
 
   intScheduler.io.fromTop.hartId := io.fromTop.hartId
@@ -894,6 +896,11 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
 
   val csrCustomCtrl = Output(new CustomCSRCtrlIO)
   val memPredUpdate = Output(new MemPredUpdateReq)
+
+  val power = new Bundle {
+    val wfiCtrRst = Input(Bool())
+    val timeout = Output(Bool())
+  }
 
   val debugTopDown = new Bundle {
     val fromRob = new RobCoreTopDownIO

@@ -394,33 +394,26 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val index = io.enq.req(i).bits.sqIdx
     val enqInstr = io.enq.req(i).bits.instr.asTypeOf(new XSInstBitFields)
     when (canEnqueue(i) && !enqCancel(i)) {
-      // The maximum 'numLsElem' number that can be emitted per dispatch port is:
-      //    16 2 2 2 2 2.
-      // Therefore, VecMemLSQEnqIteratorNumberSeq = Seq(16, 2, 2, 2, 2, 2)
-      for (j <- 0 until VecMemLSQEnqIteratorNumberSeq(i)) {
-        when (j.U < validVStoreOffset(i)) {
-          uop((index + j.U).value) := io.enq.req(i).bits
-          // NOTE: the index will be used when replay
-          uop((index + j.U).value).sqIdx := sqIdx + j.U
-          vecLastFlow((index + j.U).value) := Mux((j + 1).U === validVStoreOffset(i), io.enq.req(i).bits.lastUop, false.B)
-          allocated((index + j.U).value) := true.B
-          datavalid((index + j.U).value) := false.B
-          addrvalid((index + j.U).value) := false.B
-          unaligned((index + j.U).value) := false.B
-          committed((index + j.U).value) := false.B
-          pending((index + j.U).value) := false.B
-          prefetch((index + j.U).value) := false.B
-          mmio((index + j.U).value) := false.B
-          nc((index + j.U).value) := false.B
-          isVec((index + j.U).value) := enqInstr.isVecStore // check vector store by the encoding of inst
-          vecMbCommit((index + j.U).value) := false.B
-          vecDataValid((index + j.U).value) := false.B
-          hasException((index + j.U).value) := false.B
-          waitStoreS2((index + j.U).value) := true.B
-          XSError(!io.enq.canAccept || !io.enq.lqCanAccept, s"must accept $i\n")
-          XSError(index.value =/= sqIdx.value, s"must be the same entry $i\n")
-        }
-      }
+        uop((index).value) := io.enq.req(i).bits
+        // NOTE: the index will be used when replay
+        uop((index).value).sqIdx := sqIdx
+        vecLastFlow((index).value) := false.B
+        allocated((index).value) := true.B
+        datavalid((index).value) := false.B
+        addrvalid((index).value) := false.B
+        unaligned((index).value) := false.B
+        committed((index).value) := false.B
+        pending((index).value) := false.B
+        prefetch((index).value) := false.B
+        mmio((index).value) := false.B
+        nc((index).value) := false.B
+        isVec((index).value) := enqInstr.isVecStore // check vector store by the encoding of inst
+        vecMbCommit((index).value) := false.B
+        vecDataValid((index).value) := false.B
+        hasException((index).value) := false.B
+        waitStoreS2((index).value) := true.B
+        XSError(!io.enq.canAccept || !io.enq.lqCanAccept, s"must accept $i\n")
+        XSError(index.value =/= sqIdx.value, s"must be the same entry $i\n")
     }
     io.enq.resp(i) := sqIdx
   }

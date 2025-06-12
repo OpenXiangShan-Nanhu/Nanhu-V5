@@ -997,6 +997,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
   // val cmoUnit = Module(new CMOUnit(edge))
 
+  val miss_req_pipe_reg_valid = RegInit(false.B)
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))
   val acquire_from_pipereg = Wire(chiselTypeOf(io.mem_acquire))
 
@@ -1038,6 +1039,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
    *
    */
   when(io.req.valid){
+    miss_req_pipe_reg_valid   := true.B
     miss_req_pipe_reg.req     := io.req.bits
   }
   // miss_req_pipe_reg.req     := io.req.bits
@@ -1122,7 +1124,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   // cmoUnit.io.cmo_req <> io.cmoOpReq
   // cmoUnit.io.cmo_resp <> io.cmoOpResp
-  val pipeHasCmo = miss_req_pipe_reg.req.isCMO
+  val pipeHasCmo = miss_req_pipe_reg.req.isCMO && miss_req_pipe_reg_valid
   val mshrHasCmo = entries.map { e => e.io.isCMO }.reduce(_ || _)
   io.cmofinish := !pipeHasCmo && !mshrHasCmo
 
@@ -1180,6 +1182,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       when(miss_req_pipe_reg.reg_valid() && miss_req_pipe_reg.mshr_id === i.U) {
         e.io.miss_req_pipe_reg := miss_req_pipe_reg
+        miss_req_pipe_reg_valid := false.B
       }.otherwise {
         e.io.miss_req_pipe_reg       := DontCare
         e.io.miss_req_pipe_reg.merge := false.B

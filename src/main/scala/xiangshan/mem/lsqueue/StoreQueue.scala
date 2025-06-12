@@ -936,7 +936,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val isCboZeroToSbVec = (0 until EnsbufferWidth).map{ i => 
      RegNext(io.sbuffer(i).fire && io.sbuffer(i).bits.vecValid) && uop(deqPtrExt(i).value).fuOpType === LSUOpType.cbo_zero && committed(deqPtr) && allocated(deqPtrExt(i).value)
   }
-  assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
+  // assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
   
   val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _)
   // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 

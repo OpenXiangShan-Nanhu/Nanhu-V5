@@ -55,6 +55,7 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     val lqFull           = Output(Bool())
   })
 
+
   println("LoadQueueRAW: size " + LoadQueueRAWSize)
 
   val allocated = RegInit(VecInit(List.fill(LoadQueueRAWSize)(false.B))) // The control signals need to explicitly indicate the initial value
@@ -66,7 +67,8 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     numWrite = LoadPipelineWidth,
     numWBank = LoadQueueNWriteBanks,
     numWDelay = 2,
-    numCamPort = StorePipelineWidth
+    numCamPort = StorePipelineWidth,
+    enableCacheLineCheck = true
   ))
   paddrModule.io.ren := List.fill(LoadPipelineWidth)(false.B)
   paddrModule.io.raddr := List.fill(LoadPipelineWidth)(0.U(LoadQueueRAWSize.W))
@@ -296,6 +298,7 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
 
   def detectRollback(i: Int) = {
     paddrModule.io.violationMdataValid(i) := RegNext(storeIn(i).valid)
+    paddrModule.io.violationCheckLine.get(i) := storeIn(i).bits.wlineflag
     paddrModule.io.violationMdata(i) := RegEnable(storeIn(i).bits.paddr, storeIn(i).valid)
     maskModule.io.violationMdataValid(i) := RegNext(storeIn(i).valid)
     maskModule.io.violationMdata(i) := RegEnable(storeIn(i).bits.mask, storeIn(i).valid)

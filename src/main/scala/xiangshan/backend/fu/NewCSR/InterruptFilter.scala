@@ -288,11 +288,13 @@ class InterruptFilter extends Module {
 
   // support debug interrupt
   // support smrnmi when NMIE is 0, all interrupt disable
-  val disableInterrupt = io.in.debugMode || (io.in.dcsr.STEP.asBool && !io.in.dcsr.STEPIE.asBool) || !io.in.mnstatusNMIE
-  val debugInterupt = ((io.in.debugIntr && !io.in.debugMode) << CSRConst.IRQ_DEBUG).asUInt
+  val disableDebugIntr = io.in.debugMode || (io.in.dcsr.STEP.asBool && !io.in.dcsr.STEPIE.asBool)
+  val enableDebugIntr = io.in.debugIntr && !disableDebugIntr
 
-  val normalIntrVec = mIRVec | hsIRVec | vsMapHostIRVec | debugInterupt
-  val intrVec = VecInit(Mux(io.in.nmi, io.in.nmiVec, normalIntrVec).asBools.map(IR => IR && !disableInterrupt)).asUInt
+  val disableAllIntr = disableDebugIntr || !io.in.mnstatusNMIE
+
+  val normalIntrVec = mIRVec | hsIRVec | vsMapHostIRVec
+  val intrVec = Mux(disableAllIntr, 0.U, Mux(io.in.nmi, io.in.nmiVec, normalIntrVec))
 
   // virtual interrupt with hvictl injection
   val vsIRModeCond = privState.isModeVS && vsstatusSIE || privState < PrivState.ModeVS

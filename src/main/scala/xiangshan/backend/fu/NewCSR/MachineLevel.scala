@@ -598,7 +598,7 @@ class MipBundle extends InterruptPendingBundle {
   //
   // Ref: riscv interrupt spec - 2.1 Machine-level CSRs
   // Existing CSRs mie, mip, and mideleg are widended to 64 bits to support a total of 64 interrupt causes.
-  // this.getHS.foreach(_.setRW().withReset(0.U))
+  this.getHS.foreach(_.setRW().withReset(0.U))
   // this.getVS.foreach(_.setRW().withReset(0.U))
   this.LCOFIP.setRW().withReset(0.U)
 }

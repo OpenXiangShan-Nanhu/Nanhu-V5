@@ -905,7 +905,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val cmoAddr = get_block_addr(addrModule.io.rdata_p(0))
   // val deqCanDoCbom = GatedRegNext(LSUOpType.isCbom(uop(deqPtr).fuOpType) && cmo(deqPtr) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr))
   // dontTouch(deqCanDoCbom)
-  val deqCanDoCbom = GatedRegNext(LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && !hasException(deqPtr))
+  val deqCanDoCbom = LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && !hasException(deqPtr)
   dontTouch(deqCanDoCbom)
 
   when(deqCanDoCbom) {

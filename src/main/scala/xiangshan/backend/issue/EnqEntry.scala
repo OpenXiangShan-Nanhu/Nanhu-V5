@@ -115,6 +115,20 @@ class EnqEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams
                                                   enqDelay1ReplaceRC               -> false.B,
                                                 ))
       enqDelayRegCacheIdx.get(i)            := Mux(enqDelay1WakeupRC, enqDelay1WakeupRCIdx, entryReg.status.srcStatus(i).regCacheIdx.get)
+      
+      if(backendParams.debugEn && (backendParams.svaAssertEn || backendParams.svaCoverEn)) {
+        import xs.utils.cvl.advanced.CVL_ASSERT_MUTEX
+        CVL_ASSERT_MUTEX(
+          assertEn = backendParams.svaAssertEn,
+          coverEn = backendParams.svaCoverEn,
+          cvlLongSequence = backendParams.cvlLongSequence,
+          clock = clock,
+          reset = reset,
+          name = s"${params.getIQName}_EnqEntry_Src_${i}_RCHit_And_Wkup",
+          a = entryReg.status.srcStatus(i).useRegCache.get && validReg,
+          b = enqDelay1WakeupRC && enqDelayValidReg
+        )
+      }
     }
   }
 

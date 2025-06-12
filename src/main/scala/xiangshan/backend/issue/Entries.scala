@@ -26,6 +26,8 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
   private val OthersEntryNum      = params.numEntries - params.numEnq
   private val SimpEntryNum        = params.numSimp
   private val CompEntryNum        = params.numComp
+  require(OthersEntryNum == SimpEntryNum + CompEntryNum)
+  
   val io = IO(new EntriesIO)
 
   // only memAddrIQ use it

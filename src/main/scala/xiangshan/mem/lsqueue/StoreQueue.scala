@@ -903,13 +903,10 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // flag that infers whether the cbo inval/flush/clean has finished flushing sbuffer
   val cbomWaitFlushSb = RegInit(false.B)
   val cmoAddr = get_block_addr(addrModule.io.rdata_p(0))
-  // val deqCanDoCbom = GatedRegNext(LSUOpType.isCbom(uop(deqPtr).fuOpType) && cmo(deqPtr) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr))
-  // dontTouch(deqCanDoCbom)
   val deqCanDoCbom = LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && !hasException(deqPtr)
   dontTouch(deqCanDoCbom)
 
   when(deqCanDoCbom) {
-    // assert(!hasException(deqPtr),"why cbo has exception but wanna send req?")
     cbomValid := true.B
     cbomWaitFlushSb := true.B
   }

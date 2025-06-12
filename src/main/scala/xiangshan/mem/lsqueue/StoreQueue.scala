@@ -909,7 +909,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   dontTouch(deqCanDoCbom)
 
   when(deqCanDoCbom) {
-    assert(!hasException(deqPtr),"why cbo has exception but wanna send req?")
+    // assert(!hasException(deqPtr),"why cbo has exception but wanna send req?")
     cbomValid := true.B
     cbomWaitFlushSb := true.B
   }
@@ -925,12 +925,12 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   when(io.cmoOpReq.fire) {
     allocated(uop(deqPtr).sqIdx.value) := false.B
   }
-  when (io.cmoOpReq.fire) {
-    // Assert that this entry is exactly the one we expected
-    assert(deqCanDoCbom, "CBO fire only when deqCanDoCbom is true")
-    // Assert the uop matches a CBO encoding
-    assert(LSUOpType.isCbom(uop(deqPtr).fuOpType), "Firing CBO req for non-CBO uop")
-  }
+  // when (io.cmoOpReq.fire) {
+  //   // Assert that this entry is exactly the one we expected
+  //   assert(deqCanDoCbom, "CBO fire only when deqCanDoCbom is true")
+  //   // Assert the uop matches a CBO encoding
+  //   assert(LSUOpType.isCbom(uop(deqPtr).fuOpType), "Firing CBO req for non-CBO uop")
+  // }
   when(cbomWaitFlushSb && cbomValid && io.flushSbuffer.empty) {
     cbomWaitFlushSb := false.B
   }

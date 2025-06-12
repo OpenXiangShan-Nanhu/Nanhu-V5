@@ -30,7 +30,7 @@ import xs.utils.perf._
 
 // Data module define
 // These raw data modules are like SyncDataModuleTemplate, but support cam-like ops
-abstract class LqRawDataModule[T <: Data] (gen: T, numEntries: Int, numRead: Int, numWrite: Int, numWBank: Int, numWDelay: Int, numCamPort: Int = 0)(implicit p: Parameters) extends XSModule {
+abstract class LqRawDataModule[T <: Data] (gen: T, numEntries: Int, numRead: Int, numWrite: Int, numWBank: Int, numWDelay: Int, numCamPort: Int = 0, enableCacheLineCheck: Boolean = false)(implicit p: Parameters) extends XSModule {
   val io = IO(new Bundle() {
     val ren   = Input(Vec(numRead, Bool()))
     val raddr = Input(Vec(numRead, UInt(log2Up(numEntries).W)))
@@ -42,6 +42,8 @@ abstract class LqRawDataModule[T <: Data] (gen: T, numEntries: Int, numRead: Int
     val violationMdataValid = Input(Vec(numCamPort, Bool()))
     val violationMdata = Input(Vec(numCamPort, gen)) // addr
     val violationMmask = Output(Vec(numCamPort, Vec(numEntries, Bool()))) // cam result mask
+    // This `store` writes the whole `cacheline`.(cbo zero).
+    val violationCheckLine = OptionWrapper(enableCacheLineCheck, Input(Vec(numCamPort, Bool())))
     // refill cam: hit if addr is in the same cacheline
     val releaseMdataValid = Input(Vec(numCamPort, Bool()))
     val releaseMdata = Input(Vec(numCamPort, gen))
@@ -59,6 +61,7 @@ abstract class LqRawDataModule[T <: Data] (gen: T, numEntries: Int, numRead: Int
   require((numEntries % numWBank == 0), "numEntries must be divided by numWBank!")
 
   val numEntryPerBank = numEntries / numWBank
+  val dataWidth = gen.getWidth
 
   val data = Reg(Vec(numEntries, gen))
   // read ports
@@ -132,16 +135,28 @@ class LqPAddrModule[T <: UInt](
   numWrite: Int,
   numWBank: Int,
   numWDelay: Int = 1,
-  numCamPort: Int = 1)(implicit p: Parameters) extends LqRawDataModule(gen, numEntries, numRead, numWrite, numWBank, numWDelay, numCamPort)
+  numCamPort: Int = 1,
+  enableCacheLineCheck: Boolean = false, // Check the entire cacheline. when enabled, set `paddrOffset` correctly.
+  paddrOffset: Int // The least significant `paddrOffset` bits of paddr are neglected.
+  )(implicit p: Parameters) extends LqRawDataModule(gen, numEntries, numRead, numWrite, numWBank, numWDelay, numCamPort, enableCacheLineCheck)
   with HasDCacheParameters
 {
   // content addressed match
   // 128-bits aligned
+  val needCacheLineCheck = enableCacheLineCheck && DCacheLineOffset > paddrOffset
 
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
        when(io.violationMdataValid(i)) {
-        io.violationMmask(i)(j) := io.violationMdata(i)(PAddrBits-1, DCacheVWordOffset) === data(j)(PAddrBits-1, DCacheVWordOffset)
+        // io.violationMmask(i)(j) := io.violationMdata(i)(PAddrBits-1, DCacheVWordOffset) === data(j)(PAddrBits-1, DCacheVWordOffset)
+        if (needCacheLineCheck) {
+          val cacheLineOffset = DCacheLineOffset - paddrOffset
+          val cacheLineHit    = io.violationMdata(i)(dataWidth - 1, cacheLineOffset) === data(j)(dataWidth - 1, cacheLineOffset)
+          val lowAddrHit      = io.violationMdata(i)(cacheLineOffset - 1, 0) === data(j)(cacheLineOffset - 1, 0)
+          io.violationMmask(i)(j) := cacheLineHit && (io.violationCheckLine.get(i) || lowAddrHit)
+        } else {
+          io.violationMmask(i)(j) := io.violationMdata(i) === data(j)
+        }
       } .otherwise {
         io.violationMmask(i)(j) := false.B
       }

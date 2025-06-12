@@ -946,7 +946,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   // 128KBL1: FIXME: provide vaddr for l2
 
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
-  val dataBuffer = Module(new dataBuffer(MissqDataBufferDepth))
+  val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
   val cmoUnit = Module(new CMOUnit(edge))
 
@@ -1297,7 +1297,7 @@ class dataBufferWriteReq(implicit p: Parameters) extends DCacheBundle {
   val refill_count = Bool()
 }
 
-class dataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
+class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   val io = IO(new Bundle {
     val read = Flipped(ValidIO(new dataBufferReadReq))
     val rdata = Output(UInt(CacheLineSize.W))

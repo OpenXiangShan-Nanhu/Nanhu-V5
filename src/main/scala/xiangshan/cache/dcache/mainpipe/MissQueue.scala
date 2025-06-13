@@ -742,8 +742,8 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     // cannot accept prefetch req except when a memset patten is detected
     io.primary_ready := !req_valid && (!io.req.bits.isFromPrefetch || io.memSetPattenDetected) && !GatedValidRegNext(primary_fire)
   }
-  io.secondary_ready := should_merge(io.req.bits) && req.isCMO
-  io.secondary_reject := should_reject(io.req.bits) && req.isCMO
+  io.secondary_ready := should_merge(io.req.bits) && !req.isCMO
+  io.secondary_reject := should_reject(io.req.bits) && !req.isCMO
 
   // generate primary_ready & secondary_(ready | reject) for each miss request
 //  for (i <- 0 until reqNum) {

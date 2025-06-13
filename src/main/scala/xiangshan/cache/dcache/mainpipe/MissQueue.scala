@@ -631,14 +631,14 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val hasData = RegInit(true.B)
   val isDirty = RegInit(false.B)
   when (io.mem_grant.fire) {
+    w_grantfirst := true.B
+    grant_param := io.mem_grant.bits.param
+
     when(req.isCMO && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
     w_grantfirst := true.B
     w_grantlast  := true.B
     hasData      := false.B
-  } .otherwise {
-    w_grantfirst := true.B
-    grant_param := io.mem_grant.bits.param
-    when (edge.hasData(io.mem_grant.bits)) {
+    } .elsewhen (edge.hasData(io.mem_grant.bits)) {
       w_grantlast := w_grantlast || refill_done
       hasData := true.B
     }.otherwise {
@@ -647,7 +647,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
       w_grantlast := true.B
       hasData := false.B
     }
-  }
 
     error := io.mem_grant.bits.denied || io.mem_grant.bits.corrupt || error
 

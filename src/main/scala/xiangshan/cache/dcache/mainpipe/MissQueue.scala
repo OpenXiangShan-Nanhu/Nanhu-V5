@@ -472,8 +472,8 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val prefetch_info = new DCacheBundle {
       val late_prefetch = Output(Bool())
     }
-    val nMaxPrefetchEntry = Input(UInt(64.W))
     val matched = Output(Bool())
+    val nMaxPrefetchEntry = Input(UInt(64.W))
   })
 
   assert(!RegNext(io.primary_valid && !io.primary_ready))
@@ -1127,7 +1127,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val mshrHasCmo = entries.map { e => e.io.isCMO }.reduce(_ || _)
   io.cmofinish := !pipeHasCmo && !mshrHasCmo
 
-  val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = 14)
+  val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = 28)
   entries.zipWithIndex.foreach {
     case (e, i) =>
       val former_primary_ready = if(i == 0)

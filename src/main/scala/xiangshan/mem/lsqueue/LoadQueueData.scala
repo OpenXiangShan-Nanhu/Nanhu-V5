@@ -61,7 +61,7 @@ abstract class LqRawDataModule[T <: Data] (gen: T, numEntries: Int, numRead: Int
   require((numEntries % numWBank == 0), "numEntries must be divided by numWBank!")
 
   val numEntryPerBank = numEntries / numWBank
-  val dataWidth = gen.getWidth
+  val dataWidth = gen.getWidth    // namely: PAddrBits=48
 
   val data = Reg(Vec(numEntries, gen))
   // read ports
@@ -136,26 +136,23 @@ class LqPAddrModule[T <: UInt](
   numWBank: Int,
   numWDelay: Int = 1,
   numCamPort: Int = 1,
-  enableCacheLineCheck: Boolean = false, // Check the entire cacheline. when enabled, set `paddrOffset` correctly.
-  paddrOffset: Int // The least significant `paddrOffset` bits of paddr are neglected.
+  enableCacheLineCheck: Boolean = false, // Check the entire cacheline. when enabled, set `DCacheVWordOffset` correctly.
   )(implicit p: Parameters) extends LqRawDataModule(gen, numEntries, numRead, numWrite, numWBank, numWDelay, numCamPort, enableCacheLineCheck)
   with HasDCacheParameters
 {
   // content addressed match
   // 128-bits aligned
-  val needCacheLineCheck = enableCacheLineCheck && DCacheLineOffset > paddrOffset
 
+  val needCacheLineCheck = enableCacheLineCheck && DCacheLineOffset > DCacheVWordOffset   // DCacheLineOffset = 6, and DCacheVWordOffset=4
   for (i <- 0 until numCamPort) {
     for (j <- 0 until numEntries) {
        when(io.violationMdataValid(i)) {
-        // io.violationMmask(i)(j) := io.violationMdata(i)(PAddrBits-1, DCacheVWordOffset) === data(j)(PAddrBits-1, DCacheVWordOffset)
         if (needCacheLineCheck) {
-          val cacheLineOffset = DCacheLineOffset - paddrOffset
-          val cacheLineHit    = io.violationMdata(i)(dataWidth - 1, cacheLineOffset) === data(j)(dataWidth - 1, cacheLineOffset)
-          val lowAddrHit      = io.violationMdata(i)(cacheLineOffset - 1, 0) === data(j)(cacheLineOffset - 1, 0)
+          val cacheLineHit    = io.violationMdata(i)(dataWidth - 1, DCacheLineOffset) === data(j)(dataWidth - 1, DCacheLineOffset)
+          val lowAddrHit      = io.violationMdata(i)(DCacheLineOffset - 1, DCacheVWordOffset) === data(j)(DCacheLineOffset - 1, DCacheVWordOffset)
           io.violationMmask(i)(j) := cacheLineHit && (io.violationCheckLine.get(i) || lowAddrHit)
         } else {
-          io.violationMmask(i)(j) := io.violationMdata(i) === data(j)
+          io.violationMmask(i)(j) := io.violationMdata(i)(PAddrBits-1, DCacheVWordOffset) === data(j)(PAddrBits-1, DCacheVWordOffset)
         }
       } .otherwise {
         io.violationMmask(i)(j) := false.B

@@ -55,11 +55,6 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     val lqFull           = Output(Bool())
   })
 
-  private def PartialPAddrWidth: Int = 24
-  private def paddrOffset: Int = DCacheVWordOffset
-  private def genPartialPAddr(paddr: UInt) = {
-    paddr(DCacheVWordOffset + PartialPAddrWidth - 1, paddrOffset)
-  }
 
   println("LoadQueueRAW: size " + LoadQueueRAWSize)
 
@@ -73,8 +68,7 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
     numWBank = LoadQueueNWriteBanks,
     numWDelay = 2,
     numCamPort = StorePipelineWidth,
-    enableCacheLineCheck = true,
-    paddrOffset = paddrOffset
+    enableCacheLineCheck = true
   ))
   paddrModule.io.ren := List.fill(LoadPipelineWidth)(false.B)
   paddrModule.io.raddr := List.fill(LoadPipelineWidth)(0.U(LoadQueueRAWSize.W))

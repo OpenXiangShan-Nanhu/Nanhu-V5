@@ -98,7 +98,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     numWDelay = 2,
     numCamPort = LoadPipelineWidth,
     enableCacheLineCheck = false, // Now `RARQueue` has no need to check cacheline.
-    paddrOffset = 0 // If you need to check cacheline, set the offset relative to the original paddr correctly.
   ))
   paddrModule.io.ren := List.fill(LoadPipelineWidth)(false.B)
   paddrModule.io.raddr := List.fill(LoadPipelineWidth)(0.U(VirtualLoadQueueSize.W))

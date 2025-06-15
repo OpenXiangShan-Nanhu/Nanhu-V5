@@ -737,10 +737,14 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
         val enableS2xlate = entries(i).req_info.s2xlate =/= noS2xlate
         val s1Pbmte = Mux(enableS2xlate, io.csr.hPBMTE, io.csr.mPBMTE)
 
-        state(i) := Mux(entries(i).req_info.s2xlate === allStage && !(ptes(index).isPf(0.U, s1Pbmte) || !ptes(index).isLeaf() || ptes(index).isAf() || ptes(index).isStage1Gpf(io.csr.hgatp.mode))
-                , state_last_hptw_req, state_mem_out)
+//        state(i) := Mux(entries(i).req_info.s2xlate === allStage && !(ptes(index).isPf(0.U, s1Pbmte) || !ptes(index).isLeaf() || ptes(index).isAf() || ptes(index).isStage1Gpf(io.csr.hgatp.mode))
+//                , state_last_hptw_req, state_mem_out)
+        val allStageExcp = ptes(index).isPf(0.U, s1Pbmte) || !ptes(index).isLeaf() || ptes(index).isStage1Gpf(io.csr.vsatp.mode)
+          state(i) := Mux((entries(i).req_info.s2xlate === allStage && !allStageExcp),
+          state_last_hptw_req,state_mem_out)
         mem_resp_hit(i) := true.B
         entries(i).ppn := ptes(index).getPPN() // for last stage 2 translation
+        // af will be judged in L2 TLB `contiguous_pte_to_merge_ptwResp`
         entries(i).hptw_resp.gpf := Mux(entries(i).req_info.s2xlate === allStage, ptes(index).isStage1Gpf(io.csr.hgatp.mode), false.B)
       }
     }

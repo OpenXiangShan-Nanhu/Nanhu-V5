@@ -513,6 +513,8 @@ class L2TLBImp(outer: L2TLB)(implicit p: Parameters) extends PtwModule(outer) wi
     mergeArb(i).in(outArbMqPort).bits.s2xlate := llptw_out.bits.req_info.s2xlate
     mergeArb(i).in(outArbMqPort).bits.s1 := Mux(
       llptw_out.bits.first_s2xlate_fault, llptw_stage1(llptw_out.bits.id),
+      // When G-stage triggers gpf | gaf, `first_s2xlate_fault` will be trueAdd commentMore actions
+      // So Here only including pf | af in Stage1, or Stage1Gpf (gpf = llptw_out.bits.h_resp.gpf)
       contiguous_pte_to_merge_ptwResp(
         resp_pte_sector(llptw_out.bits.id).asUInt, llptw_out.bits.req_info.vpn, llptw_out.bits.af, 
         true, s2xlate = llptw_out.bits.req_info.s2xlate, mPBMTE = mPBMTE, hPBMTE = hPBMTE, gpf = llptw_out.bits.h_resp.gpf
@@ -576,8 +578,17 @@ class L2TLBImp(outer: L2TLB)(implicit p: Parameters) extends PtwModule(outer) wi
       ptw_resp.pbmt := pte_in.pbmt
       ptw_resp.perm.map(_ := pte_in.getPerm())
       ptw_resp.tag := vpn(vpnLen - 1, sectortlbwidth)
-      ptw_resp.pf := (if (af_first) !af else true.B) && (pte_in.isPf(0.U, pbmte) || !pte_in.isLeaf())
-      ptw_resp.af := (if (!af_first) pte_in.isPf(0.U, pbmte) else true.B) && (af || (Mux(s2xlate === allStage, false.B, pte_in.isAf()) && !(hasS2xlate && gpf)))
+//      ptw_resp.pf := (if (af_first) !af else true.B) && (pte_in.isPf(0.U, pbmte) || !pte_in.isLeaf())
+//      ptw_resp.af := (if (!af_first) pte_in.isPf(0.U, pbmte) else true.B) && (af || (Mux(s2xlate === allStage, false.B, pte_in.isAf()) && !(hasS2xlate && gpf)))
+// LLPTW will not handle onlyS2 situationsAdd commentMore actions
+// noS2xlate. pf: allStagePf; af: af(pmp_af) || pte_in.isAf(ppn_af); gpf: never
+// onlyStage1. pf: allStagePf; af: af(pmp_af) || pte_in.isAf(ppn_af); gpf: never
+// allStage. pf: allStagePf; af: af(pmp_af) && !gpf; gpf: incoming parameter `gpf`
+// priority: af (pmp check) > pf (pte check) > af (pte check)
+      val isPf = pte_in.isPf(0.U, pbmte) || !pte_in.isLeaf()
+      val isAf = pte_in.isAf() && (s2xlate === noS2xlate || s2xlate === onlyStage1) && !isPf
+      ptw_resp.pf := (if (af_first) !af else true.B) && isPf
+      ptw_resp.af := (if (af_first) true.B else !isPf) && (af || isAf)
       ptw_resp.v := !ptw_resp.pf
       ptw_resp.prefetch := DontCare
       ptw_resp.asid := Mux(hasS2xlate, vsatp.asid, satp.asid)

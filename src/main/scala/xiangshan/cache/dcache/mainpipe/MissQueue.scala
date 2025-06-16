@@ -1127,7 +1127,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val mshrHasCmo = entries.map { e => e.io.isCMO }.reduce(_ || _)
   io.cmofinish := !pipeHasCmo && !mshrHasCmo
 
-  val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = (nMissEntries-nMissEntries/8))
+  val nMaxPrefetchEntry = Constantin.createRecord(s"nMaxPrefetchEntry${p(XSCoreParamsKey).HartId}", initValue = (cfg.nMissEntries-cfg.nMissEntries/8))
   entries.zipWithIndex.foreach {
     case (e, i) =>
       val former_primary_ready = if(i == 0)

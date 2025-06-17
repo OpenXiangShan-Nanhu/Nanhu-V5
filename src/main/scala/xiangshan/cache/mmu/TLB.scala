@@ -91,6 +91,7 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
     (csr.hgatp.mode === 0.U) -> onlyStage1
   )))
   val need_gpa = RegInit(false.B)
+  val need_gpa_wire = WireInit(false.B)
   val need_gpa_robidx = Reg(new RobPtr)
   val need_gpa_vpn = Reg(UInt(vpnLen.W))
   val resp_gpa_gvpn = Reg(UInt(ptePPNLen.W))
@@ -102,24 +103,41 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
 
   val Sv39Enable = csr.satp.mode === 8.U
   val Sv48Enable = csr.satp.mode === 9.U
-  val Sv39x4Enable = csr.vsatp.mode === 8.U || csr.hgatp.mode === 8.U
-  val Sv48x4Enable = csr.vsatp.mode === 9.U || csr.hgatp.mode === 9.U
+//  val Sv39x4Enable = csr.vsatp.mode === 8.U || csr.hgatp.mode === 8.U
+//  val Sv48x4Enable = csr.vsatp.mode === 9.U || csr.hgatp.mode === 9.U
+  val Sv39vsEnable = csr.vsatp.mode === 8.U
+  val Sv48vsEnable = csr.vsatp.mode === 9.U
+  val Sv39x4Enable = csr.hgatp.mode === 8.U
+  val Sv48x4Enable = csr.hgatp.mode === 9.U
+
   val vmEnable = (0 until Width).map(i => !(isHyperInst(i) || virt_out(i)) && (
     if (EnbaleTlbDebug) (Sv39Enable || Sv48Enable)
     else (Sv39Enable || Sv48Enable) && (mode(i) < ModeM))
   )
-  val s2xlateEnable = (0 until Width).map(i => (isHyperInst(i) || virt_out(i)) && (Sv39x4Enable || Sv48x4Enable) && (mode(i) < ModeM))
+//  val s2xlateEnable = (0 until Width).map(i => (isHyperInst(i) || virt_out(i)) && (Sv39x4Enable || Sv48x4Enable) && (mode(i) < ModeM))
+  val s2xlateEnable = (0 until Width).map(i =>
+    (isHyperInst(i) || virt_out(i)) &&
+    (Sv39vsEnable || Sv48vsEnable || Sv39x4Enable || Sv48x4Enable) &&
+    (mode(i) < ModeM)
+  )
+
   val portTranslateEnable = (0 until Width).map(i => (vmEnable(i) || s2xlateEnable(i)) && RegEnable(!req(i).bits.no_translate, req(i).valid))
 
   // pre fault: check fault before real do translate
   val prepf = WireInit(VecInit(Seq.fill(Width)(false.B)))
   val pregpf = WireInit(VecInit(Seq.fill(Width)(false.B)))
   val preaf = WireInit(VecInit(Seq.fill(Width)(false.B)))
+  val premode = (0 until Width).map(i => Mux(req_in(i).bits.hyperinst, csr.priv.spvp, mode_tmp))
   val prevmEnable = (0 until Width).map(i => !(virt_in || req_in(i).bits.hyperinst) && (
     if (EnbaleTlbDebug) (Sv39Enable || Sv48Enable)
     else (Sv39Enable || Sv48Enable) && (mode(i) < ModeM))
   )
-  val pres2xlateEnable = (0 until Width).map(i => (virt_in || req_in(i).bits.hyperinst) && (Sv39x4Enable || Sv48x4Enable) && (mode(i) < ModeM))
+//  val pres2xlateEnable = (0 until Width).map(i => (virt_in || req_in(i).bits.hyperinst) && (Sv39x4Enable || Sv48x4Enable) && (mode(i) < ModeM))
+  val pres2xlateEnable = (0 until Width).map(i =>
+    (virt_in || req_in(i).bits.hyperinst) &&
+    (Sv39vsEnable || Sv48vsEnable || Sv39x4Enable || Sv48x4Enable) &&
+    (premode(i) < ModeM)
+  )
   (0 until Width).foreach{i =>
     val pf48 = SignExt(req(i).bits.fullva(47, 0), XLEN) =/= req(i).bits.fullva
     val pf39 = SignExt(req(i).bits.fullva(38, 0), XLEN) =/= req(i).bits.fullva
@@ -134,7 +152,13 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
           } .elsewhen (Sv39x4Enable) {
             pregpf(i) := gpf39
           }
-        } .otherwise {
+        } .elsewhen (req_in_s2xlate(i) === onlyStage1 || req_in_s2xlate(i) === allStage) {
+          when (Sv48vsEnable) {
+            prepf(i) := pf48
+          } .elsewhen (Sv39vsEnable) {
+            prepf(i) := pf39
+          }
+        } .otherwise { // noS2xlate
           when (Sv48Enable) {
             prepf(i) := pf48
           } .elsewhen (Sv39Enable) {
@@ -147,7 +171,10 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
     }
   }
 
-  val refill = ptw.resp.fire && !(ptw.resp.bits.getGpa) && !flush_mmu
+//  val refill = ptw.resp.fire && !(ptw.resp.bits.getGpa) && !flush_mmu
+//val refill = ptw.resp.fire && !(ptw.resp.bits.getGpa) && !need_gpa && !flush_mmu
+val refill = ptw.resp.fire && !(ptw.resp.bits.getGpa) && !need_gpa && !need_gpa_wire && !flush_mmu
+  // prevent ptw refill when: 1) it's a getGpa request; 2) l1tlb is in need_gpa state; 3) mmu is being flushed.
   refill_to_mem := DontCare
   val entries = Module(new TlbStorageWrapper(Width, q, nRespDups))
   entries.io.base_connect(sfence, csr, csr.satp)
@@ -209,6 +236,7 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
       resp_gpa_refill := false.B
       need_gpa_vpn := 0.U
     }.elsewhen (req_out_v(i) && !p_hit && !(resp_gpa_refill && need_gpa_vpn_hit) && !isOnlys2xlate && hasGpf(i) && need_gpa === false.B && !io.requestor(i).req_kill && !isPrefetch && !currentRedirect && !lastCycleRedirect) {
+      need_gpa_wire := true.B
       need_gpa := true.B
       need_gpa_vpn := get_pn(req_out(i).vaddr)
       resp_gpa_refill := false.B
@@ -419,8 +447,24 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
     val ptw_already_back = GatedValidRegNext(ptw.resp.fire) && req_s2xlate === ptw_resp_bits_reg.s2xlate && ptw_resp_bits_reg.hit(get_pn(req_out(idx).vaddr), csr.satp.asid, csr.vsatp.asid, csr.hgatp.vmid, allType = true)
     val ptw_getGpa = req_need_gpa && hitVec(idx)
     val need_gpa_vpn_hit = need_gpa_vpn === get_pn(req_out(idx).vaddr)
-    io.ptw.req(idx).valid := req_out_v(idx) && missVec(idx) && !(ptw_just_back || ptw_already_back || (!need_gpa_vpn_hit && req_out_v(idx) && need_gpa && !resp_gpa_refill && ptw_getGpa)) // TODO: remove the regnext, timing
-    io.tlbreplay(idx) := req_out_v(idx) && missVec(idx) && (ptw_just_back || ptw_already_back || (!need_gpa_vpn_hit && req_out_v(idx) && need_gpa && !resp_gpa_refill && ptw_getGpa))
+//    io.ptw.req(idx).valid := req_out_v(idx) && missVec(idx) && !(ptw_just_back || ptw_already_back || (!need_gpa_vpn_hit && req_out_v(idx) && need_gpa && !resp_gpa_refill && ptw_getGpa)) // TODO: remove the regnext, timing
+//    io.tlbreplay(idx) := req_out_v(idx) && missVec(idx) && (ptw_just_back || ptw_already_back || (!need_gpa_vpn_hit && req_out_v(idx) && need_gpa && !resp_gpa_refill && ptw_getGpa))
+
+    io.ptw.req(idx).valid := false.B;
+    io.tlbreplay(idx) := false.B;
+
+    when (req_out_v(idx) && missVec(idx)) {
+      // NOTE: for an miss tlb request: either send a ptw request, or ask for a replay
+      when (ptw_just_back || ptw_already_back) {
+        io.tlbreplay(idx) := true.B;
+      } .elsewhen (need_gpa && !need_gpa_vpn_hit && !resp_gpa_refill) {
+        // not send any unrelated ptw request when l1tlb is in need_gpa state
+        io.tlbreplay(idx) := true.B;
+      } .otherwise {
+        io.ptw.req(idx).valid := true.B;
+      }
+    }
+
     when (io.requestor(idx).req_kill && GatedValidRegNext(io.requestor(idx).req.fire)) {
       io.ptw.req(idx).valid := false.B
       io.tlbreplay(idx) := true.B
@@ -451,11 +495,7 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
       (csr.hgatp.mode === 0.U) -> onlyStage1
     ))
     val miss_req_s2xlate_reg = RegEnable(miss_req_s2xlate, io.ptw.req(idx).fire)
-    val hasS2xlate = miss_req_s2xlate_reg =/= noS2xlate
-    val onlyS2 = miss_req_s2xlate_reg === onlyStage2
-    val hit_s1 = io.ptw.resp.bits.s1.hit(miss_req_vpn, Mux(hasS2xlate, csr.vsatp.asid, csr.satp.asid), csr.hgatp.vmid, allType = true, false, hasS2xlate)
-    val hit_s2 = io.ptw.resp.bits.s2.hit(miss_req_vpn, csr.hgatp.vmid)
-    val hit = Mux(onlyS2, hit_s2, hit_s1) && io.ptw.resp.valid && miss_req_s2xlate_reg === io.ptw.resp.bits.s2xlate
+    val hit = io.ptw.resp.bits.hit(miss_req_vpn, csr.satp.asid, csr.vsatp.asid, csr.hgatp.vmid, allType = true, ignoreAsid = false) && io.ptw.resp.valid && miss_req_s2xlate_reg === io.ptw.resp.bits.s2xlate
 
     val new_coming_valid = WireInit(false.B)
     new_coming_valid := req_in(idx).fire && !req_in(idx).bits.kill && !flush_pipe(idx)
@@ -473,16 +513,29 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
       val s2xlate = io.ptw.resp.bits.s2xlate
       resp(idx).valid := true.B
       resp(idx).bits.miss := false.B
-//      val s1_paddr = Cat(stage1.genPPN(get_pn(req_out(idx).vaddr)), get_off(req_out(idx).vaddr))
-//      val s2_paddr = Cat(stage2.genPPNS2(get_pn(req_out(idx).vaddr)), get_off(req_out(idx).vaddr))
-      val s1_ppn = stage1.genPPN(get_pn(req_out(idx).vaddr))(ppnLen - 1, 0)
-      val s2_ppn = stage2.genPPNS2(get_pn(req_out(idx).vaddr))(ppnLen - 1, 0)
+
+      val vpn = get_pn(req_out(idx).vaddr)
+      val s1_ppn = stage1.genPPN(vpn)(ppnLen - 1, 0)
+      val s2_gvpn = Mux(s2xlate === onlyStage2, vpn, s1_ppn)
+      val s2_ppn = stage2.genPPNS2(s2_gvpn)(ppnLen - 1, 0)
       val s1_paddr = Cat(s1_ppn, get_off(req_out(idx).vaddr))
       val s2_paddr = Cat(s2_ppn, get_off(req_out(idx).vaddr))
+
+      // This block of code is used to generate the gpaddr in allStage, for:
+      //   1. G-for-VS-Stage failed (isFakePte || isNonLeaf)
+      //   2. Normal G-Stage failed
+      // Similar to the code in TLBRead.
+      val vpn_idx = Mux1H(Seq(
+        (stage1.isFakePte() && csr.vsatp.mode === Sv39) -> 2.U,
+        (stage1.isFakePte() && csr.vsatp.mode === Sv48) -> 3.U,
+        (!stage1.isFakePte()) -> (stage1.entry.level.get - 1.U),
+      ))
+      val s1_gpaddr_offset = Mux(stage1.isLeaf(), get_off(req_out(idx).vaddr), Cat(getVpnn(get_pn(req_out(idx).vaddr), vpn_idx), 0.U(log2Up(XLEN/8).W)))
+      val s1_gpaddr = Cat(stage1.genGVPN(vpn), s1_gpaddr_offset)
+
       for (d <- 0 until nRespDups) {
-//        resp(idx).bits.paddr(d) := Mux(s2xlate =/= noS2xlate, s2_paddr, s1_paddr)
         resp(idx).bits.paddr(d) := Mux(s2xlate === onlyStage2 || s2xlate === allStage, s2_paddr, s1_paddr)
-        resp(idx).bits.gpaddr(d) := s1_paddr
+        resp(idx).bits.gpaddr(d) := Mux(s2xlate === onlyStage2, req_out(idx).vaddr, s1_gpaddr)
         pbmt_check(idx, d, io.ptw.resp.bits.s1.entry.pbmt, io.ptw.resp.bits.s2.entry.pbmt, s2xlate)
         perm_check(stage1, req_out(idx).cmd, idx, d, stage2, req_out(idx).hlvx, s2xlate)
       }

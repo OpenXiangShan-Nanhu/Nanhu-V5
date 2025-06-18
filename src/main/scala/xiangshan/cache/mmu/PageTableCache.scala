@@ -801,23 +801,23 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     !flush_dup(2) &&
     refill.levelOH.l2 &&
     !memPte(2).isLeaf() &&
-    memPte(2).canRefill(refill.level_dup(2), refill.req_info_dup(2).s2xlate, pbmte, io.csr_dup(2).hgatp.mode)
+    memPte(2).canRefill(refill.level_dup(2), refill.req_info_dup(1).s2xlate, pbmte, io.csr_dup(2).hgatp.mode)
   ) {
     val refillIdx = replaceWrapper(l2v, ptwl2replace.way)
     refillIdx.suggestName(s"Ptwl2RefillIdx")
     val rfOH = UIntToOH(refillIdx)
     l2(refillIdx).refill(
-      refill.req_info_dup(2).vpn,
-      Mux(refill.req_info_dup(2).s2xlate =/= noS2xlate, io.csr_dup(2).vsatp.asid, io.csr_dup(2).satp.asid),
+      refill.req_info_dup(1).vpn,
+      Mux(refill.req_info_dup(1).s2xlate =/= noS2xlate, io.csr_dup(2).vsatp.asid, io.csr_dup(2).satp.asid),
       io.csr_dup(2).hgatp.vmid,
       memSelData(2),
       2.U,
       refill_prefetch_dup(2),
-      s2xlate = refill.req_info_dup(2).s2xlate
+      s2xlate = refill.req_info_dup(1).s2xlate
     )
     ptwl2replace.access(refillIdx)
     l2v := l2v | rfOH
-    l2g := (l2g & ~rfOH) | Mux(memPte(2).perm.g && refill.req_info_dup(2).s2xlate =/= onlyStage2, rfOH, 0.U)
+    l2g := (l2g & ~rfOH) | Mux(memPte(2).perm.g && refill.req_info_dup(1).s2xlate =/= onlyStage2, rfOH, 0.U)
     l2h(refillIdx) := refill_h(2)
 
     for (i <- 0 until l2tlbParams.l2Size) {

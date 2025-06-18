@@ -213,6 +213,7 @@ class TlbSectorEntry(pageNormal: Boolean, pageSuper: Boolean)(implicit p: Parame
    *  bits1  0: need mid 9bits
    */
 
+  //use for TLBStorage
   def hit(vpn: UInt, asid: UInt, nSets: Int = 1, ignoreAsid: Boolean = false, vmid: UInt, hasS2xlate: Bool, onlyS2: Bool = false.B, onlyS1: Bool = false.B): Bool = {
     val asid_hit = Mux(hasS2xlate && onlyS2, true.B, if (ignoreAsid) true.B else (this.asid === asid || perm.g))
     val addr_low_hit = valididx(vpn(2, 0))
@@ -835,6 +836,7 @@ class PtwEntry(tagLen: Int, hasPerm: Boolean = false, hasLevel: Boolean = false)
   }
 
   //s2xlate control whether compare vmid or not
+  //use for l3 l2 sp match hit logic and sp's fence hit logic
   def hit(vpn: UInt, asid: UInt, vasid: UInt, vmid: UInt, allType: Boolean = false, ignoreID: Bool = false.B, s2xlate: UInt = 0.U(2.W), sfence: UInt = 0.U(2.W)) = {
     require(vpn.getWidth == vpnLen)
     require(s2xlate.getWidth == 2)
@@ -985,7 +987,7 @@ class PtwEntries(num: Int, tagLen: Int, level: Int, hasPerm: Boolean, ReservedBi
     getVpnClip(vpn, level)(log2Up(num) - 1, 0)
   }
 
-  // For PTWCache l0 & l1 entries
+  // For PTWCache l0 & l1 entries hit logic
   def hit(vpn: UInt, asid: UInt, vasid: UInt, vmid:UInt, ignoreID: Bool = false.B, s2xlate: UInt) = {
     val is_global = WireInit(false.B)
     if (hasPerm) {
@@ -1154,7 +1156,7 @@ class HptwResp(implicit p: Parameters) extends PtwBundle {
       0.U -> Cat(entry.ppn(entry.ppn.getWidth - 1, 0))
     ))
   }
-
+  //use for s2_hit logic
   def hit(gvpn: UInt, vmid: UInt): Bool = {
     val vmid_hit = this.entry.vmid.getOrElse(0.U) === vmid
     val tag_match = Wire(Vec(4, Bool())) // 512GB, 1GB, 2MB or 4KB, not parameterized here
@@ -1206,6 +1208,7 @@ class PtwSectorResp(implicit p: Parameters) extends PtwBundle {
     !pf && !entry.v && !af
   }
 
+  //use for s1_hit logic
   def hit(vpn: UInt, asid: UInt, vmid: UInt, allType: Boolean = false, ignoreAsid: Boolean = false): Bool = {
     require(vpn.getWidth == vpnLen)
     //    require(this.asid.getWidth <= asid.getWidth)
@@ -1327,6 +1330,7 @@ val s2_vpn = MuxLookup(level, s2.entry.tag)(Seq(
     Mux(s2xlate === onlyStage2, s2_vpn, s1_vpn)
   }
 
+  //use for memblock/repeater/TLB's hit Resp logic
   def hit(vpn: UInt, asid: UInt, vasid: UInt, vmid: UInt, allType: Boolean = false, ignoreAsid: Boolean = false): Bool = {
     val noS2_hit = s1.hit(vpn, asid, vmid, allType, ignoreAsid)
     val onlyS2_hit = s2.hit(vpn, vmid)

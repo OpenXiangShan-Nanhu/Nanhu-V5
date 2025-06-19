@@ -614,8 +614,17 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   )
   //for pmp delay
 //  val dup_vec_addr_check = dup_vec.zip(state).map{ case(d,s) => d && (s === state_addr_check) }
-  val dup_vec_addr_check = state.indices.map(i => dup_vec(i) && state(i)===state_addr_check)
-  val to_wait_pmp = Cat(dup_vec_addr_check).orR
+//  val dup_vec_addr_check = state.indices.map(i => dup_vec(i) && state(i)===state_addr_check)
+//  val to_wait_pmp = Cat(dup_vec_addr_check).orR
+
+
+   // for pmp delay: per-entry raw 检测 & one-shot 脉冲（全部用 VecInit，避免 Scala Seq/Bool 混用）
+  val to_wait_pmp_raw    = VecInit(Seq.tabulate(l2tlbParams.llptwsize){ i =>
+       dup_vec(i) && state(i) === state_addr_check})
+  val to_wait_pmp_raw_r  = RegNext(to_wait_pmp_raw, VecInit(Seq.fill(l2tlbParams.llptwsize)(false.B)))
+  val to_wait_pmp_pulse  = VecInit((0 until l2tlbParams.llptwsize).map{i =>
+        to_wait_pmp_raw(i) && !to_wait_pmp_raw_r(i)
+      })
 
   val dup_req_fire = mem_arb.io.out.fire && dup(io.in.bits.req_info.vpn, mem_arb.io.out.bits.req_info.vpn) && io.in.bits.req_info.s2xlate === mem_arb.io.out.bits.req_info.s2xlate // dup with the req fire entry
   val dup_vec_wait = dup_vec.zip(is_waiting).map{case (d, w) => d && w} // dup with "mem_waiting" entries, sending mem req already
@@ -651,7 +660,8 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     to_mem_out -> state_mem_out, // same to the blew, but the mem resp now
     to_last_hptw_req -> state_last_hptw_req,
     to_wait -> state_mem_waiting,
-    to_wait_pmp -> state_pmp_wait,  //for pmp delay
+//    to_wait_pmp -> state_pmp_wait,  //for pmp delay
+    to_wait_pmp_raw(enq_ptr) -> state_pmp_wait,
     to_cache -> state_cache,
     to_hptw_req -> state_hptw_req
   ))
@@ -670,14 +680,11 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).hptw_resp.gpf := Mux(last_hptw_excp, last_hptw_gStagePf, false.B)
     entries(enq_ptr).first_s2xlate_fault := false.B
 //    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
+    // 用 pulse 保证 mem_resp_hit 只因这条 entry 第一次到 addr_check+dup 时拉高
+    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp_pulse(enq_ptr)
   }
 
   val enq_ptr_reg = RegNext(enq_ptr)
-  // mem_resp_hit should be asserted one cycle after enqueue to align with memory refill data timing. Otherwise newly enqueued duplicate requests may
-  // capture stale page table entries from the previous memory response.
-  val enq_mem_resp_hit = RegNext((to_mem_out || to_last_hptw_req || to_wait_pmp) && io.in.fire, false.B)
-  when (enq_mem_resp_hit) {
-    mem_resp_hit(enq_ptr_reg) := true.B
 
   val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !flush)
 

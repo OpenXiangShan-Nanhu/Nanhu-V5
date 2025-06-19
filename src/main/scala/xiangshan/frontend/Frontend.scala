@@ -20,13 +20,12 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils._
-import xs.utils.mbist.{MbistInterface, MbistPipeline}
-import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.sram.SramBroadcastBundle
 import xiangshan._
 import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
 import xiangshan.cache.mmu._
-import xiangshan.frontend.icache._
-import xs.utils.perf.{DebugOptionsKey, HasPerfEvents, XSError, XSPerfAccumulate, PerfEvent, HPerfMonitor}
+import xiangshan.frontend.icache.{ICachePMPBundle, _}
+import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, HasPerfEvents, PerfEvent, XSError, XSPerfAccumulate}
 
 
 class Frontend()(implicit p: Parameters) extends LazyModule with HasXSParameter {
@@ -125,18 +124,26 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
 
   // pmp
   val PortNumber = ICacheParameters().PortNumber
-  val pmp = Module(new PMP())
-  val pmp_check = VecInit(Seq.fill(coreParams.ipmpPortNum)(Module(new PMPChecker(3, sameCycle = true)).io))
-  pmp.io.distribute_csr := csrCtrl.distribute_csr
-  val pmp_req_vec     = Wire(Vec(coreParams.ipmpPortNum, Valid(new PMPReqBundle())))
-  (0 until 2 * PortNumber).foreach(i => pmp_req_vec(i) <> icache.io.pmp(i).req)
-  pmp_req_vec.last <> ifu.io.pmp.req
 
-  for (i <- pmp_check.indices) {
-    pmp_check(i).apply(tlbCsr.priv.imode, pmp.io.pmp, pmp.io.pma, pmp_req_vec(i))
+  class PMPWrapper extends XSModule {
+    val io = IO(new Bundle{
+      val distribute_csr = Input(new DistributedCSRIO())
+      val imode = Input(UInt(2.W))
+      val pmpIO = Vec(coreParams.ipmpPortNum, Flipped(new ICachePMPBundle))
+    })
+
+    val pmp = Module(new PMP())
+    val pmpChecker = Seq.fill(coreParams.ipmpPortNum)(Module(new PMPChecker(3, sameCycle = true)))
+    pmp.io.distribute_csr := io.distribute_csr
+    pmpChecker.zip(io.pmpIO).foreach{ case(checker, pmpio) =>
+      checker.io.apply(io.imode, pmp.io.pmp, pmp.io.pma, pmpio.req)
+      pmpio.resp := checker.io.resp
+    }
   }
-  (0 until 2 * PortNumber).foreach(i => icache.io.pmp(i).resp <> pmp_check(i).resp)
-  ifu.io.pmp.resp <> pmp_check.last.resp
+  val pmpWrapper = Module(new PMPWrapper)
+  pmpWrapper.io.distribute_csr := csrCtrl.distribute_csr
+  pmpWrapper.io.imode := tlbCsr.priv.imode
+  pmpWrapper.io.pmpIO.zip(icache.io.pmp :+ ifu.io.pmp).foreach{ case(wrapper, pmpio) => wrapper <> pmpio }
 
   val itlb = Module(new TLB(coreParams.itlbPortNum, nRespDups = 1,
     Seq.fill(PortNumber)(false) ++ Seq(true), itlbParams))

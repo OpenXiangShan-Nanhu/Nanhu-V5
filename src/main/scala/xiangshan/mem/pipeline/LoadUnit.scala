@@ -899,6 +899,11 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.dcache.s1_kill             := s1_kill || s1_dly_err || s1_tlb_miss || s1_exception
   io.dcache.s1_kill_data_read   := s1_kill || s1_dly_err || s1_tlb_fast_miss
 
+  when(s1_valid && s1_out.uop.exceptionVec.asUInt.orR){
+    assert(io.dcache.s1_kill,"the load has exception should be canceled!")
+  }
+
+
   // store to load forwarding
   io.sbuffer.valid := s1_valid && !(s1_exception || s1_tlb_miss || s1_kill || s1_dly_err || s1_prf)
   io.sbuffer.vaddr := s1_vaddr

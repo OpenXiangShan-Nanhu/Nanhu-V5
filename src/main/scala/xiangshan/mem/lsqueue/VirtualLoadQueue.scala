@@ -384,9 +384,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     val rValid = io.debugInfo.replayAllocateVec(i)
     val rUop = io.debugInfo.replayUopVec(i)
     val rLqIdx = rUop.lqIdx.value
-    when(rValid){
-      assert(allocated(rLqIdx),"why the loadQueue entry has been released?")
-    }
+    assert(!rValid || allocated(rLqIdx),"why the loadQueue entry has been released?")
   }
 
   when(io.debugInfo.mmioEntry.valid){

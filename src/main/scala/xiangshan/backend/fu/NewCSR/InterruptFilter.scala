@@ -331,7 +331,7 @@ class InterruptFilter extends Module {
   val delayedIRToHS = DelayN(irToHSReg, 5)
   val delayedIRToVS = DelayN(irToVSReg, 5)
 
-  io.out.interruptVec.valid := delayedIntrVec.orR || delayedVIIsHvictlInjectReg
+  io.out.interruptVec.valid := delayedIntrVec.orR || delayedVIIsHvictlInjectReg || delayedDebugIntr
   io.out.interruptVec.bits := delayedIntrVec
   io.out.debug := delayedDebugIntr
   io.out.nmi := delayedNMI

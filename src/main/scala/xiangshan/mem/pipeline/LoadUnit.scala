@@ -1181,7 +1181,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.lsq.ldld_nuke_query.req.bits.mask       := s2_in.mask
   io.lsq.ldld_nuke_query.req.bits.paddr      := s2_in.paddr
   io.lsq.ldld_nuke_query.req.bits.data_valid := Mux(s2_full_fwd || s2_fwd_data_valid, true.B, !s2_dcache_miss)
-  io.lsq.ldld_nuke_query.req.bits.full_fwd   := s2_full_fwd || s2_fwd_data_valid
+  io.lsq.ldld_nuke_query.req.bits.full_fwd   := s2_full_fwd
 
   // st-ld violation require
   io.lsq.stld_nuke_query.req.valid           := s2_valid && s2_can_query

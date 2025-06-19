@@ -340,7 +340,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     val matchMask = (0 until VirtualLoadQueueSize).map(i => {
       RegNext(
         isFromDCache(i) &
-        (allocated(i) & addrvalid(i) & 
+        (allocated(i) & addrvalid(i) & datavalid(i) &
       paddrModule.io.releaseViolationMmask(w)(i) &
       lqIdxMask(i) &
       released(i)))

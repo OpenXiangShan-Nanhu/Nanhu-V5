@@ -331,8 +331,10 @@ trait MachineLevel { self: NewCSR =>
     }).setAddr(CSRs.mhpmcounter3 - 3 + num)
   )
 
-  val mvendorid = Module(new CSRModule("Mvendorid") { rdata := 0.U })
-    .setAddr(CSRs.mvendorid)
+  val mvendorid = Module(new CSRModule("Mvendorid") { 
+    val ALL = RO(63, 0)
+    rdata := 0.U 
+  }).setAddr(CSRs.mvendorid)
 
   // architecture id for XiangShan is 25
   // see https://github.com/riscv/riscv-isa-manual/blob/master/marchid.md

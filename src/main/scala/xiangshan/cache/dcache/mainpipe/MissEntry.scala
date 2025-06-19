@@ -423,16 +423,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     lgSize = (log2Up(cfg.blockBytes)).U,
     opcode = req.cmoOpcode
   )._2
-  val sel = Wire(chiselTypeOf(acquireBlock))
-  when (req.isCMO) {
-    sel := acquireCMO
-  } .elsewhen (req.full_overwrite) {
-    sel := acquirePerm
-  } .otherwise {
-    sel := acquireBlock
-  }
-  io.mem_acquire.bits := sel
-  // io.mem_acquire.bits := Mux(req.isCMO, acquireCMO, Mux(req.full_overwrite, acquirePerm, acquireBlock))
+  io.mem_acquire.bits := Mux(req.isCMO, acquireCMO, Mux(req.full_overwrite, acquirePerm, acquireBlock))
   // resolve cache alias by L2
   io.mem_acquire.bits.user.lift(AliasKey).foreach( _ := req.vaddr(13, 12))
   // pass vaddr to l2

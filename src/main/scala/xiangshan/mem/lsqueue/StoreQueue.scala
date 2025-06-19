@@ -897,6 +897,16 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   dontTouch(mmioReq)
 
+  // cbo debug infor
+  val debug_iscbom = WireInit(VecInit(List.fill(StoreQueueSize)(false.B)))
+  val debug_iscboz = WireInit(VecInit(List.fill(StoreQueueSize)(false.B)))
+  dontTouch(debug_iscbom)
+  dontTouch(debug_iscboz)
+
+  for (i <- 0 until StoreQueueSize) {
+    debug_iscbom(i) := allocated(i) & LSUOpType.isCbom(uop(i).fuOpType)
+    debug_iscboz(i) := allocated(i) & (uop(i).fuOpType === LSUOpType.cbo_zero)
+  }
 
   // cbo manage instr
   val cbomValid = RegInit(false.B)
@@ -922,12 +932,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   when(io.cmoOpReq.fire) {
     allocated(uop(deqPtr).sqIdx.value) := false.B
   }
-  // when (io.cmoOpReq.fire) {
-  //   // Assert that this entry is exactly the one we expected
-  //   assert(deqCanDoCbom, "CBO fire only when deqCanDoCbom is true")
-  //   // Assert the uop matches a CBO encoding
-  //   assert(LSUOpType.isCbom(uop(deqPtr).fuOpType), "Firing CBO req for non-CBO uop")
-  // }
+
   when(cbomWaitFlushSb && cbomValid && io.flushSbuffer.empty) {
     cbomWaitFlushSb := false.B
   }
@@ -939,14 +944,11 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
   
   val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _)
-  // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 
+  // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 2cycle is used for timing alignment.
   val cboZeroFlushSb      = GatedRegNext(deqCanDoCboZero)
-  val cboZeroUop          = RegEnable(PriorityMux(isCboZeroToSbVec, deqPtrExt.map(x=>uop(x.value))), deqCanDoCboZero)
-  val cboZeroSqIdx        = RegEnable(PriorityMux(isCboZeroToSbVec, deqPtrExt), deqCanDoCboZero)
   
   val cboZeroValid        = RegInit(false.B)
   val cboZeroWaitFlushSb  = RegInit(false.B)
-  // assert((cboZeroValid && !hasException(cboZeroUop.sqIdx.value)), "cbo has exception cannot write to sbuffer")
 
   // start to flush sbuffer
   when (cboZeroFlushSb) {

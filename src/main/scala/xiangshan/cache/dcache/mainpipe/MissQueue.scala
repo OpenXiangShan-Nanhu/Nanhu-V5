@@ -256,16 +256,7 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
       lgSize = (log2Up(cfg.blockBytes)).U,
       opcode = req.cmoOpcode
     )._2
-    val sel = Wire(chiselTypeOf(acquireBlock))
-    when (req.isCMO) {
-      sel := acquireCMO
-    } .elsewhen (req.full_overwrite) {
-      sel := acquirePerm
-    } .otherwise {
-      sel := acquireBlock
-    }
-    acquire := sel
-    // acquire := Mux(req.isCMO, acquireCMO, Mux(req.full_overwrite, acquirePerm, acquireBlock))
+    acquire := Mux(req.isCMO, acquireCMO, Mux(req.full_overwrite, acquirePerm, acquireBlock))
     // resolve cache alias by L2
     acquire.user.lift(AliasKey).foreach(_ := req.vaddr(13, 12))
     // pass vaddr to l2
@@ -307,68 +298,68 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
    }
 }
 
-class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
-{
-  val io = IO(new Bundle(){
-    val cmo_req  = Flipped(Decoupled(new CMOReq))
-    val cmo_resp = Decoupled(new CMOResp)
-    val req_TLA = DecoupledIO(new TLBundleA(edge.bundle))
-    val resp_TLD = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
-  })
+// class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
+// {
+//   val io = IO(new Bundle(){
+//     val cmo_req  = Flipped(Decoupled(new CMOReq))
+//     val cmo_resp = Decoupled(new CMOResp)
+//     val req_TLA = DecoupledIO(new TLBundleA(edge.bundle))
+//     val resp_TLD = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
+//   })
 
-  val s_idle :: s_req :: s_resp :: s_wb :: Nil = Enum(4)
-  val cmoState = RegInit(s_idle)
+//   val s_idle :: s_req :: s_resp :: s_wb :: Nil = Enum(4)
+//   val cmoState = RegInit(s_idle)
 
-  val req = RegEnable(io.cmo_req.bits, io.cmo_req.fire)
-  val nderr = RegInit(false.B)
+//   val req = RegEnable(io.cmo_req.bits, io.cmo_req.fire)
+//   val nderr = RegInit(false.B)
 
-  switch(cmoState) {
-    is(s_idle) {
-      when(io.cmo_req.fire) {
-        cmoState := s_req
-        nderr := false.B
-      }
-    }
+//   switch(cmoState) {
+//     is(s_idle) {
+//       when(io.cmo_req.fire) {
+//         cmoState := s_req
+//         nderr := false.B
+//       }
+//     }
 
-    is(s_req) {
-      when(io.req_TLA.fire) {
-        cmoState := s_resp
-      }
-    }
+//     is(s_req) {
+//       when(io.req_TLA.fire) {
+//         cmoState := s_resp
+//       }
+//     }
 
-    is(s_resp) {
-      when(io.resp_TLD.fire) {
-        cmoState := s_wb
-        nderr := io.resp_TLD.bits.denied || io.resp_TLD.bits.corrupt
-      }
-    }
+//     is(s_resp) {
+//       when(io.resp_TLD.fire) {
+//         cmoState := s_wb
+//         nderr := io.resp_TLD.bits.denied || io.resp_TLD.bits.corrupt
+//       }
+//     }
 
-    is(s_wb) {
-      when(io.cmo_resp.fire) {
-        cmoState := s_idle
-      }
-    }
-  }
+//     is(s_wb) {
+//       when(io.cmo_resp.fire) {
+//         cmoState := s_idle
+//       }
+//     }
+//   }
 
-  io.cmo_req.ready := (cmoState === s_idle)
+//   io.cmo_req.ready := (cmoState === s_idle)
 
-  io.req_TLA.valid := (cmoState === s_req)
-  io.req_TLA.bits := edge.CacheBlockOperation(
-    fromSource = (cfg.nMissEntries + 1).U, // source is the # of MissEntries + 1
-    toAddress = req.address,
-    lgSize = (log2Up(cfg.blockBytes)).U,
-    opcode = req.opcode
-  )._2
+//   io.req_TLA.valid := (cmoState === s_req)
+//   io.req_TLA.bits := edge.CacheBlockOperation(
+//     fromSource = (cfg.nMissEntries + 1).U, // source is the # of MissEntries + 1
+//     toAddress = req.address,
+//     lgSize = (log2Up(cfg.blockBytes)).U,
+//     opcode = req.opcode
+//   )._2
 
-  io.resp_TLD.ready := (cmoState === s_resp)
+//   io.resp_TLD.ready := (cmoState === s_resp)
   
-  io.cmo_resp.valid := (cmoState === s_wb)
-  io.cmo_resp.bits.address := req.address
-  io.cmo_resp.bits.nderr   := nderr
+//   io.cmo_resp.valid := (cmoState === s_wb)
+//   io.cmo_resp.bits.address := req.address
+//   io.cmo_resp.bits.nderr   := nderr
 
-  assert(!(cmoState =/= s_idle && io.cmo_req.valid), "CBO can not continuously execute!")
-  assert(!(cmoState =/= s_resp && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
-}
+//   assert(!(cmoState =/= s_idle && io.cmo_req.valid), "CBO can not continuously execute!")
+//   assert(!(cmoState =/= s_resp && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
+// }
 
 class MissQueueBlockReqBundle(implicit p: Parameters) extends XSBundle {
   val addr = UInt(PAddrBits.W)

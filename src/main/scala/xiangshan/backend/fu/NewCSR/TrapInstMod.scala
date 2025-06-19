@@ -24,6 +24,7 @@ class TrapInstMod(implicit p: Parameters) extends Module with HasCircularQueuePt
 
     val fromRob = Input(new Bundle {
       val flush = ValidIO(new FtqInfo)
+      val isInterrupt = ValidIO(Bool())
     })
 
     val faultCsrUop = Input(ValidIO(new Bundle {
@@ -37,7 +38,8 @@ class TrapInstMod(implicit p: Parameters) extends Module with HasCircularQueuePt
   })
 
   // alias
-  val flush = io.fromRob.flush
+  // delay flush one cycle to alias fromrob trap interrupt
+  val flush = RegNext(io.fromRob.flush)
   val newTrapInstInfo = io.fromDecode.trapInstInfo
 
   val valid = RegInit(false.B)
@@ -64,6 +66,9 @@ class TrapInstMod(implicit p: Parameters) extends Module with HasCircularQueuePt
     }.otherwise{
       valid := false.B
     }
+  }.elsewhen(flush.valid && valid && trapInstInfo.sameInst(flush.bits.ftqPtr, flush.bits.ftqOffset) && io.fromRob.isInterrupt.valid && io.fromRob.isInterrupt.bits){
+    // check whether the exception store is attached with an interrupt
+    valid := false.B
   }.elsewhen(io.readClear) {
     valid := false.B
   }.elsewhen(newCSRInstValid) {

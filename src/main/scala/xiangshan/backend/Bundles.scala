@@ -157,6 +157,10 @@ object Bundles {
       sameFlush || isAfter(this.ftqPtr, ftqPtr)
     }
 
+    def sameInst(ftqPtr: FtqPtr, ftqOffset: UInt): Bool = {
+      this.ftqPtr === ftqPtr && this.ftqOffset === ftqOffset
+    }
+
     def fromDecodedInst(decodedInst: DecodedInst): this.type = {
       this.instr     := decodedInst.instr
       this.ftqPtr    := decodedInst.ftqPtr

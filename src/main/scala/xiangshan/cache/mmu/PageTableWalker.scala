@@ -615,6 +615,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   //for pmp delay
 //  val dup_vec_addr_check = dup_vec.zip(state).map{ case(d,s) => d && (s === state_addr_check) }
   val dup_vec_addr_check = state.indices.map(i => dup_vec(i) && state(i)===state_addr_check)
+  //if the new req is dup with the old req which in state_addr_check, it will be to_wait_pmp state
   val to_wait_pmp = Cat(dup_vec_addr_check).orR
 
   val dup_req_fire = mem_arb.io.out.fire && dup(io.in.bits.req_info.vpn, mem_arb.io.out.bits.req_info.vpn) && io.in.bits.req_info.s2xlate === mem_arb.io.out.bits.req_info.s2xlate // dup with the req fire entry
@@ -669,8 +670,12 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).hptw_resp := Mux(to_last_hptw_req, entries(last_hptw_req_id).hptw_resp, Mux(to_wait, entries(wait_id).hptw_resp, entries(enq_ptr).hptw_resp))
     entries(enq_ptr).hptw_resp.gpf := Mux(last_hptw_excp, last_hptw_gStagePf, false.B)
     entries(enq_ptr).first_s2xlate_fault := false.B
-    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
+//    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
   }
+  // mem_resp_hit should be asserted one cycle later to avoid using stale data
+  val enq_mem_resp_hit = RegNext((to_mem_out || to_last_hptw_req || to_wait_pmp) && io.in.fire, false.B)
+  val enq_ptr_latch = RegNext(enq_ptr)
+  when (enq_mem_resp_hit) { mem_resp_hit(enq_ptr_latch) := true.B }
 
   val enq_ptr_reg = RegNext(enq_ptr)
   val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !flush)

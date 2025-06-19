@@ -669,10 +669,16 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).hptw_resp := Mux(to_last_hptw_req, entries(last_hptw_req_id).hptw_resp, Mux(to_wait, entries(wait_id).hptw_resp, entries(enq_ptr).hptw_resp))
     entries(enq_ptr).hptw_resp.gpf := Mux(last_hptw_excp, last_hptw_gStagePf, false.B)
     entries(enq_ptr).first_s2xlate_fault := false.B
-    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
+//    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
   }
 
   val enq_ptr_reg = RegNext(enq_ptr)
+  // mem_resp_hit should be asserted one cycle after enqueue to align with memory refill data timing. Otherwise newly enqueued duplicate requests may
+  // capture stale page table entries from the previous memory response.
+  val enq_mem_resp_hit = RegNext((to_mem_out || to_last_hptw_req || to_wait_pmp) && io.in.fire, false.B)
+  when (enq_mem_resp_hit) {
+    mem_resp_hit(enq_ptr_reg) := true.B
+
   val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !flush)
 
   val hasHptwResp = ParallelOR(state.map(_ === state_hptw_resp)).asBool

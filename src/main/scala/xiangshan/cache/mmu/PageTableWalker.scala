@@ -648,6 +648,9 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
 
   XSError(io.in.fire && ((to_mem_out && to_cache) || (to_wait && to_cache)), "llptw enq, to cache conflict with to mem")
   val mem_resp_hit = RegInit(VecInit(Seq.fill(l2tlbParams.llptwsize)(false.B)))
+  // mem_resp_hit is asserted only when the entry needs to immediately use the
+  // data returned in the same cycle (e.g. duplicate requests hitting outstanding responses). It is not used for pmp-delay scenarios.
+  val enq_mem_resp_hit = RegNext((to_mem_out || to_last_hptw_req) && io.in.fire, false.B)
   val enq_state_normal = MuxCase(state_addr_check, Seq(
     to_mem_out -> state_mem_out, // same to the blew, but the mem resp now
     to_last_hptw_req -> state_last_hptw_req,
@@ -672,12 +675,11 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).first_s2xlate_fault := false.B
 //    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
   }
-  // mem_resp_hit should be asserted one cycle later to avoid using stale data
-  val enq_mem_resp_hit = RegNext((to_mem_out || to_last_hptw_req || to_wait_pmp) && io.in.fire, false.B)
-  val enq_ptr_latch = RegNext(enq_ptr)
-  when (enq_mem_resp_hit) { mem_resp_hit(enq_ptr_latch) := true.B }
 
   val enq_ptr_reg = RegNext(enq_ptr)
+  when (enq_mem_resp_hit) {
+    mem_resp_hit(enq_ptr_reg) := true.B
+  }
   val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !flush)
 
   val hasHptwResp = ParallelOR(state.map(_ === state_hptw_resp)).asBool
@@ -802,6 +804,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     assert(state(mem_ptr) === state_mem_out)
     state(mem_ptr) := state_idle
   }
+  // clear flags after the buffered data has been consumed
   mem_resp_hit.map(a => when (a) { a := false.B } )
 
   when (io.cache.fire) {

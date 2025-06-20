@@ -21,14 +21,10 @@ import chisel3._
 import chisel3.util._
 import xiangshan._
 import xiangshan.frontend.icache._
-import utils._
 import xs.utils._
 import xs.utils.perf._
 import xiangshan.cache.mmu.TlbResp
 import xiangshan.backend.fu.PMPRespBundle
-
-import scala.math._
-import java.util.ResourceBundle.Control
 
 class FrontendTopDownBundle(implicit p: Parameters) extends XSBundle {
   val reasons = Vec(TopDownCounters.NumStallReasons.id, Bool())

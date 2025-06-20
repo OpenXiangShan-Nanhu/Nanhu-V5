@@ -20,15 +20,12 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xiangshan._
-import utils._
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.sram._
 import xs.utils.mbist.MbistPipeline
-
-import scala.math.min
 import scala.{Tuple2 => &}
-import os.copy
+
 
 
 trait FTBParams extends HasXSParameter with HasBPUConst {

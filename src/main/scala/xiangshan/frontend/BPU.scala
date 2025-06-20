@@ -20,12 +20,10 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import xiangshan._
-import utils._
 import xs.utils._
 import xs.utils.perf._
 
 import scala.math.min
-import xiangshan.backend.decode.ImmUnion
 
 trait HasBPUConst extends HasXSParameter {
   val MaxMetaBaseLength =  if (!env.FPGAPlatform) 512 else 96 // TODO: Reduce meta length

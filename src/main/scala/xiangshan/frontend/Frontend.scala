@@ -22,7 +22,7 @@ import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.sram.SramBroadcastBundle
 import xiangshan._
-import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
+import xiangshan.backend.fu.{PMPReqBundle, PFEvent, PMP, PMPChecker}
 import xiangshan.cache.mmu._
 import xiangshan.frontend.icache.{ICachePMPBundle, _}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, HasPerfEvents, PerfEvent, XSError, XSPerfAccumulate}

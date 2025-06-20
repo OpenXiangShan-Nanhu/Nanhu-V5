@@ -20,14 +20,12 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import difftest._
-import freechips.rocketchip.tilelink.ClientStates
 import xiangshan._
 import xiangshan.cache.mmu._
-import utils._
 import xs.utils._
 import xs.utils.perf._
 import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
-import xiangshan.frontend.{FtqICacheInfo, FtqToICacheRequestBundle, ExceptionType}
+import xiangshan.frontend.{FtqToICacheRequestBundle, ExceptionType}
 
 class ICacheMainPipeReq(implicit p: Parameters) extends ICacheBundle
 {

@@ -20,14 +20,12 @@ package xiangshan.frontend
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.rocket.RVCDecoder
 import xiangshan._
 import xiangshan.cache.mmu._
 import xiangshan.frontend.icache._
-import utils._
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.backend.fu.{PMPReqBundle, PMPRespBundle}
+import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.GPAMemEntry
 import xs.utils.ChiselDB
 

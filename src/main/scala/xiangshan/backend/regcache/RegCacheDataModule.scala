@@ -60,9 +60,7 @@ class RegCacheDataModule
 
   for ((r, i) <- io.readPorts.zipWithIndex) {
     r.data := mem(r.addr)
-    when (r.ren) {
-      assert(v(r.addr), s"$name readPorts $i read a invalid entry")
-    }
+    assert(!(r.ren && !v(r.addr)), s"$name readPorts $i read a invalid entry")
   }
 
   val writePorts = io.writePorts

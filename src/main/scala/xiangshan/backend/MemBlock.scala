@@ -258,6 +258,28 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
   lazy val module = new MemBlockInlinedImp(this)
 }
 
+class MemBlockPMPWrapper(pmpCheckSize : Int, lgMaxSize : Int = 4)(implicit p: Parameters) extends XSModule with HasPMParameters {
+  val io = IO(new Bundle {
+    val distribute_csr = Input(new DistributedCSRIO())
+    val pmpInfo = new Bundle {
+      val pmp = Output(Vec(NumPMP, new PMPEntry()))
+      val pma = Output(Vec(NumPMA, new PMPEntry()))
+    }
+    val pmpChecker = Vec(pmpCheckSize, new PMPCheckIO(lgMaxSize))
+  })
+
+  val pmp = Module(new PMP())
+  val pmp_checkers = Seq.fill(pmpCheckSize)(Module(new PMPChecker(lgMaxSize, leaveHitMux = true)))
+
+  io.pmpInfo.pmp := pmp.io.pmp
+  io.pmpInfo.pma := pmp.io.pma
+  pmp.io.distribute_csr := io.distribute_csr
+  io.pmpChecker <> pmp_checkers.map(_.io)
+}
+
+
+
+
 class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   with HasXSParameter
   with HasFPUParameters
@@ -663,15 +685,22 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   lsq.io.debugTopDown.robHeadMissInDTlb := dtlbRepeater.io.rob_head_miss_in_tlb
 
   // pmp
-  val pmp = Module(new PMP())
-  pmp.io.distribute_csr <> csrCtrl.distribute_csr
-  ptw.io.pmpInfo.pmp := pmp.io.pmp
-  ptw.io.pmpInfo.pma := pmp.io.pma
+  val pmpWrapper = Module(new MemBlockPMPWrapper(DTlbSize))
+  pmpWrapper.io.distribute_csr <> csrCtrl.distribute_csr
+  ptw.io.pmpInfo.pmp := pmpWrapper.io.pmpInfo.pmp
+  ptw.io.pmpInfo.pma := pmpWrapper.io.pmpInfo.pma
+  val pmp_check = pmpWrapper.io.pmpChecker
 
-  val pmp_checkers = Seq.fill(DTlbSize)(Module(new PMPChecker(4, leaveHitMux = true)))
-  val pmp_check = pmp_checkers.map(_.io)
+
+//  val pmp = Module(new PMP())
+//  pmp.io.distribute_csr <> csrCtrl.distribute_csr
+//  ptw.io.pmpInfo.pmp := pmp.io.pmp
+//  ptw.io.pmpInfo.pma := pmp.io.pma
+//
+//  val pmp_checkers = Seq.fill(DTlbSize)(Module(new PMPChecker(4, leaveHitMux = true)))
+//  val pmp_check = pmp_checkers.map(_.io)
   for ((p,d) <- pmp_check zip dtlb_pmps) {
-    p.apply(tlbcsr.priv.dmode, pmp.io.pmp, pmp.io.pma, d)
+    p.apply(tlbcsr.priv.dmode, pmpWrapper.io.pmpInfo.pmp, pmpWrapper.io.pmpInfo.pma, d)
     require(p.req.bits.size.getWidth == d.bits.size.getWidth)
   }
 
@@ -715,10 +744,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     vSegmentFlag := false.B
     vSegmentFlag_dup := false.B
   }
-
-  // LoadUnit
-  val correctMissTrain = Constantin.createRecord(s"CorrectMissTrain$hartId", initValue = false)
-
 
   for (i <- 0 until LduCnt) {
     loadUnits(i).io.redirect <> redirectReg(s"LoadUnit_${i}")
@@ -1652,9 +1677,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         ModuleNode(dtlb_all),
 //        ModuleNode(dtlb_st_tlb_st),
 //        ModuleNode(dtlb_prefetch_tlb_prefetch),
-        ModuleNode(pmp)
+        ModuleNode(pmpWrapper)
       )
-      ++ pmp_checkers.map(ModuleNode(_))
       ++ (if (prefetcherOpt.isDefined) Seq(ModuleNode(prefetcherOpt.get)) else Nil)
       ++ (if (l1PrefetcherOpt.isDefined) Seq(ModuleNode(l1PrefetcherOpt.get)) else Nil)
     )

@@ -145,6 +145,8 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
     val mmio_commit = Input(Bool())
     val f3_ftq_flush_self = Input(Bool())
     val f3_ftq_flush_by_older = Input(Bool())
+    val f3_pmp_mmio = Input(Bool())
+    val f3_itlb_pbmt = Input(UInt(Pbmt.width.W))
 
     val mmio_state = Output(UInt(4.W))
     val f3_mmio_data = Output(Vec(2, UInt(16.W)))
@@ -213,22 +215,35 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
         // we are using a blocked tlb, so resp.fire must have !resp.bits.miss
         assert(!io.itlbRespBits.miss, "blocked mode iTLB miss when resp.fire")
         val tlb_exception = ExceptionType.fromTlbResp(io.itlbRespBits)
+        // if itlb re-check respond pbmt mismatch with previous check, must be access fault
+        val pbmt_mismatch_exception = Mux(
+          io.itlbRespBits.pbmt(0) =/= io.f3_itlb_pbmt,
+          ExceptionType.af,
+          ExceptionType.none
+        )
+        val exception = ExceptionType.merge(tlb_exception, pbmt_mismatch_exception)
         // if tlb has exception, abort checking pmp, just send instr & exception to ibuffer and wait for commit
-        mmio_state := Mux(tlb_exception === ExceptionType.none, m_sendPMP, m_waitCommit)
+        mmio_state := Mux(exception === ExceptionType.none, m_sendPMP, m_waitCommit)
         // also save itlb response
         mmio_resend_addr := io.itlbRespBits.paddr(0)
-        mmio_resend_exception := tlb_exception
+        mmio_resend_exception := exception
         mmio_resend_gpaddr := io.itlbRespBits.gpaddr(0)
         mmio_resend_isForVSnonLeafPTE := io.itlbRespBits.isForVSnonLeafPTE(0)
       }
     }
     is(m_sendPMP) {
       // if pmp re-check does not respond mmio, must be access fault
-      val pmp_exception = Mux(io.pmpResp.mmio, ExceptionType.fromPMPResp(io.pmpResp), ExceptionType.af)
+      val pmp_exception = ExceptionType.fromPMPResp(io.pmpResp)
+      val mmio_mismatch_exception = Mux(
+        io.pmpResp.mmio =/= io.f3_pmp_mmio,
+        ExceptionType.af,
+        ExceptionType.none
+      )
+      val exception = ExceptionType.merge(pmp_exception, mmio_mismatch_exception)
       // if pmp has exception, abort sending request, just send instr & exception to ibuffer and wait for commit
-      mmio_state := Mux(pmp_exception === ExceptionType.none, m_resendReq, m_waitCommit)
+      mmio_state := Mux(exception === ExceptionType.none, m_resendReq, m_waitCommit)
       // also save pmp response
-      mmio_resend_exception := pmp_exception
+      mmio_resend_exception := exception
     }
     is(m_resendReq) {
       mmio_state := Mux(io.toUncacheFire, m_waitResendResp, m_resendReq)
@@ -525,21 +540,28 @@ class NewIFU(implicit p: Parameters) extends XSModule
   .elsewhen(f1_fire && !f1_flush) {f2_valid := true.B }
   .elsewhen(f2_fire)              {f2_valid := false.B}
 
-  val f2_exception    = VecInit((0 until PortNumber).map(i => fromICache(i).bits.exception))
+  val f2_exception_in  = VecInit((0 until PortNumber).map(i => fromICache(i).bits.exception))
   val f2_except_fromBackend = fromICache(0).bits.exceptionFromBackend
   // paddr and gpaddr of [startAddr, nextLineAddr]
   val f2_paddrs       = VecInit((0 until PortNumber).map(i => fromICache(i).bits.paddr))
   val f2_gpaddr       = fromICache(0).bits.gpaddr
   val f2_isForVSnonLeafPTE      = fromICache(0).bits.isForVSnonLeafPTE
 
-  // FIXME: what if port 0 is not mmio, but port 1 is?
-  // cancel mmio fetch if exception occurs
-  val f2_mmio         = f2_exception(0) === ExceptionType.none && (
-    fromICache(0).bits.pmp_mmio ||
-      // currently, we do not distinguish between Pbmt.nc and Pbmt.io
-      // anyway, they are both non-cacheable, and should be handled with mmio fsm and sent to Uncache module
-      Pbmt.isUncache(fromICache(0).bits.itlb_pbmt)
-  )
+  // FIXME: raise af if one fetch block crosses the cacheable-noncacheable boundary, might not correct
+  // not double-line, skip check, double-line, ask for consistent pmp_mmio and itlb_pbmt valueAdd commentMore actions
+  val f2_mmio_mismatch_exception = VecInit(Seq(
+    ExceptionType.none,
+    Mux(
+    !fromICache(1).valid ||
+      fromICache(0).bits.pmp_mmio === fromICache(1).bits.pmp_mmio &&
+        fromICache(0).bits.itlb_pbmt === fromICache(1).bits.itlb_pbmt,
+    ExceptionType.none,
+    ExceptionType.af
+  )))
+
+  val f2_exception = ExceptionType.merge(f2_exception_in, f2_mmio_mismatch_exception)
+  val f2_pmp_mmio = fromICache(0).bits.pmp_mmio
+  val f2_itlb_pbmt = fromICache(0).bits.itlb_pbmt
 
 
   /**
@@ -650,7 +672,8 @@ class NewIFU(implicit p: Parameters) extends XSModule
   val f3_cut_data       = RegEnable(f2_cut_data,   f2_fire)
 
   val f3_exception      = RegEnable(f2_exception,  f2_fire)
-  val f3_mmio           = RegEnable(f2_mmio,       f2_fire)
+  val f3_pmp_mmio       = RegEnable(f2_pmp_mmio,   f2_fire)
+  val f3_itlb_pbmt      = RegEnable(f2_itlb_pbmt,  f2_fire)
   val f3_except_fromBackend = RegEnable(f2_except_fromBackend, f2_fire)
 
   val f3_instr          = RegEnable(f2_instr, f2_fire)
@@ -741,7 +764,7 @@ class NewIFU(implicit p: Parameters) extends XSModule
 
   val m_idle :: m_waitLastCmt:: m_sendReq :: m_waitResp :: m_sendTLB :: m_tlbResp :: m_sendPMP :: m_resendReq :: m_waitResendResp :: m_waitCommit :: m_commited :: Nil = Enum(11)
 
-  val f3_req_is_mmio     = f3_mmio && f3_valid
+  val f3_req_is_mmio     = f3_valid && (f3_pmp_mmio || Pbmt.isUncache(f3_itlb_pbmt)) && f3_exception.map(_ === ExceptionType.none).reduce(_ || _)
   val mmio_commit = VecInit(io.rob_commits.map{commit => commit.valid && commit.bits.ftqIdx === f3_ftq_req.ftqIdx &&  commit.bits.ftqOffset === 0.U}).asUInt.orR
   val f3_mmio_req_commit = f3_req_is_mmio && mmio_state === m_commited
 
@@ -772,7 +795,8 @@ class NewIFU(implicit p: Parameters) extends XSModule
   mmioFsm.io.mmio_commit := mmio_commit
   mmioFsm.io.f3_ftq_flush_self := f3_ftq_flush_self
   mmioFsm.io.f3_ftq_flush_by_older := f3_ftq_flush_by_older
-
+  mmioFsm.io.f3_pmp_mmio := f3_pmp_mmio
+  mmioFsm.io.f3_itlb_pbmt := f3_itlb_pbmt
   /**
     **********************************************************************************
     * We want to defer instruction fetching when encountering MMIO instructions to ensure that the MMIO region is not negatively impacted.

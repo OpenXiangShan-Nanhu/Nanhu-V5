@@ -469,13 +469,15 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
   probeWire.enqCanTrans2Comp.foreach(_ := enqCanTrans2Comp.get)
   probeWire.enqCanTrans2Simp.foreach(_ := enqCanTrans2Simp.get)
   probeWire.simpCanTrans2Comp.foreach(_ := simpCanTrans2Comp.get.reduce(_ || _))
-  probeWire.entryRegVec.zipWithIndex.foreach {
-    case (probe, idx) => {
-      if(idx < params.numEnq) {
-        probe := read(enqEntries(idx).probePort).entry
-      } else {
-        probe := read(othersEntries(idx - params.numEnq).probePort).entry
-      }
+  for(i <- 0 until params.numEntries) {
+    if(i < params.numEnq) {
+      probeWire.entryRegVec(i) := read(enqEntries(i).probePort).entry
+      probeWire.entryValidVec(i) := read(enqEntries(i).probePort).valid
+      probeWire.entryCommonOutVec(i) := enqEntries(i).io.commonOut
+    } else {
+      probeWire.entryRegVec(i) := read(othersEntries(i - params.numEnq).probePort).entry
+      probeWire.entryValidVec(i) := read(othersEntries(i - params.numEnq).probePort).valid
+      probeWire.entryCommonOutVec(i) := othersEntries(i - params.numEnq).io.commonOut
     }
   }
 

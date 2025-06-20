@@ -67,6 +67,7 @@ class OthersEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockPar
   val probeWire = Wire(new SVA_ProbeEntry)
   define(probePort, ProbeValue(probeWire))
   probeWire.entry := entryReg
+  probeWire.valid := validReg
 }
 
 class OthersEntryVecMem(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams) extends OthersEntry(isComp)

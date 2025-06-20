@@ -6,6 +6,7 @@ import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 
 import xiangshan._
+import xiangshan.backend.Bundles._
 import xiangshan.backend.rob.RobPtr
 import xiangshan.backend.issue.IssueBlockParams
 import xiangshan.backend.issue.EntryBundles._
@@ -29,47 +30,50 @@ class SVA_IssueQueueAIP(formal_fpv: Boolean)(implicit p: Parameters, params: Iss
   require(enqEntryNum == 1 || enqEntryNum == 2)
 
   val io = IO(new Bundle {
-    val entries = Input(new SVA_ProbeEntries)
+    val enq = Vec(params.numEnq, Input(Valid(new DynInst)))
+    val probe_entries = Input(new SVA_ProbeEntries)
+    val issueRobIdx = Input(Valid(new RobPtr))
   })
 
-  // 1. trans strategy mutex check
-  if(hasCompAndSimp) {
-    // trans strategy:
-    // enq->comp
-    // enq->simp and simp->comp
-    CVL_ASSERT_MUTEX(
-      assertEn = true,
-      coverEn = false,
-      cvlLongSequence = true,
-      clock = clock,
-      reset = reset,
-      name = "Entries_trans_strategy",
-      a = io.entries.enqCanTrans2Comp.get,
-      b = io.entries.enqCanTrans2Simp.get || io.entries.simpCanTrans2Comp.get
-    )
-  } else {
-    // trans strategy
-    // only enq -> comp
-  }
+  val canIssueVec = io.probe_entries.entryCommonOutVec.map(_.canIssue)
+  val validVec = io.probe_entries.entryValidVec
+  val robPtrVec = io.probe_entries.entryRegVec.map(_.payload.robIdx)
 
-  // 2. TODO
-  io.entries.entryRegVec.foreach {
-    case entry => {
-      CVL_ASSERT_MUTEX(
-        assertEn = true,
-        coverEn = false,
-        cvlLongSequence = true,
-        clock = clock,
-        reset = reset,
-        name = "Entries_trans_strategy",
-        a = entry.status.canIssue,
-        b = !entry.status.srcReady
-      )
-    }
-  }
+  // 1. trans strategy mutex check
+  SVA_AssertEntriesTrans(
+    params = params,
+    clock = clock,
+    reset = reset,
+    enqCanTrans2Comp = io.probe_entries.enqCanTrans2Comp,
+    enqCanTrans2Simp = io.probe_entries.enqCanTrans2Simp,
+    simpCanTrans2Comp = io.probe_entries.simpCanTrans2Comp,
+    robPtrVec = robPtrVec,
+    validVec = validVec
+  )
+
+  // 2. sel oldest
+  SVA_AssertIqOldestSel(
+    params = params,
+    clock = clock,
+    reset = reset,
+    canIssueVec = canIssueVec,
+    robPtrVec = robPtrVec,
+    validVec = validVec,
+    issue_valid = io.issueRobIdx.valid,
+    selRobPtr = io.issueRobIdx.bits
+  )
 
   // Constraint Assume
   // if(formal_fpv) {
     
   // }
+  SVA_AssumeEnqOrdered(
+    params = params,
+    clock = clock,
+    reset = reset,
+    enqRobPtrVec = io.enq.map(_.bits.robIdx),
+    enqValidVec = io.enq.map(_.valid),
+    robPtrVec = robPtrVec,
+    validVec = validVec
+  )
 }

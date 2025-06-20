@@ -18,5 +18,5 @@ class SVA_ProbeEntry(implicit p: Parameters, params: IssueBlockParams) extends X
   def hasCompAndSimp = params.hasCompAndSimp
 
   val entry = new EntryBundle
-
+  val valid = Bool()
 }

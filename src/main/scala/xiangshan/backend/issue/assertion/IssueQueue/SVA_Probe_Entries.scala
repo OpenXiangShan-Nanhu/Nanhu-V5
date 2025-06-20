@@ -18,6 +18,9 @@ class SVA_ProbeEntries(implicit p: Parameters, params: IssueBlockParams) extends
   def hasCompAndSimp = params.hasCompAndSimp
 
   val entryRegVec = Vec(entriesNum, new EntryBundle)
+  val entryValidVec = Vec(entriesNum, Bool())
+
+  val entryCommonOutVec = Vec(entriesNum, new CommonOutBundle)
 
   val enqCanTrans2Comp = OptionWrapper(hasCompAndSimp, Bool())
   val enqCanTrans2Simp = OptionWrapper(hasCompAndSimp, Bool())

@@ -890,10 +890,20 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
   val sva_aip = Module(new SVA_IssueQueueAIP(true))
   val sva_probe_entries = Wire(new SVA_ProbeEntries)
   sva_probe_entries := read(entries.probePort)
-  sva_aip.io.entries.enqCanTrans2Comp.foreach (_ := sva_probe_entries.enqCanTrans2Comp.get)
-  sva_aip.io.entries.enqCanTrans2Simp.foreach (_ := sva_probe_entries.enqCanTrans2Simp.get)
-  sva_aip.io.entries.simpCanTrans2Comp.foreach(_ := sva_probe_entries.simpCanTrans2Comp.get)
-  sva_aip.io.entries.entryRegVec := sva_probe_entries.entryRegVec
+  sva_aip.io.probe_entries.enqCanTrans2Comp.foreach (_ := sva_probe_entries.enqCanTrans2Comp.get)
+  sva_aip.io.probe_entries.enqCanTrans2Simp.foreach (_ := sva_probe_entries.enqCanTrans2Simp.get)
+  sva_aip.io.probe_entries.simpCanTrans2Comp.foreach(_ := sva_probe_entries.simpCanTrans2Comp.get)
+  sva_aip.io.probe_entries.entryRegVec := sva_probe_entries.entryRegVec
+  sva_aip.io.probe_entries.entryValidVec := sva_probe_entries.entryValidVec
+  sva_aip.io.probe_entries.entryCommonOutVec := sva_probe_entries.entryCommonOutVec
+  sva_aip.io.issueRobIdx.valid := deqBeforeDly.head.valid
+  sva_aip.io.issueRobIdx.bits := deqBeforeDly.head.bits.common.robIdx
+  sva_aip.io.enq.zip(io.enq).foreach {
+    case (aip_enq, enq) => {
+      aip_enq.valid := enq.valid
+      aip_enq.bits := enq.bits
+    }
+  }
 
   // issue perf counter
   // enq count

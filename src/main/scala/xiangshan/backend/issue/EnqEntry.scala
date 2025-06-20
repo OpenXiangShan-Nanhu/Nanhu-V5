@@ -164,6 +164,7 @@ class EnqEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams
   val probeWire = Wire(new SVA_ProbeEntry)
   define(probePort, ProbeValue(probeWire))
   probeWire.entry := entryReg
+  probeWire.valid := validReg
 }
 
 class EnqEntryVecMem(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams) extends EnqEntry(isComp)

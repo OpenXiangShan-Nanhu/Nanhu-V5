@@ -455,6 +455,30 @@ class Entries(implicit p: Parameters, params: IssueBlockParams) extends XSModule
 
   io.vecLdIn.foreach(dontTouch(_))
 
+  if(params.hasCompAndSimp) {
+    dontTouch(simpCanTrans2Comp.get)
+    dontTouch(enqCanTrans2Comp.get)
+    dontTouch(enqCanTrans2Simp.get)
+  }
+
+  import xiangshan.backend.issue.assertion.IssueQueue._
+  import chisel3.probe._
+  val probePort = IO(Output(Probe(new SVA_ProbeEntries)))
+  val probeWire = Wire(new SVA_ProbeEntries)
+  define(probePort, ProbeValue(probeWire))
+  probeWire.enqCanTrans2Comp.foreach(_ := enqCanTrans2Comp.get)
+  probeWire.enqCanTrans2Simp.foreach(_ := enqCanTrans2Simp.get)
+  probeWire.simpCanTrans2Comp.foreach(_ := simpCanTrans2Comp.get.reduce(_ || _))
+  probeWire.entryRegVec.zipWithIndex.foreach {
+    case (probe, idx) => {
+      if(idx < params.numEnq) {
+        probe := read(enqEntries(idx).probePort).entry
+      } else {
+        probe := read(othersEntries(idx - params.numEnq).probePort).entry
+      }
+    }
+  }
+
   // entries perf counter
   // enq
   for (i <- 0 until params.numEnq) {

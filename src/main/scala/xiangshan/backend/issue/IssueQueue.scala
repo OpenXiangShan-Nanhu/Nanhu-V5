@@ -885,6 +885,16 @@ class IssueQueueImp(override val wrapper: IssueQueue)(implicit p: Parameters, va
     res
   }
 
+  import chisel3.probe._
+  import xiangshan.backend.issue.assertion.IssueQueue._
+  val sva_aip = Module(new SVA_IssueQueueAIP(true))
+  val sva_probe_entries = Wire(new SVA_ProbeEntries)
+  sva_probe_entries := read(entries.probePort)
+  sva_aip.io.entries.enqCanTrans2Comp.foreach (_ := sva_probe_entries.enqCanTrans2Comp.get)
+  sva_aip.io.entries.enqCanTrans2Simp.foreach (_ := sva_probe_entries.enqCanTrans2Simp.get)
+  sva_aip.io.entries.simpCanTrans2Comp.foreach(_ := sva_probe_entries.simpCanTrans2Comp.get)
+  sva_aip.io.entries.entryRegVec := sva_probe_entries.entryRegVec
+
   // issue perf counter
   // enq count
   XSPerfAccumulate("enq_valid_cnt", PopCount(io.enq.map(_.fire)))

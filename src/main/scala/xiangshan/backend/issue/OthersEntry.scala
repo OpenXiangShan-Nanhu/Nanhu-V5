@@ -59,6 +59,14 @@ class OthersEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockPar
 
   //output
   CommonOutConnect(io.commonOut, common, hasWakeupIQ, validReg, entryUpdate, entryReg, entryReg.status, io.commonIn, false, isComp)
+
+  // SVA
+  import chisel3.probe._
+  import xiangshan.backend.issue.assertion.IssueQueue._
+  val probePort = IO(Output(Probe(new SVA_ProbeEntry)))
+  val probeWire = Wire(new SVA_ProbeEntry)
+  define(probePort, ProbeValue(probeWire))
+  probeWire.entry := entryReg
 }
 
 class OthersEntryVecMem(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams) extends OthersEntry(isComp)

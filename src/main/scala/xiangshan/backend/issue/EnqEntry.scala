@@ -156,6 +156,14 @@ class EnqEntry(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams
 
   //output
   CommonOutConnect(io.commonOut, common, hasWakeupIQ, validReg, entryUpdate, entryReg, currentStatus, io.commonIn, true, isComp)
+
+  // SVA
+  import chisel3.probe._
+  import xiangshan.backend.issue.assertion.IssueQueue._
+  val probePort = IO(Output(Probe(new SVA_ProbeEntry)))
+  val probeWire = Wire(new SVA_ProbeEntry)
+  define(probePort, ProbeValue(probeWire))
+  probeWire.entry := entryReg
 }
 
 class EnqEntryVecMem(isComp: Boolean)(implicit p: Parameters, params: IssueBlockParams) extends EnqEntry(isComp)

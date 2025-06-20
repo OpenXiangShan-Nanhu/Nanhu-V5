@@ -567,6 +567,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   val is_last_hptw_req = state.map(_ === state_last_hptw_req)
   val is_hptw_resp = state.map(_ === state_hptw_resp)
   val is_last_hptw_resp = state.map(_ === state_last_hptw_resp)
+  val is_addr_check = state.map(_ === state_addr_check)
 
   val full = !ParallelOR(is_emptys).asBool
   val enq_ptr = ParallelPriorityEncoder(is_emptys)
@@ -600,8 +601,11 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   )
   val dup_req_fire = mem_arb.io.out.fire && dup(io.in.bits.req_info.vpn, mem_arb.io.out.bits.req_info.vpn) && io.in.bits.req_info.s2xlate === mem_arb.io.out.bits.req_info.s2xlate // dup with the req fire entry
   val dup_vec_wait = dup_vec.zip(is_waiting).map{case (d, w) => d && w} // dup with "mem_waiting" entries, sending mem req already
+  val dup_vec_addr = dup_vec.zip(is_addr_check).map{case (d, a) => d && a}
   val dup_vec_having = dup_vec.zipWithIndex.map{case (d, i) => d && is_having(i)} // dup with the "mem_out" entry recv the data just now
   val dup_vec_last_hptw = dup_vec.zipWithIndex.map{case (d, i) => d && (is_last_hptw_req(i) || is_last_hptw_resp(i))}
+  val dup_addr_ptr = ParallelMux(dup_vec_addr zip (0 until l2tlbParams.llptwsize).map(_.U(log2Up(l2tlbParams.llptwsize).W)))
+  val has_dup_addr = Cat(dup_vec_addr).orR
   val wait_id = Mux(dup_req_fire, mem_arb.io.chosen, ParallelMux(dup_vec_wait zip entries.map(_.wait_id)))
   val dup_wait_resp = io.mem.resp.fire && VecInit(dup_vec_wait)(io.mem.resp.bits.id) && !io.mem.flush_latch(io.mem.resp.bits.id) // dup with the entry that data coming next cycle
   val to_wait = Cat(dup_vec_wait).orR || dup_req_fire
@@ -650,7 +654,8 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).req_info := io.in.bits.req_info
 //    entries(enq_ptr).ppn := Mux(to_last_hptw_req, last_hptw_req_ppn, io.in.bits.ppn)
     entries(enq_ptr).ppn := Mux(to_last_hptw_req || last_hptw_excp, last_hptw_req_ppn, io.in.bits.ppn)
-    entries(enq_ptr).wait_id := Mux(to_wait, wait_id, enq_ptr)
+//    entries(enq_ptr).wait_id := Mux(to_wait, wait_id, enq_ptr)
+    entries(enq_ptr).wait_id := Mux(to_wait, wait_id, Mux(has_dup_addr, dup_addr_ptr, enq_ptr))
     entries(enq_ptr).af := false.B
     entries(enq_ptr).hptw_resp := Mux(to_last_hptw_req, entries(last_hptw_req_id).hptw_resp, Mux(to_wait, entries(wait_id).hptw_resp, entries(enq_ptr).hptw_resp))
     entries(enq_ptr).hptw_resp.gpf := Mux(last_hptw_excp, last_hptw_gStagePf, false.B)
@@ -659,8 +664,8 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   }
 
   val enq_ptr_reg = RegNext(enq_ptr)
-  val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !flush)
-
+//  val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !flush)
+  val need_addr_check = GatedValidRegNext(enq_state === state_addr_check && io.in.fire && !has_dup_addr && !flush)
   val hasHptwResp = ParallelOR(state.map(_ === state_hptw_resp)).asBool
   val hptw_resp_ptr_reg = RegNext(io.hptw.resp.bits.id)
   val hptw_need_addr_check = RegNext(hasHptwResp && io.hptw.resp.fire && !flush) && state(hptw_resp_ptr_reg) === state_addr_check
@@ -674,14 +679,30 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   io.pmp.req.bits.addr := Mux(hptw_need_addr_check, hpaddr, addr)
   io.pmp.req.bits.cmd := TlbCmd.read
   io.pmp.req.bits.size := 3.U // TODO: fix it
-  val pmp_resp_valid = io.pmp.req.valid // same cycle
+//  val pmp_resp_valid = io.pmp.req.valid // same cycle
+  val pmp_resp_ptr = Reg(UInt(log2Up(l2tlbParams.llptwsize).W))
+  when(io.pmp.req.valid) {
+    pmp_resp_ptr := Mux(hptw_need_addr_check, hptw_resp_ptr_reg, enq_ptr_reg)
+  }
+  val pmp_resp_valid = RegNext(io.pmp.req.valid, init = false.B)
+
   when (pmp_resp_valid) {
     // NOTE: when pmp resp but state is not addr check, then the entry is dup with other entry, the state was changed before
     //       when dup with the req-ing entry, set to mem_waiting (above codes), and the ld must be false, so dontcare
-    val ptr = Mux(hptw_need_addr_check, hptw_resp_ptr_reg, enq_ptr_reg);
+//    val ptr = Mux(hptw_need_addr_check, hptw_resp_ptr_reg, enq_ptr_reg);
     val accessFault = io.pmp.resp.ld || io.pmp.resp.mmio
-    entries(ptr).af := accessFault
-    state(ptr) := Mux(accessFault, state_mem_out, state_mem_req)
+//    entries(ptr).af := accessFault
+//    state(ptr) := Mux(accessFault, state_mem_out, state_mem_req)
+    entries(pmp_resp_ptr).af := accessFault
+    state(pmp_resp_ptr) := Mux(accessFault, state_mem_out, state_mem_req)
+    when (accessFault) {
+      for (i <- state.indices) {
+        when (state(i) === state_addr_check && entries(i).wait_id === pmp_resp_ptr) {
+          entries(i).af := true.B
+          state(i) := state_mem_out
+        }
+      }
+    }
   }
 
   when (mem_arb.io.out.fire) {

@@ -56,7 +56,8 @@ class IPrefetchIO(implicit p: Parameters) extends IPrefetchBundle {
   // control
   val csr_pf_enable     = Input(Bool())
   val csr_parity_enable = Input(Bool())
-  val flush             = Input(Bool())
+  val flushFromIFU      = Input(Bool())
+  val flushFromBackend  = Input(Bool())
 
   val req               = Flipped(Decoupled(new IPrefetchReq))
   val flushFromBpu      = Flipped(new BpuFlushInfo)
@@ -107,7 +108,7 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
 
   from_bpu_s0_flush := !s0_isSoftPrefetch && (io.flushFromBpu.shouldFlushByStage2(s0_req_ftqIdx) ||
                                               io.flushFromBpu.shouldFlushByStage3(s0_req_ftqIdx))
-  s0_flush := io.flush || from_bpu_s0_flush || s1_flush
+  s0_flush := io.flushFromBackend || (io.flushFromIFU && !s0_isSoftPrefetch) || from_bpu_s0_flush || s1_flush
 
   val s0_can_go = s1_ready && toITLB(0).ready && toITLB(1).ready && toMeta.ready
   io.req.ready := s0_can_go
@@ -421,7 +422,7 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
 
   /** Stage 1 control */
   from_bpu_s1_flush := s1_valid && !s1_isSoftPrefetch && io.flushFromBpu.shouldFlushByStage3(s1_req_ftqIdx)
-  s1_flush := io.flush || from_bpu_s1_flush
+  s1_flush := io.flushFromBackend || (io.flushFromIFU && !s1_isSoftPrefetch) || from_bpu_s1_flush
 
   s1_ready      := next_state === m_idle
   s1_fire       := (next_state === m_idle) && s1_valid && !s1_flush  // used to clear s1_valid & itlb_valid_latch
@@ -519,7 +520,7 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
 
   toMSHR <> toMSHRArbiter.io.out
 
-  s2_flush := io.flush
+  s2_flush := io.flushFromBackend || (io.flushFromIFU && !s2_isSoftPrefetch)
 
   // toMSHRArbiter.io.in(i).fire is not used here for timing consideration
   // val s2_finish  = (0 until PortNumber).map(i => has_send(i) || !s2_miss(i) || toMSHRArbiter.io.in(i).fire).reduce(_&&_)

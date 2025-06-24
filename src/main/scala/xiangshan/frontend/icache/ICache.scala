@@ -479,7 +479,8 @@ class ICacheIO(implicit p: Parameters) extends ICacheBundle
   val csr_pf_enable = Input(Bool())
   val csr_parity_enable = Input(Bool())
   val fencei      = Input(Bool())
-  val flush       = Input(Bool())
+  val flushFromIFU = Input(Bool())
+  val flushFromBackend = Input(Bool())
 }
 
 class ICache()(implicit p: Parameters) extends LazyModule with HasICacheParameters {
@@ -534,7 +535,8 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
   metaArray.io.read     <> prefetcher.io.metaRead.toIMeta
   metaArray.io.readResp <> prefetcher.io.metaRead.fromIMeta
 
-  prefetcher.io.flush             := io.flush
+  prefetcher.io.flushFromIFU      := io.flushFromIFU
+  prefetcher.io.flushFromBackend  := io.flushFromBackend
   prefetcher.io.csr_pf_enable     := io.csr_pf_enable
   prefetcher.io.csr_parity_enable := io.csr_parity_enable
   prefetcher.io.MSHRResp          := missUnit.io.fetch_resp
@@ -568,14 +570,14 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
 
   missUnit.io.hartId            := io.hartId
   missUnit.io.fencei            := io.fencei
-  missUnit.io.flush             := io.flush
+  missUnit.io.flush             := io.flushFromIFU || io.flushFromBackend
   missUnit.io.fetch_req         <> mainPipe.io.mshr.req
   missUnit.io.prefetch_req      <> prefetcher.io.MSHRReq
   missUnit.io.mem_grant.valid   := false.B
   missUnit.io.mem_grant.bits    := DontCare
   missUnit.io.mem_grant         <> bus.d
 
-  mainPipe.io.flush             := io.flush
+  mainPipe.io.flush             := io.flushFromIFU || io.flushFromBackend
   mainPipe.io.respStall         := io.stop
   mainPipe.io.csr_parity_enable := io.csr_parity_enable
   mainPipe.io.hartId            := io.hartId
@@ -583,7 +585,7 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
   mainPipe.io.fetch.req         <> io.fetch.req
   mainPipe.io.wayLookupRead     <> wayLookup.io.read
 
-  wayLookup.io.flush            := io.flush
+  wayLookup.io.flush            := io.flushFromIFU || io.flushFromBackend
   wayLookup.io.write            <> prefetcher.io.wayLookupWrite
   wayLookup.io.update           := missUnit.io.fetch_resp
 

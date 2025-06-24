@@ -448,7 +448,8 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
     val toICache = new FtqToICacheIO
     val toBackend = new FtqToCtrlIO
     val toPrefetch = new FtqToPrefetchIO
-    val icacheFlush = Output(Bool())
+    val icacheFlushFromIFU = Output(Bool())
+    val icacheFlushFromBackend = Output(Bool())
 
     val bpuInfo = new Bundle {
       val bpRight = Output(UInt(XLEN.W))
@@ -1175,7 +1176,8 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   val redirectVec = VecInit(backendRedirect, fromIfuRedirect)
 
   // when redirect, we should reset ptrs and status queues
-  io.icacheFlush := redirectVec.map(r => r.valid).reduce(_||_)
+  io.icacheFlushFromIFU := fromIfuRedirect.valid
+  io.icacheFlushFromBackend := backendRedirect.valid
   XSPerfAccumulate("icacheFlushFromBackend", backendRedirect.valid)
   XSPerfAccumulate("icacheFlushFromIFU", fromIfuRedirect.valid)
   when(redirectVec.map(r => r.valid).reduce(_||_)){

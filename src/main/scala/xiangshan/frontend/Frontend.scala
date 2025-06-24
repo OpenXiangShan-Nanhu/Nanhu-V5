@@ -182,7 +182,8 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   ifu.io.icacheInter.topdownIcacheMiss := icache.io.fetch.topdownIcacheMiss
   ifu.io.icacheInter.topdownItlbMiss := icache.io.fetch.topdownItlbMiss
   icache.io.stop := ifu.io.icacheStop
-  icache.io.flush := ftq.io.icacheFlush
+  icache.io.flushFromIFU := ftq.io.icacheFlushFromIFU
+  icache.io.flushFromBackend := ftq.io.icacheFlushFromBackend
 
   ifu.io.icachePerfInfo := icache.io.perfInfo
 

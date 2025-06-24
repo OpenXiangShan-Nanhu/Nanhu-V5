@@ -324,7 +324,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.nc        := Pbmt.isNC(s1_pbmt)
   s1_out.mmio      := Pbmt.isIO(s1_pbmt)
   s1_out.tlbMiss   := s1_tlb_miss
-  s1_out.atomic    := false.B
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
 //  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
 //    (s1_out.uop.exceptionVec(storePageFault) ||
@@ -433,7 +432,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
   s2_out.mmio   := (s2_mmio || s2_isCboM) && !s2_exception
-  s2_out.atomic := s2_in.atomic || s2_pmp.atomic
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_pmp.st ||
                                                 (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception

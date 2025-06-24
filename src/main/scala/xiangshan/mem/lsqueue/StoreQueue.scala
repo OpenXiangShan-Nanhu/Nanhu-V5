@@ -185,9 +185,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val storeMaskIn = Vec(StorePipelineWidth, Flipped(Valid(new StoreMaskBundle))) // store mask, send to sq from rs
     val sbuffer = Vec(EnsbufferWidth, Decoupled(new DCacheWordReqWithVaddrAndPfFlag)) // write committed store to sbuffer
     val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DynInst)) // The vector store difftest needs is, write committed store to sbuffer
-    val uncacheOutstanding = Input(Bool())
     val cmoOpReq  = DecoupledIO(new MissReq)
-    // val cmoOpResp = Flipped(DecoupledIO(new CMOResp))
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
     val vecmmioStout = DecoupledIO(new MemExuOutput(isVector = true))
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
@@ -286,7 +284,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val pending = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // mmio pending: inst is an mmio inst, it will not be executed until it reachs the end of rob
   val mmio = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // mmio: inst is an mmio inst
   val nc = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // nc: inst is a nc inst
-  val atomic = RegInit(VecInit(List.fill(StoreQueueSize)(false.B)))
   val prefetch = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // need prefetch when committing this store to sbuffer?
   val isVec = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // vector store instruction
   val vecLastFlow = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // last uop the last flow of vector store instruction
@@ -544,7 +541,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     when (storeAddrInFireReg) {
       pending(stWbIndexReg) := io.storeAddrInRe(i).mmio && !LSUOpType.isCbom(uop(stWbIndexReg).fuOpType)
       mmio(stWbIndexReg) := io.storeAddrInRe(i).mmio
-      atomic(stWbIndexReg) := io.storeAddrInRe(i).atomic
       hasException(stWbIndexReg) := ExceptionNO.selectByFu(uop(stWbIndexReg).exceptionVec, StaCfg).asUInt.orR ||
                                     TriggerAction.isDmode(uop(stWbIndexReg).trigger) || io.storeAddrInRe(i).af
       waitStoreS2(stWbIndexReg) := false.B
@@ -887,7 +883,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   mmioReq.bits.addr := addrModule.io.rdata_p(0)
   mmioReq.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data)
   mmioReq.bits.mask := shiftMaskToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).mask)
-  mmioReq.bits.atomic := atomic(RegNext(rdataPtrExtNext(0)).value)
   mmioReq.bits.nc := nc(RegNext(rdataPtrExtNext(0)).value)
   mmioReq.bits.id := rdataPtrExt(0).value
   mmioReq.ready := io.uncache.req.ready
@@ -968,7 +963,6 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // flush sbuffer
   io.flushSbuffer.valid := (cbomWaitFlushSb && cbomValid && !io.flushSbuffer.empty) || cboZeroFlushSb
 
-  io.uncache.req.bits.atomic := atomic(GatedRegNext(rdataPtrExtNext(0)).value)
 
   when(io.uncache.req.fire){
     // mmio store should not be committed until uncache req is sent

@@ -96,7 +96,6 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val release = Flipped(Valid(new Release))
     val tl_d_channel  = Input(new DcacheToLduForwardIO)
     val maControl     = Flipped(new StoreMaBufToSqControlIO)
-    val uncacheOutstanding = Input(Bool())
     val uncache = new UncacheWordIO
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
     // val cboZeroStout = DecoupledIO(new MemExuOutput)
@@ -135,7 +134,6 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   val storeQueue = Module(new StoreQueue)
 
   storeQueue.io.hartId := io.hartId
-  storeQueue.io.uncacheOutstanding := io.uncacheOutstanding
   io.mdpTrainUpdate := storeQueue.io.mdpTrainUpdate
 
 

@@ -370,6 +370,16 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
 
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
     vfWbArbiterOut.foreach(out => {
+      val difftest = DifftestModule(new DiffFpWriteback(VfPhyRegs))
+      difftest.coreid := io.fromTop.hartId
+      difftest.valid := out.fire
+      difftest.address := out.bits.pdest
+      difftest.data := out.bits.data(63, 0)
+    })
+  }
+
+  if (env.EnableDifftest || env.AlwaysBasicDiff) {
+    vfWbArbiterOut.foreach(out => {
       val difftest = DifftestModule(new DiffVecWriteback(VfPhyRegs))
       difftest.coreid := io.fromTop.hartId
       difftest.valid := out.fire

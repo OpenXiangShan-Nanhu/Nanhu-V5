@@ -53,9 +53,6 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   val io = IO(new Bundle {
     //  MSHR ID
     val hartId = Input(UInt())
-    //  Control IO
-    val enableOutstanding = Input(Bool())
-
     //  Client requests
     val req = Flipped(DecoupledIO(new UncacheWordReq))
     val resp = DecoupledIO(new DCacheWordRespWithError)
@@ -68,7 +65,6 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     val invalid = Output(Bool())
     //  This entry is selected.
     val select = Input(Bool())
-    val atomic = Output(Bool())
   })
   //  ================================================
   //  FSM state description:
@@ -95,7 +91,6 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   io.mem_acquire.bits := DontCare
   io.mem_grant.ready := false.B
 
-  io.atomic := req.atomic
   //  Receive request
   when (state === s_invalid) {
     io.req.ready := true.B
@@ -183,7 +178,6 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
 
 class UncacheIO(implicit p: Parameters) extends DCacheBundle {
   val hartId = Input(UInt())
-  val enableOutstanding = Input(Bool())
   val flush = Flipped(new UncacheFlushBundle)
   val lsq = Flipped(new UncacheWordIO)
 }
@@ -222,7 +216,6 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   val mem_grant   = bus.d
 
   val req_ready = WireInit(false.B)
-  val need_fence = WireInit(false.B)
 
   // assign default values to output signals
   bus.b.ready := false.B
@@ -235,7 +228,6 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   val enqPtr = RegInit(0.U.asTypeOf(new UncachePtr))
   val issPtr = RegInit(0.U.asTypeOf(new UncachePtr))
   val deqPtr = RegInit(0.U.asTypeOf(new UncachePtr))
-  val fence = RegInit(Bool(), false.B)
 
   io.lsq.resp.valid := false.B
   io.lsq.resp.bits := DontCare
@@ -243,7 +235,6 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   val entries = Seq.fill(UncacheBufferSize) { Module(new MMIOEntry(edge)) }
   for ((entry, i) <- entries.zipWithIndex) {
     entry.io.hartId := io.hartId
-    entry.io.enableOutstanding := io.enableOutstanding
 
    //  Enqueue
     entry.io.req.valid := (i.U === enqPtr.value) && req.valid
@@ -254,11 +245,7 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
     }
 
     //  Acquire
-    entry.io.select := (i.U === issPtr.value) && Mux(entry.io.atomic, issPtr.value === deqPtr.value, !fence)
-
-    when (i.U === issPtr.value) {
-      need_fence := entry.io.atomic
-    }
+    entry.io.select := (i.U === issPtr.value)
 
     //  Grant
     entry.io.mem_grant.valid := false.B
@@ -275,98 +262,6 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   }
 
   io.lsq.req.ready := req_ready
-//  when (io.enableOutstanding) {
-    //  Uncache Buffer is a circular queue, which contains UncacheBufferSize entries.
-    //  Description:
-    //    enqPtr: Point to an invalid (means that the entry is free) entry.
-    //    issPtr: Point to a ready entry, the entry is ready to issue.
-    //    deqPtr: Point to the oldest entry, which was issued but has not accepted response (used to keep order with the program order).
-    //
-    //  When outstanding disabled, only one read/write request can be accepted at a time.
-    //
-    //  Example (Enable outstanding):
-    //    1. enqPtr:
-    //       1) Before enqueue
-    //          enqPtr --
-    //                  |
-    //                  |
-    //                  V
-    //          +--+--+--+--+
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          +--+--+--+--+
-    //
-    //      2) After
-    //          enqPtr+1 ---
-    //                     |
-    //                     |
-    //                     V
-    //          +--+--+--+--+
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          +--+--+--+--+
-    //
-    //    2. issPtr:
-    //      1) Before issue
-    //          issPtr --
-    //                  |
-    //                  |
-    //                  V
-    //          +--+--+--+--+
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          +--+--+--+--+
-    //
-    //      2) After issue
-    //          issPtr+1 --
-    //                    |
-    //                    |
-    //                    V
-    //          +--+--+--+--+
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          +--+--+--+--+
-    //
-    //   3. deqPtr:
-    //      1) Before dequeue
-    //          deqPtr --
-    //                  |
-    //                  |
-    //                  V
-    //          +--+--+--+--+
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          |  |  |  |  |
-    //          +--+--+--+--+
-    //
-    //      2) After dequeue
-    //          deqPtr --                    deqPtr+1 --
-    //                  |                              |
-    //                  |                              |
-    //                  V                              V
-    //          +--+--+--+--+       or      +--+--+--+--+
-    //          |  |  |  |  |               |  |  |  |  |
-    //          |  |  |  |  |               |  |  |  |  |
-    //          |  |  |  |  |               |  |  |  |  |
-    //          +--+--+--+--+               +--+--+--+--+
-    //              (load)                     (store)
-    //
-    //      3) After response
-    //          deqPtr+1 ---                   deqPtr--
-    //                     |                          |
-    //                     |                          |
-    //                     V                          V
-    //          +--+--+--+--+       or      +--+--+--+--+
-    //          |  |  |  |  |               |  |  |  |  |
-    //          |  |  |  |  |               |  |  |  |  |
-    //          |  |  |  |  |               |  |  |  |  |
-    //          +--+--+--+--+               +--+--+--+--+
-    //              (load)                     (store)
-    //
 
     //  Enqueue
     when (req.fire) {
@@ -378,29 +273,9 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
       issPtr := issPtr + 1.U
     }
 
-    when (mem_acquire.fire) {
-      fence := need_fence
-    }
-
-    //  Dequeue
-//    when (mem_grant.fire) {
-//      deqPtr := Mux(edge.hasData(mem_grant.bits), deqPtr /* Load */, deqPtr + 1.U /* Store */)
-//    } .else
-    when (io.lsq.resp.fire /* Load */) {
+    when (io.lsq.resp.fire) {
       deqPtr := deqPtr + 1.U
     }
-
-    when (mem_grant.fire && fence) {
-      fence := false.B
-    }
-//  }
-//    .otherwise {
-//    when (io.lsq.resp.fire) {
-//      enqPtr := enqPtr + 1.U
-//      issPtr := issPtr + 1.U
-//      deqPtr := deqPtr + 1.U
-//    }
-//  }
 
   TLArbiter.lowestFromSeq(edge, mem_acquire, entries.map(_.io.mem_acquire))
   val invalid_entries = PopCount(entries.map(_.io.invalid))
@@ -413,16 +288,6 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   XSDebug(req.fire, "req cmd: %x addr: %x data: %x mask: %x\n",
     req.bits.cmd, req.bits.addr, req.bits.data, req.bits.mask)
   XSDebug(resp.fire, "data: %x\n", req.bits.data)
-
-  // print tilelink messages
-  // when(mem_acquire.valid){
-  //   XSDebug("mem_acquire valid, ready=%d ", mem_acquire.ready)
-  //   mem_acquire.bits.dump
-  // }
-  // when (mem_grant.fire) {
-  //   XSDebug("mem_grant fire ")
-  //   mem_grant.bits.dump
-  // }
 
   //  Performance Counters
   def isStore: Bool = io.lsq.req.bits.cmd === MemoryOpConstants.M_XWR

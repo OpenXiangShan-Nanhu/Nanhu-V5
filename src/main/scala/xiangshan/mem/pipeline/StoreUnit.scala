@@ -371,7 +371,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   // scalar store and scalar load nuke check, and also other purposes
   io.lsq.valid     := s1_valid && !s1_in.isHWPrefetch && !s1_frm_mabuf && !s1_tlb_miss
   io.lsq.bits      := s1_out
-  // io.lsq.bits.miss := s1_tlb_miss
+  io.lsq.bits.miss := s1_tlb_miss
 
   // goto misalignBuffer
   io.misalign_buf.valid := s1_valid && !s1_tlb_miss && !s1_in.isHWPrefetch && GatedValidRegNext(io.csrCtrl.hd_misalign_st_enable) && !s1_in.isvec

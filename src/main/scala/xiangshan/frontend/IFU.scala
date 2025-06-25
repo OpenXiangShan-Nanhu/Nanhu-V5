@@ -766,7 +766,7 @@ class NewIFU(implicit p: Parameters) extends XSModule
 
   val m_idle :: m_waitLastCmt:: m_sendReq :: m_waitResp :: m_sendTLB :: m_tlbResp :: m_sendPMP :: m_resendReq :: m_waitResendResp :: m_waitCommit :: m_commited :: Nil = Enum(11)
 
-  val f3_req_is_mmio     = f3_valid && (f3_pmp_mmio || Pbmt.isUncache(f3_itlb_pbmt)) && f3_exception.map(_ === ExceptionType.none).reduce(_ || _)
+  val f3_req_is_mmio     = f3_valid && (f3_pmp_mmio || Pbmt.isUncache(f3_itlb_pbmt)) && f3_exception.map(_ === ExceptionType.none).reduce(_ && _)
   val mmio_commit = VecInit(io.rob_commits.map{commit => commit.valid && commit.bits.ftqIdx === f3_ftq_req.ftqIdx &&  commit.bits.ftqOffset === 0.U}).asUInt.orR
   val f3_mmio_req_commit = f3_req_is_mmio && mmio_state === m_commited
 

@@ -939,8 +939,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     fcsr.w.wen && (!frmIsReserved && fcsrWdataReserved || frmIsReserved && !fcsrWdataReserved),false.B, valid)
 
   //flush pipe when modify the pmp/pma setting
-  val pmpModify = wenLegal && (Cat(pmpCSRMap.keys.toSeq.sorted.map(csrAddr => !(addr === csrAddr.U))).andR)
-  val pmaModify = wenLegal && (Cat(pmaCSRMap.keys.toSeq.sorted.map(csrAddr => !(addr === csrAddr.U))).andR)
+  val pmpModify = wenLegal && (Cat(pmpCSRMap.keys.toSeq.sorted.map(csrAddr => (addr === csrAddr.U))).orR)
+  val pmaModify = wenLegal && (Cat(pmaCSRMap.keys.toSeq.sorted.map(csrAddr => (addr === csrAddr.U))).orR)
   val pmpOrpmaChange = RegEnable(pmpModify || pmaModify,false.B, valid)
 
   val flushPipe = resetSatp ||

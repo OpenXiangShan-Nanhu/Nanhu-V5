@@ -1124,7 +1124,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   io.status.vecState.vlenb := vlenb.rdata.asUInt
   io.status.vecState.off := true.B // mstatus.regOut.VS === ContextStatus.Off
   io.status.interrupt := intrMod.io.out.interruptVec.valid
-  io.status.wfiEvent := debugIntr || (mie.rdata.asUInt & mip.rdata.asUInt).orR
+  io.status.wfiEvent := debugIntr || (mie.rdata.asUInt & mip.rdata.asUInt).orR || nmip.asUInt.orR
   io.status.debugMode := debugMode
   io.status.singleStepFlag := !debugMode && dcsr.regOut.STEP
 

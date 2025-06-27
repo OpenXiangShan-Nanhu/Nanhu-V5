@@ -787,6 +787,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   MMIOReqinReplayQ.bits.paddr := io.mmioLqIdx.paddr   // get paddr a cycle after send lqidx
   MMIOReqinReplayQ.bits.uop := uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid))
   MMIOReqinReplayQ.bits.mask := genVWmask(io.mmioLqIdx.paddr, uop(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid)).fuOpType(1,0))
+  MMIOReqinReplayQ.bits.nc := isNc(RegEnable(MMIOEntryinReplayQ_s0.bits.entryIdx,MMIOEntryinReplayQ_s0.valid))
 
   val mmioEnqUncacheBufferValid = mmio_can_direct_exu ++ Seq(MMIOReqinReplayQ.valid) // 3bit vec (ldu0 ldu1 mmioentryinrq) 
   val mmioEnqUncacheBufferBits = VecInit(io.enq.map(_.bits)) ++ Seq(MMIOReqinReplayQ.bits) // 3bit vec (ldu0 ldu1 mmioentryinrq) 

@@ -468,7 +468,7 @@ class ICacheMainPipe(implicit p: Parameters) extends ICacheModule
 
   // also raise af if data/l2 corrupt is detected
   val s2_data_exception = VecInit(s2_data_corrupt.map(ExceptionType.fromECC(io.csr_parity_enable, _)))
-  val s2_l2_exception   = VecInit(s2_l2_corrupt.map(ExceptionType.fromECC(true.B, _)))
+  val s2_l2_exception   = VecInit(s2_l2_corrupt.map(ExceptionType.fromTilelink))
 
   // merge s2 exceptions, itlb has the highest priority, meta next, meta/data/l2 lowest (and we dont care about prioritizing between this three)
   val s2_exception_out = ExceptionType.merge(

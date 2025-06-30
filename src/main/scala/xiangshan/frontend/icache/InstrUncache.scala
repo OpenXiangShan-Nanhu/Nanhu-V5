@@ -19,22 +19,19 @@ package xiangshan.frontend.icache
 import chisel3._
 import chisel3.util._
 import utils._
-import xs.utils._
-import xs.utils.perf._
 import org.chipsalliance.cde.config.Parameters
-import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
+import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
 import xiangshan._
 import xiangshan.frontend._
 
-class InsUncacheReq(implicit p: Parameters) extends ICacheBundle
-{
+class InsUncacheReq(implicit p: Parameters) extends ICacheBundle {
     val addr = UInt(PAddrBits.W)
 }
 
-class InsUncacheResp(implicit p: Parameters) extends ICacheBundle
-{
-  val data = UInt(maxInstrLen.W)
+class InsUncacheResp(implicit p: Parameters) extends ICacheBundle {
+  val data:    UInt = UInt(maxInstrLen.W)
+  val corrupt: Bool = Bool()
 }
 
 // One miss entry deals with one mmio request
@@ -57,8 +54,9 @@ class InstrMMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends XSModule w
 
   val state = RegInit(s_invalid)
 
-  val req       = Reg(new InsUncacheReq )
-  val respDataReg = Reg(UInt(mmioBusWidth.W))
+  private val req            = Reg(new InsUncacheReq)
+  private val respDataReg    = Reg(UInt(mmioBusWidth.W))
+  private val respCorruptReg = RegInit(false.B)
 
   // assign default values to output signals
   io.req.ready           := false.B
@@ -108,6 +106,7 @@ class InstrMMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends XSModule w
 
     when (io.mmio_grant.fire) {
       respDataReg := io.mmio_grant.bits.data
+      respCorruptReg := io.mmio_grant.bits.corrupt // this includes bits.denied, as tilelink spec defines
       state := s_send_resp
     }
   }
@@ -127,6 +126,7 @@ class InstrMMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends XSModule w
   when (state === s_send_resp) {
     io.resp.valid     := !needFlush
     io.resp.bits.data :=  getDataFromBus(req.addr)
+    io.resp.bits.corrupt := respCorruptReg
     // meta data should go with the response
     when (io.resp.fire || needFlush) {
       state := s_invalid
@@ -205,6 +205,9 @@ class InstrUncacheImp(outer: InstrUncache)
     }
     entry
   }
+
+  // override mmio_grant.ready to prevent x-propagationAdd commentMore actions
+  mmio_grant.ready := true.B
 
   entry_alloc_idx    := PriorityEncoder(entries.map(m=>m.io.req.ready))
 

@@ -81,9 +81,9 @@ class FtqICacheInfo(implicit p: Parameters)extends XSBundle with HasICacheParame
 
 class IFUICacheIO(implicit p: Parameters)extends XSBundle with HasICacheParameters{
   val icacheReady       = Output(Bool())
-  val resp              = Vec(PortNumber, ValidIO(new ICacheMainPipeResp))
+  val resp              = ValidIO(new ICacheMainPipeResp)
   val topdownIcacheMiss = Output(Bool())
-  val topdownItlbMiss = Output(Bool())
+  val topdownItlbMiss   = Output(Bool())
 }
 
 class FtqToICacheRequestBundle(implicit p: Parameters) extends XSBundle with HasICacheParameters{

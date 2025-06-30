@@ -524,7 +524,8 @@ class NewIFU(implicit p: Parameters) extends XSModule
 
   f2_ready := f2_fire || !f2_valid
   //TODO: addr compare may be timing critical
-  val f2_icache_all_resp_wire       =  fromICache(0).valid && (fromICache(0).bits.vaddr ===  f2_ftq_req.startAddr) && ((fromICache(1).valid && (fromICache(1).bits.vaddr ===  f2_ftq_req.nextlineStart)) || !f2_doubleLine)
+  val f2_icache_all_resp_wire  =  fromICache.valid && (fromICache.bits.vaddr(0) === f2_ftq_req.startAddr) &&
+    ((fromICache.bits.doubleline && (fromICache.bits.vaddr(1) ===  f2_ftq_req.nextlineStart)) || !f2_doubleLine)
   val f2_icache_all_resp_reg        = RegInit(false.B)
 
   icacheRespAllValid := f2_icache_all_resp_reg || f2_icache_all_resp_wire
@@ -542,28 +543,28 @@ class NewIFU(implicit p: Parameters) extends XSModule
   .elsewhen(f1_fire && !f1_flush) {f2_valid := true.B }
   .elsewhen(f2_fire)              {f2_valid := false.B}
 
-  val f2_exception_in  = VecInit((0 until PortNumber).map(i => fromICache(i).bits.exception))
-  val f2_backendException = fromICache(0).bits.backendException
+  val f2_exception_in     = fromICache.bits.exception
+  val f2_backendException = fromICache.bits.backendException
   // paddr and gpaddr of [startAddr, nextLineAddr]
-  val f2_paddrs       = VecInit((0 until PortNumber).map(i => fromICache(i).bits.paddr))
-  val f2_gpaddr       = fromICache(0).bits.gpaddr
-  val f2_isForVSnonLeafPTE      = fromICache(0).bits.isForVSnonLeafPTE
+  val f2_paddrs            = fromICache.bits.paddr
+  val f2_gpaddr            = fromICache.bits.gpaddr
+  val f2_isForVSnonLeafPTE = fromICache.bits.isForVSnonLeafPTE
 
   // FIXME: raise af if one fetch block crosses the cacheable-noncacheable boundary, might not correct
   // not double-line, skip check, double-line, ask for consistent pmp_mmio and itlb_pbmt valueAdd commentMore actions
   val f2_mmio_mismatch_exception = VecInit(Seq(
     ExceptionType.none,
     Mux(
-    !fromICache(1).valid ||
-      fromICache(0).bits.pmp_mmio === fromICache(1).bits.pmp_mmio &&
-        fromICache(0).bits.itlb_pbmt === fromICache(1).bits.itlb_pbmt,
+    !fromICache.bits.doubleline ||
+      fromICache.bits.pmp_mmio(0) === fromICache.bits.pmp_mmio(1) &&
+        fromICache.bits.itlb_pbmt(0) === fromICache.bits.itlb_pbmt(1),
     ExceptionType.none,
     ExceptionType.af
   )))
 
   val f2_exception = ExceptionType.merge(f2_exception_in, f2_mmio_mismatch_exception)
-  val f2_pmp_mmio = fromICache(0).bits.pmp_mmio
-  val f2_itlb_pbmt = fromICache(0).bits.itlb_pbmt
+  val f2_pmp_mmio = fromICache.bits.pmp_mmio(0)
+  val f2_itlb_pbmt = fromICache.bits.itlb_pbmt(0)
 
 
   /**
@@ -598,25 +599,15 @@ class NewIFU(implicit p: Parameters) extends XSModule
 
   def cut(cacheline: UInt, cutPtr: Vec[UInt]) : Vec[UInt] ={
     require(HasCExtension)
-    // if(HasCExtension){
-      val result   = Wire(Vec(PredictWidth + 1, UInt(16.W)))
-      val dataVec  = cacheline.asTypeOf(Vec(blockBytes, UInt(16.W))) //32 16-bit data vector
-      (0 until PredictWidth + 1).foreach( i =>
-        result(i) := dataVec(cutPtr(i)) //the max ptr is 3*blockBytes/4-1
-      )
-      result
-    // } else {
-    //   val result   = Wire(Vec(PredictWidth, UInt(32.W)) )
-    //   val dataVec  = cacheline.asTypeOf(Vec(blockBytes * 2/ 4, UInt(32.W)))
-    //   (0 until PredictWidth).foreach( i =>
-    //     result(i) := dataVec(cutPtr(i))
-    //   )
-    //   result
-    // }
+    val result   = Wire(Vec(PredictWidth + 1, UInt(16.W)))
+    val dataVec  = cacheline.asTypeOf(Vec(blockBytes, UInt(16.W))) //32 16-bit data vector
+    (0 until PredictWidth + 1).foreach( i =>
+      result(i) := dataVec(cutPtr(i)) //the max ptr is 3*blockBytes/4-1
+    )
+    result
   }
 
-  val f2_cache_response_data = fromICache.map(_.bits.data)
-  val f2_data_2_cacheline = Cat(f2_cache_response_data(0), f2_cache_response_data(0))
+  val f2_data_2_cacheline = Cat(fromICache.bits.data, fromICache.bits.data)
 
   val f2_cut_data   = cut(f2_data_2_cacheline, f2_cut_ptr)
 

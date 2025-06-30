@@ -190,9 +190,16 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   val s1_req_isForVSnonLeafPTE_tmp    = VecInit((0 until PortNumber).map( i =>
     DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.isForVSnonLeafPTE), data = fromITLB(i).bits.isForVSnonLeafPTE)
   ))
-  val s1_itlb_exception     = VecInit((0 until PortNumber).map( i =>
+  val s1_itlb_exception_in     = VecInit((0 until PortNumber).map( i =>
     DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U(ExceptionType.width.W), data = ExceptionType.fromTlbResp(fromITLB(i).bits))
   ))
+  // merge backend exception and itlb exceptionAdd commentMore actions
+  // for area concern, we don't have 64 bits vaddr in frontend, but spec asks page fault when high bits are not all 0/1
+  // this check is finished in backend, and passed to frontend with redirect, we see it as a part of itlb exception
+  private val s1_itlb_exception = ExceptionType.merge(
+    s1_backendException,
+    s1_itlb_exception_in
+  )
   val s1_itlb_pbmt          = VecInit((0 until PortNumber).map( i =>
     DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.pbmt(0)), data = fromITLB(i).bits.pbmt(0))
   ))
@@ -357,8 +364,7 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   // merge s1 itlb/pmp exceptions, itlb has the highest priority, pmp next
   // for timing consideration, meta_corrupt is not merged, and it will NOT cancel prefetch
   val s1_exception_out = ExceptionType.merge(
-    s1_backendException,
-    s1_itlb_exception,
+    s1_itlb_exception  // includes backend exception
     s1_pmp_exception
   )
 

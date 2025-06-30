@@ -364,7 +364,7 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   // merge s1 itlb/pmp exceptions, itlb has the highest priority, pmp next
   // for timing consideration, meta_corrupt is not merged, and it will NOT cancel prefetch
   val s1_exception_out = ExceptionType.merge(
-    s1_itlb_exception  // includes backend exception
+    s1_itlb_exception,  // includes backend exception
     s1_pmp_exception
   )
 
@@ -482,8 +482,9 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
    * also, if previous has exception, latter port should also not be prefetched
    */
   val s2_miss = VecInit((0 until PortNumber).map { i =>
-    !s2_hits(i) && (if (i==0) true.B else s2_doubleline) &&
-      s2_exception.take(i+1).map(_ === ExceptionType.none).reduce(_&&_) &&
+    !s2_hits(i) &&
+      (if (i==0) true.B else s2_doubleline) &&
+      !ExceptionType.hasException(s2_exception.take(i + 1)) &&
       s2_mmio.take(i+1).map(!_).reduce(_&&_)
   })
 

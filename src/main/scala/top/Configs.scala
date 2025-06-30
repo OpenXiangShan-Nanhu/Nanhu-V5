@@ -462,10 +462,11 @@ class NactMiniConfig(n: Int = 1)extends Config(
         //Frontend
         DecodeWidth = 2,      //2
         RenameWidth = 2,      //4
-        IBufSize = 32,        //32
-        FtqSize = 32,         //8
+        IBufSize = 16,        //32
+        FtqSize = 16,         //48
+        FtbSize = 2048,
         //Backend
-        RobSize = 72,         //96
+        RobSize = 48,         //96
         RabSize = 96,         //96
         intPreg = IntPregParams(
           numEntries = 48,    //128
@@ -490,13 +491,23 @@ class NactMiniConfig(n: Int = 1)extends Config(
         IntRegCacheSize = 4,
         MemRegCacheSize = 4,
         EnableMiniConfig = true,
+        dpParams = DispatchParameters(
+          IntDqSize = 8,
+          FpDqSize = 8,
+          LsDqSize = 8,
+          IntDqDeqWidth = 8,
+          FpDqDeqWidth = 6,
+          VecDqDeqWidth = 6,
+          LsDqDeqWidth = 6
+        ),
         //Memblock
-        VirtualLoadQueueSize = 48,    //56
-        LoadQueueRAWSize = 32,        //24
-        LoadQueueReplaySize = 32,     //32
+        VirtualLoadQueueSize = 24,    //56
+        LoadQueueRAWSize = 12,        //24
+        LoadQueueReplaySize = 24,     //32
         LoadUncacheBufferSize = 4,    //8
-        StoreQueueSize = 32,          //32
+        StoreQueueSize = 20,          //32
         StoreBufferSize = 4,          //8
+        StoreQueueNWriteBanks = 4,    //8
         StoreBufferThreshold = 3,     //7
         VlMergeBufferSize = 4,        //16
         VsMergeBufferSize = 4,        //16
@@ -513,7 +524,42 @@ class NactMiniConfig(n: Int = 1)extends Config(
           nProbeEntries = 2,    //4
           nReleaseEntries = 2,  //4
           nMaxPrefetchEntry = 2,//6
-        ))
+        )),
+        itlbParameters = TLBParameters(
+          name = "itlb",
+          fetchi = true,
+          useDmode = false,
+          NWays = 4,
+        ),
+        dtlbParameters = TLBParameters(
+          name = "dtlb",
+          NWays = 4,
+          outReplace = false,
+          partialStaticPMP = true,
+          outsideRecvFlush = true,
+          saveLevel = false,
+          lgMaxSize = 4
+        ),
+        ldtlbParameters = TLBParameters(
+          name = "ldtlb",
+          NWays = 4,
+          outReplace = false,
+          partialStaticPMP = true,
+          outsideRecvFlush = true,
+          saveLevel = false,
+          lgMaxSize = 4
+        ),
+        l2tlbParameters = L2TLBParameters(
+          l3Size = 4,
+          l2Size = 4,
+          l1nSets = 4,
+          l1nWays = 4,
+          l1ReservedBits = 1,
+          l0nSets = 4,
+          l0nWays = 8,
+          l0ReservedBits = 0,
+          spSize = 4,
+        )
       ))
     case L2ParamKey =>
       up(L2ParamKey).copy(

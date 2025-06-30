@@ -187,6 +187,7 @@ class FtqToICacheIO(implicit p: Parameters) extends XSBundle {
 class FtqToPrefetchIO(implicit p: Parameters) extends XSBundle {
   val req = Decoupled(new FtqICacheInfo)
   val flushFromBpu = new BpuFlushInfo
+  val backendException = UInt(ExceptionType.width.W)
 }
 
 class FtqToCtrlIO(implicit p: Parameters) extends XSBundle {
@@ -537,21 +538,19 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   // raises IPF or IAF, which is ifuWbPtr_write or IfuPtr_write.
   // Only when IFU has written back that FTQ entry can backendIpf and backendIaf be false because this
   // makes sure that IAF and IPF are correctly raised instead of being flushed by redirect requests.
-  val backendIpf = RegInit(false.B)
-  val backendIgpf = RegInit(false.B)
-  val backendIaf = RegInit(false.B)
+  val backendException  = RegInit(ExceptionType.none)
   val backendPcFaultPtr = RegInit(FtqPtr(false.B, 0.U))
   when (fromBackendRedirect.valid) {
-    backendIpf := fromBackendRedirect.bits.cfiUpdate.backendIPF
-    backendIgpf := fromBackendRedirect.bits.cfiUpdate.backendIGPF
-    backendIaf := fromBackendRedirect.bits.cfiUpdate.backendIAF
+    backendException := ExceptionType.fromOH(
+      has_pf = fromBackendRedirect.bits.cfiUpdate.backendIPF,
+      has_gpf = fromBackendRedirect.bits.cfiUpdate.backendIGPF,
+      has_af = fromBackendRedirect.bits.cfiUpdate.backendIAF
+    )
     when (fromBackendRedirect.bits.cfiUpdate.backendIPF || fromBackendRedirect.bits.cfiUpdate.backendIGPF || fromBackendRedirect.bits.cfiUpdate.backendIAF) {
       backendPcFaultPtr := ifuWbPtr_write
     }
   } .elsewhen (ifuWbPtr =/= backendPcFaultPtr) {
-    backendIpf := false.B
-    backendIgpf := false.B
-    backendIaf := false.B
+    backendException := ExceptionType.none
   }
 
   // **********************************************************************
@@ -860,13 +859,12 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
     copy.fromFtqPcBundle(toICachePcBundle(i))
     copy.ftqIdx := ifuPtr
   }
-  io.toICache.req.bits.backendIpf := backendIpf && backendPcFaultPtr === ifuPtr
-  io.toICache.req.bits.backendIgpf := backendIgpf && backendPcFaultPtr === ifuPtr
-  io.toICache.req.bits.backendIaf := backendIaf && backendPcFaultPtr === ifuPtr
+  io.toICache.req.bits.backendException := ExceptionType.hasException(backendException) && backendPcFaultPtr === ifuPtr
 
   io.toPrefetch.req.valid := toPrefetchEntryToSend && pfPtr =/= bpuPtr
   io.toPrefetch.req.bits.fromFtqPcBundle(toPrefetchPcBundle)
   io.toPrefetch.req.bits.ftqIdx := pfPtr
+  io.toPrefetch.backendException := Mux(backendPcFaultPtr === pfPtr, backendException, ExceptionType.none)
 
   // TODO: remove this
   XSError(io.toIfu.req.valid && diff_entry_next_addr =/= entry_next_addr,

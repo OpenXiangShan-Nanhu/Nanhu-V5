@@ -86,12 +86,10 @@ class IFUICacheIO(implicit p: Parameters)extends XSBundle with HasICacheParamete
   val topdownItlbMiss = Output(Bool())
 }
 
-class FtqToICacheRequestBundle(implicit p: Parameters)extends XSBundle with HasICacheParameters{
-  val pcMemRead           = Vec(5, new FtqICacheInfo)
-  val readValid           = Vec(5, Bool())
-  val backendIpf          = Bool()
-  val backendIgpf         = Bool()
-  val backendIaf          = Bool()
+class FtqToICacheRequestBundle(implicit p: Parameters) extends XSBundle with HasICacheParameters{
+  val pcMemRead        = Vec(5, new FtqICacheInfo)
+  val readValid        = Vec(5, Bool())
+  val backendException = Bool()
 }
 
 
@@ -119,6 +117,10 @@ object ExceptionType {
   def gpf   : UInt = "b10".U(width.W) // instruction guest page fault
   def af    : UInt = "b11".U(width.W) // instruction access fault
 
+  def hasException(e: UInt): Bool = e =/= none
+  def hasException(e: Vec[UInt]): Bool = e.map(_ =/= none).reduce(_ || _)
+  def hasException(e: IndexedSeq[UInt]): Bool = hasException(VecInit(e))
+
   def fromOH(has_pf: Bool, has_gpf: Bool, has_af: Bool): UInt = {
     assert(
       PopCount(VecInit(has_pf, has_gpf, has_af)) <= 1.U,
@@ -131,15 +133,6 @@ object ExceptionType {
       has_gpf -> gpf,
       has_af  -> af
     ))
-  }
-
-  // raise pf/gpf/af according to ftq(backend) request
-  def fromFtq(req: FtqToICacheRequestBundle): UInt = {
-    fromOH(
-      req.backendIpf,
-      req.backendIgpf,
-      req.backendIaf
-    )
   }
 
   // raise pf/gpf/af according to itlb response
@@ -242,17 +235,17 @@ object ExceptionType {
 }
 
 class FetchToIBuffer(implicit p: Parameters) extends XSBundle {
-  val instrs    = Vec(PredictWidth, UInt(32.W))
-  val valid     = UInt(PredictWidth.W)
-  val enqEnable = UInt(PredictWidth.W)
-  val pd        = Vec(PredictWidth, new PreDecodeInfo)
-  val foldpc    = Vec(PredictWidth, UInt(MemPredPCWidth.W))
-  val ftqOffset    = Vec(PredictWidth, ValidUndirectioned(UInt(log2Ceil(PredictWidth).W)))
-  val exceptionFromBackend = Vec(PredictWidth, Bool())
-  val exceptionType = Vec(PredictWidth, UInt(ExceptionType.width.W))
-  val crossPageIPFFix = Vec(PredictWidth, Bool())
-  val illegalInstr = Vec(PredictWidth, Bool())
-  val triggered    = Vec(PredictWidth, TriggerAction())
+  val instrs           = Vec(PredictWidth, UInt(32.W))
+  val valid            = UInt(PredictWidth.W)
+  val enqEnable        = UInt(PredictWidth.W)
+  val pd               = Vec(PredictWidth, new PreDecodeInfo)
+  val foldpc           = Vec(PredictWidth, UInt(MemPredPCWidth.W))
+  val ftqOffset        = Vec(PredictWidth, ValidUndirectioned(UInt(log2Ceil(PredictWidth).W)))
+  val backendException = Vec(PredictWidth, Bool())
+  val exceptionType    = Vec(PredictWidth, UInt(ExceptionType.width.W))
+  val crossPageIPFFix  = Vec(PredictWidth, Bool())
+  val illegalInstr     = Vec(PredictWidth, Bool())
+  val triggered        = Vec(PredictWidth, TriggerAction())
   val isLastInFtqEntry = Vec(PredictWidth, Bool())
 
   val pc        = Vec(PredictWidth, UInt(VAddrBits.W))
@@ -260,12 +253,6 @@ class FetchToIBuffer(implicit p: Parameters) extends XSBundle {
   val topdown_info = new FrontendTopDownBundle
 }
 
-// class BitWiseUInt(val width: Int, val init: UInt) extends Module {
-//   val io = IO(new Bundle {
-//     val set
-//   })
-// }
-// Move from BPU
 abstract class GlobalHistory(implicit p: Parameters) extends XSBundle with HasBPUConst {
   def update(br_valids: Vec[Bool], real_taken_mask: Vec[Bool]): GlobalHistory
 }

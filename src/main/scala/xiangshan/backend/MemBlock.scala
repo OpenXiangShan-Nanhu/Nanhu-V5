@@ -265,16 +265,26 @@ class MemBlockPMPWrapper(pmpCheckSize : Int, lgMaxSize : Int = 4)(implicit p: Pa
       val pmp = Output(Vec(NumPMP, new PMPEntry()))
       val pma = Output(Vec(NumPMA, new PMPEntry()))
     }
-    val pmpChecker = Vec(pmpCheckSize, new PMPCheckIO(lgMaxSize))
+    val privDmode = Input(UInt(2.W))
+    val dtlbPmps = Vec(pmpCheckSize, Flipped(ValidIO(new PMPReqBundle(lgMaxSize))))
+    val pmpCheckerResp = Vec(pmpCheckSize, new PMPRespBundle)
   })
 
   val pmp = Module(new PMP())
   val pmp_checkers = Seq.fill(pmpCheckSize)(Module(new PMPChecker(lgMaxSize, leaveHitMux = true)))
 
+  for ((p, d) <- pmp_checkers zip io.dtlbPmps) {
+    p.io.apply(io.privDmode, io.pmpInfo.pmp, io.pmpInfo.pma, d)
+    require(p.io.req.bits.size.getWidth == d.bits.size.getWidth)
+  }
+
+  for ((p,res) <- pmp_checkers zip io.pmpCheckerResp){
+    res := p.io.resp
+  }
+
   io.pmpInfo.pmp := pmp.io.pmp
   io.pmpInfo.pma := pmp.io.pma
   pmp.io.distribute_csr := io.distribute_csr
-  io.pmpChecker <> pmp_checkers.map(_.io)
 }
 
 
@@ -686,23 +696,12 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   // pmp
   val pmpWrapper = Module(new MemBlockPMPWrapper(DTlbSize))
+  pmpWrapper.io.privDmode := tlbcsr.priv.dmode
   pmpWrapper.io.distribute_csr <> csrCtrl.distribute_csr
+  pmpWrapper.io.dtlbPmps := dtlb_pmps
   ptw.io.pmpInfo.pmp := pmpWrapper.io.pmpInfo.pmp
   ptw.io.pmpInfo.pma := pmpWrapper.io.pmpInfo.pma
-  val pmp_check = pmpWrapper.io.pmpChecker
-
-
-//  val pmp = Module(new PMP())
-//  pmp.io.distribute_csr <> csrCtrl.distribute_csr
-//  ptw.io.pmpInfo.pmp := pmp.io.pmp
-//  ptw.io.pmpInfo.pma := pmp.io.pma
-//
-//  val pmp_checkers = Seq.fill(DTlbSize)(Module(new PMPChecker(4, leaveHitMux = true)))
-//  val pmp_check = pmp_checkers.map(_.io)
-  for ((p,d) <- pmp_check zip dtlb_pmps) {
-    p.apply(tlbcsr.priv.dmode, pmpWrapper.io.pmpInfo.pmp, pmpWrapper.io.pmpInfo.pma, d)
-    require(p.req.bits.size.getWidth == d.bits.size.getWidth)
-  }
+  val pmpCheckResp = pmpWrapper.io.pmpCheckerResp
 
   for (i <- 0 until LduCnt) {
     io.debug_ls.debugLsInfo(i) := loadUnits(i).io.debug_ls
@@ -833,7 +832,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       ))
     }
     // pmp
-    loadUnits(i).io.pmp <> pmp_check(i).resp
+    loadUnits(i).io.pmp <> pmpCheckResp(i)
     // st-ld violation query
     val stld_nuke_query = storeUnits.map(_.io.stld_nuke_query)
     for (s <- 0 until StorePipelineWidth) {
@@ -964,7 +963,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   prefetcherOpt match {
   case Some(pf) => 
     dtlb_reqs(DTLB_PORT_START_SMS) <> pf.io.tlb_req
-    pf.io.pmp_resp := pmp_check(DTLB_PORT_START_SMS).resp
+    pf.io.pmp_resp := pmpCheckResp(DTLB_PORT_START_SMS)
   case None =>
     dtlb_reqs(DTLB_PORT_START_SMS) := DontCare
     dtlb_reqs(DTLB_PORT_START_SMS).req.valid := false.B
@@ -973,7 +972,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   l1PrefetcherOpt match {
     case Some(pf) => 
       dtlb_reqs(DTLB_PORT_START_STRIDE) <> pf.io.tlb_req
-      pf.io.pmp_resp := pmp_check(DTLB_PORT_START_STRIDE).resp
+      pf.io.pmp_resp := pmpCheckResp(DTLB_PORT_START_STRIDE)
     case None =>
         dtlb_reqs(DTLB_PORT_START_STRIDE) := DontCare
         dtlb_reqs(DTLB_PORT_START_STRIDE).req.valid := false.B
@@ -981,7 +980,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   }
   dtlb_reqs(DTLB_PORT_START_BOP) <> io.l2_tlb_req
   dtlb_reqs(DTLB_PORT_START_BOP).resp.ready := true.B
-  io.l2_pmp_resp := pmp_check(DTLB_PORT_START_BOP).resp
+  io.l2_pmp_resp := pmpCheckResp(DTLB_PORT_START_BOP)
 
   // StoreUnit
   for (i <- 0 until StdCnt) {
@@ -1003,7 +1002,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     stu.io.lsq_replenish <> lsq.io.sta.storeAddrInRe(i)
     // dtlb
     stu.io.tlb          <> dtlbIO.requestor(DTLB_PORT_START_ST + i)
-    stu.io.pmp          <> pmp_check(DTLB_PORT_START_ST + i).resp
+    stu.io.pmp          <> pmpCheckResp(DTLB_PORT_START_ST + i)
 
     // -------------------------
     // Store Triggers
@@ -1416,7 +1415,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   atomicsUnit.io.dtlb.resp.valid := false.B
   atomicsUnit.io.dtlb.resp.bits  := DontCare
   atomicsUnit.io.dtlb.req.ready  := amoTlb.req.ready
-  atomicsUnit.io.pmpResp := pmp_check(0).resp
+  atomicsUnit.io.pmpResp := pmpCheckResp(0)
 
   atomicsUnit.io.dcache <> dcache.io.lsu.atomics
   atomicsUnit.io.flush_sbuffer.empty := stIsEmpty
@@ -1646,7 +1645,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   vSegmentUnit.io.in.valid := isSegment && io.ooo_to_mem.issueVldu.head.valid// is segment instruction
   vSegmentUnit.io.dtlb.resp.bits <> dtlb_reqs.take(LduCnt).head.resp.bits
   vSegmentUnit.io.dtlb.resp.valid <> dtlb_reqs.take(LduCnt).head.resp.valid
-  vSegmentUnit.io.pmpResp <> pmp_check.head.resp
+  vSegmentUnit.io.pmpResp <> pmpCheckResp.head
   vSegmentUnit.io.flush_sbuffer.empty := stIsEmpty
   vSegmentUnit.io.redirect <> redirect
   vSegmentUnit.io.rdcache.resp.bits := dcache.io.lsu.load(0).resp.bits

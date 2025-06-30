@@ -25,10 +25,7 @@ import xiangshan.SoftIfetchPrefetchBundle
 import xs.utils._
 import xs.utils.perf._
 
-abstract class IPrefetchBundle(implicit p: Parameters) extends ICacheBundle
-abstract class IPrefetchModule(implicit p: Parameters) extends ICacheModule
-
-class IPrefetchReq(implicit p: Parameters) extends IPrefetchBundle {
+class IPrefetchReq(implicit p: Parameters) extends ICacheBundle {
   val startAddr     : UInt   = UInt(VAddrBits.W)
   val nextlineStart : UInt   = UInt(VAddrBits.W)
   val ftqIdx        : FtqPtr = new FtqPtr
@@ -52,10 +49,9 @@ class IPrefetchReq(implicit p: Parameters) extends IPrefetchBundle {
   }
 }
 
-class IPrefetchIO(implicit p: Parameters) extends IPrefetchBundle {
+class IPrefetchIO(implicit p: Parameters) extends ICacheBundle {
   // control
   val csr_pf_enable     = Input(Bool())
-  val csr_parity_enable = Input(Bool())
   val flushFromIFU      = Input(Bool())
   val flushFromBackend  = Input(Bool())
 
@@ -69,8 +65,7 @@ class IPrefetchIO(implicit p: Parameters) extends IPrefetchBundle {
   val wayLookupWrite    = DecoupledIO(new WayLookupInfo)
 }
 
-class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
-{
+class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   val io: IPrefetchIO = IO(new IPrefetchIO)
 
   val (toITLB,  fromITLB) = (io.itlb.map(_.req), io.itlb.map(_.resp))
@@ -80,7 +75,6 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
   val toWayLookup = io.wayLookupWrite
 
   val s0_fire, s1_fire, s2_fire             = WireInit(false.B)
-  val s0_discard, s2_discard                = WireInit(false.B)
   val s0_ready, s1_ready, s2_ready          = WireInit(false.B)
   val s0_flush, s1_flush, s2_flush          = WireInit(false.B)
   val from_bpu_s0_flush, from_bpu_s1_flush  = WireInit(false.B)
@@ -187,16 +181,16 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
     Mux(tlb_valid_pulse(i), s1_req_paddr_wire(i), s1_req_paddr_reg(i))
   ))
   val s1_req_gpaddr_tmp     = VecInit((0 until PortNumber).map( i =>
-    ResultHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.gpaddr(0)), data = fromITLB(i).bits.gpaddr(0))
+    DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.gpaddr(0)), data = fromITLB(i).bits.gpaddr(0))
   ))
   val s1_req_isForVSnonLeafPTE_tmp    = VecInit((0 until PortNumber).map( i =>
-    ResultHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.isForVSnonLeafPTE), data = fromITLB(i).bits.isForVSnonLeafPTE)
+    DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.isForVSnonLeafPTE), data = fromITLB(i).bits.isForVSnonLeafPTE)
   ))
   val s1_itlb_exception     = VecInit((0 until PortNumber).map( i =>
-    ResultHoldBypass(valid = tlb_valid_pulse(i), init = 0.U(ExceptionType.width.W), data = ExceptionType.fromTlbResp(fromITLB(i).bits))
+    DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U(ExceptionType.width.W), data = ExceptionType.fromTlbResp(fromITLB(i).bits))
   ))
   val s1_itlb_pbmt          = VecInit((0 until PortNumber).map( i =>
-    ResultHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.pbmt(0)), data = fromITLB(i).bits.pbmt(0))
+    DataHoldBypass(valid = tlb_valid_pulse(i), init = 0.U.asTypeOf(fromITLB(i).bits.pbmt(0)), data = fromITLB(i).bits.pbmt(0))
   ))
   val s1_itlb_exception_gpf = VecInit(s1_itlb_exception.map(_ === ExceptionType.gpf))
 
@@ -450,21 +444,6 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
   val s2_req_vSetIdx  = s2_req_vaddr.map(get_idx)
   val s2_req_ptags    = s2_req_paddr.map(get_phy_tag)
 
-  // disabled for timing consideration
-//  // do metaArray ECC check
-//  val s2_meta_corrupt = VecInit((s2_req_ptags zip s2_meta_codes zip s2_waymasks).map{ case ((meta, code), waymask) =>
-//    val hit_num = PopCount(waymask)
-//    // NOTE: if not hit, encodeMetaECC(meta) =/= code can also be true, but we don't care about it
-//    (encodeMetaECC(meta) =/= code && hit_num === 1.U) ||  // hit one way, but parity code does not match, ECC failure
-//      hit_num > 1.U                                       // hit multi way, must be a ECC failure
-//  })
-//
-//  // generate exception
-//  val s2_meta_exception = VecInit(s2_meta_corrupt.map(ExceptionType.fromECC(io.csr_parity_enable, _)))
-//
-//  // merge meta exception and itlb/pmp exception
-//  val s2_exception = ExceptionType.merge(s2_exception_in, s2_meta_exception)
-
   /**
     ******************************************************************************
     * Monitor the requests from missUnit to write to SRAM
@@ -529,32 +508,11 @@ class IPrefetchPipe(implicit p: Parameters) extends  IPrefetchModule
   s2_fire       := s2_valid && s2_finish && !s2_flush
 
   /** PerfAccumulate */
-  // the number of bpu flush
   XSPerfAccumulate("bpu_s0_flush", from_bpu_s0_flush)
   XSPerfAccumulate("bpu_s1_flush", from_bpu_s1_flush)
-  // the number of prefetch request received from ftq or backend (software prefetch)
-//  XSPerfAccumulate("prefetch_req_receive", io.req.fire)
   XSPerfAccumulate("prefetch_req_receive_hw", io.req.fire && !io.req.bits.isSoftPrefetch)
   XSPerfAccumulate("prefetch_req_receive_sw", io.req.fire && io.req.bits.isSoftPrefetch)
-  // the number of prefetch request sent to missUnit
-//  XSPerfAccumulate("prefetch_req_send", toMSHR.fire)
   XSPerfAccumulate("prefetch_req_send_hw", toMSHR.fire && !s2_isSoftPrefetch)
   XSPerfAccumulate("prefetch_req_send_sw", toMSHR.fire && s2_isSoftPrefetch)
   XSPerfAccumulate("to_missUnit_stall", toMSHR.valid && !toMSHR.ready)
-  /**
-    * Count the number of requests that are filtered for various reasons.
-    * The number of prefetch discard in Performance Accumulator may be
-    * a littel larger the number of really discarded. Because there can
-    * be multiple reasons for a canceled request at the same time.
-    */
-  // discard prefetch request by flush
-  // XSPerfAccumulate("fdip_prefetch_discard_by_tlb_except",  p1_discard && p1_tlb_except)
-  // // discard prefetch request by hit icache SRAM
-  // XSPerfAccumulate("fdip_prefetch_discard_by_hit_cache",   p2_discard && p1_meta_hit)
-  // // discard prefetch request by hit wirte SRAM
-  // XSPerfAccumulate("fdip_prefetch_discard_by_p1_monoitor", p1_discard && p1_monitor_hit)
-  // // discard prefetch request by pmp except or mmio
-  // XSPerfAccumulate("fdip_prefetch_discard_by_pmp",         p2_discard && p2_pmp_except)
-  // // discard prefetch request by hit mainPipe info
-  // // XSPerfAccumulate("fdip_prefetch_discard_by_mainPipe",    p2_discard && p2_mainPipe_hit)
 }

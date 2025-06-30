@@ -99,41 +99,12 @@ trait HasICacheParameters extends HasL1CacheParameters with HasInstrMMIOConst wi
   require(isPow2(ICacheSets), s"nSets($ICacheSets) must be pow2")
   require(isPow2(ICacheWays), s"nWays($ICacheWays) must be pow2")
 
-  def getBits(num: Int) = log2Ceil(num).W
-
   def generatePipeControl(lastFire: Bool, thisFire: Bool, thisFlush: Bool, lastFlush: Bool): Bool = {
     val valid  = RegInit(false.B)
     when(thisFlush)                    {valid  := false.B}
       .elsewhen(lastFire && !lastFlush)  {valid  := true.B}
       .elsewhen(thisFire)                 {valid  := false.B}
     valid
-  }
-
-  def ResultHoldBypass[T<:Data](data: T, valid: Bool): T = {
-    Mux(valid, data, RegEnable(data, valid))
-  }
-
-  def ResultHoldBypass[T <: Data](data: T, init: T, valid: Bool): T = {
-    Mux(valid, data, RegEnable(data, init, valid))
-  }
-
-  def holdReleaseLatch(valid: Bool, release: Bool, flush: Bool): Bool ={
-    val bit = RegInit(false.B)
-    when(flush)                   { bit := false.B  }
-      .elsewhen(valid && !release)  { bit := true.B   }
-      .elsewhen(release)            { bit := false.B  }
-    bit || valid
-  }
-
-  def blockCounter(block: Bool, flush: Bool, threshold: Int): Bool = {
-    val counter = RegInit(0.U(log2Up(threshold + 1).W))
-    when (block) { counter := counter + 1.U }
-    when (flush) { counter := 0.U}
-    counter > threshold.U
-  }
-
-  def InitQueue[T <: Data](entry: T, size: Int): Vec[T] ={
-    return RegInit(VecInit(Seq.fill(size)(0.U.asTypeOf(entry.cloneType))))
   }
 
   def encodeMetaECC(meta: UInt): UInt = {
@@ -538,7 +509,7 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
   prefetcher.io.flushFromIFU      := io.flushFromIFU
   prefetcher.io.flushFromBackend  := io.flushFromBackend
   prefetcher.io.csr_pf_enable     := io.csr_pf_enable
-  prefetcher.io.csr_parity_enable := io.csr_parity_enable
+//  prefetcher.io.csr_parity_enable := io.csr_parity_enable
   prefetcher.io.MSHRResp          := missUnit.io.fetch_resp
   prefetcher.io.flushFromBpu      := io.ftqPrefetch.flushFromBpu
   // cache softPrefetch

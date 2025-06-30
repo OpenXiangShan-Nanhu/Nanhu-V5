@@ -59,6 +59,7 @@ class IPrefetchIO(implicit p: Parameters) extends ICacheBundle {
   val req               = Flipped(Decoupled(new IPrefetchReq))
   val flushFromBpu      = Flipped(new BpuFlushInfo)
   val itlb              = Vec(PortNumber, new TlbRequestIO)
+  val itlbFlushPipe     = Bool()
   val pmp               = Vec(PortNumber, new ICachePMPBundle)
   val metaRead          = new ICacheMetaReqBundle
   val MSHRReq           = DecoupledIO(new ICacheMissReq)
@@ -421,6 +422,8 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   /** Stage 1 control */
   from_bpu_s1_flush := s1_valid && !s1_isSoftPrefetch && io.flushFromBpu.shouldFlushByStage3(s1_req_ftqIdx)
   s1_flush := io.flushFromBackend || (io.flushFromIFU && !s1_isSoftPrefetch) || from_bpu_s1_flush
+  // when s1 is flushed, itlb pipeline should also be flushed
+  io.itlbFlushPipe := s1_flush
 
   s1_ready      := next_state === m_idle
   s1_fire       := (next_state === m_idle) && s1_valid && !s1_flush  // used to clear s1_valid & itlb_valid_latch

@@ -46,7 +46,7 @@ object SVA_AssumeEnqOrdered {
     val enqIsYoungest = entriesRobPtrOlderThanEnqVec.map(_.asUInt)
 
     val lastCycleEnqValid = RegNext(VecInit(enqValidVec))
-    val lastCycleEnqRobPtr = RegInit(VecInit(enqRobPtrVec))
+    val lastCycleEnqRobPtr = RegNext(VecInit(enqRobPtrVec))
 
     val intDqDepth = p(XSCoreParamsKey).dpParams.IntDqSize
     val vfDqDepth = p(XSCoreParamsKey).dpParams.FpDqSize
@@ -54,22 +54,53 @@ object SVA_AssumeEnqOrdered {
 
     val dqSize = intDqDepth + vfDqDepth + lsDqDepth
 
+    val enqValid = BoolSequence(!enqValidVec.reduce(_ || _))
+    val rst = BoolSequence(reset.asBool)
+
     for(i <- 0 until enqEntryNum) {
-      AssumeProperty(cond = (enqValidVec(i) === false.B || enqValidVec(i) === true.B), clock = clock, disable = reset.asDisable, label = "SVA_ASSUME_enq_valid")
+      AssumeProperty(
+        cond = (enqValidVec(i) === false.B || enqValidVec(i) === true.B),
+        clock = clock,
+        disable = reset.asDisable,
+        label = "SVA_ASSUME_enq_valid"
+      )
+      // AssumeProperty(
+      //   prop = rst |-> enqValid.delayRange(0, 10),
+      //   clock = Some(clock),
+      //   disable = Some(reset.asDisable),
+      //   label = Some("SVA_ASSUME_enq_rob_ptr")
+      // )
     }
 
     for(i <- 0 until enqEntryNum) {
       val enqValid = BoolSequence(enqValidVec(i))
-      val enqPtrYoungerThanLasyCycleVec = BoolSequence(lastCycleEnqRobPtr.map{case ptr => ptr < enqRobPtrVec(i)}.reduce(_ && _))
-      AssumeProperty(cond = enqIsYoungest(i).andR, clock = clock, disable = reset.asDisable, label = "SVA_ASSUME_enq_is_youngest")
-      AssumeProperty(enqValid |=> enqPtrYoungerThanLasyCycleVec, clock = Some(clock), disable = Some(reset.asDisable), label = Some(""))
+      val enqPtrYoungerThanLasyCycle = BoolSequence(lastCycleEnqRobPtr.map{case ptr => ptr < enqRobPtrVec(i)}.reduce(_ && _))
+      AssumeProperty(
+        cond = enqIsYoungest(i).andR,
+        clock = clock,
+        disable = reset.asDisable,
+        label = "SVA_ASSUME_enq_is_youngest"
+      )
+      AssumeProperty(
+        enqValid |=> enqPtrYoungerThanLasyCycle,
+        clock = Some(clock),
+        disable = Some(reset.asDisable),
+        label = Some("")
+      )
     }
 
     if(enqEntryNum == 2) {
       val enq0LessEnq1Valid = BoolSequence(enqRobPtrVec(0) < enqRobPtrVec(1) + dqSize.U)
-      val enq1LessEnq0Valid = BoolSequence(enqRobPtrVec(0) > enqRobPtrVec(1) + dqSize.U)
       val bothEnq = BoolSequence(enqValidVec.reduce(_ && _))
-      AssumeProperty(bothEnq |-> (enq0LessEnq1Valid or enq1LessEnq0Valid), clock = Some(clock), disable = Some(reset.asDisable), label = Some(""))
+      AssumeProperty(
+        bothEnq |-> enq0LessEnq1Valid,
+        clock = Some(clock),
+        disable = Some(reset.asDisable),
+        label = Some("")
+      )
+      // val enq1LessEnq0Valid = BoolSequence(enqRobPtrVec(0) > enqRobPtrVec(1) + dqSize.U)
+      // val bothEnq = BoolSequence(enqValidVec.reduce(_ && _))
+      // AssumeProperty(bothEnq |-> (enq0LessEnq1Valid or enq1LessEnq0Valid), clock = Some(clock), disable = Some(reset.asDisable), label = Some(""))
     }
     
   }

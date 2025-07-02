@@ -951,7 +951,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s1_out.tlbMiss           := s1_tlb_miss
   s1_out.ptwBack           := io.tlb.resp.bits.ptwBack
   s1_out.rep_info.debug    := s1_in.uop.debugInfo
-  s1_out.rep_info.nuke     := s1_nuke && !s1_sw_prf
+  s1_out.rep_info.nuke     := s1_nuke && !s1_prf
   s1_out.delayedLoadError  := s1_dly_err
 
   when (!s1_dly_err) {

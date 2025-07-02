@@ -26,7 +26,7 @@ import xiangshan._
 import xiangshan.frontend._
 
 class InsUncacheReq(implicit p: Parameters) extends ICacheBundle {
-    val addr = UInt(PAddrBits.W)
+  val addr: UInt = UInt(PAddrBits.W)
 }
 
 class InsUncacheResp(implicit p: Parameters) extends ICacheBundle {
@@ -34,110 +34,67 @@ class InsUncacheResp(implicit p: Parameters) extends ICacheBundle {
   val corrupt: Bool = Bool()
 }
 
-// One miss entry deals with one mmio request
-class InstrMMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends XSModule with HasICacheParameters with HasIFUConst
-{
+class InstrMMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends XSModule
+  with HasICacheParameters with HasIFUConst {
   val io = IO(new Bundle {
     val id = Input(UInt(log2Up(cacheParams.nMMIOs).W))
-    // client requests
+    val flush = Input(Bool())
+
     val req = Flipped(DecoupledIO(new InsUncacheReq))
     val resp = DecoupledIO(new InsUncacheResp)
 
     val mmio_acquire = DecoupledIO(new TLBundleA(edge.bundle))
     val mmio_grant   = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
-
-    val flush = Input(Bool())
   })
 
+  private val s_invalid :: s_refill_req :: s_refill_resp :: s_send_resp :: Nil = Enum(4)
+  private val state          = RegInit(s_invalid)
 
-  val s_invalid :: s_refill_req :: s_refill_resp :: s_send_resp :: Nil = Enum(4)
+  private val req            = RegEnable(io.req.bits, io.req.fire)
+  private val respDataReg    = RegEnable(io.mmio_grant.bits.data, io.mmio_grant.fire)
+  private val respCorruptReg = RegEnable(io.mmio_grant.bits.corrupt, false.B, io.mmio_grant.fire)
 
-  val state = RegInit(s_invalid)
+  private val needFlush      = RegInit(false.B)
+  when(io.flush && (state =/= s_invalid) && (state =/= s_send_resp)){
+    needFlush := true.B
+  }.elsewhen((state === s_send_resp) && needFlush){
+    needFlush := false.B
+  }
 
-  private val req            = Reg(new InsUncacheReq)
-  private val respDataReg    = Reg(UInt(mmioBusWidth.W))
-  private val respCorruptReg = RegInit(false.B)
-
-  // assign default values to output signals
-  io.req.ready           := false.B
-  io.resp.valid          := false.B
-  io.resp.bits           := DontCare
-
-  io.mmio_acquire.valid   := false.B
-  io.mmio_acquire.bits    := DontCare
-
-  io.mmio_grant.ready     := false.B
-
-  val needFlush = RegInit(false.B)
-
-  when(io.flush && (state =/= s_invalid) && (state =/= s_send_resp)){ needFlush := true.B }
-  .elsewhen((state=== s_send_resp) && needFlush){ needFlush := false.B }
-
-  // --------------------------------------------
-  // s_invalid: receive requests
-  when (state === s_invalid) {
-    io.req.ready := true.B
-
-    when (io.req.fire) {
-      req   := io.req.bits
-      state := s_refill_req
+  switch(state) {
+    is(s_invalid) {
+      state := Mux(io.req.fire, s_refill_req, s_invalid)
+    }
+    is(s_refill_req) {
+      state := Mux(io.mmio_acquire.fire, s_refill_resp, s_refill_req)
+    }
+    is(s_refill_resp) {
+      state := Mux(io.mmio_grant.fire, s_send_resp, s_refill_resp)
+    }
+    is(s_send_resp) {
+      state := Mux(io.resp.fire || needFlush, s_invalid, s_send_resp)
     }
   }
 
+  io.req.ready         := state === s_invalid
+  io.resp.valid        := state === s_send_resp && !needFlush
+  io.resp.bits.corrupt := respCorruptReg
+  io.resp.bits.data    := MuxLookup(req.addr(2,1), respDataReg(31,0))(Seq(
+    "b00".U -> respDataReg(31,0),
+    "b01".U -> respDataReg(47,16),
+    "b10".U -> respDataReg(63,32),
+    "b11".U -> Cat(0.U(16.W), respDataReg(63,48))
+  ))
 
-  when (state === s_refill_req) {
-    val address_aligned = req.addr(req.addr.getWidth - 1, log2Ceil(mmioBusBytes))
-    io.mmio_acquire.valid := true.B
-    io.mmio_acquire.bits  := edge.Get(
-          fromSource      = io.id,
-          toAddress       = Cat(address_aligned, 0.U(log2Ceil(mmioBusBytes).W)),
-          lgSize          = log2Ceil(mmioBusBytes).U
-        )._2
+  private val address_aligned = req.addr(req.addr.getWidth - 1, log2Ceil(mmioBusBytes))
 
-    when (io.mmio_acquire.fire) {
-      state := s_refill_resp
-    }
-  }
-
-  val (_, _, refill_done, _) = edge.addr_inc(io.mmio_grant)
-
-  when (state === s_refill_resp) {
-    io.mmio_grant.ready := true.B
-
-    when (io.mmio_grant.fire) {
-      respDataReg := io.mmio_grant.bits.data
-      respCorruptReg := io.mmio_grant.bits.corrupt // this includes bits.denied, as tilelink spec defines
-      state := s_send_resp
-    }
-  }
-
-  def getDataFromBus(pc: UInt) = {
-    val respData = Wire(UInt(maxInstrLen.W))
-    respData := Mux(pc(2,1) === "b00".U, respDataReg(31,0),
-        Mux(pc(2,1) === "b01".U, respDataReg(47,16),
-          Mux(pc(2,1) === "b10".U, respDataReg(63,32),
-            Cat(0.U, respDataReg(63,48))
-          )
-        )
-      )
-    respData
-  }
-
-  when (state === s_send_resp) {
-    io.resp.valid     := !needFlush
-    io.resp.bits.data :=  getDataFromBus(req.addr)
-    io.resp.bits.corrupt := respCorruptReg
-    // meta data should go with the response
-    when (io.resp.fire || needFlush) {
-      state := s_invalid
-    }
-  }
-}
-
-class InstrUncacheIO(implicit p: Parameters) extends ICacheBundle {
-    val req = Flipped(DecoupledIO(new InsUncacheReq ))
-    val resp = DecoupledIO(new InsUncacheResp)
-    val flush = Input(Bool())
+  io.mmio_grant.ready   := state === s_refill_resp
+  io.mmio_acquire.valid := state === s_refill_req
+  io.mmio_acquire.bits  := edge.Get(
+    fromSource = io.id,
+    toAddress = Cat(address_aligned, 0.U(log2Ceil(mmioBusBytes).W)),
+    lgSize = log2Ceil(mmioBusBytes).U
+  )._2
 }
 
 class InstrUncache()(implicit p: Parameters) extends LazyModule with HasICacheParameters {
@@ -152,67 +109,52 @@ class InstrUncache()(implicit p: Parameters) extends LazyModule with HasICachePa
   val clientNode = TLClientNode(Seq(clientParameters))
 
   lazy val module = new InstrUncacheImp(this)
-
 }
 
-class InstrUncacheImp(outer: InstrUncache)
-  extends LazyModuleImp(outer)
-    with HasICacheParameters
-    with HasTLDump
-{
-  val io = IO(new InstrUncacheIO)
+class InstrUncacheImp(outer: InstrUncache) extends LazyModuleImp(outer) with HasICacheParameters with HasTLDump {
+  val io = IO(new Bundle{
+    val req = Flipped(DecoupledIO(new InsUncacheReq))
+    val resp = DecoupledIO(new InsUncacheResp)
+    val flush = Input(Bool())
+  })
 
   val (bus, edge) = outer.clientNode.out.head
 
-  val resp_arb = Module(new Arbiter(new InsUncacheResp, cacheParams.nMMIOs))
+  private val mmio_acquire = bus.a
+  private val mmio_grant   = bus.d
 
-  val req  = io.req
-  val resp = io.resp
-  val mmio_acquire = bus.a
-  val mmio_grant   = bus.d
-
-  val entry_alloc_idx = Wire(UInt())
-  val req_ready = WireInit(false.B)
+  private val entry_alloc_idx = Wire(UInt())
+  private val resp_arb = Module(new Arbiter(new InsUncacheResp, cacheParams.nMMIOs))
 
   // assign default values to output signals
   bus.b.ready := false.B
   bus.c.valid := false.B
   bus.c.bits  := DontCare
-  bus.d.ready := false.B
   bus.e.valid := false.B
   bus.e.bits  := DontCare
 
-  val entries = (0 until cacheParams.nMMIOs) map { i =>
+  private val entries = (0 until cacheParams.nMMIOs) map { i =>
     val entry = Module(new InstrMMIOEntry(edge))
 
     entry.io.id := i.U(log2Up(cacheParams.nMMIOs).W)
     entry.io.flush := io.flush
 
     // entry req
-    entry.io.req.valid := (i.U === entry_alloc_idx) && req.valid
-    entry.io.req.bits  := req.bits
-    when (i.U === entry_alloc_idx) {
-      req_ready := entry.io.req.ready
-    }
+    entry.io.req.valid := io.req.valid && (i.U === entry_alloc_idx)
+    entry.io.req.bits  := io.req.bits
 
-    // entry resp
-    resp_arb.io.in(i) <> entry.io.resp
+    entry.io.mmio_grant.valid := mmio_grant.valid && (i.U === mmio_grant.bits.source)
+    entry.io.mmio_grant.bits  := mmio_grant.bits
 
-    entry.io.mmio_grant.valid := false.B
-    entry.io.mmio_grant.bits  := DontCare
-    when (mmio_grant.bits.source === i.U) {
-      entry.io.mmio_grant <> mmio_grant
-    }
     entry
   }
 
-  // override mmio_grant.ready to prevent x-propagationAdd commentMore actions
-  mmio_grant.ready := true.B
+  entry_alloc_idx := PriorityEncoder(entries.map(_.io.req.ready))
 
-  entry_alloc_idx    := PriorityEncoder(entries.map(m=>m.io.req.ready))
+  io.req.ready := entries.map(_.io.req.ready).reduce(_||_)
+  resp_arb.io.in <> entries.map(_.io.resp)
+  io.resp <> resp_arb.io.out
 
-  req.ready  := req_ready
-  resp          <> resp_arb.io.out
   TLArbiter.lowestFromSeq(edge, mmio_acquire, entries.map(_.io.mmio_acquire))
-
+  mmio_grant.ready := true.B
 }

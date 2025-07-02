@@ -390,7 +390,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   io.dcache.pf_source             := Mux(s0_hw_prf_select, io.prefetch_req.bits.pf_source.value, L1_HW_PREFETCH_NULL)
   io.dcache.is128Req              := s0_sel_src.is128bit
 
-  io.s0_reqMDP.valid := s0_valid
+  val canNotReqMDP = s0_hw_prf_select || s0_src_select_vec(mmio_idx)
+
+  io.s0_reqMDP.valid := s0_valid && !canNotReqMDP
   io.s0_reqMDP.bits.ld_stIdx := s0_sel_src.uop.sqIdx
   io.s0_reqMDP.bits.ldFoldPc := s0_sel_src.uop.mdpTag
 

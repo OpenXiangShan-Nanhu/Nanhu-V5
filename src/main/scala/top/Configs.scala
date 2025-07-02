@@ -283,7 +283,7 @@ class WithNKBL1D(n: Int, ways: Int = 8) extends Config((site, here, up) => {
         tagECC = Some("none"),
         dataECC = Some("parity"),
         replacer = Some("setplru"),
-        nMissEntries = 16,
+        nMissEntries = 32,
         nProbeEntries = 4,
         nReleaseEntries = 4,
         nMaxPrefetchEntry = 6,

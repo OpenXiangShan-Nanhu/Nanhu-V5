@@ -371,8 +371,8 @@ class NewCSR(implicit val p: Parameters) extends Module
   val irToVS = RegEnable(intrMod.io.out.irToVS, false.B, intrMod.io.out.interruptVec.valid)
 
   when(hasTrap && trapIsInterrupt && nmi) {
-    nmip.NMI_31 := nmip.NMI_31 & !UIntToOH(intrVec, 64)(NonMaskableIRNO.NMI_31)
-    nmip.NMI_43 := nmip.NMI_43 & !UIntToOH(intrVec, 64)(NonMaskableIRNO.NMI_43)
+    nmip.NMI_31 := nmip.NMI_31 & !intrVec(NonMaskableIRNO.NMI_31)
+    nmip.NMI_43 := nmip.NMI_43 & !intrVec(NonMaskableIRNO.NMI_43)
   }
 
   val trapHandleMod = Module(new TrapHandleModule)

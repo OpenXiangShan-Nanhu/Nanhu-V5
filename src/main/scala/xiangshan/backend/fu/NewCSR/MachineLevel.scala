@@ -229,6 +229,8 @@ trait MachineLevel { self: NewCSR =>
         wen -> wdata.STIP,
         fromMvip.STIP.valid -> fromMvip.STIP.bits,
       ))
+    }.otherwise {
+      reg.STIP := reg.STIP
     }
 
     // bit 6 VSTIP

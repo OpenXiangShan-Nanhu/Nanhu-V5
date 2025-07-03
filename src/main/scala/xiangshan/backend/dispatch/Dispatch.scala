@@ -201,7 +201,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   val isStore  = VecInit(io.fromRename(0).map(req => FuType.isStore(req.bits.fuType)))
   val isVStore = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType)))
   val isAMO    = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType)))
-  val isCmo = VecInit(io.fromRename(0).map(req => (LSUOpType.isCbom(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
+  val isCmo = VecInit(io.fromRename(0).map(req => (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
   val isBlockBackward  = VecInit(io.fromRename(0).map(x => x.valid && x.bits.blockBackward))
   val isWaitForward    = VecInit(io.fromRename(0).map(x => x.valid && x.bits.waitForward))
   

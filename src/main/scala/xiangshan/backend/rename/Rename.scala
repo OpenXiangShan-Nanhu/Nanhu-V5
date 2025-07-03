@@ -285,7 +285,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
      *   do not require write to any CSR.
      */
 
-    isCmo(i) := LSUOpType.isCbom(uops(i).fuOpType) && FuType.isStore(uops(i).fuType)
+    isCmo(i) := LSUOpType.isCboAll(uops(i).fuOpType) && FuType.isStore(uops(i).fuType)
 
     if (i < RenameWidth - 1) {
       isLastCmo(i) := isCmo(i) && !isCmo(i + 1)

@@ -7,6 +7,7 @@ import xiangshan.backend.fu.NewCSR.CSRConfig.VaddrMaxWidth
 import xiangshan.backend.fu.NewCSR.CSRDefines.{HgatpMode, PrivMode, SatpMode}
 import xiangshan.backend.fu.NewCSR._
 import xiangshan.AddrTransType
+import xiangshan.backend.fu.NewCSR.CSRDefines._
 
 
 class DretEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase {
@@ -57,7 +58,8 @@ class DretEventModule(implicit p: Parameters) extends Module with CSREventBase {
   out.targetPc.valid        := valid
 
   out.privState.bits.PRVM     := in.dcsr.PRV.asUInt
-  out.privState.bits.V        := in.dcsr.V
+  // out.privState.bits.V        := in.dcsr.V
+  out.privState.bits.V        := VirtMode.Off
   out.mstatus.bits.MPRV       := Mux(!out.privState.bits.isModeM, 0.U, in.mstatus.MPRV.asUInt)
   out.debugMode.bits          := false.B
   out.debugIntrEnable.bits    := true.B

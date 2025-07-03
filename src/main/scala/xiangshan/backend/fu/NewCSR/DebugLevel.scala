@@ -286,7 +286,8 @@ class DcsrBundle extends CSRBundle {
   val STOPCOUNT =           RW(    10).withReset(0.U)
   val STOPTIME  =           RW(     9).withReset(0.U)
   val CAUSE     =    DcsrCause( 8,  6).withReset(DcsrCause.None)
-  val V         =     VirtMode(     5).withReset(VirtMode.Off)
+  val V         =           RO(     5).withReset(0.U)
+  // val V         =     VirtMode(     5).withReset(VirtMode.Off)
   // MPRVEN is RW, instead of WARL, since XiangShan support use mstatus.mprv in debug mode
   // Whether use mstatus.mprv
   val MPRVEN    =           RW(     4).withReset(0.U)

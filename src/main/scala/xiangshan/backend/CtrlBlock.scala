@@ -593,6 +593,9 @@ class CtrlBlockImp(
   dispatch.io.robHeadNotReady := rob.io.headNotReady
   dispatch.io.robFull := rob.io.robFull
   dispatch.io.singleStep := GatedValidRegNext(io.csrCtrl.singlestep)
+  dispatch.io.nextCycleFirstIsCmo := rename.io.firstIsCmo
+  dispatch.io.sqHasCmo := io.sqHasCmo
+  dispatch.io.cmoFinish := io.cmoFinish
 
   intDq0.io.enq <> dispatch.io.toIntDq
   intDq0.io.redirect <> s2_s4_redirect_dup_toDq
@@ -799,6 +802,9 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
   })
 
   val traceCoreInterface = new TraceCoreInterface
+
+  val sqHasCmo = Input(Bool())
+  val cmoFinish = Input(Bool())
 
   val perfInfo = Output(new Bundle{
     val ctrlInfo = new Bundle {

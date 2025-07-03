@@ -678,6 +678,8 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   io.debugTopDown.fromRob := ctrlBlock.io.debugTopDown.fromRob
   ctrlBlock.io.debugTopDown.fromCore := io.debugTopDown.fromCore
+  ctrlBlock.io.sqHasCmo := io.sqHasCmo
+  ctrlBlock.io.cmoFinish := io.cmoFinish
 
   io.debugRolling := ctrlBlock.io.debugRolling
 
@@ -897,6 +899,8 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
   val csrCustomCtrl = Output(new CustomCSRCtrlIO)
   val memPredUpdate = Output(new MemPredUpdateReq)
 
+  val sqHasCmo = Input(Bool())
+  val cmoFinish = Input(Bool())
   val power = new Bundle {
     val wfiCtrRst = Input(Bool())
     val timeout = Output(Bool())

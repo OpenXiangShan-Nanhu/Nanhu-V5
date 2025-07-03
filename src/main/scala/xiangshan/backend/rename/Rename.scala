@@ -90,6 +90,8 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
       val in = Flipped(new StallReasonIO(RenameWidth))
       val out = new StallReasonIO(RenameWidth)
     }
+
+    val firstIsCmo = Output(Bool())
   })
 
   // io alias
@@ -261,6 +263,8 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
   val v0SpecWen = Wire(Vec(RenameWidth, Bool()))
   val vlSpecWen = Wire(Vec(RenameWidth, Bool()))
 
+  private val isCmo       = Wire(Vec(RenameWidth, Bool()))
+  private val isLastCmo       = Wire(Vec(RenameWidth, Bool()))
   // uop calculation
   for (i <- 0 until RenameWidth) {
     (uops(i): Data).waiveAll :<= (io.in(i).bits: Data).waiveAll
@@ -280,8 +284,17 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
      * Signal "isCsrr" contains not only alias instruction CSRR, but also other csr instructions which
      *   do not require write to any CSR.
      */
+
+    isCmo(i) := LSUOpType.isCbom(uops(i).fuOpType) && FuType.isStore(uops(i).fuType)
+
+    if (i < RenameWidth - 1) {
+      isLastCmo(i) := isCmo(i) && !isCmo(i + 1)
+    } else {
+      isLastCmo(i) := isCmo(i)
+    }
+
     uops(i).waitForward := io.in(i).bits.waitForward && !isNotWaitForwardCsrr(i)
-    uops(i).blockBackward := io.in(i).bits.blockBackward && !isNotBlockBackwardCsrr(i)
+    uops(i).blockBackward := (io.in(i).bits.blockBackward && !isNotBlockBackwardCsrr(i)) || (isCmo(i) && isLastCmo(i))
     uops(i).mdpTag := MDPPCFold(io.in(i).bits.pc(VAddrBits - 1, 1), MemPredPCWidth)
 
     // update cf according to waittable result
@@ -401,6 +414,8 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     v0SpecWen(i) := needV0Dest(i) && v0FreeList.io.canAllocate && v0FreeList.io.doAllocate && !io.rabCommits.isWalk && !io.redirect.valid
     vlSpecWen(i) := needVlDest(i) && vlFreeList.io.canAllocate && vlFreeList.io.doAllocate && !io.rabCommits.isWalk && !io.redirect.valid
   }
+
+  io.firstIsCmo := isCmo(0)
 
   // Freelist walk
   for (i <- 0 until RabCommitWidth) {

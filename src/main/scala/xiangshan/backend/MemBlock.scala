@@ -170,6 +170,8 @@ class mem_to_ooo(implicit p: Parameters) extends MemBlockBundle {
   val wakeup = Vec(backendParams.LdExuCnt, Valid(new DynInst))
 
   val s3_delayed_load_error = Vec(LdExuCnt, Output(Bool()))
+
+  val sqHasCmo = Output(Bool())
 }
 
 class MemCoreTopDownIO extends Bundle {
@@ -571,6 +573,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   lsq.io := DontCare
   mdp.io.ldUpdate := lsq.io.mdpTrainUpdate
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
+  io.mem_to_ooo.sqHasCmo := lsq.io.sqHasCmo
 
   dcache.io.hartId := io.hartId
   lsq.io.hartId := io.hartId

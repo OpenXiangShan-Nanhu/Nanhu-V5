@@ -193,6 +193,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     // TODO: scommit is only for scalar store
     val rob = Flipped(new RobLsqIO)
     val uncache = new UncacheWordIO
+    val sqHasCmo = Output(Bool())
     // val refill = Flipped(Valid(new DCacheLineReq ))
     val exceptionAddr = new ExceptionAddrIO
     val flushSbuffer = new SbufferFlushBundle
@@ -435,6 +436,12 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     stAddrReadyVecReg(i) := allocated(i) && (mmio(i) || addrvalid(i) || (isVec(i) && vecMbCommit(i)))
   })
   io.stAddrReadyVec := GatedValidRegNext(stAddrReadyVecReg)
+
+  val cmoVec = Wire(Vec(StoreQueueSize, Bool()))
+  (0 until StoreQueueSize).map(i => {
+    cmoVec(i) := allocated(i) && (LSUOpType.isCboAll(uop(i).fuOpType))
+  })
+  io.sqHasCmo := cmoVec.reduce(_ || _)
 
   when (io.brqRedirect.valid) {
     addrReadyPtrExt := Mux(

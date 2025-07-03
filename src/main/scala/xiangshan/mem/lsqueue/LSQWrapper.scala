@@ -125,6 +125,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val lqEmpty = Output(Bool())
     val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
     val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
+    val sqHasCmo = Output(Bool())
 
     // top-down
     val debugTopDown = new LoadQueueTopDownIO
@@ -135,6 +136,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
 
   storeQueue.io.hartId := io.hartId
   io.mdpTrainUpdate := storeQueue.io.mdpTrainUpdate
+  io.sqHasCmo := storeQueue.io.sqHasCmo
 
 
   // io.enq logic

@@ -421,28 +421,26 @@ class PTWNewFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameter
   val ptw_arb = Module(new RRArbiterInit(new PtwReq, 2))
 
   //use queue to delay one cycle
-  val ptwQueues = Seq.fill(2) {
-    Module(new Queue(new PtwReq, 1, pipe = true))
+  //filter -> ptw_arb
+  for (i <- 0 until 2) {
+    ptw_arb.io.in(i).valid := filter(i).ptw.req(0).valid
+    ptw_arb.io.in(i).bits.vpn := filter(i).ptw.req(0).bits.vpn
+    ptw_arb.io.in(i).bits.s2xlate := filter(i).ptw.req(0).bits.s2xlate
+    filter(i).ptw.req(0).ready := ptw_arb.io.in(i).ready
   }
 
-  for ((q, i) <- ptwQueues.zipWithIndex) {
-    q.io.enq.valid := filter(i).ptw.req(0).valid && !flush
-    q.io.enq.bits  := filter(i).ptw.req(0).bits
-    filter(i).ptw.req(0).ready := q.io.enq.ready
-    ptw_arb.io.in(i) <> q.io.deq
-  }
+  //ptw_arb -> queue
+  val ptwQueues = Module(new Queue(new PtwReq, 1, pipe = true))
+  ptw_arb.io.out.ready := ptwQueues.io.enq.ready
+  ptwQueues.io.enq.valid := ptw_arb.io.out.valid
+  ptwQueues.io.enq.bits.vpn  := ptw_arb.io.out.bits.vpn
+  ptwQueues.io.enq.bits.s2xlate := ptw_arb.io.out.bits.s2xlate
 
-  //  for (i <- 0 until 2) {
-  //    ptw_arb.io.in(i).valid := filter(i).ptw.req(0).valid
-  //    ptw_arb.io.in(i).bits.vpn := filter(i).ptw.req(0).bits.vpn
-  //    ptw_arb.io.in(i).bits.s2xlate := filter(i).ptw.req(0).bits.s2xlate
-  //    filter(i).ptw.req(0).ready := ptw_arb.io.in(i).ready
-  //  }
-
-  ptw_arb.io.out.ready := io.ptw.req(0).ready
-  io.ptw.req(0).valid := ptw_arb.io.out.valid
-  io.ptw.req(0).bits.vpn := ptw_arb.io.out.bits.vpn
-  io.ptw.req(0).bits.s2xlate := ptw_arb.io.out.bits.s2xlate
+  //queue -> io.ptw
+  ptwQueues.io.deq.ready := io.ptw.req(0).ready
+  io.ptw.req(0).valid := ptwQueues.io.deq.valid
+  io.ptw.req(0).bits.vpn := ptwQueues.io.deq.bits.vpn
+  io.ptw.req(0).bits.s2xlate := ptwQueues.io.deq.bits.s2xlate
   io.ptw.resp.ready := true.B
 
   io.rob_head_miss_in_tlb := Cat(filter.map(_.rob_head_miss_in_tlb)).orR

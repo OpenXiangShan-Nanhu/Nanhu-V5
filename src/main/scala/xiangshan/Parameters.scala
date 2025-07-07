@@ -158,7 +158,7 @@ case class XSCoreParameters
     IntDqDeqWidth = 8,
     FpDqDeqWidth = 6,
     VecDqDeqWidth = 8,
-    LsDqDeqWidth = 6,
+    LsDqDeqWidth = 4,
   ),
   intPreg: PregParams = IntPregParams(
     numEntries = 128,

@@ -153,8 +153,8 @@ class Mcontrol6 extends CSRBundle{
   // xiangshan don't support match = NAPOT
   val UNCERTAIN   = RO(26).withReset(0.U)
   val HIT1        = RO(25).withReset(0.U)
-  val VS          = RW(24).withReset(0.U)
-  val VU          = RW(23).withReset(0.U)
+  val VS          = RO(24).withReset(0.U)
+  val VU          = RO(23).withReset(0.U)
   val HIT0        = RO(22).withReset(0.U)
   val SELECT      = RO(21).withReset(0.U)
   val SIZE        = RO(18, 16).withReset(0.U)
@@ -175,6 +175,8 @@ class Mcontrol6 extends CSRBundle{
     res.UNCERTAIN   := 0.U
     res.HIT1        := 0.U
     res.HIT0        := 0.U
+    res.VS          := 0.U
+    res.VU          := 0.U
     res.SELECT      := 0.U
     res.SIZE        := 0.U
     res.ACTION      := this.ACTION.legalize(dmode).asUInt

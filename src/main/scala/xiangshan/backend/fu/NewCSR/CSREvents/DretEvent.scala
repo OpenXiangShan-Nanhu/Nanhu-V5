@@ -11,7 +11,7 @@ import xiangshan.backend.fu.NewCSR.CSRDefines._
 
 
 class DretEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase {
-  val dcsr = ValidIO((new DcsrBundle).addInEvent(_.V, _.PRV))
+  val dcsr = ValidIO((new DcsrBundle).addInEvent(_.PRV))
   val mstatus = ValidIO((new MstatusBundle).addInEvent(_.MPRV))
   val debugMode = ValidIO(Bool())
   val debugIntrEnable = ValidIO(Bool())

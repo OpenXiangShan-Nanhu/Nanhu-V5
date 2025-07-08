@@ -570,7 +570,8 @@ class NewCSR(implicit val p: Parameters) extends Module
       case m: HasExternalInterruptBundle =>
         m.platformIRP := this.platformIRP
         m.platformIRP.STIP  := sstcIRGen.o.STIP
-        m.platformIRP.VSTIP := sstcIRGen.o.VSTIP
+        // m.platformIRP.VSTIP := sstcIRGen.o.VSTIP
+        m.platformIRP.VSTIP := 0.U
       case _ =>
     }
     mod match {
@@ -713,14 +714,20 @@ class NewCSR(implicit val p: Parameters) extends Module
           m.hvien := 0.U
           m.mvien := 0.U
         }
-        m.hvip := hvip.regOut
+        // m.hvip := hvip.regOut
+        m.hvip := 0.U
         m.sip := sip.regOut
         m.sie := sie.regOut
-        m.vsip := vsip.regOut
-        m.vsie := vsie.regOut
-        m.hgeip := hgeip.regOut
-        m.hgeie := hgeie.regOut
-        m.hstatusVGEIN := hstatus.regOut.VGEIN
+        // m.vsip := vsip.regOut
+        // m.vsie := vsie.regOut
+        // m.hgeip := hgeip.regOut
+        // m.hgeie := hgeie.regOut
+        // m.hstatusVGEIN := hstatus.regOut.VGEIN
+        m.vsip := 0.U
+        m.vsie := 0.U
+        m.hgeip := 0.U
+        m.hgeie := 0.U
+        m.hstatusVGEIN := 0.U.asTypeOf(hstatus.regOut.VGEIN)
       case _ =>
     }
     mod match {

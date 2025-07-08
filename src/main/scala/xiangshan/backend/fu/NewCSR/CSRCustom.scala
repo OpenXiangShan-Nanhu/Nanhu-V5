@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRRWField => RW}
+import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRRWField => RW, CSRRWField => RO}
 import xiangshan.HasXSParameter
 
 import scala.collection.immutable.SeqMap
@@ -69,8 +69,8 @@ class SpfctlBundle extends CSRBundle {
 }
 
 class SmblockctlBundle extends CSRBundle {
-  val HD_MISALIGN_LD_ENABLE            = RW(   9).withReset(false.B)  // Enable hardware load misalign.
-  val HD_MISALIGN_ST_ENABLE            = RW(   8).withReset(false.B)  // Enable hardware store misalign.
+  val HD_MISALIGN_LD_ENABLE            = RO(   9).withReset(false.B)  // Enable hardware load misalign.
+  val HD_MISALIGN_ST_ENABLE            = RO(   8).withReset(false.B)  // Enable hardware store misalign.
   val UNCACHE_WRITE_OUTSTANDING_ENABLE = RW(   7).withReset(false.B)  // Enable uncache write outstanding (0).
   val CACHE_ERROR_ENABLE               = RW(   6).withReset(true.B)   // Enable cache error after reset (CE).
   val SOFT_PREFETCH_ENABLE             = RW(   5).withReset(true.B)   // Enable soft-prefetch after reset (SP).

@@ -14,7 +14,7 @@ import xiangshan.backend.fu.NewCSR._
 
 
 class TrapEntryDEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase {
-  val dcsr            = ValidIO((new DcsrBundle).addInEvent(_.CAUSE, _.V, _.PRV))
+  val dcsr            = ValidIO((new DcsrBundle).addInEvent(_.CAUSE, _.PRV))
   val dpc             = ValidIO((new Epc       ).addInEvent(_.epc))
   val targetPc        = ValidIO(new TargetPCBundle)
   val debugMode       = ValidIO(Bool())

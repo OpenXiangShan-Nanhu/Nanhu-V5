@@ -366,7 +366,7 @@ class Sbuffer(implicit p: Parameters)
   val oddInsertVec = GetOddBits.reverse(oddRawInsertVec)
 
   val enbufferSelReg = RegInit(false.B)
-  when(io.in(0).valid) {
+  when(io.in(0).valid && io.in(0).bits.vecValid) {
     enbufferSelReg := ~enbufferSelReg
   }
 

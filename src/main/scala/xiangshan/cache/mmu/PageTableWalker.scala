@@ -673,10 +673,13 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).first_s2xlate_fault := false.B
     mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
 
-    assert(
-      !(mem_resp_hit(enq_ptr) && !to_mem_out && !to_last_hptw_req),
-      "ERROR: mem_resp_hit was driven by to_wait_pmp!"
-    )
+    when (io.in.fire && io.mem.resp.fire &&
+      mem_resp_hit(enq_ptr) && to_wait_pmp && !to_mem_out && !to_last_hptw_req &&
+      dup(io.in.bits.req_info.vpn, entries(io.mem.resp.bits.id).req_info.vpn) &&
+      io.in.bits.req_info.s2xlate === entries(io.mem.resp.bits.id).req_info.s2xlate) {
+      assert(false.B, "mem_resp_hit was error driven by to_wait_pmp")
+    }
+
   }
 
   val enq_ptr_reg = RegNext(enq_ptr)

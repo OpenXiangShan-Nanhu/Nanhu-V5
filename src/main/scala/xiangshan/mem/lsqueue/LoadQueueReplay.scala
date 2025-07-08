@@ -763,7 +763,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   // robhead is MMIO instr
   val robheadMMIOOH = Wire(Vec(LoadQueueReplaySize, Bool()))
   (0 until LoadQueueReplaySize).map(i => {
-    robheadMMIOOH(i) := allocated(i) && isMMIO(i) && !scheduled(i) && io.rob.pendingUncacheld && (io.rob.pendingPtr === uop(i).robIdx)
+    robheadMMIOOH(i) := allocated(i) && isMMIO(i) && !scheduled(i) && (io.rob.pendingPtr === uop(i).robIdx)
   }) 
   when(robheadMMIOOH.reduce(_|_)){
     assert(PopCount(robheadMMIOOH) <= 1.U)

@@ -18,16 +18,16 @@ import utils.OptionWrapper
 
 trait HypervisorLevel { self: NewCSR =>
 
-  val hstatus = Module(new HstatusModule)
-    .setAddr(CSRs.hstatus)
+  val hstatus = OptionWrapper(EnableHExtension, Module(new HstatusModule)
+    .setAddr(CSRs.hstatus))
 
-  val hedeleg = Module(new CSRModule("Hedeleg", new HedelegBundle))
-    .setAddr(CSRs.hedeleg)
+  val hedeleg = OptionWrapper(EnableHExtension, Module(new CSRModule("Hedeleg", new HedelegBundle))
+    .setAddr(CSRs.hedeleg))
 
-  val hideleg = Module(new CSRModule("Hideleg", new HidelegBundle))
-    .setAddr(CSRs.hideleg)
+  val hideleg = OptionWrapper(EnableHExtension, Module(new CSRModule("Hideleg", new HidelegBundle))
+    .setAddr(CSRs.hideleg))
 
-  val hie = Module(new CSRModule("Hie", new HieBundle)
+  val hie = OptionWrapper(EnableHExtension, Module(new CSRModule("Hie", new HieBundle)
     with HasIpIeBundle
     with HypervisorBundle
   {
@@ -45,16 +45,16 @@ trait HypervisorLevel { self: NewCSR =>
       regOut(num) := mieIsAlias(num) && wtMie.bits.isRW.B &< mie(num)
     }
   })
-    .setAddr(CSRs.hie)
+    .setAddr(CSRs.hie))
 
-  val htimedelta = Module(new CSRModule("Htimedelta", new Htimedelta))
-    .setAddr(CSRs.htimedelta)
+  val htimedelta = OptionWrapper(EnableHExtension, Module(new CSRModule("Htimedelta", new Htimedelta))
+    .setAddr(CSRs.htimedelta))
 
-  val hcounteren = Module(new CSRModule("Hcounteren", new Counteren))
-    .setAddr(CSRs.hcounteren)
+  val hcounteren = OptionWrapper(EnableHExtension, Module(new CSRModule("Hcounteren", new Counteren))
+    .setAddr(CSRs.hcounteren))
 
-  val hgeie = Module(new CSRModule("Hgeie", new HgeieBundle))
-    .setAddr(CSRs.hgeie)
+  val hgeie = OptionWrapper(EnableHExtension, Module(new CSRModule("Hgeie", new HgeieBundle))
+    .setAddr(CSRs.hgeie))
 
   val hvien = OptionWrapper(enableAIA, Module(new CSRModule("Hvien", new HvienBundle))
     .setAddr(CSRs.hvien))
@@ -62,7 +62,7 @@ trait HypervisorLevel { self: NewCSR =>
   val hvictl = OptionWrapper(enableAIA, Module(new CSRModule("Hvictl", new HvictlBundle))
     .setAddr(CSRs.hvictl))
 
-  val henvcfg = Module(new CSRModule("Henvcfg", new HEnvCfg) with HasHypervisorEnvBundle {
+  val henvcfg = OptionWrapper(EnableHExtension, Module(new CSRModule("Henvcfg", new HEnvCfg) with HasHypervisorEnvBundle {
     when (!menvcfg.STCE.asBool) {
       regOut.STCE := 0.U
     }
@@ -70,12 +70,12 @@ trait HypervisorLevel { self: NewCSR =>
       regOut.PBMTE := 0.U
     }
   })
-    .setAddr(CSRs.henvcfg)
+    .setAddr(CSRs.henvcfg))
 
-  val htval = Module(new CSRModule("Htval", new XtvalBundle) with TrapEntryHSEventSinkBundle)
-    .setAddr(CSRs.htval)
+  val htval = OptionWrapper(EnableHExtension, Module(new CSRModule("Htval", new XtvalBundle) with TrapEntryHSEventSinkBundle)
+    .setAddr(CSRs.htval))
 
-  val hip = Module(new CSRModule("Hip", new HipBundle)
+  val hip = OptionWrapper(EnableHExtension, Module(new CSRModule("Hip", new HipBundle)
     with HypervisorBundle
     with HasExternalInterruptBundle
     with HasIpIeBundle
@@ -96,9 +96,9 @@ trait HypervisorLevel { self: NewCSR =>
     // vsip.SSIP is alias of hip.VSSIP, so vsip.SSIP is alias of hvip.VSSIP.
     // vsip.SSIP write throuth to hvip.VSSIP
   })
-    .setAddr(CSRs.hip)
+    .setAddr(CSRs.hip))
 
-  val hvip = Module(new CSRModule("Hvip", new HvipBundle) {
+  val hvip = OptionWrapper(EnableHExtension, Module(new CSRModule("Hvip", new HvipBundle) {
     val fromMip  = IO(Flipped(new MipToHvip))
     val fromHip  = IO(Flipped(new HipToHvip))
     val fromVSip = IO(Flipped(new VSipToHvip))
@@ -118,7 +118,7 @@ trait HypervisorLevel { self: NewCSR =>
       }
     }
   })
-    .setAddr(CSRs.hvip)
+    .setAddr(CSRs.hvip))
 
   val hviprio1 = OptionWrapper(enableAIA, Module(new CSRModule("Hviprio1", new Hviprio1Bundle))
     .setAddr(CSRs.hviprio1))
@@ -126,10 +126,10 @@ trait HypervisorLevel { self: NewCSR =>
   val hviprio2 = OptionWrapper(enableAIA, Module(new CSRModule("Hviprio2", new Hviprio2Bundle))
     .setAddr(CSRs.hviprio2))
 
-  val htinst = Module(new CSRModule("Htinst", new XtinstBundle) with TrapEntryHSEventSinkBundle)
-    .setAddr(CSRs.htinst)
+  val htinst = OptionWrapper(EnableHExtension, Module(new CSRModule("Htinst", new XtinstBundle) with TrapEntryHSEventSinkBundle)
+    .setAddr(CSRs.htinst))
 
-  val hgatp = Module(new CSRModule("Hgatp", new HgatpBundle) {
+  val hgatp = OptionWrapper(EnableHExtension, Module(new CSRModule("Hgatp", new HgatpBundle) {
     // Ref: 13.2.10. Hypervisor Guest Address Translation and Protection Register (hgatp)
     // A write to hgatp with an unsupported MODE value is not ignored as it is for satp. Instead, the fields of
     // hgatp are WARL in the normal way, when so indicated.
@@ -150,18 +150,18 @@ trait HypervisorLevel { self: NewCSR =>
       reg := reg
     }
   })
-    .setAddr(CSRs.hgatp)
+    .setAddr(CSRs.hgatp))
 
-  val hgeip = Module(new CSRModule("Hgeip", new HgeipBundle) {
+  val hgeip = OptionWrapper(EnableHExtension, Module(new CSRModule("Hgeip", new HgeipBundle) {
     val aiaToCSR = IO(Input(new AIAToCSRBundle(enableAIA)))
     regOut.ip := aiaToCSR.vseip.getOrElse(0.U)
-  }).setAddr(CSRs.hgeip)
+  }).setAddr(CSRs.hgeip))
 
-  val hstateen0 = Module(new CSRModule("Hstateen", new HstateenBundle0) with HasStateen0Bundle {
+  val hstateen0 = OptionWrapper(EnableHExtension, Module(new CSRModule("Hstateen", new HstateenBundle0) with HasStateen0Bundle {
     // For every bit in an mstateen CSR that is zero (whether read-only zero or set to zero), the same bit
     // appears as read-only zero in the matching hstateen and sstateen CSRs.
     regOut := reg.asUInt & fromMstateen0.asUInt
-  }).setAddr(CSRs.hstateen0)
+  }).setAddr(CSRs.hstateen0))
 
   val aiaHCSRs: Seq[CSRModule[_]] = if(enableAIA) Seq(
     hvien.get,
@@ -170,23 +170,23 @@ trait HypervisorLevel { self: NewCSR =>
     hviprio2.get
   ) else Nil
 
-  val hypervisorCSRMods: Seq[CSRModule[_]] = Seq(
-    hstatus,
-    hedeleg,
-    hideleg,
-    hie,
-    htimedelta,
-    hcounteren,
-    hgeie,
-    hgeip,
-    henvcfg,
-    htval,
-    hip,
-    hvip,
-    htinst,
-    hgatp,
-    hstateen0,
-  ) ++ aiaHCSRs
+  val hypervisorCSRMods: Seq[CSRModule[_]] = if(EnableHExtension) Seq(
+    hstatus.get,
+    hedeleg.get,
+    hideleg.get,
+    hie.get,
+    htimedelta.get,
+    hcounteren.get,
+    hgeie.get,
+    hgeip.get,
+    henvcfg.get,
+    htval.get,
+    hip.get,
+    hvip.get,
+    htinst.get,
+    hgatp.get,
+    hstateen0.get,
+  ) ++ aiaHCSRs  else Nil
 
   val hypervisorCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap.from(
     hypervisorCSRMods.map(csr => (csr.addr -> (csr.w -> csr.rdata))).iterator

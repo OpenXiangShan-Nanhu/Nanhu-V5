@@ -12,12 +12,13 @@ import xiangshan.backend.fu.NewCSR.CSREnumTypeImplicitCast._
 import xiangshan.backend.fu.NewCSR.CSRBundleImplicitCast._
 import xiangshan.backend.fu.NewCSR.CSRConfig.PPNLength
 import xiangshan.backend.fu.NewCSR.ChiselRecordForField._
+import utils.OptionWrapper
 
 import scala.collection.immutable.SeqMap
 
 trait VirtualSupervisorLevel { self: NewCSR with SupervisorLevel with HypervisorLevel =>
 
-  val vsstatus = Module(
+  val vsstatus = OptionWrapper(EnableHExtension, Module(
     new CSRModule("VSstatus", new SstatusBundle)
       with SretEventSinkBundle
       with TrapEntryVSEventSinkBundle
@@ -34,9 +35,9 @@ trait VirtualSupervisorLevel { self: NewCSR with SupervisorLevel with Hypervisor
       // }
     }
   )
-    .setAddr(CSRs.vsstatus)
+    .setAddr(CSRs.vsstatus))
 
-  val vsie = Module(new CSRModule("VSie", new VSieBundle)
+  val vsie = OptionWrapper(EnableHExtension, Module(new CSRModule("VSie", new VSieBundle)
     with HypervisorBundle
     with HasIpIeBundle
   {
@@ -107,34 +108,34 @@ trait VirtualSupervisorLevel { self: NewCSR with SupervisorLevel with Hypervisor
         field := field.getHardWireValue
       }
     }
-  }).setAddr(CSRs.vsie)
+  }).setAddr(CSRs.vsie))
 
-  val vstvec = Module(new CSRModule("VStvec", new XtvecBundle))
-    .setAddr(CSRs.vstvec)
+  val vstvec = OptionWrapper(EnableHExtension, Module(new CSRModule("VStvec", new XtvecBundle))
+    .setAddr(CSRs.vstvec))
 
-  val vsscratch = Module(new CSRModule("VSscratch"))
-    .setAddr(CSRs.vsscratch)
+  val vsscratch = OptionWrapper(EnableHExtension, Module(new CSRModule("VSscratch"))
+    .setAddr(CSRs.vsscratch))
 
-  val vsepc = Module(
+  val vsepc = OptionWrapper(EnableHExtension, Module(
     new CSRModule("VSepc", new Epc)
       with TrapEntryVSEventSinkBundle
   )
-    .setAddr(CSRs.vsepc)
+    .setAddr(CSRs.vsepc))
 
-  val vscause = Module(
+  val vscause = OptionWrapper(EnableHExtension, Module(
     new CSRModule("VScause", new CauseBundle)
       with TrapEntryVSEventSinkBundle
   )
-    .setAddr(CSRs.vscause)
+    .setAddr(CSRs.vscause))
 
   // Todo: shrink the width of vstval to the maximum width Virtual Address
-  val vstval = Module(
+  val vstval = OptionWrapper(EnableHExtension, Module(
     new CSRModule("VStval", new XtvalBundle)
       with TrapEntryVSEventSinkBundle
   )
-    .setAddr(CSRs.vstval)
+    .setAddr(CSRs.vstval))
 
-  val vsip = Module(new CSRModule("VSip", new VSipBundle)
+  val vsip = OptionWrapper(EnableHExtension, Module(new CSRModule("VSip", new VSipBundle)
     with HypervisorBundle
     with HasIpIeBundle
   {
@@ -170,14 +171,14 @@ trait VirtualSupervisorLevel { self: NewCSR with SupervisorLevel with Hypervisor
         field := field.getHardWireValue
       }
     }
-  }).setAddr(CSRs.vsip)
+  }).setAddr(CSRs.vsip))
 
-  val vstimecmp = Module(new CSRModule("VStimecmp", new CSRBundle {
+  val vstimecmp = OptionWrapper(EnableHExtension, Module(new CSRModule("VStimecmp", new CSRBundle {
     val vstimecmp = RW(63, 0).withReset(bitPatToUInt(BitPat.Y(64)))
   }))
-    .setAddr(CSRs.vstimecmp)
+    .setAddr(CSRs.vstimecmp))
 
-  val vsatp = Module(new CSRModule("VSatp", new SatpBundle) with VirtualSupervisorBundle {
+  val vsatp = OptionWrapper(EnableHExtension, Module(new CSRModule("VSatp", new SatpBundle) with VirtualSupervisorBundle {
     val ppnMask = Fill(PPNLength, 1.U(1.W))
     val ppnMaskHgatpIsBare   = ZeroExt(ppnMask.take(PAddrBits - PageOffsetWidth), PPNLength)
     val ppnMaskHgatpIsSv39x4 = ZeroExt(ppnMask.take(39 + 2    - PageOffsetWidth), PPNLength)
@@ -205,20 +206,20 @@ trait VirtualSupervisorLevel { self: NewCSR with SupervisorLevel with Hypervisor
     }.otherwise {
       reg := reg
     }
-  }).setAddr(CSRs.vsatp)
+  }).setAddr(CSRs.vsatp))
 
-  val virtualSupervisorCSRMods = Seq(
-    vsstatus,
-    vsie,
-    vstvec,
-    vsscratch,
-    vsepc,
-    vscause,
-    vstval,
-    vsip,
-    vstimecmp,
-    vsatp,
-  )
+  val virtualSupervisorCSRMods = if(EnableHExtension) Seq(
+    vsstatus.get,
+    vsie.get,
+    vstvec.get,
+    vsscratch.get,
+    vsepc.get,
+    vscause.get,
+    vstval.get,
+    vsip.get,
+    vstimecmp.get,
+    vsatp.get,
+  ) else Nil
 
   virtualSupervisorCSRMods.foreach(mod =>
     require(mod.addr > 0, s"The address of ${mod.modName} has not been set, you can use setAddr(CSRAddr) to set it."))

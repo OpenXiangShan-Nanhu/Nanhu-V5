@@ -8,7 +8,7 @@ import org.chipsalliance.cde.config.Parameters
 import xs.utils.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt, PipelineConnect}
 import xs.utils.perf.{PerfEvent, HPerfMonitor}
 import utils.OptionWrapper
-import xiangshan.backend.fu.NewCSR.CSRBundles.{CSRCustomState, PrivState, RobCommitCSR}
+import xiangshan.backend.fu.NewCSR.CSRBundles.{CSRCustomState, PrivState, RobCommitCSR, XtvecBundle}
 import xiangshan.backend.fu.NewCSR.CSRDefines._
 import xiangshan.backend.fu.NewCSR.CSREnumTypeImplicitCast._
 import xiangshan.backend.fu.NewCSR.CSREvents.{CSREvents, DretEventSinkBundle, EventUpdatePrivStateOutput, MNretEventSinkBundle, MretEventSinkBundle, SretEventSinkBundle, TargetPCBundle, TrapEntryDEventSinkBundle, TrapEntryEventInput, TrapEntryHSEventSinkBundle, TrapEntryMEventSinkBundle, TrapEntryMNEventSinkBundle, TrapEntryVSEventSinkBundle}
@@ -343,18 +343,28 @@ class NewCSR(implicit val p: Parameters) extends Module
   intrMod.io.in.privState := privState
   intrMod.io.in.mstatusMIE := mstatus.regOut.MIE.asBool
   intrMod.io.in.sstatusSIE := mstatus.regOut.SIE.asBool
-  intrMod.io.in.vsstatusSIE := vsstatus.regOut.SIE.asBool
   intrMod.io.in.mip := mip.rdataFields
   intrMod.io.in.mie := mie.regOut
   intrMod.io.in.mideleg := mideleg.regOut
   intrMod.io.in.sip := sip.regOut
   intrMod.io.in.sie := sie.regOut
-  intrMod.io.in.hip := hip.regOut
-  intrMod.io.in.hie := hie.regOut
-  intrMod.io.in.hideleg := hideleg.regOut
-  intrMod.io.in.vsip := vsip.regOut
-  intrMod.io.in.vsie := vsie.regOut
-  intrMod.io.in.hstatus := hstatus.regOut
+  if (EnableHExtension) {
+    intrMod.io.in.vsstatusSIE := vsstatus.get.regOut.SIE.asBool
+    intrMod.io.in.hip := hip.get.regOut
+    intrMod.io.in.hie := hie.get.regOut
+    intrMod.io.in.hideleg := hideleg.get.regOut
+    intrMod.io.in.vsip := vsip.get.regOut
+    intrMod.io.in.vsie := vsie.get.regOut
+    intrMod.io.in.hstatus := hstatus.get.regOut
+  } else {
+    intrMod.io.in.vsstatusSIE := 0.U
+    intrMod.io.in.hip := 0.U.asTypeOf(new HipBundle)
+    intrMod.io.in.hie := 0.U.asTypeOf(new HieBundle)
+    intrMod.io.in.hideleg := 0.U.asTypeOf(new HidelegBundle)
+    intrMod.io.in.vsip := 0.U.asTypeOf(new VSipBundle)
+    intrMod.io.in.vsie := 0.U.asTypeOf(new VSieBundle)
+    intrMod.io.in.hstatus := 0.U.asTypeOf(new HstatusBundle)
+  }
   
   intrMod.io.in.mnstatusNMIE := mnstatus.regOut.NMIE.asBool
   intrMod.io.in.nmi := nmip.asUInt.orR
@@ -387,12 +397,18 @@ class NewCSR(implicit val p: Parameters) extends Module
   trapHandleMod.io.in.privState := privState
   trapHandleMod.io.in.mideleg := mideleg.regOut
   trapHandleMod.io.in.medeleg := medeleg.regOut
-  trapHandleMod.io.in.hideleg := hideleg.regOut
-  trapHandleMod.io.in.hedeleg := hedeleg.regOut
   trapHandleMod.io.in.mtvec := mtvec.regOut
   trapHandleMod.io.in.stvec := stvec.regOut
-  trapHandleMod.io.in.vstvec := vstvec.regOut
   trapHandleMod.io.in.virtualInterruptIsHvictlInject := virtualInterruptIsHvictlInject
+  if(EnableHExtension) {
+    trapHandleMod.io.in.hideleg := hideleg.get.regOut
+    trapHandleMod.io.in.hedeleg := hedeleg.get.regOut
+    trapHandleMod.io.in.vstvec := vstvec.get.regOut
+  } else {
+    trapHandleMod.io.in.hideleg := 0.U.asTypeOf(new HidelegBundle)
+    trapHandleMod.io.in.hedeleg := 0.U.asTypeOf(new HedelegBundle)
+    trapHandleMod.io.in.vstvec := 0.U.asTypeOf(new XtvecBundle)
+  }
 
   if(EnableAIA) {
     intrMod.io.in.mtopei := mtopei.get.regOut
@@ -470,29 +486,40 @@ class NewCSR(implicit val p: Parameters) extends Module
   permitMod.io.in.csrIsCustom := customCSRMods.map(_.addr.U === addr).reduce(_ || _).orR
 
   permitMod.io.in.status.tsr := mstatus.regOut.TSR.asBool
-  permitMod.io.in.status.vtsr := hstatus.regOut.VTSR.asBool
 
   permitMod.io.in.status.tvm  := mstatus.regOut.TVM.asBool
-  permitMod.io.in.status.vtvm := hstatus.regOut.VTVM.asBool
 
   permitMod.io.in.status.mcounteren := mcounteren.rdata
-  permitMod.io.in.status.hcounteren := hcounteren.rdata
   permitMod.io.in.status.scounteren := scounteren.rdata
 
   permitMod.io.in.status.mstateen0 := mstateen0.rdata
   permitMod.io.in.status.mstateen1 := mstateen1.rdata
   permitMod.io.in.status.mstateen2 := mstateen2.rdata
   permitMod.io.in.status.mstateen3 := mstateen3.rdata
-  permitMod.io.in.status.hstateen0 := hstateen0.rdata
   permitMod.io.in.status.sstateen0 := sstateen0.rdata
 
   permitMod.io.in.status.menvcfg := menvcfg.rdata
-  permitMod.io.in.status.henvcfg := henvcfg.rdata
 
   permitMod.io.in.status.mstatusFSOff  := mstatus.regOut.FS === ContextStatus.Off
   permitMod.io.in.status.mstatusVSOff  := true.B // mstatus.regOut.VS === ContextStatus.Off
-  permitMod.io.in.status.vsstatusFSOff := vsstatus.regOut.FS === ContextStatus.Off
   permitMod.io.in.status.vsstatusVSOff := true.B // vsstatus.regOut.VS === ContextStatus.Off
+
+  if (EnableHExtension) {
+    permitMod.io.in.status.vtsr := hstatus.get.regOut.VTSR.asBool
+    permitMod.io.in.status.vtvm := hstatus.get.regOut.VTVM.asBool
+    permitMod.io.in.status.hcounteren := hcounteren.get.rdata
+    permitMod.io.in.status.hstateen0 := hstateen0.get.rdata
+    permitMod.io.in.status.henvcfg := henvcfg.get.rdata
+    permitMod.io.in.status.vsstatusFSOff := vsstatus.get.regOut.FS === ContextStatus.Off
+  } else {
+    permitMod.io.in.status.vtsr := false.B
+    permitMod.io.in.status.vtvm := false.B
+    permitMod.io.in.status.hcounteren := 0.U
+    permitMod.io.in.status.hstateen0 := 0.U.asTypeOf(new HstateenBundle0)
+    permitMod.io.in.status.henvcfg := 0.U
+    permitMod.io.in.status.vsstatusFSOff := false.B
+  }
+
 
   permitMod.io.in.aia.miselectIsIllegal .foreach(_ := miselect.get.isIllegal)
   permitMod.io.in.aia.siselectIsIllegal .foreach(_ := siselect.get.isIllegal)
@@ -508,13 +535,22 @@ class NewCSR(implicit val p: Parameters) extends Module
   sstcIRGen.i.vstime.bits  := time.vstime
   sstcIRGen.i.stimecmp.wen := GatedValidRegNext(stimecmp.w.wen)
   sstcIRGen.i.stimecmp.rdata  := stimecmp.rdata
-  sstcIRGen.i.vstimecmp.wen   := GatedValidRegNext(vstimecmp.w.wen)
-  sstcIRGen.i.vstimecmp.rdata := vstimecmp.rdata
   sstcIRGen.i.menvcfg.wen   := GatedValidRegNext(menvcfg.w.wen)
   sstcIRGen.i.menvcfg.STCE  := menvcfg.regOut.STCE.asBool
-  sstcIRGen.i.henvcfg.wen   := GatedValidRegNext(henvcfg.w.wen)
-  sstcIRGen.i.henvcfg.STCE  := henvcfg.regOut.STCE.asBool
-  sstcIRGen.i.htimedeltaWen := GatedValidRegNext(htimedelta.w.wen)
+
+  if (EnableHExtension) {
+    sstcIRGen.i.vstimecmp.wen   := GatedValidRegNext(vstimecmp.get.w.wen)
+    sstcIRGen.i.vstimecmp.rdata := vstimecmp.get.rdata
+    sstcIRGen.i.henvcfg.wen   := GatedValidRegNext(henvcfg.get.w.wen)
+    sstcIRGen.i.henvcfg.STCE  := henvcfg.get.regOut.STCE.asBool
+    sstcIRGen.i.htimedeltaWen := GatedValidRegNext(htimedelta.get.w.wen)
+  } else {
+    sstcIRGen.i.vstimecmp.wen   := false.B
+    sstcIRGen.i.vstimecmp.rdata := 0.U
+    sstcIRGen.i.henvcfg.wen   := false.B
+    sstcIRGen.i.henvcfg.STCE  := false.B
+    sstcIRGen.i.htimedeltaWen := false.B
+  }
 
   miregiprios.foreach { mod =>
     mod.w.wen := mireg.get.w.wen && (miselect.get.regOut.ALL.asUInt === mod.addr.U)
@@ -546,13 +582,16 @@ class NewCSR(implicit val p: Parameters) extends Module
   csrMods.foreach { mod =>
     mod match {
       case m: HypervisorBundle =>
-        m.hstatus := hstatus.regOut
+        if (EnableHExtension)
+          m.hstatus := hstatus.get.regOut
       case _ =>
     }
     mod match {
       case m: VirtualSupervisorBundle =>
-        m.v := V.asUInt.asBool
-        m.hgatp := hgatp.regOut
+        if (EnableHExtension) {
+          m.v := V.asUInt.asBool
+          m.hgatp := hgatp.get.regOut
+        }
       case _ =>
     }
     mod match {
@@ -570,8 +609,10 @@ class NewCSR(implicit val p: Parameters) extends Module
       case m: HasExternalInterruptBundle =>
         m.platformIRP := this.platformIRP
         m.platformIRP.STIP  := sstcIRGen.o.STIP
-        // m.platformIRP.VSTIP := sstcIRGen.o.VSTIP
-        m.platformIRP.VSTIP := 0.U
+        if(EnableHExtension)
+          m.platformIRP.VSTIP := sstcIRGen.o.VSTIP
+        else
+          m.platformIRP.VSTIP := 0.U
       case _ =>
     }
     mod match {
@@ -680,8 +721,10 @@ class NewCSR(implicit val p: Parameters) extends Module
         // instret from minstret
         m.mHPM.instret := minstret.rdata
         // VS-Mode or VU-Mode
-        m.v := privState.isVirtual
-        m.htimedelta := htimedelta.rdata
+        if (EnableHExtension) {
+          m.v := privState.isVirtual
+          m.htimedelta := htimedelta.get.rdata
+        }
         m.mHPM.hpmcounters.zip(mhpmcounters).map{
           case(counter, mcounter) => counter := mcounter.rdata
         }
@@ -702,11 +745,29 @@ class NewCSR(implicit val p: Parameters) extends Module
         m.mideleg := mideleg.regOut
         m.mip := mip.rdata
         m.mie := mie.regOut
-        m.mvip := mvip.regOut
-        
-        m.hideleg := hideleg.regOut
-        m.hip := hip.regOut
-        m.hie := hie.regOut
+        if (EnableHExtension) {
+          m.hideleg := hideleg.get.regOut
+          m.hip := hip.get.regOut
+          m.hie := hie.get.regOut
+          m.mvip := mvip.regOut
+          m.hvip := hvip.get.regOut
+          m.vsip := vsip.get.regOut
+          m.vsie := vsie.get.regOut
+          m.hgeip := hgeip.get.regOut
+          m.hgeie := hgeie.get.regOut
+          m.hstatusVGEIN := hstatus.get.regOut.VGEIN
+        } else {
+          m.hideleg := 0.U.asTypeOf(hideleg.get.regOut)
+          m.hip := 0.U.asTypeOf(hip.get.regOut)
+          m.hie := 0.U.asTypeOf(hie.get.regOut)
+          m.mvip := 0.U.asTypeOf(mvip.regOut)
+          m.hvip := 0.U.asTypeOf(hvip.get.regOut)
+          m.vsip := 0.U.asTypeOf(vsip.get.regOut)
+          m.vsie := 0.U.asTypeOf(vsie.get.regOut)
+          m.hgeip := 0.U.asTypeOf(hgeip.get.regOut)
+          m.hgeie := 0.U.asTypeOf(hgeie.get.regOut)
+          m.hstatusVGEIN := 0.U.asTypeOf(hstatus.get.regOut.VGEIN)
+        }
         if(EnableAIA) {
           m.mvien := mvien.get.regOut
           m.hvien := hvien.get.regOut
@@ -714,20 +775,6 @@ class NewCSR(implicit val p: Parameters) extends Module
           m.hvien := 0.U
           m.mvien := 0.U
         }
-        // m.hvip := hvip.regOut
-        m.hvip := 0.U
-        m.sip := sip.regOut
-        m.sie := sie.regOut
-        // m.vsip := vsip.regOut
-        // m.vsie := vsie.regOut
-        // m.hgeip := hgeip.regOut
-        // m.hgeie := hgeie.regOut
-        // m.hstatusVGEIN := hstatus.regOut.VGEIN
-        m.vsip := 0.U
-        m.vsie := 0.U
-        m.hgeip := 0.U
-        m.hgeie := 0.U
-        m.hstatusVGEIN := 0.U.asTypeOf(hstatus.regOut.VGEIN)
       case _ =>
     }
     mod match {
@@ -735,7 +782,10 @@ class NewCSR(implicit val p: Parameters) extends Module
         m.ofVec := VecInit(mhpmevents.map(event => event.rdata.head(1).asBool)).asUInt //todo：fix
         m.privState := privState
         m.mcounteren := mcounteren.rdata
-        m.hcounteren := hcounteren.rdata
+        if (EnableHExtension)
+          m.hcounteren := hcounteren.get.rdata
+        else
+          m.hcounteren := 0.U
       case _ =>
     }
     mod match {
@@ -744,7 +794,10 @@ class NewCSR(implicit val p: Parameters) extends Module
         m.fromMstateen1 := mstateen1.regOut
         m.fromMstateen2 := mstateen2.regOut
         m.fromMstateen3 := mstateen3.regOut
-        m.fromHstateen0 := hstateen0.regOut
+        if (EnableHExtension)
+          m.fromHstateen0 := hstateen0.get.regOut
+        else
+          m.fromHstateen0 := 0.U
         m.privState     := privState
       case _ =>
     }
@@ -795,14 +848,20 @@ class NewCSR(implicit val p: Parameters) extends Module
 
         in.privState := privState
         in.mstatus := mstatus.regOut
-        in.hstatus := hstatus.regOut
         in.sstatus := mstatus.sstatus
-        in.vsstatus := vsstatus.regOut
         in.pcFromXtvec := trapHandleMod.io.out.pcFromXtvec
-
         in.satp  := satp.regOut
-        in.vsatp := vsatp.regOut
-        in.hgatp := hgatp.regOut
+        if (EnableHExtension) {
+          in.hstatus := hstatus.get.regOut
+          in.vsstatus := vsstatus.get.regOut
+          in.vsatp := vsatp.get.regOut
+          in.hgatp := hgatp.get.regOut
+        } else {
+          in.hstatus := 0.U.asTypeOf(new HstatusBundle)
+          in.vsstatus := 0.U.asTypeOf(new SstatusBundle)
+          in.vsatp := 0.U.asTypeOf(new SatpBundle)
+          in.hgatp := 0.U.asTypeOf(new HgatpBundle)
+        }
 
         in.memExceptionVAddr := io.fromMem.excpVA
         in.memExceptionGPAddr := io.fromMem.excpGPA
@@ -825,8 +884,13 @@ class NewCSR(implicit val p: Parameters) extends Module
       in.mnepc   := mnepc.regOut
       in.mnstatus:= mnstatus.regOut
       in.satp := satp.regOut
-      in.vsatp := vsatp.regOut
-      in.hgatp := hgatp.regOut
+      if (EnableHExtension) {
+        in.vsatp := vsatp.get.regOut
+        in.hgatp := hgatp.get.regOut
+      } else {
+        in.vsatp := 0.U.asTypeOf(new SatpBundle)
+        in.hgatp := 0.U.asTypeOf(new HgatpBundle)
+      }
   }
 
   mretEvent.valid := legalMret
@@ -835,8 +899,13 @@ class NewCSR(implicit val p: Parameters) extends Module
       in.mstatus := mstatus.regOut
       in.mepc := mepc.regOut
       in.satp := satp.regOut
-      in.vsatp := vsatp.regOut
-      in.hgatp := hgatp.regOut
+      if (EnableHExtension) {
+        in.vsatp := vsatp.get.regOut
+        in.hgatp := hgatp.get.regOut
+      } else {
+        in.vsatp := 0.U.asTypeOf(new SatpBundle)
+        in.hgatp := 0.U.asTypeOf(new HgatpBundle)
+      }
   }
 
   sretEvent.valid := legalSret
@@ -844,13 +913,21 @@ class NewCSR(implicit val p: Parameters) extends Module
     case in =>
       in.privState := privState
       in.sstatus := mstatus.sstatus
-      in.hstatus := hstatus.regOut
-      in.vsstatus := vsstatus.regOut
       in.sepc := sepc.regOut
-      in.vsepc := vsepc.regOut
       in.satp := satp.regOut
-      in.vsatp := vsatp.regOut
-      in.hgatp := hgatp.regOut
+      if (EnableHExtension) {
+        in.hstatus := hstatus.get.regOut
+        in.vsstatus := vsstatus.get.regOut
+        in.vsepc := vsepc.get.regOut
+        in.vsatp := vsatp.get.regOut
+        in.hgatp := hgatp.get.regOut
+      } else {
+        in.hstatus := 0.U.asTypeOf(new HstatusBundle)
+        in.vsstatus := 0.U.asTypeOf(new SstatusBundle)
+        in.vsepc := 0.U.asTypeOf(new Epc())
+        in.vsatp := 0.U.asTypeOf(new SatpBundle)
+        in.hgatp := 0.U.asTypeOf(new HgatpBundle)
+      }
   }
 
   dretEvent.valid := legalDret
@@ -860,8 +937,13 @@ class NewCSR(implicit val p: Parameters) extends Module
       in.dpc  := dpc.regOut
       in.mstatus := mstatus.regOut
       in.satp := satp.regOut
-      in.vsatp := vsatp.regOut
-      in.hgatp := hgatp.regOut
+      if (EnableHExtension) {
+        in.vsatp := vsatp.get.regOut
+        in.hgatp := hgatp.get.regOut
+      } else {
+        in.vsatp := 0.U.asTypeOf(new SatpBundle)
+        in.hgatp := 0.U.asTypeOf(new HgatpBundle)
+      }
   }
 
   PRVM := MuxCase(
@@ -873,14 +955,16 @@ class NewCSR(implicit val p: Parameters) extends Module
     }
   )
 
-  // V := MuxCase(
-  //   V,
-  //   events.filter(_.out.isInstanceOf[EventUpdatePrivStateOutput]).map {
-  //     x => x.out match {
-  //       case xx: EventUpdatePrivStateOutput => (xx.privState.valid -> xx.privState.bits.V)
-  //     }
-  //   }
-  // )
+  if(EnableHExtension) {
+    V := MuxCase(
+      V,
+      events.filter(_.out.isInstanceOf[EventUpdatePrivStateOutput]).map {
+        x => x.out match {
+          case xx: EventUpdatePrivStateOutput => (xx.privState.valid -> xx.privState.bits.V)
+        }
+      }
+    )
+  }
 
   debugMode := MuxCase(
     debugMode,
@@ -907,18 +991,28 @@ class NewCSR(implicit val p: Parameters) extends Module
   )
 
   // flush
-  val resetSatp = RegEnable(Cat(Seq(satp, vsatp, hgatp).map(_.addr.U === addr)).orR && wenLegal, false.B, valid) // write to satp will cause the pipeline be flushed
+  val resetSatp = RegEnable(if(EnableHExtension) Cat(Seq(satp, vsatp.get, hgatp.get).map(_.addr.U === addr)).orR && wenLegal else Cat(Seq(satp).map(_.addr.U === addr)).orR && wenLegal, false.B, valid) // write to satp will cause the pipeline be flushed
 
-  val floatStatusOnOff = RegEnable(mstatus.w.wen && (
-    mstatus.w.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
-    mstatus.w.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
-  ) || mstatus.wAliasSstatus.wen && (
-    mstatus.wAliasSstatus.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
-    mstatus.wAliasSstatus.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
-  ) || vsstatus.w.wen && (
-    vsstatus.w.wdataFields.FS === ContextStatus.Off && vsstatus.regOut.FS =/= ContextStatus.Off ||
-    vsstatus.w.wdataFields.FS =/= ContextStatus.Off && vsstatus.regOut.FS === ContextStatus.Off
-  ), false.B, valid)
+  val floatStatusOnOff = RegEnable(
+    if(EnableHExtension) {
+      mstatus.w.wen && (
+      mstatus.w.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
+      mstatus.w.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
+      ) || mstatus.wAliasSstatus.wen && (
+      mstatus.wAliasSstatus.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
+      mstatus.wAliasSstatus.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
+      ) || vsstatus.get.w.wen && (
+      vsstatus.get.w.wdataFields.FS === ContextStatus.Off && vsstatus.get.regOut.FS =/= ContextStatus.Off ||
+      vsstatus.get.w.wdataFields.FS =/= ContextStatus.Off && vsstatus.get.regOut.FS === ContextStatus.Off
+    )} else {
+      mstatus.w.wen && (
+      mstatus.w.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
+      mstatus.w.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
+      ) || mstatus.wAliasSstatus.wen && (
+      mstatus.wAliasSstatus.wdataFields.FS === ContextStatus.Off && mstatus.regOut.FS =/= ContextStatus.Off ||
+      mstatus.wAliasSstatus.wdataFields.FS =/= ContextStatus.Off && mstatus.regOut.FS === ContextStatus.Off
+      )
+    }, false.B, valid)
 
   val vectorStatusOnOff = false.B
   // RegEnable(mstatus.w.wen && (
@@ -1150,9 +1244,14 @@ class NewCSR(implicit val p: Parameters) extends Module
     tdata1Wire
   }}
 
-  val triggerCanRaiseBpExp = !(privState.isModeM && !mstatus.regOut.MIE ||
-    medeleg.regOut.EX_BP && privState.isModeHS && !mstatus.sstatus.SIE ||
-    medeleg.regOut.EX_BP && hedeleg.regOut.EX_BP && privState.isModeVS && !vsstatus.regOut.SIE)
+  val triggerCanRaiseBpExp = 
+    if(EnableHExtension) 
+      !(privState.isModeM && !mstatus.regOut.MIE ||
+      medeleg.regOut.EX_BP && privState.isModeHS && !mstatus.sstatus.SIE ||
+      medeleg.regOut.EX_BP && hedeleg.get.regOut.EX_BP && privState.isModeVS && !vsstatus.get.regOut.SIE)
+    else
+      !(privState.isModeM && !mstatus.regOut.MIE ||
+      medeleg.regOut.EX_BP && privState.isModeHS && !mstatus.sstatus.SIE)
 
   val debugMod = Module(new Debug)
   debugMod.io.in.trapInfo.valid            := hasTrap
@@ -1225,8 +1324,14 @@ class NewCSR(implicit val p: Parameters) extends Module
     Priv.D,
     Mux1H(privState1HForTrace, privStateForTrace)
   )
-  io.status.trapTraceInfo.bits.cause := Mux1H(VecInit(privState1HForTrace).asUInt.head(3), Seq(mcause.rdata, scause.rdata, vscause.rdata))
-  io.status.trapTraceInfo.bits.tval  := Mux1H(VecInit(privState1HForTrace).asUInt.head(3), Seq(mtval.rdata,  stval.rdata,  vstval.rdata))
+  if (EnableHExtension) {
+    io.status.trapTraceInfo.bits.cause := Mux1H(VecInit(privState1HForTrace).asUInt.head(3), Seq(mcause.rdata, scause.rdata, vscause.get.rdata))
+    io.status.trapTraceInfo.bits.tval  := Mux1H(VecInit(privState1HForTrace).asUInt.head(3), Seq(mtval.rdata,  stval.rdata,  vstval.get.rdata))
+  } else {
+    io.status.trapTraceInfo.bits.cause := Mux1H(VecInit(privState1HForTrace).asUInt.head(2), Seq(mcause.rdata, scause.rdata))
+    io.status.trapTraceInfo.bits.tval  := Mux1H(VecInit(privState1HForTrace).asUInt.head(2), Seq(mtval.rdata,  stval.rdata))
+  }
+
 
   /**
    * perf_begin
@@ -1311,15 +1416,24 @@ class NewCSR(implicit val p: Parameters) extends Module
   io.status.custom.fusion_enable           := srnctl.regOut.FUSION_ENABLE.asBool
   io.status.custom.wfi_enable              := srnctl.regOut.WFI_ENABLE.asBool && (!io.status.singleStepFlag) && !debugMode
 
-  io.status.instrAddrTransType.bare := privState.isModeM ||
+  if(EnableHExtension) {
+    io.status.instrAddrTransType.bare := privState.isModeM ||
     (!privState.isVirtual && satp.regOut.MODE === SatpMode.Bare) ||
-    (privState.isVirtual && vsatp.regOut.MODE === SatpMode.Bare && hgatp.regOut.MODE === HgatpMode.Bare)
-  io.status.instrAddrTransType.sv39 := !privState.isModeM && !privState.isVirtual && satp.regOut.MODE === SatpMode.Sv39 ||
-    privState.isVirtual && vsatp.regOut.MODE === SatpMode.Sv39
-  io.status.instrAddrTransType.sv48 := !privState.isModeM && !privState.isVirtual && satp.regOut.MODE === SatpMode.Sv48 ||
-    privState.isVirtual && vsatp.regOut.MODE === SatpMode.Sv48
-  io.status.instrAddrTransType.sv39x4 := privState.isVirtual && vsatp.regOut.MODE === SatpMode.Bare && hgatp.regOut.MODE === HgatpMode.Sv39x4
-  io.status.instrAddrTransType.sv48x4 := privState.isVirtual && vsatp.regOut.MODE === SatpMode.Bare && hgatp.regOut.MODE === HgatpMode.Sv48x4
+    (privState.isVirtual && vsatp.get.regOut.MODE === SatpMode.Bare && hgatp.get.regOut.MODE === HgatpMode.Bare)
+    io.status.instrAddrTransType.sv39 := !privState.isModeM && !privState.isVirtual && satp.regOut.MODE === SatpMode.Sv39 ||
+      privState.isVirtual && vsatp.get.regOut.MODE === SatpMode.Sv39
+    io.status.instrAddrTransType.sv48 := !privState.isModeM && !privState.isVirtual && satp.regOut.MODE === SatpMode.Sv48 ||
+      privState.isVirtual && vsatp.get.regOut.MODE === SatpMode.Sv48
+    io.status.instrAddrTransType.sv39x4 := privState.isVirtual && vsatp.get.regOut.MODE === SatpMode.Bare && hgatp.get.regOut.MODE === HgatpMode.Sv39x4
+    io.status.instrAddrTransType.sv48x4 := privState.isVirtual && vsatp.get.regOut.MODE === SatpMode.Bare && hgatp.get.regOut.MODE === HgatpMode.Sv48x4
+  } else {
+    io.status.instrAddrTransType.bare := privState.isModeM
+    io.status.instrAddrTransType.sv39 := !privState.isModeM && !privState.isVirtual && satp.regOut.MODE === SatpMode.Sv39
+    io.status.instrAddrTransType.sv48 := !privState.isModeM && !privState.isVirtual && satp.regOut.MODE === SatpMode.Sv48
+    io.status.instrAddrTransType.sv39x4 := false.B
+    io.status.instrAddrTransType.sv48x4 := false.B
+  }
+  
   assert(PopCount(io.status.instrAddrTransType.asUInt) === 1.U, "Exactly one inst trans type should be asserted")
 
   private val csrAccess = wenLegal || ren
@@ -1360,24 +1474,45 @@ class NewCSR(implicit val p: Parameters) extends Module
       wdata.bits.data := io.in.bits.src
       wdata.bits.op   := io.in.bits.op
   }
-  toAIA.vgein.foreach(_ := hstatus.regOut.VGEIN.asUInt)
+  if (EnableHExtension)
+    toAIA.vgein.foreach(_ := hstatus.get.regOut.VGEIN.asUInt)
+  else
+    toAIA.vgein.foreach(_ := 0.U)
   toAIA.mClaim.foreach(_   := mtopei.get.w.wen)
   toAIA.sClaim.foreach(_   := stopei.get.w.wen)
   toAIA.vsClaim.foreach(_  := vstopei.get.w.wen)
 
   // tlb
   io.tlb.satpASIDChanged  := GatedValidRegNext(satp.w.wen  && satp .regOut.ASID =/=  satp.w.wdataFields.ASID)
-  io.tlb.vsatpASIDChanged := GatedValidRegNext(vsatp.w.wen && vsatp.regOut.ASID =/= vsatp.w.wdataFields.ASID)
-  io.tlb.hgatpVMIDChanged := GatedValidRegNext(hgatp.w.wen && hgatp.regOut.VMID =/= hgatp.w.wdataFields.VMID)
+  io.tlb.vsatpASIDChanged := GatedValidRegNext(vsatp.get.w.wen && vsatp.get.regOut.ASID =/= vsatp.get.w.wdataFields.ASID)
+  io.tlb.hgatpVMIDChanged := GatedValidRegNext(hgatp.get.w.wen && hgatp.get.regOut.VMID =/= hgatp.get.w.wdataFields.VMID)
   io.tlb.satp := satp.rdata
-  io.tlb.vsatp := vsatp.rdata
-  io.tlb.hgatp := hgatp.rdata
+  io.tlb.vsatp := vsatp.get.rdata
+  io.tlb.hgatp := hgatp.get.rdata
   io.tlb.mxr  :=  mstatus.regOut.MXR.asBool
   io.tlb.sum  :=  mstatus.regOut.SUM.asBool
-  io.tlb.vmxr := vsstatus.regOut.MXR.asBool
-  io.tlb.vsum := vsstatus.regOut.SUM.asBool
-  io.tlb.spvp :=  hstatus.regOut.SPVP.asBool
-
+  io.tlb.vmxr := vsstatus.get.regOut.MXR.asBool
+  io.tlb.vsum := vsstatus.get.regOut.SUM.asBool
+  io.tlb.spvp :=  hstatus.get.regOut.SPVP.asBool
+  if (EnableHExtension) {
+    io.tlb.vsatpASIDChanged := GatedValidRegNext(vsatp.get.w.wen && vsatp.get.regOut.ASID =/= vsatp.get.w.wdataFields.ASID)
+    io.tlb.hgatpVMIDChanged := GatedValidRegNext(hgatp.get.w.wen && hgatp.get.regOut.VMID =/= hgatp.get.w.wdataFields.VMID)
+    io.tlb.vsatp := vsatp.get.rdata
+    io.tlb.hgatp := hgatp.get.rdata
+    io.tlb.vmxr := vsstatus.get.regOut.MXR.asBool
+    io.tlb.vsum := vsstatus.get.regOut.SUM.asBool
+    io.tlb.spvp :=  hstatus.get.regOut.SPVP.asBool
+    io.tlb.hPBMTE := RegNext(henvcfg.get.regOut.PBMTE.asBool)
+  } else {
+    io.tlb.vsatpASIDChanged := false.B
+    io.tlb.hgatpVMIDChanged := false.B
+    io.tlb.vsatp := 0.U.asTypeOf(new SatpBundle)
+    io.tlb.hgatp := 0.U.asTypeOf(new HgatpBundle)
+    io.tlb.vmxr := false.B
+    io.tlb.vsum := false.B
+    io.tlb.spvp :=  false.B
+    io.tlb.hPBMTE := false.B
+  }
   io.tlb.imode := PRVM.asUInt
   // when NMIE is zero, force to behave as MPRV is zero
   io.tlb.dmode := Mux(
@@ -1392,45 +1527,53 @@ class NewCSR(implicit val p: Parameters) extends Module
     V.asUInt
   )
   io.tlb.mPBMTE := RegNext(menvcfg.regOut.PBMTE.asBool)
-  io.tlb.hPBMTE := RegNext(henvcfg.regOut.PBMTE.asBool)
 
   io.toDecode.illegalInst.sfenceVMA  := isModeHS && mstatus.regOut.TVM  || isModeHU
-  io.toDecode.virtualInst.sfenceVMA  := isModeVS && hstatus.regOut.VTVM || isModeVU
   io.toDecode.illegalInst.sfencePart := isModeHU
   io.toDecode.virtualInst.sfencePart := isModeVU
   io.toDecode.illegalInst.hfenceGVMA := isModeHS && mstatus.regOut.TVM || isModeHU
   io.toDecode.illegalInst.hfenceVVMA := isModeHU
   io.toDecode.virtualInst.hfence     := isModeVS || isModeVU
-  io.toDecode.illegalInst.hlsv       := isModeHU && !hstatus.regOut.HU
   io.toDecode.virtualInst.hlsv       := isModeVS || isModeVU
-  io.toDecode.illegalInst.fsIsOff    := mstatus.regOut.FS === ContextStatus.Off || (isModeVS || isModeVU) && vsstatus.regOut.FS === ContextStatus.Off
   io.toDecode.illegalInst.vsIsOff    := true.B // mstatus.regOut.VS === ContextStatus.Off || (isModeVS || isModeVU) && vsstatus.regOut.VS === ContextStatus.Off
   io.toDecode.illegalInst.wfi        := isModeHU || !isModeM && mstatus.regOut.TW
-  io.toDecode.virtualInst.wfi        := isModeVS && !mstatus.regOut.TW && hstatus.regOut.VTW || isModeVU && !mstatus.regOut.TW
   io.toDecode.illegalInst.frm        := frmIsReserved
   // Ref: The RISC-V Instruction Set Manual Volume I - 20.5. Control and Status Register State
   io.toDecode.illegalInst.cboZ       := !isModeM && !menvcfg.regOut.CBZE || isModeHU && !senvcfg.regOut.CBZE
-  io.toDecode.virtualInst.cboZ       := menvcfg.regOut.CBZE && (
-    isModeVS && !henvcfg.regOut.CBZE ||
-    isModeVU && !(henvcfg.regOut.CBZE && senvcfg.regOut.CBZE)
-  )
   io.toDecode.illegalInst.cboCF      := !isModeM && !menvcfg.regOut.CBCFE || isModeHU && !senvcfg.regOut.CBCFE
-  io.toDecode.virtualInst.cboCF      := menvcfg.regOut.CBCFE && (
-    isModeVS && !henvcfg.regOut.CBCFE ||
-    isModeVU && !(henvcfg.regOut.CBCFE && senvcfg.regOut.CBCFE)
-  )
   io.toDecode.illegalInst.cboI       :=
     !isModeM && menvcfg.regOut.CBIE === EnvCBIE.Off ||
     isModeHU && senvcfg.regOut.CBIE === EnvCBIE.Off
-  io.toDecode.virtualInst.cboI       := menvcfg.regOut.CBIE =/= EnvCBIE.Off && (
-    isModeVS && henvcfg.regOut.CBIE === EnvCBIE.Off ||
-    isModeVU &&(henvcfg.regOut.CBIE === EnvCBIE.Off || senvcfg.regOut.CBIE === EnvCBIE.Off)
-  )
-  io.toDecode.special.cboI2F := !io.toDecode.illegalInst.cboI && !io.toDecode.virtualInst.cboI && (
-    menvcfg.regOut.CBIE === EnvCBIE.Flush && !isModeM ||
-    senvcfg.regOut.CBIE === EnvCBIE.Flush && (isModeHU || isModeVU) ||
-    henvcfg.regOut.CBIE === EnvCBIE.Flush && (isModeVS || isModeVU)
-  )
+  if (EnableHExtension) {
+    io.toDecode.virtualInst.sfenceVMA  := isModeVS && hstatus.get.regOut.VTVM || isModeVU
+    io.toDecode.illegalInst.hlsv       := isModeHU && !hstatus.get.regOut.HU
+    io.toDecode.illegalInst.fsIsOff    := mstatus.regOut.FS === ContextStatus.Off || (isModeVS || isModeVU) && vsstatus.get.regOut.FS === ContextStatus.Off
+    io.toDecode.virtualInst.wfi        := isModeVS && !mstatus.regOut.TW && hstatus.get.regOut.VTW || isModeVU && !mstatus.regOut.TW
+    io.toDecode.virtualInst.cboZ       := menvcfg.regOut.CBZE && (
+      isModeVS && !henvcfg.get.regOut.CBZE ||
+      isModeVU && !(henvcfg.get.regOut.CBZE && senvcfg.regOut.CBZE))
+    io.toDecode.virtualInst.cboCF      := menvcfg.regOut.CBCFE && (
+      isModeVS && !henvcfg.get.regOut.CBCFE ||
+      isModeVU && !(henvcfg.get.regOut.CBCFE && senvcfg.regOut.CBCFE))
+    io.toDecode.virtualInst.cboI       := menvcfg.regOut.CBIE =/= EnvCBIE.Off && (
+      isModeVS && henvcfg.get.regOut.CBIE === EnvCBIE.Off ||
+      isModeVU &&(henvcfg.get.regOut.CBIE === EnvCBIE.Off || senvcfg.regOut.CBIE === EnvCBIE.Off))
+    io.toDecode.special.cboI2F := !io.toDecode.illegalInst.cboI && !io.toDecode.virtualInst.cboI && (
+      menvcfg.regOut.CBIE === EnvCBIE.Flush && !isModeM ||
+      senvcfg.regOut.CBIE === EnvCBIE.Flush && (isModeHU || isModeVU) ||
+      henvcfg.get.regOut.CBIE === EnvCBIE.Flush && (isModeVS || isModeVU))
+  } else {
+    io.toDecode.virtualInst.sfenceVMA  := false.B
+    io.toDecode.illegalInst.hlsv       := isModeHU && !hstatus.get.regOut.HU
+    io.toDecode.illegalInst.fsIsOff    := mstatus.regOut.FS === ContextStatus.Off
+    io.toDecode.virtualInst.wfi        := false.B
+    io.toDecode.virtualInst.cboZ       := false.B
+    io.toDecode.virtualInst.cboCF      := false.B
+    io.toDecode.virtualInst.cboI       := false.B
+    io.toDecode.special.cboI2F := !io.toDecode.illegalInst.cboI && !io.toDecode.virtualInst.cboI && (
+      menvcfg.regOut.CBIE === EnvCBIE.Flush && !isModeM ||
+      senvcfg.regOut.CBIE === EnvCBIE.Flush && (isModeHU || isModeVU))
+  }
 
   io.distributedWenLegal := wenLegal
 
@@ -1471,12 +1614,21 @@ class NewCSR(implicit val p: Parameters) extends Module
     val hasNMI = nmi && hasTrap
     val interruptNO = Mux(interrupt, trapNO, 0.U)
     val exceptionNO = Mux(!interrupt, trapNO, 0.U)
-    val isSv39: Bool =
-      (isModeHS || isModeHU) &&  satp.regOut.MODE === SatpMode.Sv39 ||
-      (isModeVS || isModeVU) && vsatp.regOut.MODE === SatpMode.Sv39
+
+    val isSv39: Bool = 
+      if (EnableHExtension) {
+        (isModeHS || isModeHU) &&  satp.regOut.MODE === SatpMode.Sv39 ||
+        (isModeVS || isModeVU) && vsatp.get.regOut.MODE === SatpMode.Sv39
+      } else {
+        (isModeHS || isModeHU) &&  satp.regOut.MODE === SatpMode.Sv39
+      }
     val isSv48: Bool =
-      (isModeHS || isModeHU) &&  satp.regOut.MODE === SatpMode.Sv48 ||
-      (isModeVS || isModeVU) && vsatp.regOut.MODE === SatpMode.Sv48
+      if (EnableHExtension) {
+        (isModeHS || isModeHU) &&  satp.regOut.MODE === SatpMode.Sv48 ||
+        (isModeVS || isModeVU) && vsatp.get.regOut.MODE === SatpMode.Sv48
+      } else {
+        (isModeHS || isModeHU) &&  satp.regOut.MODE === SatpMode.Sv48
+      }
     val isBare = !isSv39 && !isSv48
     val sv39PC = SignExt(trapPC.take(39), XLEN)
     val sv48PC = SignExt(trapPC.take(48), XLEN)
@@ -1554,20 +1706,20 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffHCSRState.virtMode    := privState.V.asBool
     diffHCSRState.mtval2      := mtval2.rdata.asUInt
     diffHCSRState.mtinst      := mtinst.rdata.asUInt
-    diffHCSRState.hstatus     := hstatus.rdata.asUInt
-    diffHCSRState.hideleg     := hideleg.rdata.asUInt
-    diffHCSRState.hedeleg     := hedeleg.rdata.asUInt
-    diffHCSRState.hcounteren  := hcounteren.rdata.asUInt
-    diffHCSRState.htval       := htval.rdata.asUInt
-    diffHCSRState.htinst      := htinst.rdata.asUInt
-    diffHCSRState.hgatp       := hgatp.rdata.asUInt
-    diffHCSRState.vsstatus    := vsstatus.rdata.asUInt
-    diffHCSRState.vstvec      := vstvec.rdata.asUInt
-    diffHCSRState.vsepc       := vsepc.rdata.asUInt
-    diffHCSRState.vscause     := vscause.rdata.asUInt
-    diffHCSRState.vstval      := vstval.rdata.asUInt
-    diffHCSRState.vsatp       := vsatp.rdata.asUInt
-    diffHCSRState.vsscratch   := vsscratch.rdata.asUInt
+    diffHCSRState.hstatus     := hstatus.get.rdata.asUInt
+    diffHCSRState.hideleg     := hideleg.get.rdata.asUInt
+    diffHCSRState.hedeleg     := hedeleg.get.rdata.asUInt
+    diffHCSRState.hcounteren  := hcounteren.get.rdata.asUInt
+    diffHCSRState.htval       := htval.get.rdata.asUInt
+    diffHCSRState.htinst      := htinst.get.rdata.asUInt
+    diffHCSRState.hgatp       := hgatp.get.rdata.asUInt
+    diffHCSRState.vsstatus    := vsstatus.get.rdata.asUInt
+    diffHCSRState.vstvec      := vstvec.get.rdata.asUInt
+    diffHCSRState.vsepc       := vsepc.get.rdata.asUInt
+    diffHCSRState.vscause     := vscause.get.rdata.asUInt
+    diffHCSRState.vstval      := vstval.get.rdata.asUInt
+    diffHCSRState.vsatp       := vsatp.get.rdata.asUInt
+    diffHCSRState.vsscratch   := vsscratch.get.rdata.asUInt
 
     val platformIRPMeipChange = !platformIRP.MEIP &&  RegNext(platformIRP.MEIP) ||
                                  platformIRP.MEIP && !RegNext(platformIRP.MEIP) ||
@@ -1582,8 +1734,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     val platformIRPStipChange = !sstcIRGen.o.STIP &&  RegNext(sstcIRGen.o.STIP) || sstcIRGen.o.STIP && !RegNext(sstcIRGen.o.STIP)
     val platformIRPVseipChange = !platformIRP.VSEIP &&  RegNext(platformIRP.VSEIP) ||
                                   platformIRP.VSEIP && !RegNext(platformIRP.VSEIP) ||
-                                 !hgeip.rdata.asUInt(hstatus.regOut.VGEIN.asUInt) &&  RegNext(hgeip.rdata.asUInt(hstatus.regOut.VGEIN.asUInt)) ||
-                                  hgeip.rdata.asUInt(hstatus.regOut.VGEIN.asUInt) && !RegNext(hgeip.rdata.asUInt(hstatus.regOut.VGEIN.asUInt))
+                                 !hgeip.get.rdata.asUInt(hstatus.get.regOut.VGEIN.asUInt) &&  RegNext(hgeip.get.rdata.asUInt(hstatus.get.regOut.VGEIN.asUInt)) ||
+                                  hgeip.get.rdata.asUInt(hstatus.get.regOut.VGEIN.asUInt) && !RegNext(hgeip.get.rdata.asUInt(hstatus.get.regOut.VGEIN.asUInt))
     val platformIRPVstipChange = !sstcIRGen.o.VSTIP && RegNext(sstcIRGen.o.VSTIP) || sstcIRGen.o.VSTIP && !RegNext(sstcIRGen.o.VSTIP)
     val lcofiReqChange         = !lcofiReq && RegNext(lcofiReq) || lcofiReq && !RegNext(lcofiReq)
 
@@ -1598,7 +1750,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffNonRegInterruptPendingEvent.platformIRPMsip  := platformIRP.MSIP
     diffNonRegInterruptPendingEvent.platformIRPSeip  := platformIRP.SEIP || fromAIA.seip.getOrElse(false.B)
     diffNonRegInterruptPendingEvent.platformIRPStip  := sstcIRGen.o.STIP
-    diffNonRegInterruptPendingEvent.platformIRPVseip := platformIRP.VSEIP || hgeip.rdata.asUInt(hstatus.regOut.VGEIN.asUInt)
+    diffNonRegInterruptPendingEvent.platformIRPVseip := platformIRP.VSEIP || hgeip.get.rdata.asUInt(hstatus.get.regOut.VGEIN.asUInt)
     diffNonRegInterruptPendingEvent.platformIRPVstip := sstcIRGen.o.VSTIP
     diffNonRegInterruptPendingEvent.localCounterOverflowInterruptReq  := mip.regOut.LCOFIP.asBool
     diffNonRegInterruptPendingEvent.fromAIAMeip  := false.B
@@ -1608,22 +1760,39 @@ class NewCSR(implicit val p: Parameters) extends Module
 
 trait IpIeAliasConnect {
   self: NewCSR with MachineLevel with SupervisorLevel with VirtualSupervisorLevel with HypervisorLevel =>
+  
+  if(EnableHExtension) {
+    mip.fromMvip  := mvip.toMip
+    mip.fromSip   := sip.toMip
+    mip.fromVSip  := vsip.get.toMip
+    mvip.fromMip  := mip.toMvip
+    mvip.fromSip  := sip.toMvip
+    mvip.fromVSip := vsip.get.toMvip
+    hvip.foreach(_.fromMip  := mip.toHvip)
+    hvip.foreach(_.fromHip  := hip.get.toHvip)
+    hvip.foreach(_.fromVSip := vsip.get.toHvip)
 
-  mip.fromMvip  := mvip.toMip
-  mip.fromSip   := sip.toMip
-  // mip.fromVSip  := vsip.toMip
-  mip.fromVSip  := 0.U.asTypeOf(new VSipToMip)
-  mvip.fromMip  := mip.toMvip
-  mvip.fromSip  := sip.toMvip
-  mvip.fromVSip := vsip.toMvip
-  hvip.fromMip  := mip.toHvip
-  hvip.fromHip  := hip.toHvip
-  hvip.fromVSip := vsip.toHvip
+    mie.fromHie  := hie.get.toMie
+    mie.fromSie  := sie.toMie
+    mie.fromVSie := vsie.get.toMie
+    sie.fromVSie := vsie.get.toSie
+  } else {
+    mip.fromMvip  := mvip.toMip
+    mip.fromSip   := sip.toMip
+    // mip.fromVSip  := vsip.toMip
+    mip.fromVSip  := 0.U.asTypeOf(new VSipToMip)
+    mvip.fromMip  := 0.U.asTypeOf(new MipToMvip)
+    mvip.fromSip  := 0.U.asTypeOf(new SipToMvip)
+    mvip.fromVSip := 0.U.asTypeOf(new VSipToMvip)
+    hvip.foreach(_.fromMip  := 0.U.asTypeOf(new MipToHvip))
+    hvip.foreach(_.fromHip  := 0.U.asTypeOf(new HipToHvip))
+    hvip.foreach(_.fromVSip := 0.U.asTypeOf(new VSipToHvip))
 
-  mie.fromHie  := 0.U.asTypeOf(new HieToMie)
-  mie.fromSie  := sie.toMie
-  mie.fromVSie := 0.U.asTypeOf(new VSieToMie)
-  sie.fromVSie := 0.U.asTypeOf(new VSieToMie)
+    mie.fromHie  := 0.U.asTypeOf(new HieToMie)
+    mie.fromSie  := sie.toMie
+    mie.fromVSie := 0.U.asTypeOf(new VSieToMie)
+    sie.fromVSie := 0.U.asTypeOf(new VSieToMie)
+  }
 }
 
 //import top.{ArgParser, Generator}

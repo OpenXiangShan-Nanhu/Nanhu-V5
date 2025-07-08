@@ -215,7 +215,11 @@ trait MachineLevel { self: NewCSR =>
     // alias of hvip.VSSIP
     toHvip.VSSIP.valid := wen
     toHvip.VSSIP.bits  := wdata.VSSIP
-    regOut.VSSIP := hvip.VSSIP
+    if (EnableHExtension) {
+      regOut.VSSIP := hvip.VSSIP
+    } else {
+      regOut.VSSIP := 0.U
+    }
 
     // bit 3 MSIP is read-only in mip, and is written by accesses to memory-mapped control registers,
     // which are used by remote harts to provide machine-level interprocessor interrupts.

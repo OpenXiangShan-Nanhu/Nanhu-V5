@@ -325,6 +325,7 @@ case class XSCoreParameters
   softPTW: Boolean = false, // dpi-c l2tlb debug only
   softPTWDelay: Int = 1,
   EnableAIA: Boolean = false,
+  EnableHExtension: Boolean = false,
   hasMbist:Boolean = false
 ){
   def vlWidth = log2Up(VLEN) + 1
@@ -813,6 +814,8 @@ trait HasXSParameter {
   def printEventCoding   = true
 
   def EnableAIA = coreParams.EnableAIA
+
+  def EnableHExtension = coreParams.EnableHExtension
 
   def hasMbist = coreParams.hasMbist
 

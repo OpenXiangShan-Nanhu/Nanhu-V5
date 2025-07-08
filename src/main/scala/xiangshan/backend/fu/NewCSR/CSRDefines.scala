@@ -145,6 +145,7 @@ object CSRDefines {
   }
 
   object XLENField extends CSREnum with ROApply {
+    val None = Value(0.U)
     val XLEN32 = Value(1.U)
     val XLEN64 = Value(2.U)
     val XLEN128 = Value(3.U)

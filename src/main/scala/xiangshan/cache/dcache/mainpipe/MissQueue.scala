@@ -457,7 +457,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val merge = !isCMOReq && ParallelORR(Cat(secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.req.bits))))
   val reject = !isCMOReq && ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits))))
   val alloc = (isCMOReq || (!reject && !merge)) && ParallelORR(Cat(primary_ready_vec))
-  val accept = alloc || merge
+  val accept = (alloc || merge) & !isCMOReq  || isCMOReq && !io.wbq_block_miss_req
   assert(!(io.req.valid && isCMOReq && merge), "CMO should never be merged into an existing MSHR")
 //   generate req_ready for each miss request for better timing
 //  for (i <- 0 until reqNum) {

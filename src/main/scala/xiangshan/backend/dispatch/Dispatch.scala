@@ -346,10 +346,11 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   }
   private val notCmoSuccess = notSuccessCmoVec.reduce(_ || _)
   private val currentCycleNeedBlock = hasValidCmo && currentCycleNeedBlockVec.reduce(_ || _) && (notCmoSuccess || (!notCmoSuccess && !io.nextCycleFirstIsCmo))
+  private val allDqReady = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
 
   val s_idle :: s_cmoEnq :: s_cmoSqWait :: s_cmoExec :: s_cmoFinish :: Nil = Enum(5)
   val cmoBlockState = RegInit(s_idle)
-  when((cmoBlockState === s_idle && currentCycleNeedBlock && io.enqRob.canAccept) && !io.redirect.valid) {
+  when((cmoBlockState === s_idle && currentCycleNeedBlock && io.enqRob.canAccept && allDqReady) && !io.redirect.valid) {
     cmoBlockState := s_cmoEnq
   }.elsewhen(cmoBlockState === s_cmoEnq && io.sqHasCmo) {
     cmoBlockState := s_cmoSqWait

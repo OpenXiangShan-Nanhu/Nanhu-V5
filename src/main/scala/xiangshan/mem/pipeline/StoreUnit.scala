@@ -333,8 +333,8 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 //  }
 
   s1_out.uop.exceptionVec(storePageFault)      := (io.tlb.resp.bits.excp(0).pf.st  || io.tlb.resp.bits.excp(0).pf.ld)&& s1_vecActive
-  s1_out.uop.exceptionVec(storeAccessFault)    := (io.tlb.resp.bits.excp(0).af.st  || io.tlb.resp.bits.excp(0).pf.ld)&& s1_vecActive
-  s1_out.uop.exceptionVec(storeGuestPageFault) := (io.tlb.resp.bits.excp(0).gpf.st || io.tlb.resp.bits.excp(0).pf.ld) && s1_vecActive
+  s1_out.uop.exceptionVec(storeAccessFault)    := (io.tlb.resp.bits.excp(0).af.st  || io.tlb.resp.bits.excp(0).af.ld)&& s1_vecActive
+  s1_out.uop.exceptionVec(storeGuestPageFault) := (io.tlb.resp.bits.excp(0).gpf.st || io.tlb.resp.bits.excp(0).gpf.ld) && s1_vecActive
 
   when(s1_in.uop.exceptionVec(storeAddrMisaligned)){
     s1_out.uop.exceptionVec(storePageFault) := false.B

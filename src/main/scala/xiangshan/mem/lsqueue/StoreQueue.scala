@@ -589,7 +589,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
           io.storeDataIn(i).bits.data,
           genVWdata(io.storeDataIn(i).bits.data, io.storeDataIn(i).bits.uop.fuOpType(2,0)))
       )
-      dataModule.io.data.wen(i) := true.B
+      dataModule.io.data.wen(i) := !LSUOpType.isCbom(io.storeDataIn(i).bits.uop.fuOpType)             //true.B
 
       debug_data(dataModule.io.data.waddr(i)) := dataModule.io.data.wdata(i)
 

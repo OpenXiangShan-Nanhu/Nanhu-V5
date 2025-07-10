@@ -518,7 +518,7 @@ class MstatusModule(implicit override val p: Parameters) extends CSRModule("MSta
 }
 
 class MnstatusBundle extends CSRBundle {
-  val NMIE   = CSRRWField  (3).withReset(0.U) // as opensbi not support smrnmi, we init nmie open
+  val NMIE   = CSRRWField  (3).withReset(1.U) // as opensbi not support smrnmi, we init nmie open
   val MNPV   = VirtMode    (7).withReset(0.U)
   val MNPELP = RO          (9).withReset(0.U)
   val MNPP   = PrivMode    (12, 11).withReset(PrivMode.U)

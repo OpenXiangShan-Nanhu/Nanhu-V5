@@ -671,14 +671,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     entries(enq_ptr).hptw_resp := Mux(to_last_hptw_req, entries(last_hptw_req_id).hptw_resp, Mux(to_wait, entries(wait_id).hptw_resp, entries(enq_ptr).hptw_resp))
     entries(enq_ptr).hptw_resp.gpf := Mux(last_hptw_excp, last_hptw_gStagePf, false.B)
     entries(enq_ptr).first_s2xlate_fault := false.B
-    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req || to_wait_pmp
-
-    when (io.in.fire && io.mem.resp.fire &&
-      mem_resp_hit(enq_ptr) && to_wait_pmp && !to_mem_out && !to_last_hptw_req &&
-      dup(io.in.bits.req_info.vpn, entries(io.mem.resp.bits.id).req_info.vpn) &&
-      io.in.bits.req_info.s2xlate === entries(io.mem.resp.bits.id).req_info.s2xlate) {
-      assert(false.B, "mem_resp_hit was error driven by to_wait_pmp")
-    }
+    mem_resp_hit(enq_ptr) := to_mem_out || to_last_hptw_req
 
   }
 

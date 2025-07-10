@@ -1254,17 +1254,17 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   val bpu_ftb_update_stall = RegInit(0.U(2.W)) // 2-cycle stall, so we need 3 states
   may_have_stall_from_bpu := bpu_ftb_update_stall =/= 0.U
 
-   val validInstructions = commitStateQueueReg(commPtr.value).map(s => s === c_toCommit || s === c_committed)
-   val lastInstructionStatus = PriorityMux(validInstructions.reverse.zip(commitStateQueueReg(commPtr.value).reverse))
-   val firstInstructionFlushed = commitStateQueueReg(commPtr.value)(0) === c_flushed ||
-     commitStateQueueReg(commPtr.value)(0) === c_empty && commitStateQueueReg(commPtr.value)(1) === c_flushed
-   canCommit := commPtr =/= ifuWbPtr && !may_have_stall_from_bpu &&
-     (isAfter(robCommPtr, commPtr) ||
-       validInstructions.reduce(_ || _) && lastInstructionStatus === c_committed)
-   val canMoveCommPtr = commPtr =/= ifuWbPtr && !may_have_stall_from_bpu &&
-     (isAfter(robCommPtr, commPtr) ||
-       validInstructions.reduce(_ || _) && lastInstructionStatus === c_committed ||
-       firstInstructionFlushed)
+  val validInstructions = commitStateQueueReg(commPtr.value).map(s => s === c_toCommit || s === c_committed)
+  val lastInstructionStatus = PriorityMux(validInstructions.reverse.zip(commitStateQueueReg(commPtr.value).reverse))
+  val firstInstructionFlushed = commitStateQueueReg(commPtr.value)(0) === c_flushed ||
+    commitStateQueueReg(commPtr.value)(0) === c_empty && commitStateQueueReg(commPtr.value)(1) === c_flushed
+  canCommit := commPtr =/= ifuWbPtr && !may_have_stall_from_bpu &&
+    (isAfter(robCommPtr, commPtr) ||
+      validInstructions.reduce(_ || _) && lastInstructionStatus === c_committed)
+  val canMoveCommPtr = commPtr =/= ifuWbPtr && !may_have_stall_from_bpu &&
+    (isAfter(robCommPtr, commPtr) ||
+      validInstructions.reduce(_ || _) && lastInstructionStatus === c_committed ||
+      firstInstructionFlushed)
 
   when (io.fromBackend.rob_commits.map(_.valid).reduce(_ | _)) {
     robCommPtr_write := ParallelPriorityMux(io.fromBackend.rob_commits.map(_.valid).reverse, io.fromBackend.rob_commits.map(_.bits.ftqIdx).reverse)
@@ -1280,9 +1280,8 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
     *************************************************************************************
     */
   val mmioReadPtr = io.mmioCommitRead.mmioFtqPtr
-  // val mmioLastCommit = isAfter(commPtr, mmioReadPtr) ||
-  //   commPtr === mmioReadPtr && validInstructions.reduce(_ || _) && lastInstructionStatus === c_committed
-  val mmioLastCommit = isAfter(commPtr, mmioReadPtr)
+  val mmioLastCommit = isAfter(commPtr, mmioReadPtr) ||
+    commPtr === mmioReadPtr && validInstructions.reduce(_ || _) && lastInstructionStatus === c_committed
   io.mmioCommitRead.mmioLastCommit := RegNext(mmioLastCommit)
 
   // commit reads

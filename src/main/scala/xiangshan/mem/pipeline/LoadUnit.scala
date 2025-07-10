@@ -1162,7 +1162,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                     !s2_tlb_miss &&
                     !s2_fwd_fail &&
                     (s2_dcache_fast_rep || s2_nuke_fast_rep) &&
-                    s2_troublem
+                    s2_troublem &&
+                    !(io.lsq.forward.matchInvalid || io.sbuffer.matchInvalid)
 
   // need allocate new entry
   val s2_can_query = !s2_mem_amb &&

@@ -193,7 +193,7 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
       when(is_first_instr) {
         mmio_state := m_sendReq
       }.otherwise {
-        mmio_state := Mux(io.mmioLastCommit, m_sendReq, m_waitLastCmt)
+        mmio_state := Mux(io.mmioLastCommit && RegNext(mmio_state) === m_waitLastCmt, m_sendReq, m_waitLastCmt)
       }
     }
     is(m_sendReq) {

@@ -23,12 +23,12 @@ class ExceptionBundle extends CSRBundle {
   // 14 Reserved
   val EX_SPF    = RW(15)
   // double trap
-  val EX_DBLTRP = RW(16)
+  // val EX_DBLTRP = RW(16)
   // 17 Reserved
   // software check
-  val EX_SWC    = RW(18)
+  // val EX_SWC    = RW(18)
   // hardware error
-  val EX_HWE    = RW(19)
+  // val EX_HWE    = RW(19)
   // 20-23 reserved for not supposed H extension
   // val EX_IGPF   = RW(20)
   // val EX_LGPF   = RW(21)
@@ -57,6 +57,6 @@ class ExceptionBundle extends CSRBundle {
 
   def getStoreFault = Seq(EX_SAM, EX_SAF, EX_SPF)
 
-  def getALL = Seq(EX_HWE, EX_SWC, EX_DBLTRP, EX_SPF, EX_LPF, EX_IPF, EX_MCALL,
+  def getALL = Seq(EX_SPF, EX_LPF, EX_IPF, EX_MCALL,
     EX_HSCALL, EX_UCALL, EX_SAF, EX_SAM, EX_LAF, EX_LAM, EX_BP, EX_II, EX_IAF, EX_IAM)
 }

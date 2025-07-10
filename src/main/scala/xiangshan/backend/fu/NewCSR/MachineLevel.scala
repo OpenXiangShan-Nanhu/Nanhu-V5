@@ -528,7 +528,7 @@ class MstatusModule(implicit override val p: Parameters) extends CSRModule("MSta
 }
 
 class MnstatusBundle extends CSRBundle {
-  val NMIE   = CSRRWField  (3).withReset(1.U) // as opensbi not support smrnmi, we init nmie open
+  val NMIE   = CSRRWField  (3).withReset(0.U) // as opensbi not support smrnmi, we init nmie open
   val MNPV   = VirtMode    (7).withReset(0.U)
   val MNPELP = RO          (9).withReset(0.U)
   val MNPP   = PrivMode    (12, 11).withReset(PrivMode.U)
@@ -570,7 +570,7 @@ class MisaBundle extends CSRBundle {
 class MedelegBundle extends ExceptionBundle {
   this.getALL.foreach(_.setRW().withReset(0.U))
   this.EX_MCALL.setRO().withReset(0.U) // never delegate machine level ecall
-  this.EX_DBLTRP.setRO().withReset(0.U)// double trap is not delegatable
+  // this.EX_DBLTRP.setRO().withReset(0.U)// double trap is not delegatable
 }
 
 class MidelegBundle extends InterruptBundle {

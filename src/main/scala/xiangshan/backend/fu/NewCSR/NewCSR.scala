@@ -702,11 +702,15 @@ class NewCSR(implicit val p: Parameters) extends Module
         m.mideleg := mideleg.regOut
         m.mip := mip.rdata
         m.mie := mie.regOut
-        m.mvip := mvip.regOut
+        //m.mvip := mvip.regOut
+        m.mvip := 0.U
         
-        m.hideleg := hideleg.regOut
-        m.hip := hip.regOut
-        m.hie := hie.regOut
+        // m.hideleg := hideleg.regOut
+        // m.hip := hip.regOut
+        // m.hie := hie.regOut
+        m.hideleg := 0.U
+        m.hip := 0.U
+        m.hie := 0.U
         if(EnableAIA) {
           m.mvien := mvien.get.regOut
           m.hvien := hvien.get.regOut
@@ -1621,7 +1625,8 @@ class NewCSR(implicit val p: Parameters) extends Module
 trait IpIeAliasConnect {
   self: NewCSR with MachineLevel with SupervisorLevel with VirtualSupervisorLevel with HypervisorLevel =>
 
-  mip.fromMvip  := mvip.toMip
+  // mip.fromMvip  := mvip.toMip
+  mip.fromMvip  := 0.U.asTypeOf(new MvipToMip)
   mip.fromSip   := sip.toMip
   // mip.fromVSip  := vsip.toMip
   mip.fromVSip  := 0.U.asTypeOf(new VSipToMip)

@@ -845,6 +845,10 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   private val isCboInval = CBO_INVAL === io.enq.ctrlFlow.instr
   private val isCboZero  = CBO_ZERO  === io.enq.ctrlFlow.instr
 
+  // Note that rnum of aes64ks1i must be in the range 0x0..0xA. The values 0xB..0xF are reserved.
+  private val isAes64ks1iIllegal =
+    FuType.FuTypeOrR(decodedInst.fuType, FuType.bku) && (decodedInst.fuOpType === BKUOpType.aes64ks1i) && inst.isRnumIllegal
+
   private val illegalSfenceVMA = io.fromCSR.illegalInst.sfenceVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence
   private val illegalSfencePart = io.fromCSR.illegalInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence
   private val illegalHfenceGVMA = io.fromCSR.illegalInst.hfenceGVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.hfence_g

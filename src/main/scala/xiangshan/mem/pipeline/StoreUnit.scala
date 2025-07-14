@@ -160,7 +160,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
     io.misalign_stin.bits.mask,
     Mux(
       s0_use_flow_rs,
-      genVWmask128(s0_saddr, s0_uop.fuOpType(2,0)),
+      Mux(s0_isCboAll, Fill(VLEN/8, 1.U(1.W)), genVWmask128(s0_saddr, s0_uop.fuOpType(2,0))),
       Mux(
         s0_use_flow_vec,
         s0_vecstin.mask,

@@ -59,6 +59,7 @@ class MainPipeReq(implicit p: Parameters) extends DCacheBundle {
   val word_idx = UInt(log2Up(cfg.blockBytes * 8 / DataBits).W)
   val amo_data   = UInt(DataBits.W)
   val amo_mask   = UInt((DataBits / 8).W)
+  val lrsc_isD    = Bool() // data size: 1 is D; 0 is W;
 
   // error
   val error = Bool()
@@ -530,10 +531,12 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val lrsc_count = RegInit(0.U(log2Ceil(LRSCCycles).W))
   // val lrsc_valid = lrsc_count > LRSCBackOff.U
   val lrsc_addr  = Reg(UInt())
+  val reservation_set_addr  = Reg(UInt())
+  val lr_fuOpcode = s3_req.lrsc_isD
   val lrsc_valid = lrsc_count > 0.U
   val s3_lr = !s3_req.probe && s3_req.isAMO && s3_req.cmd === M_XLR
   val s3_sc = !s3_req.probe && s3_req.isAMO && s3_req.cmd === M_XSC
-  val s3_lrsc_addr_match = lrsc_valid && lrsc_addr === get_block_addr(s3_req.addr)
+  val s3_lrsc_addr_match = lrsc_valid && (lrsc_addr === s3_req.addr) && (lr_fuOpcode === s3_req.lrsc_isD)
   val s3_sc_fail = s3_sc && !s3_lrsc_addr_match
   val debug_s3_sc_fail_addr_match = s3_sc && lrsc_addr === get_block_addr(s3_req.addr) && !lrsc_valid
   val s3_sc_resp = Mux(s3_sc_fail, 1.U, 0.U)
@@ -545,7 +548,8 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   when (s3_valid && (s3_lr || s3_sc)) {
     when (s3_can_do_amo && s3_lr) {
       lrsc_count := (LRSCCycles - 1).U
-      lrsc_addr := get_block_addr(s3_req.addr)
+      lrsc_addr := s3_req.addr
+      reservation_set_addr := get_block_addr(s3_req.addr)
     } .otherwise {
       lrsc_count := 0.U
     }
@@ -559,7 +563,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
 
   
   io.lrsc_locked_block.valid := lrsc_valid
-  io.lrsc_locked_block.bits  := lrsc_addr
+  io.lrsc_locked_block.bits  := reservation_set_addr
   io.block_lr := GatedValidRegNext(lrsc_count > 0.U)
 
   // When we update update_resv_set, block all probe req in the next cycle

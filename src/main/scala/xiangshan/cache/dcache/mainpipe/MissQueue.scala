@@ -298,69 +298,6 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
    }
 }
 
-// class CMOUnit(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
-// {
-//   val io = IO(new Bundle(){
-//     val cmo_req  = Flipped(Decoupled(new CMOReq))
-//     val cmo_resp = Decoupled(new CMOResp)
-//     val req_TLA = DecoupledIO(new TLBundleA(edge.bundle))
-//     val resp_TLD = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
-//   })
-
-//   val s_idle :: s_req :: s_resp :: s_wb :: Nil = Enum(4)
-//   val cmoState = RegInit(s_idle)
-
-//   val req = RegEnable(io.cmo_req.bits, io.cmo_req.fire)
-//   val nderr = RegInit(false.B)
-
-//   switch(cmoState) {
-//     is(s_idle) {
-//       when(io.cmo_req.fire) {
-//         cmoState := s_req
-//         nderr := false.B
-//       }
-//     }
-
-//     is(s_req) {
-//       when(io.req_TLA.fire) {
-//         cmoState := s_resp
-//       }
-//     }
-
-//     is(s_resp) {
-//       when(io.resp_TLD.fire) {
-//         cmoState := s_wb
-//         nderr := io.resp_TLD.bits.denied || io.resp_TLD.bits.corrupt
-//       }
-//     }
-
-//     is(s_wb) {
-//       when(io.cmo_resp.fire) {
-//         cmoState := s_idle
-//       }
-//     }
-//   }
-
-//   io.cmo_req.ready := (cmoState === s_idle)
-
-//   io.req_TLA.valid := (cmoState === s_req)
-//   io.req_TLA.bits := edge.CacheBlockOperation(
-//     fromSource = (cfg.nMissEntries + 1).U, // source is the # of MissEntries + 1
-//     toAddress = req.address,
-//     lgSize = (log2Up(cfg.blockBytes)).U,
-//     opcode = req.opcode
-//   )._2
-
-//   io.resp_TLD.ready := (cmoState === s_resp)
-  
-//   io.cmo_resp.valid := (cmoState === s_wb)
-//   io.cmo_resp.bits.address := req.address
-//   io.cmo_resp.bits.nderr   := nderr
-
-//   assert(!(cmoState =/= s_idle && io.cmo_req.valid), "CBO can not continuously execute!")
-//   assert(!(cmoState =/= s_resp && io.resp_TLD.valid), "when cmo is executing, TLD can not resp other")
-// }
-
 class MissQueueBlockReqBundle(implicit p: Parameters) extends XSBundle {
   val addr = UInt(PAddrBits.W)
   val vaddr = UInt(VAddrBits.W)
@@ -380,9 +317,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val req = Flipped(DecoupledIO(new MissReq))
     val resp = Output(new MissResp)
     val refill_to_ldq = ValidIO(new Refill)
-
-//    val queryMQ = Vec(reqNum, Flipped(new DCacheMQQueryIOBundle))
-
     val mem_acquire = DecoupledIO(new TLBundleA(edge.bundle))
     val mem_grant = Flipped(DecoupledIO(new TLBundleD(edge.bundle)))
     val mem_finish = DecoupledIO(new TLBundleE(edge.bundle))
@@ -402,7 +336,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val probe_block = Output(Bool())
 
     // block replace when release an addr valid in mshr
-//    val replace_addr = Flipped(ValidIO(UInt(PAddrBits.W)))
     val replace_block_query = Flipped(new MissQueueBlockIO)
 
     // req blocked by wbq
@@ -413,9 +346,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     // forward missqueue
     val forward = Vec(LoadPipelineWidth, new LduToMissqueueForwardIO)
     val l2_pf_store_only = Input(Bool())
-
-    // val cmoOpReq = Flipped(DecoupledIO(new CMOReq))
-    // val cmoOpResp = DecoupledIO(new CMOResp)
 
     val memSetPattenDetected = Output(Bool())
     val lqEmpty = Input(Bool())
@@ -436,12 +366,9 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     val debugTopDown = new DCacheTopDownIO
   })
-  // 128KBL1: FIXME: provide vaddr for l2
-
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
   val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
-  // val cmoUnit = Module(new CMOUnit(edge))
 
   val miss_req_pipe_reg_valid = RegInit(false.B)
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))
@@ -454,23 +381,18 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   // cmo instr will not be merged or rejected
   val isCMOReq = io.req.bits.isCMO
+  val hasSameAddrCMOEntry = entries.map(e => {
+    e.io.req_addr.valid & get_block(e.io.req_addr.bits) === get_block(io.req.bits.addr)
+  }).reduce(_|_)
+  val hasSameAddrCMOPipe = miss_req_pipe_reg_valid & get_block(miss_req_pipe_reg.req.addr) === get_block(io.req.bits.addr)
+  val hasSameAddrCMO = io.req.valid & io.req.bits.isCMO & (hasSameAddrCMOEntry | hasSameAddrCMOPipe)
+
   val merge = !isCMOReq && ParallelORR(Cat(secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.req.bits))))
   val reject = !isCMOReq && ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits))))
   val alloc = (isCMOReq || (!reject && !merge)) && ParallelORR(Cat(primary_ready_vec))
-  val accept = (alloc || merge) & !isCMOReq  || isCMOReq && !io.wbq_block_miss_req
+  val accept = (alloc || merge) & !isCMOReq  || isCMOReq && !io.wbq_block_miss_req && !hasSameAddrCMO
   assert(!(io.req.valid && isCMOReq && merge), "CMO should never be merged into an existing MSHR")
-//   generate req_ready for each miss request for better timing
-//  for (i <- 0 until reqNum) {
-//    val _primary_ready_vec = entries.map(_.io.queryME(i).primary_ready)
-//    val _secondary_ready_vec = entries.map(_.io.queryME(i).secondary_ready)
-//    val _secondary_reject_vec = entries.map(_.io.queryME(i).secondary_reject)
-//    val _merge = ParallelORR(Cat(_secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.queryMQ(i).req.bits))))
-//    val _reject = ParallelORR(Cat(_secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.queryMQ(i).req.bits))))
-//    val _alloc = !_reject && !_merge && ParallelORR(Cat(_primary_ready_vec))
-//    val _accept = _alloc || _merge
-//
-//    io.queryMQ(i).ready := _accept
-//  }
+  dontTouch(hasSameAddrCMO)
 
   val req_mshr_handled_vec = entries.map(_.io.req_handled_by_this_entry)
   // merged to pipeline reg
@@ -533,12 +455,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   })
 
   assert(RegNext(PopCount(secondary_ready_vec) <= 1.U || !io.req.valid))
-//  assert(RegNext(PopCount(secondary_reject_vec) <= 1.U))
-  // It is possible that one mshr wants to merge a req, while another mshr wants to reject it.
-  // That is, a coming req has the same paddr as that of mshr_0 (merge),
-  // while it has the same set and the same way as mshr_1 (reject).
-  // In this situation, the coming req should be merged by mshr_0
-//  assert(RegNext(PopCount(Seq(merge, reject)) <= 1.U))
 
   def select_valid_one[T <: Bundle](
     in: Seq[DecoupledIO[T]],
@@ -568,8 +484,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val diff_refill = Wire(Bool())
   diff_refill := merge && io.req.valid && !io.req.bits.cancel && io.req.bits.isFromLoad
 
-  // cmoUnit.io.cmo_req <> io.cmoOpReq
-  // cmoUnit.io.cmo_resp <> io.cmoOpResp
   val pipeHasCmo = miss_req_pipe_reg.req.isCMO && miss_req_pipe_reg_valid
   val mshrHasCmo = entries.map { e => e.io.isCMO }.reduce(_ || _)
   io.cmofinish := !pipeHasCmo && !mshrHasCmo
@@ -646,11 +560,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       e.io.main_pipe_req.ready := io.main_pipe_req.ready
 
-//      for (j <- 0 until reqNum) {
-//        e.io.queryME(j).req.valid := io.queryMQ(j).req.valid
-//        e.io.queryME(j).req.bits  := io.queryMQ(j).req.bits.toMissReqWoStoreData()
-//      }
-
       when(io.l2_hint.bits.sourceId === i.U) {
         e.io.l2_hint <> io.l2_hint
       } .otherwise {
@@ -683,14 +592,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val acquire_sources = Seq(acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
   TLArbiter.lowest(edge, io.mem_acquire, acquire_sources:_*)
   TLArbiter.lowest(edge, io.mem_finish, entries.map(_.io.mem_finish):_*)
-
-  // // cmo resp
-  // when (io.mem_grant.valid && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
-  //   cmoUnit.io.resp_TLD <> io.mem_grant
-  // } .otherwise {
-  //   cmoUnit.io.resp_TLD.valid := false.B
-  //   cmoUnit.io.resp_TLD.bits  := DontCare
-  // }
 
   // amo's main pipe req out
   fastArbiter(entries.map(_.io.main_pipe_req), io.main_pipe_req, Some("main_pipe_req"))
@@ -756,7 +657,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   when (num_valids > max_inflight) {
     max_inflight := num_valids
   }
-  // max inflight (average) = max_inflight_total / cycle cnt
   XSPerfAccumulate("max_inflight", max_inflight)
   QueuePerf(cfg.nMissEntries, num_valids, num_valids === cfg.nMissEntries.U)
   io.full := num_valids === cfg.nMissEntries.U

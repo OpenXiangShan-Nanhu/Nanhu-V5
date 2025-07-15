@@ -374,18 +374,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   io.secondary_ready := should_merge(io.req.bits) && !req.isCMO
   io.secondary_reject := should_reject(io.req.bits) && !req.isCMO
 
-  // generate primary_ready & secondary_(ready | reject) for each miss request
-  //  for (i <- 0 until reqNum) {
-  //    when(GatedValidRegNext(io.id >= ((cfg.nMissEntries).U - io.nMaxPrefetchEntry))) {
-  //      io.queryME(i).primary_ready := !req_valid && !GatedValidRegNext(primary_fire)
-  //    }.otherwise {
-  //      io.queryME(i).primary_ready := !req_valid && !GatedValidRegNext(primary_fire) &&
-  //                                    (!io.queryME(i).req.bits.isFromPrefetch || io.memSetPattenDetected)
-  //    }
-  //    io.queryME(i).secondary_ready  := should_merge(io.queryME(i).req.bits)
-  //    io.queryME(i).secondary_reject := should_reject(io.queryME(i).req.bits)
-  //  }
-
   // should not allocate, merge or reject at the same time
   assert(RegNext(PopCount(Seq(io.primary_ready, io.secondary_ready, io.secondary_reject)) <= 1.U || !io.req.valid))
 

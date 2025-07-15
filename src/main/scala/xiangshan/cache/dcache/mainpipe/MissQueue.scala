@@ -347,7 +347,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val forward = Vec(LoadPipelineWidth, new LduToMissqueueForwardIO)
     val l2_pf_store_only = Input(Bool())
 
-    val memSetPattenDetected = Output(Bool())
     val lqEmpty = Input(Bool())
 
     val prefetch_info = new Bundle {
@@ -417,21 +416,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   miss_req_pipe_reg.mshr_id := io.resp.id
 
   assert(PopCount(Seq(alloc && io.req.valid, merge && io.req.valid)) <= 1.U, "allocate and merge a mshr in same cycle!")
-
-  val source_except_load_cnt = RegInit(0.U(10.W))
-  when(VecInit(req_mshr_handled_vec).asUInt.orR || req_pipeline_reg_handled) {
-    when(io.req.bits.isFromLoad) {
-      source_except_load_cnt := 0.U
-    }.otherwise {
-      when(io.req.bits.isFromStore) {
-        source_except_load_cnt := source_except_load_cnt + 1.U
-      }
-    }
-  }
-  val Threshold = 8
-  val memSetPattenDetected = GatedValidRegNext((source_except_load_cnt >= Threshold.U) && io.lqEmpty)
-
-  io.memSetPattenDetected := memSetPattenDetected
 
   (0 until LoadPipelineWidth).map(i => {
     dataBuffer.io.forward(i).valid := false.B
@@ -555,7 +539,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
       e.io.main_pipe_replay := io.mainpipe_info.s2_valid && io.mainpipe_info.s2_replay_to_mq && io.mainpipe_info.s2_miss_id === i.U
       e.io.main_pipe_refill_resp := io.mainpipe_info.s3_valid && io.mainpipe_info.s3_refill_resp && io.mainpipe_info.s3_miss_id === i.U
 
-      e.io.memSetPattenDetected := memSetPattenDetected
       e.io.nMaxPrefetchEntry := nMaxPrefetchEntry
 
       e.io.main_pipe_req.ready := io.main_pipe_req.ready
@@ -651,7 +634,6 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   XSPerfAccumulate("probe_blocked_by_miss", io.probe_block)
   XSPerfAccumulate("prefetch_primary_fire", io.req.fire && !io.req.bits.cancel && alloc && io.req.bits.isFromPrefetch)
   XSPerfAccumulate("prefetch_secondary_fire", io.req.fire && !io.req.bits.cancel && merge && io.req.bits.isFromPrefetch)
-  XSPerfAccumulate("memSetPattenDetected", memSetPattenDetected)
   val max_inflight = RegInit(0.U((log2Up(cfg.nMissEntries) + 1).W))
   val num_valids = PopCount(~Cat(primary_ready_vec).asUInt)
   when (num_valids > max_inflight) {

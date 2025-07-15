@@ -794,7 +794,6 @@ class DCacheIO(implicit p: Parameters) extends DCacheBundle {
   val csr = new L1CacheToCsrIO
   val error = ValidIO(new L1CacheErrorInfo)
   val mshrFull = Output(Bool())
-  val memSetPattenDetected = Output(Bool())
   val lqEmpty = Input(Bool())
   val pf_ctrl = Output(new PrefetchControlBundle)
   val force_write = Input(Bool())
@@ -1010,7 +1009,6 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   mainPipe.io.refill_info := missQueue.io.refill_info
   mainPipe.io.replace <> missQueue.io.replace_block_query
   mainPipe.io.sms_agt_evict_req <> io.sms_agt_evict_req
-  io.memSetPattenDetected := missQueue.io.memSetPattenDetected
   io.csr := DontCare
 
   val errors = ldu.map(_.io.error) ++ // load error

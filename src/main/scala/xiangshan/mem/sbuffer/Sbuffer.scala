@@ -207,7 +207,6 @@ class Sbuffer(implicit p: Parameters)
     val flush = Flipped(new SbufferFlushBundle)
     val csrCtrl = Flipped(new CustomCSRCtrlIO)
     val store_prefetch = Vec(StorePipelineWidth, DecoupledIO(new StorePrefetchReq)) // to dcache
-    val memSetPattenDetected = Input(Bool())
     val force_write = Input(Bool())
   })
 

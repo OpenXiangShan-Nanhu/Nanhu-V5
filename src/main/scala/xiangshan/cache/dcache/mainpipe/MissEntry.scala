@@ -74,7 +74,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     // whether the pipeline reg has send out an acquire
     val acquire_fired_by_pipe_reg = Input(Bool())
-    val memSetPattenDetected = Input(Bool())
 
     val perf_pending_prefetch = Output(Bool())
     val perf_pending_normal   = Output(Bool())
@@ -369,7 +368,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     io.primary_ready := !req_valid && !GatedValidRegNext(primary_fire)
   }.otherwise {
     // cannot accept prefetch req except when a memset patten is detected
-    io.primary_ready := !req_valid && (!io.req.bits.isFromPrefetch || io.memSetPattenDetected) && !GatedValidRegNext(primary_fire)
+    io.primary_ready := !req_valid && (!io.req.bits.isFromPrefetch) && !GatedValidRegNext(primary_fire)
   }
   io.secondary_ready := should_merge(io.req.bits) && !req.isCMO
   io.secondary_reject := should_reject(io.req.bits) && !req.isCMO

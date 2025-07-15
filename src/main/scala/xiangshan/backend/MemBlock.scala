@@ -1350,7 +1350,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // Sbuffer
   sbuffer.io.csrCtrl    <> csrCtrl
   sbuffer.io.dcache     <> dcache.io.lsu.store
-  sbuffer.io.memSetPattenDetected := dcache.io.memSetPattenDetected
   sbuffer.io.force_write <> lsq.io.force_write
   // flush sbuffer
   val cmoFlush = lsq.io.flushSbuffer.valid

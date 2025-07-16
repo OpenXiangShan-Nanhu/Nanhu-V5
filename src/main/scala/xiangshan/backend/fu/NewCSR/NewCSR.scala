@@ -3,6 +3,7 @@ package xiangshan.backend.fu.NewCSR
 import chisel3._
 import chisel3.util._
 import difftest._
+import difftest.gateway.CoreGateway
 import freechips.rocketchip.rocket.CSRs
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.{DataHoldBypass, DelayN, GatedValidRegNext, RegNextWithEnable, SignExt, ZeroExt, PipelineConnect}
@@ -1505,6 +1506,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     ))
 
     val diffArchEvent = DifftestModule(new DiffArchEvent, delay = 3, dontCare = true)
+    CoreGateway.addOne(diffArchEvent, 3, "difftestArchEvent")
     diffArchEvent.coreid := hartId
     diffArchEvent.valid := trapValid
     diffArchEvent.interrupt := RegEnable(interruptNO, hasTrap)
@@ -1517,6 +1519,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     }
 
     val diffCSRState = DifftestModule(new DiffCSRState)
+    CoreGateway.addOne(diffCSRState, 0, "difftestCSRState")
     diffCSRState.coreid         := hartId
     diffCSRState.privilegeMode  := privState.PRVM.asUInt
     diffCSRState.mstatus        := mstatus.rdata.asUInt
@@ -1538,6 +1541,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffCSRState.medeleg        := medeleg.rdata.asUInt
 
     val diffDebugMode = DifftestModule(new DiffDebugMode)
+    CoreGateway.addOne(diffDebugMode, 0, "difftestDebugMode")
     diffDebugMode.coreid    := hartId
     diffDebugMode.debugMode := debugMode
     diffDebugMode.dcsr      := dcsr.rdata.asUInt
@@ -1546,6 +1550,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffDebugMode.dscratch1 := dscratch1.rdata.asUInt
 
     val diffTriggerCSRState = DifftestModule(new DiffTriggerCSRState)
+    CoreGateway.addOne(diffTriggerCSRState, 0, "difftestTriggerCSRState")
     diffTriggerCSRState.coreid    := hartId
     diffTriggerCSRState.tselect   := tselect.rdata
     diffTriggerCSRState.tdata1    := tdata1.rdata
@@ -1562,10 +1567,12 @@ class NewCSR(implicit val p: Parameters) extends Module
     // diffVecCSRState.vlenb := vlenb.rdata.asUInt
 
     val diffFpCSRState = DifftestModule(new DiffFpCSRState)
+    CoreGateway.addOne(diffFpCSRState, 0, "difftestFpCSRState")
     diffFpCSRState.coreid := hartId
     diffFpCSRState.fcsr := fcsr.rdata.asUInt
 
     val diffHCSRState = DifftestModule(new DiffHCSRState)
+    CoreGateway.addOne(diffHCSRState, 0, "difftestHCSRState")
     diffHCSRState.coreid      := hartId
     diffHCSRState.virtMode    := privState.V.asBool
     diffHCSRState.mtval2      := mtval2.rdata.asUInt
@@ -1604,6 +1611,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     val lcofiReqChange         = !lcofiReq && RegNext(lcofiReq) || lcofiReq && !RegNext(lcofiReq)
 
     val diffNonRegInterruptPendingEvent = DifftestModule(new DiffNonRegInterruptPendingEvent)
+    CoreGateway.addOne(diffNonRegInterruptPendingEvent, 0, "difftestNonRegInterruptPendingEvent")
     diffNonRegInterruptPendingEvent.coreid           := hartId
     diffNonRegInterruptPendingEvent.valid            := platformIRPMeipChange || platformIRPMtipChange || platformIRPMsipChange ||
                                                         platformIRPSeipChange || platformIRPStipChange ||

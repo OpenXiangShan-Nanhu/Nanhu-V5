@@ -14,6 +14,7 @@ import xiangshan.SrcType.v0
 import xiangshan.backend.fu.vector.Bundles.Vstart
 import xiangshan.backend.datapath.WbConfig._
 import difftest.DiffVecV0Writeback
+import difftest.gateway.CoreGateway
 
 class WbArbiterDispatcherIO[T <: Data](private val gen: T, n: Int) extends Bundle {
   val in = Flipped(DecoupledIO(gen))
@@ -359,45 +360,49 @@ class WbDataPath(params: BackendParams)(implicit p: Parameters) extends XSModule
 
   // difftest
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
-    intWbArbiterOut.foreach(out => {
+    intWbArbiterOut.zipWithIndex.foreach { case (out, idx) => {
       val difftest = DifftestModule(new DiffIntWriteback(IntPhyRegs))
       difftest.coreid := io.fromTop.hartId
       difftest.valid := out.fire && out.bits.rfWen
       difftest.address := out.bits.pdest
       difftest.data := out.bits.data
-    })
+      CoreGateway.addOne(difftest, 0, s"difftestIntWriteback_${idx}")
+    }}
   }
 
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
-    vfWbArbiterOut.foreach(out => {
+    vfWbArbiterOut.zipWithIndex.foreach { case (out, idx) => {
       val difftest = DifftestModule(new DiffFpWriteback(VfPhyRegs))
       difftest.coreid := io.fromTop.hartId
       difftest.valid := out.fire
       difftest.address := out.bits.pdest
       difftest.data := out.bits.data(63, 0)
-    })
+      CoreGateway.addOne(difftest, 0, s"difftestFpWriteback_${idx}")
+    }}
   }
 
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
-    vfWbArbiterOut.foreach(out => {
+    vfWbArbiterOut.zipWithIndex.foreach { case(out, idx) => {
       val difftest = DifftestModule(new DiffVecWriteback(VfPhyRegs))
       difftest.coreid := io.fromTop.hartId
       difftest.valid := out.fire
       difftest.address := out.bits.pdest
       difftest.data(0) := out.bits.data(63, 0)
       difftest.data(1) := out.bits.data(127, 64)
-    })
+      CoreGateway.addOne(difftest, 0, s"difftestVecWriteback_${idx}")
+    }}
   }
 
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
-    v0WbArbiterOut.foreach(out => {
+    v0WbArbiterOut.zipWithIndex.foreach { case (out, idx) => {
       val difftest = DifftestModule(new DiffVecV0Writeback(V0PhyRegs))
       difftest.coreid := io.fromTop.hartId
       difftest.valid := out.fire
       difftest.address := out.bits.pdest
       difftest.data(0) := out.bits.data(63, 0)
       difftest.data(1) := out.bits.data(127, 64)
-    })
+      CoreGateway.addOne(difftest, 0, s"difftestVecV0Writeback_${idx}")
+    }}
   }
 }
 

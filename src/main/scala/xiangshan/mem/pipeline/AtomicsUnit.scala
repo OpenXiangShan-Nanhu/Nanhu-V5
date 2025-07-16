@@ -26,6 +26,7 @@ import xiangshan._
 import xiangshan.cache.{AtomicWordIO, HasDCacheParameters, MemoryOpConstants}
 import xiangshan.cache.mmu.{Pbmt, TlbCmd, TlbRequestIO}
 import difftest._
+import difftest.gateway.CoreGateway
 import xiangshan.ExceptionNO._
 import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.Bundles.{MemExuInput, MemExuOutput}
@@ -456,6 +457,7 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
   if (env.EnableDifftest || env.AlwaysBasicDiff) {
     val uop = io.out.bits.uop
     val difftest = DifftestModule(new DiffLrScEvent)
+    CoreGateway.addOne(difftest, 0, "difftestLrScEvent")
     difftest.coreid := io.hartId
     difftest.valid := io.out.fire &&
       (uop.fuOpType === LSUOpType.sc_d || uop.fuOpType === LSUOpType.sc_w)

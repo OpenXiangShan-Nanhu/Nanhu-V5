@@ -21,6 +21,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import difftest._
+import difftest.gateway._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
@@ -1523,6 +1524,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       val isRVC = dt_isRVC(ptr)
 
       val difftest = DifftestModule(new DiffInstrCommit(MaxPhyRegs), delay = 3, dontCare = true)
+      CoreGateway.addOne(difftest, 3, s"difftestInstrCommit_${i}")
       val dt_skip = Mux(eliminatedMove, false.B, exuOut.isMMIO || exuOut.isPerfCnt)
       difftest.coreid := io.hartId
       difftest.index := i.U
@@ -1534,18 +1536,25 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       difftest.wpdest := commitInfo.debug_pdest.get
       difftest.wdest := commitInfo.debug_ldest.get
       difftest.nFused := CommitType.isFused(commitInfo.commitType).asUInt + commitInfo.instrSize - 1.U
+      difftest.pc := SignExt(uop.pc, XLEN)
+      difftest.instr := uop.instr
+      difftest.robIdx := ZeroExt(ptr, 10)
+      difftest.lqIdx := ZeroExt(uop.lqIdx.value, 7)
+      difftest.sqIdx := ZeroExt(uop.sqIdx.value, 7)
+      difftest.isLoad := io.commits.info(i).commitType === CommitType.LOAD
+      difftest.isStore := io.commits.info(i).commitType === CommitType.STORE
       when(difftest.valid) {
         assert(CommitType.isFused(commitInfo.commitType).asUInt + commitInfo.instrSize >= 1.U)
       }
       if (env.EnableDifftest) {
         val uop = commitDebugUop(i)
-        difftest.pc := SignExt(uop.pc, XLEN)
-        difftest.instr := uop.instr
-        difftest.robIdx := ZeroExt(ptr, 10)
-        difftest.lqIdx := ZeroExt(uop.lqIdx.value, 7)
-        difftest.sqIdx := ZeroExt(uop.sqIdx.value, 7)
-        difftest.isLoad := io.commits.info(i).commitType === CommitType.LOAD
-        difftest.isStore := io.commits.info(i).commitType === CommitType.STORE
+        // difftest.pc := SignExt(uop.pc, XLEN)
+        // difftest.instr := uop.instr
+        // difftest.robIdx := ZeroExt(ptr, 10)
+        // difftest.lqIdx := ZeroExt(uop.lqIdx.value, 7)
+        // difftest.sqIdx := ZeroExt(uop.sqIdx.value, 7)
+        // difftest.isLoad := io.commits.info(i).commitType === CommitType.LOAD
+        // difftest.isStore := io.commits.info(i).commitType === CommitType.STORE
         // Check LoadEvent only when isAmo or isLoad and skip MMIO
         val difftestLoadEvent = DifftestModule(new DiffLoadEvent, delay = 3)
         difftestLoadEvent.coreid := io.hartId
@@ -1573,6 +1582,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
     }
     val hitTrap = trapVec.reduce(_ || _)
     val difftest = DifftestModule(new DiffTrapEvent, dontCare = true)
+    CoreGateway.addOne(difftest, 0, s"difftestTrapEvent")
     difftest.coreid := io.hartId
     difftest.hasTrap := hitTrap
     difftest.cycleCnt := timer

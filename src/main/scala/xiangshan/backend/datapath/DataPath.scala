@@ -9,6 +9,7 @@ import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
 import difftest.{DiffArchFpRegState, DiffArchIntRegState, DiffArchVecRegState, DifftestModule}
+import difftest.gateway._
 import freechips.rocketchip.util.SeqToAugmentedSeq
 import xiangshan._
 import xiangshan.backend.{BackendParams, ExcpModToVprf, PcToDataPathIO, VprfToExcpMod}
@@ -840,10 +841,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   if (env.AlwaysBasicDiff || env.EnableDifftest) {
     val delayedCnt = 2
     val difftestArchIntRegState = DifftestModule(new DiffArchIntRegState, delay = delayedCnt)
+    CoreGateway.addOne(difftestArchIntRegState, delayedCnt, "difftestArchIntRegState")
     difftestArchIntRegState.coreid := io.hartId
     difftestArchIntRegState.value := intDiffRead.get._2
 
     val difftestArchFpRegState = DifftestModule(new DiffArchFpRegState, delay = delayedCnt)
+    CoreGateway.addOne(difftestArchFpRegState, delayedCnt, "difftestArchFpRegState")
     difftestArchFpRegState.coreid := io.hartId
     difftestArchFpRegState.value := fpDiffReadData.get
 

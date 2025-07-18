@@ -1052,6 +1052,13 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val s2_prf    = s2_in.isPrefetch
   val s2_hw_prf = s2_in.isHWPrefetch
 
+  val s2_exception = Wire(Bool())
+  val s2_actually_mmio = s2_pmp.mmio || Pbmt.isUncache(s2_pbmt)
+  val s2_mmio = !s2_prf &&
+    s2_actually_mmio &&
+    !s2_exception &&
+    !s2_in.tlbMiss
+
   // exception that may cause load addr to be invalid / illegal
   // if such exception happen, that inst and its exception info
   // will be force writebacked to rob
@@ -1063,7 +1070,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule
                                          (io.dcache.resp.bits.tag_error && GatedValidRegNext(io.csrCtrl.cache_error_enable))
                                          ) && s2_vecActive
   }
-
+  s2_exception_vec(loadAccessFault) := s2_in.uop.exceptionVec(loadAccessFault) || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_actually_mmio
+  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_actually_mmio
   // soft prefetch will not trigger any exception (but ecc error interrupt may
   // be triggered)
   val s2_tlb_unrelated_exceps = s2_in.uop.exceptionVec(loadAddrMisaligned) ||
@@ -1071,20 +1079,11 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   when (!s2_in.delayedLoadError && (s2_prf || s2_in.tlbMiss && !s2_tlb_unrelated_exceps)) {
     s2_exception_vec := 0.U.asTypeOf(s2_exception_vec.cloneType)
   }
-  val s2_exception = s2_vecActive &&
+  s2_exception := s2_vecActive &&
                     (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_exception_vec, LduCfg).asUInt.orR)
   val (s2_fwd_frm_d_chan, s2_fwd_data_frm_d_chan) = io.tl_d_channel.forward(s1_valid && s1_out.forward_tlDchannel, s1_out.mshrid, s1_out.paddr)
   val (s2_fwd_data_valid, s2_fwd_frm_mshr, s2_fwd_data_frm_mshr) = io.forward_mshr.forward()
   val s2_fwd_frm_d_chan_or_mshr = s2_fwd_data_valid && (s2_fwd_frm_d_chan || s2_fwd_frm_mshr)
-
-  // writeback access fault caused by ecc error / bus error
-  // * ecc data error is slow to generate, so we will not use it until load stage 3
-  // * in load stage 3, an extra signal io.load_error will be used to
-  val s2_actually_mmio = s2_pmp.mmio || Pbmt.isUncache(s2_pbmt)
-  val s2_mmio          = !s2_prf &&
-                          s2_actually_mmio &&
-                         !s2_exception &&
-                         !s2_in.tlbMiss
 
   val s2_full_fwd      = Wire(Bool())
   val s2_mem_amb = RegNext(s1_mdpResp.valid && s1_mdpResp.bits.hit, false.B) &&
@@ -1107,9 +1106,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val s2_wpu_pred_fail = io.dcache.s2_wpu_pred_fail &&
                         !s2_fwd_frm_d_chan_or_mshr &&
                         !s2_full_fwd
-
-  // val s2_rar_nack      = io.lsq.ldld_nuke_query.req.valid &&
-  //                        !io.lsq.ldld_nuke_query.req.ready
 
   val s2_raw_nack      = io.lsq.stld_nuke_query.req.valid &&
                          !io.lsq.stld_nuke_query.req.ready
@@ -1248,11 +1244,6 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   s2_out.rep_info.debug           := s2_in.uop.debugInfo
   s2_out.rep_info.tlb_id          := io.tlb_hint.id
   s2_out.rep_info.tlb_full        := io.tlb_hint.full
-
-  // if forward fail, replay this inst from fetch
-  val debug_fwd_fail_rep = s2_fwd_fail && !s2_troublem && !s2_in.tlbMiss
-  // if ld-ld violation is detected, replay from this inst from fetch
-  val debug_ldld_nuke_rep = false.B // s2_ldld_violation && !s2_mmio && !s2_is_prefetch && !s2_in.tlbMiss
 
   io.ldCancel.ld1Cancel := false.B
 

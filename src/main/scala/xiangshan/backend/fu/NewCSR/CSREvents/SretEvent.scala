@@ -71,10 +71,11 @@ class SretEventModule(implicit p: Parameters) extends Module with CSREventBase {
     sretInHSorM -> in.sstatus.SPP.asUInt,
     sretInVS    -> in.vsstatus.SPP.asUInt,
   ))
-  out.privState.bits.V        := Mux1H(Seq(
-    sretInHSorM -> in.hstatus.SPV,
-    sretInVS    -> in.privState.V, // keep
-  ))
+  // out.privState.bits.V        := Mux1H(Seq(
+  //   sretInHSorM -> in.hstatus.SPV,
+  //   sretInVS    -> in.privState.V, // keep
+  // ))
+  out.privState.bits.V := VirtMode.Off
 
   // hstatus
   out.hstatus.valid           := valid && sretInHSorM

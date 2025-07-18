@@ -54,7 +54,8 @@ class MretEventModule(implicit p: Parameters) extends Module with CSREventBase {
   out.targetPc .valid := valid
 
   out.privState.bits.PRVM     := in.mstatus.MPP
-  out.privState.bits.V        := Mux(in.mstatus.MPP === PrivMode.M, VirtMode.Off.asUInt, 0.U)
+  // out.privState.bits.V        := Mux(in.mstatus.MPP === PrivMode.M, VirtMode.Off.asUInt, 0.U)
+  out.privState.bits.V        := VirtMode.Off.asUInt
   out.mstatus.bits.MPP        := PrivMode.U
   // out.mstatus.bits.MPV        := VirtMode.Off.asUInt
   out.mstatus.bits.MIE        := in.mstatus.MPIE

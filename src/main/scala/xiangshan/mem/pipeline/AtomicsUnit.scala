@@ -227,12 +227,12 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
         "b10".U   -> (in.src(0)(1,0) === 0.U), //w
         "b11".U   -> (in.src(0)(2,0) === 0.U)  //d
       ))
-      exceptionVec(loadAddrMisaligned)  := !addrAligned && isLr
-      exceptionVec(storeAddrMisaligned) := !addrAligned && !isLr
+//      exceptionVec(loadAddrMisaligned)  := !addrAligned && isLr
+//      exceptionVec(storeAddrMisaligned) := !addrAligned && !isLr
       exceptionVec(storePageFault)      := io.dtlb.resp.bits.excp(0).pf.st
       exceptionVec(loadPageFault)       := io.dtlb.resp.bits.excp(0).pf.ld
-      exceptionVec(storeAccessFault)    := io.dtlb.resp.bits.excp(0).af.st
-      exceptionVec(loadAccessFault)     := io.dtlb.resp.bits.excp(0).af.ld
+      exceptionVec(storeAccessFault)    := io.dtlb.resp.bits.excp(0).af.st || (!addrAligned && !isLr)
+      exceptionVec(loadAccessFault)     := io.dtlb.resp.bits.excp(0).af.ld || (!addrAligned && isLr)
       exceptionVec(storeGuestPageFault) := io.dtlb.resp.bits.excp(0).gpf.st
       exceptionVec(loadGuestPageFault)  := io.dtlb.resp.bits.excp(0).gpf.ld
 

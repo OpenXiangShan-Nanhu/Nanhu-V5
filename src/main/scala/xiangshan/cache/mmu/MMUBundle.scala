@@ -715,7 +715,10 @@ class PteBundle(implicit p: Parameters) extends PtwBundle{
       pf := (perm.u || perm.a || perm.d || n =/= 0.U || pbmt =/= 0.U)
     }.elsewhen (!perm.v || (!perm.r && perm.w)) {
       pf := true.B
-    }.elsewhen (n =/= 0.U && ppn(3, 0) =/= 8.U) {
+      // Currently, svnapot has not been implemented.
+      // According to the manual requirements, if n is not equal to 0
+      // pf should be raised
+    }.elsewhen (n =/= 0.U) {
       pf := true.B
     }.otherwise{
       pf := unaligned(level)

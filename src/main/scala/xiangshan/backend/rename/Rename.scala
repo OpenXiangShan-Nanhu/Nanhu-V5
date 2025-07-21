@@ -92,6 +92,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     }
 
     val firstIsCmo = Output(Bool())
+    val firstIsCmoFromDecode = Input(Bool())
   })
 
   // io alias
@@ -290,7 +291,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     if (i < RenameWidth - 1) {
       isLastCmo(i) := isCmo(i) && !isCmo(i + 1)
     } else {
-      isLastCmo(i) := isCmo(i)
+      isLastCmo(i) := isCmo(i) && !io.firstIsCmoFromDecode
     }
 
     uops(i).waitForward := io.in(i).bits.waitForward && !isNotWaitForwardCsrr(i)

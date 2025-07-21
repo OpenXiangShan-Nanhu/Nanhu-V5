@@ -79,6 +79,7 @@ class DecodeStage(implicit p: Parameters) extends XSModule
     val toCSR = new Bundle {
       val trapInstInfo = ValidIO(new TrapInstInfo)
     }
+    val firstIsCmo = Output(Bool())
   })
 
   // io alias
@@ -198,6 +199,8 @@ class DecodeStage(implicit p: Parameters) extends XSModule
         "DecodeOut: can't wirte two regfile in one uop/instruction")
     }
   )
+
+  io.firstIsCmo := LSUOpType.isCboAll(io.out(0).bits.fuOpType) && FuType.isStore(io.out(0).bits.fuType) && io.out(0).fire
 
   for (i <- 0 until DecodeWidth) {
 

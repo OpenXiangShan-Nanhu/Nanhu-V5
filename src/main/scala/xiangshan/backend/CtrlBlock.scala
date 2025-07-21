@@ -476,6 +476,7 @@ class CtrlBlockImp(
     rename.io.in(i).valid := decodePipeRename(i).valid && !fusionDecoder.io.clear(i)
     rename.io.in(i).bits := decodePipeRename(i).bits
   }
+  rename.io.firstIsCmoFromDecode := decode.io.firstIsCmo
 
   for (i <- 0 until RenameWidth - 1) {
     fusionDecoder.io.dec(i) := decodePipeRename(i).bits

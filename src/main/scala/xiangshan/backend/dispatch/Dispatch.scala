@@ -241,7 +241,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   private val isLastCmo       = Wire(Vec(RenameWidth, Bool()))
   private val notSuccessCmoVec       = Wire(Vec(RenameWidth - 1, Bool()))
   private val currentCycleNeedBlockVec = Wire(Vec(RenameWidth, Bool()))
-  private val hasValidCmo = io.fromRename(0).map(x => x.valid && (LSUOpType.isCbom(x.bits.fuOpType) && FuType.isStore(x.bits.fuType))).reduce(_ || _)
+  private val hasValidCmo = io.fromRename(0).map(x => x.valid && (LSUOpType.isCboAll(x.bits.fuOpType) && FuType.isStore(x.bits.fuType))).reduce(_ || _)
 
   for (i <- 0 until fanoutNum) {
     updatedUop(i).zipWithIndex.foreach({case (update, j) =>

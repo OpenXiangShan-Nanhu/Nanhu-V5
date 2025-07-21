@@ -259,7 +259,14 @@ trait MachineLevel { self: NewCSR =>
     toMvip.SEIP.bits := wdata.SEIP
     // When mvien.SEIE = 0, mip.SEIP is alias of mvip.SEIP.
     // Otherwise, mip.SEIP is read only 0
-    regOut.SEIP := Mux(!this.mvien.SEIE, this.mvip.SEIP.asUInt, 0.U)
+    // when not support AIA, the SEIP of mip is software writebale
+    if (enableAIA) {
+      regOut.SEIP := Mux(!this.mvien.SEIE, this.mvip.SEIP.asUInt, 0.U)
+    } else {
+      reg.SEIP := Mux(wen, wdata.SEIP, reg.SEIP)
+      regOut.SEIP := reg.SEIP
+    }
+
     rdataFields.SEIP := regOut.SEIP || platformIRP.SEIP || aiaToCSR.seip.getOrElse(false.B)
 
     // bit 10 VSEIP
@@ -631,8 +638,8 @@ class MhpmeventBundle extends CSRBundle {
   val MINH    = RW(62).withReset(0.U)
   val SINH    = RW(61).withReset(0.U)
   val UINH    = RW(60).withReset(0.U)
-  val VSINH   = RW(59).withReset(0.U)
-  val VUINH   = RW(58).withReset(0.U)
+  val VSINH   = RO(59).withReset(0.U)
+  val VUINH   = RO(58).withReset(0.U)
   val OPTYPE2 = OPTYPE(54, 50, wNoFilter).withReset(OPTYPE.OR)
   val OPTYPE1 = OPTYPE(49, 45, wNoFilter).withReset(OPTYPE.OR)
   val OPTYPE0 = OPTYPE(44, 40, wNoFilter).withReset(OPTYPE.OR)

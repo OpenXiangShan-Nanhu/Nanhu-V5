@@ -1110,6 +1110,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   PipelineConnect(outReg, io.out, io.out.ready,
       redirectFlush, moduleName = Some("csrOutPipe"))
   io.out.bits.flushPipe := flushPipe
+  io.out.bits.targetPcUpdate := RegNext(needTargetUpdate)
 
   io.currentRegout := regOut
   io.targetPc := DataHoldBypass(

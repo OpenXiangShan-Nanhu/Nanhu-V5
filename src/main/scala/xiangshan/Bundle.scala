@@ -346,6 +346,8 @@ class DebugBundle(implicit p: Parameters) extends XSBundle {
   val isPerfCnt = Bool()
   val paddr = UInt(PAddrBits.W)
   val vaddr = UInt(VAddrBits.W)
+  
+  def isSkipDiff: Bool = isMMIO || isPerfCnt
   /* add L/S inst info in EXU */
   // val L1toL2TlbLatency = UInt(XLEN.W)
   // val levelTlbHit = UInt(2.W)

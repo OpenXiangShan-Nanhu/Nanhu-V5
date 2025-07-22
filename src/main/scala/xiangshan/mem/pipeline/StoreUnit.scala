@@ -417,8 +417,16 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   val s2_exception = RegNext(s1_feedback.bits.hit) &&
                     (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_out.uop.exceptionVec, StaCfg).asUInt.orR)
-  val s2_mmio = (s2_in.mmio || s2_pmp.mmio || Pbmt.isUncache(s2_pbmt)) && RegNext(s1_feedback.bits.hit)
-  s2_kill := ((s2_mmio && !s2_exception) && !s2_in.isvec) || s2_in.uop.robIdx.needFlush(io.redirect)
+
+  val s2_main_memory   = !Pbmt.isIO(s2_pbmt) && !s2_pmp.mmio
+  val s2_mmio          = s2_in.mmio || s2_pmp.mmio  // namely !s2_main_memory
+  val s2_nc            = Pbmt.isUncache(s2_pbmt)
+  val s2_mmioORnc_region = (s2_mmio || s2_nc) && RegNext(s1_feedback.bits.hit)
+  dontTouch(s2_main_memory)
+  dontTouch(s2_mmio)
+  dontTouch(s2_nc)
+
+  s2_kill := ((s2_mmioORnc_region && !s2_exception) && !s2_in.isvec) || s2_in.uop.robIdx.needFlush(io.redirect)
 
   // The response signal of `pmp/pma` is credible only after the physical address is actually generated.
   // Therefore, the response signals of pmp/pma generated after an address translation has produced an `access fault` or a `page fault` are completely unreliable.
@@ -427,22 +435,23 @@ class StoreUnit(implicit p: Parameters) extends XSModule
     s2_in.uop.exceptionVec(storePageFault)   ||
     s2_in.uop.exceptionVec(storeGuestPageFault)
   )
-  val s2_actually_uncache = s2_tlb_hit && !s2_un_access_exception && (Pbmt.isPMA(s2_pbmt) && s2_pmp.mmio || s2_in.nc || s2_in.mmio) && RegNext(s1_feedback.bits.hit)
+  val s2_mmioORnc = s2_tlb_hit && !s2_un_access_exception && s2_mmioORnc_region && RegNext(s1_feedback.bits.hit)
 
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
-  s2_out.mmio   := (s2_mmio || s2_isCboM) && !s2_exception
-  s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) && !s2_actually_uncache ||
-                                                s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_actually_uncache ||
+  s2_out.mmio   := (s2_mmioORnc_region || s2_isCboM) && !s2_exception
+  s2_out.nc     := s2_nc
+  s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) && !s2_mmioORnc_region ||
+                                                s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_mmioORnc_region ||
                                                 s2_pmp.st ||
                                                 (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception
-                                                ((s2_in.isvec || s2_isCboAll) && s2_actually_uncache && RegNext(s1_feedback.bits.hit))
+                                                ((s2_in.isvec || s2_isCboAll) && s2_mmioORnc && RegNext(s1_feedback.bits.hit))
                                                 ) && s2_vecActive
-  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_actually_uncache
+  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_mmioORnc_region
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew
 
   // kill dcache write intent request when mmio or exception
-  io.dcache.s2_kill := (s2_mmio || s2_exception || s2_in.uop.robIdx.needFlush(io.redirect))
+  io.dcache.s2_kill := (s2_mmioORnc_region || s2_exception || s2_in.uop.robIdx.needFlush(io.redirect))
   io.dcache.s2_pc   := s2_out.uop.pc
   // TODO: dcache resp
   io.dcache.resp.ready := true.B
@@ -511,7 +520,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   // store misalign will not writeback to rob now
   when (s2_fire) {
-    s3_valid := (!s2_mmio || s2_exception) && !s2_out.isHWPrefetch
+    s3_valid := (!s2_mmioORnc_region || s2_exception) && !s2_out.isHWPrefetch
   } .elsewhen (s3_fire) {
       s3_valid := false.B
   } .elsewhen (s3_kill) {

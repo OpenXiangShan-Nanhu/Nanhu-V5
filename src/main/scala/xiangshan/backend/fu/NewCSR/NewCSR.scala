@@ -1089,7 +1089,13 @@ class NewCSR(implicit val p: Parameters) extends Module
       aia_rvalid -> aia_rdata
     )), 0.U(64.W), io.in.fire || aia_rvalid)
   outReg.bits.regOut := regOut
-  outReg.bits.targetPc := DataHoldBypass(
+  outReg.bits.isPerfCnt := DataHoldBypass(addrInPerfCnt, false.B, io.in.fire)
+
+  PipelineConnect(outReg, io.out, io.out.ready,
+      redirectFlush, moduleName = Some("csrOutPipe"))
+  io.out.bits.flushPipe := flushPipe
+  io.out.bits.targetPcUpdate := RegNext(needTargetUpdate)
+  io.out.bits.targetPc := DataHoldBypass(
     Mux(trapEntryDEvent.out.targetPc.valid,
       trapEntryDEvent.out.targetPc.bits,
       Mux1H(Seq(
@@ -1104,13 +1110,6 @@ class NewCSR(implicit val p: Parameters) extends Module
       )
     ),
   needTargetUpdate)
-  outReg.bits.targetPcUpdate := needTargetUpdate
-  outReg.bits.isPerfCnt := DataHoldBypass(addrInPerfCnt, false.B, io.in.fire)
-
-  PipelineConnect(outReg, io.out, io.out.ready,
-      redirectFlush, moduleName = Some("csrOutPipe"))
-  io.out.bits.flushPipe := flushPipe
-  io.out.bits.targetPcUpdate := RegNext(needTargetUpdate)
 
   io.currentRegout := regOut
   io.targetPc := DataHoldBypass(

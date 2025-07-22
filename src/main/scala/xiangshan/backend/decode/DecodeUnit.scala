@@ -884,7 +884,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   private val exceptionII = decodedInst.selImm === SelImm.INVALID_INSTR || illegalSfenceVMA ||
                             illegalSfencePart || illegalHfenceGVMA || illegalHfenceVVMA || illegalHld || illegalHst ||
                             illegalFp_fsIsOff || illegalVec_vsIsOff || illegalWfi || illegalFp_frm ||
-                            illegalVec_frm || illegalCboZ || illegalCboCF || illegalCboI
+                            illegalVec_frm || illegalCboZ || illegalCboCF || illegalCboI || isAes64ks1iIllegal
 
   private val virtualSfenceVMA = io.fromCSR.virtualInst.sfenceVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence
   private val virtualSfencePart = io.fromCSR.virtualInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence

@@ -416,7 +416,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     vlSpecWen(i) := needVlDest(i) && vlFreeList.io.canAllocate && vlFreeList.io.doAllocate && !io.rabCommits.isWalk && !io.redirect.valid
   }
 
-  io.firstIsCmo := isCmo(0)
+  io.firstIsCmo := isCmo(0) && !io.out(0).bits.hasException && io.out(0).fire
 
   // Freelist walk
   for (i <- 0 until RabCommitWidth) {

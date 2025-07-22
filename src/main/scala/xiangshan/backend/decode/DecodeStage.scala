@@ -29,7 +29,7 @@ import xiangshan.backend.fu.vector.Bundles.{VType, Vl}
 import xiangshan.backend.fu.FuType
 import xiangshan.backend.fu.wrapper.CSRToDecode
 import yunsuan.VpermType
-import xiangshan.ExceptionNO.{illegalInstr, virtualInstr}
+import xiangshan.ExceptionNO.{illegalInstr, virtualInstr, selectFrontend}
 import xiangshan.frontend.FtqPtr
 import xiangshan.ExceptionNO.illegalInstr
 
@@ -200,7 +200,8 @@ class DecodeStage(implicit p: Parameters) extends XSModule
     }
   )
 
-  io.firstIsCmo := LSUOpType.isCboAll(io.out(0).bits.fuOpType) && FuType.isStore(io.out(0).bits.fuType) && io.out(0).fire
+  private val cmoHasException = Cat(selectFrontend(io.out(0).bits.exceptionVec) :+ io.out(0).bits.exceptionVec(illegalInstr) :+ io.out(0).bits.exceptionVec(virtualInstr)).orR || TriggerAction.isDmode(io.out(0).bits.trigger)
+  io.firstIsCmo := LSUOpType.isCboAll(io.out(0).bits.fuOpType) && FuType.isStore(io.out(0).bits.fuType) && io.out(0).fire && !cmoHasException
 
   for (i <- 0 until DecodeWidth) {
 

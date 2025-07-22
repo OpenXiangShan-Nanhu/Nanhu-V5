@@ -333,10 +333,10 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   //cmo hardware fence state
   for (i <- 0 until RenameWidth) {
     if (i < RenameWidth - 1) {
-      notSuccessCmoVec(i) := isCmo(i) && !isCmo(i + 1)
-      isLastCmo(i) := isCmo(i) && !isCmo(i + 1)
+      notSuccessCmoVec(i) := isCmo(i) && !hasValidException(i) && !isCmo(i + 1)
+      isLastCmo(i) := isCmo(i) && !hasValidException(i) && !isCmo(i + 1)
     } else {
-      isLastCmo(i) := isCmo(i)
+      isLastCmo(i) := isCmo(i) && !hasValidException(i)
     }
     if (i > 0) {
       currentCycleNeedBlockVec(i) := isCmo(i) && isLastCmo(i) && io.fromRename(0)(i).valid && !Cat(hasBlockOrWait.take(i)).orR && !VecInit(hasValidException.take(i)).asUInt.orR
@@ -361,16 +361,11 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   }.otherwise{
     cmoBlockState := cmoBlockState
   }
-  when (io.redirect.valid || RegNext(io.redirect.valid)) {
-    cmoBlockState := s_idle
-  }
 
   dontTouch(isLastCmo)
   dontTouch(notSuccessCmoVec)
   dontTouch(currentCycleNeedBlockVec)
   dontTouch(currentCycleNeedBlock)
-
-
 
   // All dispatch queues can accept new RenameWidth uops
   // A possibly better implementation is as follows. We need block all uops when some one DispatchQueue is full.

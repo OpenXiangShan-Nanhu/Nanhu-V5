@@ -383,13 +383,13 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val hasSameAddrCMOEntry = entries.map(e => {
     e.io.req_addr.valid & get_block(e.io.req_addr.bits) === get_block(io.req.bits.addr)
   }).reduce(_|_)
-  val hasSameAddrCMOPipe = miss_req_pipe_reg_valid & get_block(miss_req_pipe_reg.req.addr) === get_block(io.req.bits.addr)
+  val hasSameAddrCMOPipe = miss_req_pipe_reg_valid & miss_req_pipe_reg.alloc & get_block(miss_req_pipe_reg.req.addr) === get_block(io.req.bits.addr)
   val hasSameAddrCMO = io.req.valid & io.req.bits.isCMO & (hasSameAddrCMOEntry | hasSameAddrCMOPipe)
 
   val merge = !isCMOReq && ParallelORR(Cat(secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.req.bits))))
-  val reject = !isCMOReq && ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits))))
-  val alloc = (isCMOReq || (!reject && !merge)) && ParallelORR(Cat(primary_ready_vec))
-  val accept = (alloc || merge) & !isCMOReq  || isCMOReq && !io.wbq_block_miss_req && !hasSameAddrCMO
+  val reject = !isCMOReq && ParallelORR(Cat(secondary_reject_vec ++ Seq(miss_req_pipe_reg.reject_req(io.req.bits)))) || isCMOReq && (io.wbq_block_miss_req || hasSameAddrCMO)
+  val alloc = (!reject && !merge) && ParallelORR(Cat(primary_ready_vec))
+  val accept = (alloc || merge) && !isCMOReq || isCMOReq && alloc
   assert(!(io.req.valid && isCMOReq && merge), "CMO should never be merged into an existing MSHR")
   dontTouch(hasSameAddrCMO)
 

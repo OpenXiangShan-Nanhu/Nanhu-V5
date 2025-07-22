@@ -272,52 +272,6 @@ trait HasCSRConst {
    * "Read only" CSRs that can be fully pipelined when read in CSRR instruction.
    * Only read by csr instructions.
    */
-  val roCsrrAddr = List(
-    Frm,
-    Vxrm,
-    Stvec,
-    Scounteren,
-    Senvcfg,
-    Sscratch,
-    Sepc,
-    Scause,
-    Stval,
-    Satp,
-    Vstvec,
-    Vsscratch,
-    Vsepc,
-    Vscause,
-    Vstval,
-    Vsatp,
-    Medeleg,
-    Mideleg,
-    Mtvec,
-    Mcounteren,
-    Menvcfg,
-    Mcountinhibit,
-    Mscratch,
-    Mepc,
-    Mcause,
-    Mtval,
-    Mtinst,
-    Mtval2,
-    Sbpctl,     // customized csr: sbpctl      S-mode Branch Prediction ConTroL
-    Spfctl,     // customized csr: spfctl      S-mode PreFetch ConTroL
-    Slvpredctl, // customized csr: slvpredctl  S-mode Load Violation PREDict ConTroL
-    Smblockctl, // customized csr: smblockctl  S-mode Memory BlockConTroL
-    Srnctl,     // customized csr: srnctl      S-mode ?
-    Hedeleg,
-    Hideleg,
-    Hcounteren,
-    Htval,
-    Hgatp,
-    Mvendorid,
-    Marchid,
-    Mimpid,
-    Mhartid,
-    Mconfigptr
-  )
-
   val waitForwardInOrderCsrReadList = List(
     CSRs.fflags,
     CSRs.fcsr,
@@ -340,6 +294,8 @@ trait HasCSRConst {
     CSRs.mtopei,
     CSRs.stopei,
     CSRs.vstopei,
+    CSRs.mcycle,
+    CSRs.minstret,
   )
   val blockBackwardInOrderCsrReadList = List(
     CSRs.mireg,
@@ -351,6 +307,8 @@ trait HasCSRConst {
     CSRs.mtopei,
     CSRs.stopei,
     CSRs.vstopei,
+    CSRs.mcycle,
+    CSRs.minstret,
   )
 
   def privEcall  = 0x000.U

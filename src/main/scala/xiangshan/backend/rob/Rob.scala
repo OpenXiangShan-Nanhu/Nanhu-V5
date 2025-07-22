@@ -1525,7 +1525,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
 
       val difftest = DifftestModule(new DiffInstrCommit(MaxPhyRegs), delay = 3, dontCare = true)
       CoreGateway.addOne(difftest, 3, s"difftestInstrCommit_${i}")
-      val dt_skip = Mux(eliminatedMove, false.B, exuOut.isMMIO || exuOut.isPerfCnt)
+      val dt_skip = Mux(eliminatedMove, false.B, exuOut.isSkipDiff)
       difftest.coreid := io.hartId
       difftest.index := i.U
       difftest.valid := io.commits.commitValid(i) && io.commits.isCommit

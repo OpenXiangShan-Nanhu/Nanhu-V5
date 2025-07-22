@@ -147,7 +147,7 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
   io.ldout.bits.uop.lqIdx     := req.uop.lqIdx
   io.ldout.bits.uop.exceptionVec(loadAccessFault) := nderr
   io.ldout.bits.data          := rdataPartialLoad
-  io.ldout.bits.debug.isMMIO  := true.B
+  io.ldout.bits.debug.isMMIO  := !req.nc
   io.ldout.bits.debug.paddr   := req.paddr
   io.ldout.bits.debug.vaddr   := req.vaddr
 

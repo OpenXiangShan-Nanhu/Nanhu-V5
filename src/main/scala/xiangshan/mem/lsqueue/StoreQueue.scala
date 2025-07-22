@@ -209,6 +209,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val sqDeq = Output(UInt(log2Ceil(EnsbufferWidth + 1).W))
     val force_write = Output(Bool())
     val maControl   = Flipped(new StoreMaBufToSqControlIO)
+    val diffStoreEventCount = if (env.EnableDifftest) Some(Input(UInt(64.W))) else None
   })
 
   println("StoreQueue: size:" + StoreQueueSize)
@@ -993,7 +994,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.mmioStout.bits.uop.sqIdx := deqPtrExt(0)
   io.mmioStout.bits.data := shiftDataToLow(addrModule.io.rdata_p(0), dataModule.io.rdata(0).data) // dataModule.io.rdata.read(deqPtr)
   io.mmioStout.bits.isFromLoadUnit := DontCare
-  io.mmioStout.bits.debug.isMMIO := true.B
+  io.mmioStout.bits.debug.isMMIO := !nc(deqPtr)
   io.mmioStout.bits.debug.paddr := DontCare
   io.mmioStout.bits.debug.isPerfCnt := false.B
   io.mmioStout.bits.debug.vaddr := DontCare
@@ -1196,6 +1197,18 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     // cmoInvalEvent.coreid := io.hartId
     // cmoInvalEvent.valid  := (io.mmioStout.fire) && deqCanDoCbom && LSUOpType.isCboInval(uop(deqPtr).fuOpType)
     // cmoInvalEvent.addr   := cmoAddr
+
+
+    // the event that nc store to main memory
+    val ncmmStoreEvent = DifftestModule(new DiffStoreEvent, delay = 2, dontCare = true)
+    val dataMask = Cat((0 until DCacheWordBytes).reverse.map(i => Fill(8, io.uncache.req.bits.mask(i))))
+    ncmmStoreEvent.coreid := io.hartId
+    ncmmStoreEvent.index := io.diffStoreEventCount.get
+    ncmmStoreEvent.valid := io.uncache.req.fire && io.uncache.req.bits.nc
+    ncmmStoreEvent.addr := Cat(io.uncache.req.bits.addr(PAddrBits - 1, DCacheWordOffset), 0.U(DCacheWordOffset.W)) // aligned to 8 bytes
+    ncmmStoreEvent.data := io.uncache.req.bits.data & dataMask // data align
+    ncmmStoreEvent.mask := io.uncache.req.bits.mask
+
   }
 
   (1 until EnsbufferWidth).foreach(i => when(io.sbuffer(i).fire) { assert(io.sbuffer(i - 1).fire) })

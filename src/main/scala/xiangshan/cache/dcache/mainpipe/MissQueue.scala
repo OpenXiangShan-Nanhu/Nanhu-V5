@@ -50,6 +50,7 @@ class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   val word_idx = UInt(log2Up(blockWords).W)
   val amo_data = UInt(DataBits.W)
   val amo_mask = UInt((DataBits / 8).W)
+  val lrsc_isD = Bool()
 
   val req_coh = new ClientMetadata
   val id = UInt(reqIdWidth.W)
@@ -115,6 +116,7 @@ class MissReq(implicit p: Parameters) extends MissReqWoStoreData {
     out.word_idx := word_idx
     out.amo_data := amo_data
     out.amo_mask := amo_mask
+    out.lrsc_isD := lrsc_isD
     out.req_coh := req_coh
     out.id := id
     out.cancel := cancel

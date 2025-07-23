@@ -531,8 +531,8 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val lrsc_count = RegInit(0.U(log2Ceil(LRSCCycles).W))
   // val lrsc_valid = lrsc_count > LRSCBackOff.U
   val lrsc_addr  = Reg(UInt())
+  val lr_fuOpcode = RegInit(false.B)
   val reservation_set_addr  = Reg(UInt())
-  val lr_fuOpcode = s3_req.lrsc_isD
   val lrsc_valid = lrsc_count > 0.U
   val s3_lr = !s3_req.probe && s3_req.isAMO && s3_req.cmd === M_XLR
   val s3_sc = !s3_req.probe && s3_req.isAMO && s3_req.cmd === M_XSC
@@ -549,6 +549,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
     when (s3_can_do_amo && s3_lr) {
       lrsc_count := (LRSCCycles - 1).U
       lrsc_addr := s3_req.addr
+      lr_fuOpcode := s3_req.lrsc_isD
       reservation_set_addr := get_block_addr(s3_req.addr)
     } .otherwise {
       lrsc_count := 0.U
@@ -748,6 +749,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   miss_req.word_idx := s2_req.word_idx
   miss_req.amo_data := s2_req.amo_data
   miss_req.amo_mask := s2_req.amo_mask
+  miss_req.lrsc_isD := s2_req.lrsc_isD
   miss_req.req_coh := s2_hit_coh
   miss_req.id := s2_req.id
   miss_req.cancel := false.B

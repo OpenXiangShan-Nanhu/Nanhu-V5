@@ -320,7 +320,7 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
     pipe_req.probe := false.B
     pipe_req.probe_need_data := false.B
     pipe_req.source := AMO_SOURCE.U
-    pipe_req.addr   := get_block_addr(paddr)
+    pipe_req.addr   := paddr
     pipe_req.vaddr  := get_block_addr(in.src(0)) // vaddr
     pipe_req.word_idx  := get_word(paddr)
     pipe_req.amo_data  := genWdata(in.src(1), in.uop.fuOpType(1,0))

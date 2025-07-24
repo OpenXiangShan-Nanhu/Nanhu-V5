@@ -26,7 +26,7 @@ import xs.utils.perf._
 import xiangshan.ExceptionNO._
 import xiangshan._
 import xiangshan.backend.MemCoreTopDownIO
-import xiangshan.backend.rob.{RobDispatchTopDownIO, RobEnqIO}
+import xiangshan.backend.rob.{RobDispatchTopDownIO, RobEnqIO, RobPtr}
 import xiangshan.mem.mdp._
 import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.fu.FuType
@@ -201,7 +201,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   val isStore  = VecInit(io.fromRename(0).map(req => FuType.isStore(req.bits.fuType)))
   val isVStore = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType)))
   val isAMO    = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType)))
-  val isCmo = VecInit(io.fromRename(0).map(req => (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
+  val isCmo = VecInit(io.fromRename(0).map(req => req.valid && (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
   val isBlockBackward  = VecInit(io.fromRename(0).map(x => x.valid && x.bits.blockBackward))
   val isWaitForward    = VecInit(io.fromRename(0).map(x => x.valid && x.bits.waitForward))
   
@@ -333,8 +333,8 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   //cmo hardware fence state
   for (i <- 0 until RenameWidth) {
     if (i < RenameWidth - 1) {
-      notSuccessCmoVec(i) := isCmo(i) && !hasValidException(i) && !isCmo(i + 1)
-      isLastCmo(i) := isCmo(i) && !hasValidException(i) && !isCmo(i + 1)
+      notSuccessCmoVec(i) := isCmo(i) && !hasValidException(i) && (!isCmo(i + 1) || hasValidException(i + 1))
+      isLastCmo(i) := isCmo(i) && !hasValidException(i) && (!isCmo(i + 1) || hasValidException(i + 1))
     } else {
       isLastCmo(i) := isCmo(i) && !hasValidException(i)
     }
@@ -348,18 +348,76 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   private val currentCycleNeedBlock = hasValidCmo && currentCycleNeedBlockVec.reduce(_ || _) && (notCmoSuccess || (!notCmoSuccess && !io.nextCycleFirstIsCmo))
   private val allDqReady = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
 
-  val s_idle :: s_cmoEnq :: s_cmoSqWait :: s_cmoExec :: s_cmoFinish :: Nil = Enum(5)
+  val s_idle :: s_cmoEnq :: s_enqFinish :: s_cmoSqWait :: s_cmoExec :: Nil = Enum(5)
   val cmoBlockState = RegInit(s_idle)
-  when(cmoBlockState === s_idle && currentCycleNeedBlock && io.enqRob.canAccept && allDqReady) {
-    cmoBlockState := s_cmoEnq
-  }.elsewhen(cmoBlockState === s_cmoEnq && io.sqHasCmo) {
-    cmoBlockState := s_cmoSqWait
-  }.elsewhen(cmoBlockState === s_cmoSqWait && !io.sqHasCmo) {
-    cmoBlockState := s_cmoExec
-  }.elsewhen(cmoBlockState === s_cmoExec && io.cmoFinish) {
-    cmoBlockState := s_idle
+  val currentOldestCmoRobIdx = RegInit(0.U.asTypeOf(new RobPtr))
+  val currentOldestCmoRobIdxValid = RegInit(false.B)
+  val hasCmo = isCmo.reduce(_ || _)
+  val currentCmoRobidx = PriorityMux(isCmo.zip(io.fromRename(0).map(_.bits.robIdx)))
+
+  val cmoNeedFlush = currentOldestCmoRobIdxValid && currentOldestCmoRobIdx.needFlush(io.redirect) || 
+  (currentCmoRobidx.needFlush(io.redirect) && io.redirect.valid)
+
+  when(cmoBlockState === s_idle && hasCmo && !cmoNeedFlush) {
+    currentOldestCmoRobIdxValid := true.B
+    currentOldestCmoRobIdx      := currentCmoRobidx
+  }.elsewhen(cmoBlockState === s_cmoExec) {
+    currentOldestCmoRobIdxValid := false.B
+    currentOldestCmoRobIdx      := DontCare
+  }.elsewhen(cmoNeedFlush) {
+    currentOldestCmoRobIdxValid := false.B
+    currentOldestCmoRobIdx      := DontCare
   }.otherwise{
-    cmoBlockState := cmoBlockState
+    currentOldestCmoRobIdxValid := currentOldestCmoRobIdxValid
+    currentOldestCmoRobIdx      := currentOldestCmoRobIdx
+  }
+
+  switch(cmoBlockState){
+    is(s_idle){
+      when(hasCmo && !currentCycleNeedBlock && io.enqRob.canAccept && allDqReady && !io.redirect.valid){
+        cmoBlockState := s_cmoEnq
+      }.elsewhen(hasCmo && currentCycleNeedBlock && io.enqRob.canAccept && allDqReady && !io.redirect.valid){
+        cmoBlockState := s_enqFinish
+      }.elsewhen(io.redirect.valid) {
+        cmoBlockState := s_idle
+      }.otherwise{
+        cmoBlockState := cmoBlockState
+      }
+    }
+    is(s_cmoEnq){
+      when(currentCycleNeedBlock && io.enqRob.canAccept && allDqReady && !io.redirect.valid){
+        cmoBlockState := s_enqFinish
+      }.elsewhen(io.redirect.valid && !cmoNeedFlush) {
+        cmoBlockState := s_enqFinish
+      }.elsewhen(cmoNeedFlush) {
+        cmoBlockState := s_idle
+      }.otherwise{
+        cmoBlockState := cmoBlockState
+      }
+    }
+    is(s_enqFinish){
+      when(io.sqHasCmo){
+        cmoBlockState := s_cmoSqWait
+      }.elsewhen(cmoNeedFlush) {
+        cmoBlockState := s_idle
+      }.otherwise{
+        cmoBlockState := cmoBlockState
+      }
+    }
+    is(s_cmoSqWait){
+      when(!io.sqHasCmo){
+        cmoBlockState := s_cmoExec
+      }.otherwise{
+        cmoBlockState := cmoBlockState
+      }
+    }
+    is(s_cmoExec){
+      when(io.cmoFinish){
+        cmoBlockState := s_idle
+      }.otherwise{
+        cmoBlockState := cmoBlockState
+      }
+    }
   }
 
   dontTouch(isLastCmo)
@@ -377,16 +435,16 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   //   (isFp.asUInt.orR && !io.toVecDq.canAccept) || (isLs.asUInt.orR && !io.toLsDq.canAccept))
 
   // Todo: use decode2dispatch bypass infos to loose `can accept` condition
-  val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle)
-  val dqCanAccept_toRob = io.toIntDq.canAccept_fanout(0) && io.toIntDq1.canAccept_fanout(0) && io.toVecDq.canAccept_fanout(0) && io.toLsDq.canAccept_fanout(0) && (cmoBlockState === s_idle)
-  val dqCanAccept_tointDq = io.toIntDq.canAccept_fanout(1) && io.toIntDq1.canAccept_fanout(1) && io.toVecDq.canAccept_fanout(1) && io.toLsDq.canAccept_fanout(1) && (cmoBlockState === s_idle)
-  val dqCanAccept_tovecDq = io.toIntDq.canAccept_fanout(2) && io.toIntDq1.canAccept_fanout(2) && io.toVecDq.canAccept_fanout(2) && io.toLsDq.canAccept_fanout(2) && (cmoBlockState === s_idle)
-  val dqCanAccept_tolsDq = io.toIntDq.canAccept_fanout(3) && io.toIntDq1.canAccept_fanout(3) && io.toVecDq.canAccept_fanout(3) && io.toLsDq.canAccept_fanout(3) && (cmoBlockState === s_idle)
+  val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoEnq)
+  val dqCanAccept_toRob = io.toIntDq.canAccept_fanout(0) && io.toIntDq1.canAccept_fanout(0) && io.toVecDq.canAccept_fanout(0) && io.toLsDq.canAccept_fanout(0) && (cmoBlockState === s_idle || cmoBlockState === s_cmoEnq)
+  val dqCanAccept_tointDq = io.toIntDq.canAccept_fanout(1) && io.toIntDq1.canAccept_fanout(1) && io.toVecDq.canAccept_fanout(1) && io.toLsDq.canAccept_fanout(1) && (cmoBlockState === s_idle || cmoBlockState === s_cmoEnq)
+  val dqCanAccept_tovecDq = io.toIntDq.canAccept_fanout(2) && io.toIntDq1.canAccept_fanout(2) && io.toVecDq.canAccept_fanout(2) && io.toLsDq.canAccept_fanout(2) && (cmoBlockState === s_idle || cmoBlockState === s_cmoEnq)
+  val dqCanAccept_tolsDq = io.toIntDq.canAccept_fanout(3) && io.toIntDq1.canAccept_fanout(3) && io.toVecDq.canAccept_fanout(3) && io.toLsDq.canAccept_fanout(3) && (cmoBlockState === s_idle || cmoBlockState === s_cmoEnq)
 
   // input for ROB, LSQ, Dispatch Queue
   for (i <- 0 until RenameWidth) {
     io.enqRob.needAlloc(i) := io.fromRename(2)(i).valid
-    io.enqRob.req(i).valid := io.fromRename(2)(i).valid && thisCanActualOut(i) && dqCanAccept_toRob && (cmoBlockState === s_idle)
+    io.enqRob.req(i).valid := io.fromRename(2)(i).valid && thisCanActualOut(i) && dqCanAccept_toRob && (cmoBlockState === s_idle || cmoBlockState === s_cmoEnq)
     io.enqRob.req(i).bits := updatedUop(2)(i)
     io.enqRob.req(i).bits.hasException := updatedUop(2)(i).hasException || updatedUop(2)(i).singleStep
     io.enqRob.req(i).bits.numWB := Mux(updatedUop(2)(i).singleStep, 0.U, updatedUop(2)(i).numWB)

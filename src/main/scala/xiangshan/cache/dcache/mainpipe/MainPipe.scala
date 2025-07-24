@@ -545,10 +545,14 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val s3_can_do_amo_write = s3_can_do_amo && isWrite(s3_req.cmd) && !s3_sc_fail
 
 
+  when(s2_valid && s2_lr && !s2_req.miss){
+    lrsc_addr := s2_req.addr
+  }
+
   when (s3_valid && (s3_lr || s3_sc)) {
     when (s3_can_do_amo && s3_lr) {
       lrsc_count := (LRSCCycles - 1).U
-      lrsc_addr := s3_req.addr
+//      lrsc_addr := s3_req.addr
       lr_fuOpcode := s3_req.lrsc_isD
       reservation_set_addr := get_block_addr(s3_req.addr)
     } .otherwise {
@@ -602,7 +606,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
       }
     }
   }
-  XSError(debug_sc_addr_match_fail_cnt > 100.U, "L1DCache failed too many SCs in a row, resv set addr always match")
+  XSWarn(debug_sc_addr_match_fail_cnt > 100.U, "L1DCache failed too many SCs in a row, resv set addr always match")
 
 
   val banked_amo_wmask = UIntToOH(s3_req.word_idx)

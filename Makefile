@@ -58,7 +58,7 @@ endif
 FPGA_MEM_ARGS = --firtool-opt "--repl-seq-mem --repl-seq-mem-file=$(TOP).$(RTL_SUFFIX).conf"
 SIM_MEM_ARGS = --firtool-opt "--repl-seq-mem --repl-seq-mem-file=$(SIM_TOP).$(RTL_SUFFIX).conf"
 MFC_ARGS = --dump-fir --target systemverilog --split-verilog
-MFC_ARGS += --firtool-opt "-O=release --disable-annotation-unknown --lowering-options=explicitBitcast,disallowLocalVariables,disallowPortDeclSharing,locationInfoStyle=none"
+MFC_ARGS += --firtool-opt "-O=release --disable-annotation-unknown --disable-all-randomization --strip-debug-info --lower-memories --add-vivado-ram-address-conflict-synthesis-bug-workaround --lowering-options=noAlwaysComb,explicitBitcast,emittedLineLength=120,disallowLocalVariables,disallowPortDeclSharing,locationInfoStyle=plain,disallowMuxInlining"
 RELEASE_ARGS += $(MFC_ARGS)
 DEBUG_ARGS += $(MFC_ARGS)
 PLDM_ARGS += $(MFC_ARGS)
@@ -227,7 +227,7 @@ RUN_BIN_DIR ?= $(ABS_WORK_DIR)/ready-to-run
 EMU_RUN_OPTS = -i $(RUN_BIN_DIR)/$(RUN_BIN)
 EMU_RUN_OPTS += --diff $(ABS_WORK_DIR)/ready-to-run/riscv64-nemu-interpreter-so
 EMU_RUN_OPTS += --wave-path $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN)/tb_top.vcd
-EMU_RUN_OPTS += --enable-fork --fork-interval=15 -s 0
+EMU_RUN_OPTS += --enable-fork --fork-interval=60 -s 0
 emu_rtl-run:
 	$(shell if [ ! -e $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN) ];then mkdir -p $(ABS_WORK_DIR)/sim/emu/$(RUN_BIN); fi)
 	touch ./sim/emu/$(RUN_BIN)/sim.log

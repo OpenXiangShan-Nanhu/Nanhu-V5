@@ -333,8 +333,7 @@ object xiangshan extends XiangShanModule with HasChisel {
     }
 
     // package ready-to-run binary as resources
-    val ready_to_run = Seq("riscv64-nemu-interpreter-dual-so",
-                           "riscv64-nemu-interpreter-so",
+    val ready_to_run = Seq("riscv64-nemu-interpreter-so",
                            "riscv64-spike-so")
     ready_to_run.foreach { f =>
       os.copy(pwd / "ready-to-run" / f, destDir / "ready-to-run" / f, createFolders = true)

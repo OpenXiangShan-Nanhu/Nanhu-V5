@@ -26,6 +26,7 @@ import xiangshan._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
 import xs.utils.cache.{MemBackTypeMM, MemBackTypeMMField, MemPageTypeNC, MemPageTypeNCField}
+import difftest._
 
 class UncachePtr(implicit p: Parameters) extends CircularQueuePtr[UncachePtr](
   p => p(XSCoreParamsKey).UncacheBufferSize
@@ -135,7 +136,6 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     io.mem_acquire.bits := Mux(storeReq, store, load)
     io.mem_acquire.bits.user.lift(MemBackTypeMM).foreach(_ := req.nc)
     io.mem_acquire.bits.user.lift(MemPageTypeNC).foreach(_ := req.nc)
-
     when (io.mem_acquire.fire) {
       state := s_refill_resp
     }
@@ -282,6 +282,17 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
   io.flush.empty := invalid_entries === UncacheBufferSize.U
 
   println(s"Uncahe Buffer Size: $UncacheBufferSize entries")
+
+  // uncache store but memBackTypeMM should update the golden memory
+  if (env.EnableDifftest) {
+    val difftest = DifftestModule(new DiffUncacheMMStoreEvent, delay = 1)
+    difftest.coreid := io.hartId
+    difftest.index  := 0.U
+    difftest.valid  := mem_acquire.fire && (mem_acquire.bits.opcode === MemoryOpConstants.M_XWR) && mem_acquire.bits.user.lift(MemBackTypeMM).getOrElse(false.B)
+    difftest.addr   := mem_acquire.bits.address
+    difftest.data   := mem_acquire.bits.data.asTypeOf(Vec(DataBytes, UInt(8.W)))
+    difftest.mask   := mem_acquire.bits.mask
+  }
 
   // print all input/output requests for debug purpose
   // print req/resp

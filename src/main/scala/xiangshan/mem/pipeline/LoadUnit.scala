@@ -1072,7 +1072,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   when (!s2_in.delayedLoadError) {
     s2_exception_vec(loadAccessFault) := (s2_in.uop.exceptionVec(loadAccessFault) ||
                                          s2_pmp.ld ||
-                                         s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_actually_mmio ||
+                                         s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_mmioORnc_region ||
                                          s2_isvec && s2_pmp.mmio && !s2_prf && !s2_in.tlbMiss ||
                                          (io.dcache.resp.bits.tag_error && GatedValidRegNext(io.csrCtrl.cache_error_enable))
                                          ) && s2_vecActive

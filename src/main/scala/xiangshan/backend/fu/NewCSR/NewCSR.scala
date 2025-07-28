@@ -1095,7 +1095,7 @@ class NewCSR(implicit val p: Parameters) extends Module
       redirectFlush, moduleName = Some("csrOutPipe"))
   io.out.bits.flushPipe := flushPipe
   io.out.bits.targetPcUpdate := RegNext(needTargetUpdate)
-  io.out.bits.targetPc := DataHoldBypass(
+  io.out.bits.targetPc := RegNext(DataHoldBypass(
     Mux(trapEntryDEvent.out.targetPc.valid,
       trapEntryDEvent.out.targetPc.bits,
       Mux1H(Seq(
@@ -1109,7 +1109,7 @@ class NewCSR(implicit val p: Parameters) extends Module
         trapEntryVSEvent.out.targetPc.valid -> trapEntryVSEvent.out.targetPc.bits)
       )
     ),
-  needTargetUpdate)
+  needTargetUpdate))
 
   io.currentRegout := regOut
   io.targetPc := DataHoldBypass(
@@ -1615,7 +1615,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffNonRegInterruptPendingEvent.coreid           := hartId
     diffNonRegInterruptPendingEvent.valid            := platformIRPMeipChange || platformIRPMtipChange || platformIRPMsipChange ||
                                                         platformIRPSeipChange || platformIRPStipChange ||
-                                                        platformIRPVseipChange || platformIRPVstipChange ||
+                                                        // platformIRPVseipChange || platformIRPVstipChange ||
                                                         lcofiReqChange
     diffNonRegInterruptPendingEvent.platformIRPMeip  := platformIRP.MEIP || fromAIA.meip.getOrElse(false.B)
     diffNonRegInterruptPendingEvent.platformIRPMtip  := platformIRP.MTIP

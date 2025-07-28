@@ -361,6 +361,8 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   when(cmoBlockState === s_idle && hasCmo && !cmoNeedFlush) {
     currentOldestCmoRobIdxValid := true.B
     currentOldestCmoRobIdx      := currentCmoRobidx
+  }.elsewhen(cmoBlockState === s_cmoEnq && (currentOldestCmoRobIdxValid && currentOldestCmoRobIdx.flag =/= currentCmoRobidx.flag)) {
+    currentOldestCmoRobIdx := currentCmoRobidx
   }.elsewhen(cmoBlockState === s_cmoExec) {
     currentOldestCmoRobIdxValid := false.B
     currentOldestCmoRobIdx      := DontCare

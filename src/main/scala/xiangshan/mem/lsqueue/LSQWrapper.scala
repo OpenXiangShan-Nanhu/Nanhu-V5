@@ -191,7 +191,9 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   // storeQueue.io.cmoOpResp    <> io.cmoOpResp
   storeQueue.io.flushSbuffer <> io.flushSbuffer
   storeQueue.io.maControl    <> io.maControl
-  storeQueue.io.diffStoreEventCount.get  := io.diffStoreEventCount.get
+  if(env.EnableDifftest){
+    storeQueue.io.diffStoreEventCount.get  := io.diffStoreEventCount.get
+  }
 
   /* <------- DANGEROUS: Don't change sequence here ! -------> */
 

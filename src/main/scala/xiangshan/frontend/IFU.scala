@@ -186,7 +186,7 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
   switch(mmio_state) {
     is(m_idle) {
       when(f3_req_is_mmio) {
-        mmio_state := Mux(io.f3_itlb_pbmt === Pbmt.nc, m_sendReq, m_waitLastCmt)
+        mmio_state := m_waitLastCmt
       }
     }
     is(m_waitLastCmt) {
@@ -261,9 +261,7 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
       }
     }
     is(m_waitCommit) {
-      // in idempotent spaces, we can skip waiting for commit (i.e. can do speculative fetch)Add commentMore actions
-      // but we do not skip m_waitCommit state, as other signals (e.g. f3_mmio_can_go relies on this)
-      mmio_state := Mux(mmio_commit || io.f3_itlb_pbmt === Pbmt.nc, m_commited, m_waitCommit)
+      mmio_state := Mux(mmio_commit, m_commited, m_waitCommit)
     }
     //normal mmio instruction
     is(m_commited) {

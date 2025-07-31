@@ -102,7 +102,7 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
     entry.io.mem_grant.valid := mem_grant.valid && (mem_grant.bits.source === i.U)
     entry.io.mem_grant.bits <> mem_grant.bits
 
-    entry.io.req.valid := io.lsq.req.valid && lsqReqEntrySel(i)
+    entry.io.req.valid := io.lsq.req.fire && lsqReqEntrySel(i)
     entry.io.req.bits := io.lsq.req.bits
 
     entry.io.resp.ready := true.B

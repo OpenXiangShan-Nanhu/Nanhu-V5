@@ -277,7 +277,7 @@ class DcsrBundle extends CSRBundle {
   val DEBUGVER  = DcsrDebugVer(31, 28).withReset(DcsrDebugVer.Spec) // Debug implementation as it described in 0.13 draft // todo
   // All ebreak Privileges are RW, instead of WARL, since XiangShan support U/S/VU/VS.
   val EXTCAUSE  =           RO(26, 24).withReset(0.U)
-  val CETRIG    =           RW(    19).withReset(0.U)
+  val CETRIG    =           RO(    19).withReset(0.U)
   val EBREAKVS  =           RO(    17).withReset(0.U)
   val EBREAKVU  =           RO(    16).withReset(0.U)
   val EBREAKM   =           RW(    15).withReset(0.U)

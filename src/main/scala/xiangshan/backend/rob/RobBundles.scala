@@ -79,6 +79,7 @@ object RobBundles extends HasCircularQueuePtrHelper {
     // val commitTrigger = Bool()
     val needFlush = Bool()
     // status end
+    val cmo = Bool()
 
     // debug_begin
     val debug_pc = OptionWrapper(backendParams.debugEn || env.EnableHWMoniter, UInt(VAddrBits.W))

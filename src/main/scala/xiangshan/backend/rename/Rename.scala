@@ -91,8 +91,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
       val out = new StallReasonIO(RenameWidth)
     }
 
-    val firstIsCmo = Output(Bool())
-    val firstIsCmoFromDecode = Input(Bool())
+    val dispatchIsInBlock = Input(Bool())
   })
 
   // io alias
@@ -265,7 +264,9 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
   val vlSpecWen = Wire(Vec(RenameWidth, Bool()))
 
   private val isCmo       = Wire(Vec(RenameWidth, Bool()))
-  private val isLastCmo       = Wire(Vec(RenameWidth, Bool()))
+  private val isMem        = Wire(Vec(RenameWidth, Bool()))
+  private val hasCmoBeforeMem        = Wire(Vec(RenameWidth, Bool()))
+  private val needWait       = Wire(Vec(RenameWidth, Bool()))
   // uop calculation
   for (i <- 0 until RenameWidth) {
     (uops(i): Data).waiveAll :<= (io.in(i).bits: Data).waiveAll
@@ -286,16 +287,20 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
      *   do not require write to any CSR.
      */
 
-    isCmo(i) := LSUOpType.isCboAll(uops(i).fuOpType) && FuType.isStore(uops(i).fuType) && io.in(i).fire
+    isMem(i)   := FuType.isMem(uops(i).fuType) && io.in(i).fire && !isCmo(i)
+    isCmo(i)  := LSUOpType.isCboAll(uops(i).fuOpType) && FuType.isStore(uops(i).fuType) && io.in(i).fire
+    val hasCmo = isCmo.reduce(_ || _)
 
-    if (i < RenameWidth - 1) {
-      isLastCmo(i) := isCmo(i) && !isCmo(i + 1)
+    if (i == 0) {
+      hasCmoBeforeMem(i) := false.B
+      needWait(i) := io.dispatchIsInBlock && isMem(i)
     } else {
-      isLastCmo(i) := isCmo(i) && !io.firstIsCmoFromDecode
+      hasCmoBeforeMem(i) := isMem(i) && isCmo.take(i).reduce(_ || _)
+      needWait(i) := hasCmoBeforeMem(i) || (io.dispatchIsInBlock && (isMem(i) && !isMem.take(i).reduce(_ || _)))
     }
 
-    uops(i).waitForward := io.in(i).bits.waitForward && !isNotWaitForwardCsrr(i)
-    uops(i).blockBackward := (io.in(i).bits.blockBackward && !isNotBlockBackwardCsrr(i)) || (isCmo(i) && isLastCmo(i))
+    uops(i).waitForward := io.in(i).bits.waitForward && !isNotWaitForwardCsrr(i) || (isMem(i) && needWait(i))
+    uops(i).blockBackward := (io.in(i).bits.blockBackward && !isNotBlockBackwardCsrr(i))
     uops(i).mdpTag := MDPPCFold(io.in(i).bits.pc(VAddrBits - 1, 1), MemPredPCWidth)
 
     // update cf according to waittable result
@@ -416,7 +421,6 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     vlSpecWen(i) := needVlDest(i) && vlFreeList.io.canAllocate && vlFreeList.io.doAllocate && !io.rabCommits.isWalk && !io.redirect.valid
   }
 
-  io.firstIsCmo := isCmo(0) && !io.out(0).bits.hasException && io.in(0).fire
 
   // Freelist walk
   for (i <- 0 until RabCommitWidth) {

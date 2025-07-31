@@ -476,7 +476,7 @@ class CtrlBlockImp(
     rename.io.in(i).valid := decodePipeRename(i).valid && !fusionDecoder.io.clear(i)
     rename.io.in(i).bits := decodePipeRename(i).bits
   }
-  rename.io.firstIsCmoFromDecode := decode.io.firstIsCmo
+  rename.io.dispatchIsInBlock := dispatch.io.dispatchIsInBlock
 
   for (i <- 0 until RenameWidth - 1) {
     fusionDecoder.io.dec(i) := decodePipeRename(i).bits
@@ -594,9 +594,7 @@ class CtrlBlockImp(
   dispatch.io.robHeadNotReady := rob.io.headNotReady
   dispatch.io.robFull := rob.io.robFull
   dispatch.io.singleStep := GatedValidRegNext(io.csrCtrl.singlestep)
-  dispatch.io.nextCycleFirstIsCmo := rename.io.firstIsCmo
-  dispatch.io.sqHasCmo := io.sqHasCmo
-  dispatch.io.cmoFinish := io.cmoFinish
+  dispatch.io.cmoFinish := io.cmoFinish && !io.sqHasCmo && !rob.io.robHasCmo
 
   intDq0.io.enq <> dispatch.io.toIntDq
   intDq0.io.redirect <> s2_s4_redirect_dup_toDq

@@ -124,6 +124,8 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
     val debugRolling = new RobDebugRollingIO
     // HW monitor to XSTop
     val robMon = if(env.EnableHWMoniter) Some(Output(new RobHWMonitor)) else None
+
+    val robHasCmo = Output(Bool())
   })
 
   val exuWBs: Seq[ValidIO[ExuOutput]] = io.exuWriteback.filter(!_.bits.params.hasStdFu).toSeq
@@ -436,6 +438,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
 
       robEntries(enqIndex).mmio := false.B
       robEntries(enqIndex).vls := enqUop.vlsInstr
+      robEntries(enqIndex).cmo := LSUOpType.isCboAll(enqUop.fuOpType) && FuType.isStore(enqUop.fuType)
     }
   }
 
@@ -1443,6 +1446,12 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
 
   // rolling
   io.debugRolling.robTrueCommit := ifCommitReg(trueCommitCnt)
+  private val cmoVec = Wire(Vec(RobSize, Bool()))
+  (0 until RobSize).map(i => {
+    cmoVec(i) := robEntries(i).valid && robEntries(i).cmo
+  })
+
+  io.robHasCmo := cmoVec.reduce(_ || _)
 
   /**
    * DataBase info:

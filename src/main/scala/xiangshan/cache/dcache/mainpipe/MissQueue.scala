@@ -461,7 +461,14 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val hasData = edge.hasData(io.mem_grant.bits)
   val refill_row_data = io.mem_grant.bits.data
   val isKeyword = io.mem_grant.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
-  val (_, _, refill_done, refill_count) = edge.count(io.mem_grant)
+//  val (_, _, refill_done, _) = edge.count(io.mem_grant)
+//    val refill_count = RegEnable(io.mem_grant.bits.source,io.mem_grant.fire & hasData) === io.mem_grant.bits.source
+  val refill_count = RegInit(0.U(1.W))
+    when(io.mem_grant.fire & hasData){
+      refill_count := refill_count + 1.U
+    }
+
+    //  val refill_done = io.mem_grant.fire && (hasData && refill_count === 1.U || !hasData)
   dataBuffer.io.read.valid := false.B
   dataBuffer.io.read.bits := DontCare
   dataBuffer.io.write.valid := false.B

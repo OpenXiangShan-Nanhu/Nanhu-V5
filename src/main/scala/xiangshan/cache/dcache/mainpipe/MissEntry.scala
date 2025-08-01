@@ -148,7 +148,16 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   val full_overwrite = Reg(Bool())
 
-  val (_, _, refill_done, refill_count) = edge.count(io.mem_grant)
+//  val (_, _, refill_done, refill_count) = edge.count(io.mem_grant)
+//  val hasData = RegInit(true.B)
+  val hasData = !req.full_overwrite
+  val isDirty = RegInit(false.B)
+  val refill_count = RegInit(0.U(2.W))
+  val refill_done = Mux(hasData, refill_count === 1.U && io.mem_grant.fire, refill_count === 0.U && io.mem_grant.fire)
+  when(io.mem_grant.fire){
+    refill_count := refill_count + 1.U
+  }
+
   val grant_param = Reg(UInt(TLPermissions.bdWidth.W))
 
   // refill data with store data, this reg will be used to store:
@@ -188,6 +197,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   when (io.miss_req_pipe_reg.alloc && !io.miss_req_pipe_reg.cancel) {
     assert(RegNext(primary_fire), "after 1 cycle of primary_fire, entry will be allocated")
     req_valid := true.B
+    refill_count := 0.U
 
     req := miss_req_pipe_reg_bits.toMissReqWoStoreData()
     req_primary_fire := miss_req_pipe_reg_bits.toMissReqWoStoreData()
@@ -256,8 +266,6 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     }
   }
 
-  val hasData = RegInit(true.B)
-  val isDirty = RegInit(false.B)
   when (io.mem_grant.fire) {
     w_grantfirst := true.B
     grant_param := io.mem_grant.bits.param
@@ -265,15 +273,15 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     when(req.isCMO && io.mem_grant.bits.opcode === TLMessages.CBOAck) {
       w_grantfirst := true.B
       w_grantlast  := true.B
-      hasData      := false.B
+//      hasData      := false.B
     } .elsewhen (edge.hasData(io.mem_grant.bits)) {
       w_grantlast := w_grantlast || refill_done
-      hasData := true.B
+//      hasData := true.B
     }.otherwise {
       // Grant
       assert(full_overwrite)
       w_grantlast := true.B
-      hasData := false.B
+//      hasData := false.B
     }
 
     error := io.mem_grant.bits.denied || io.mem_grant.bits.corrupt || error

@@ -258,7 +258,8 @@ class InterruptFilter extends Module {
 
   val hsIRVecTmp = Mux(
     privState.isModeHS && sstatusSIE || privState < PrivState.ModeHS,
-    hsip & hsie & (~(hideleg.asUInt)).asUInt,
+    // hsip & hsie & (~(hideleg.asUInt)).asUInt,
+    hsip & hsie,
     0.U
   )
 

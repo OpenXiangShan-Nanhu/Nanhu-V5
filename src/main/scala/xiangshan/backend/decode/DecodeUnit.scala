@@ -782,7 +782,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     XSTrapDecode.table ++
     CBODecode.table ++
     SvinvalDecode.table ++
-    HypervisorDecode.table ++
+    // HypervisorDecode.table ++
     VecDecoder.table ++
     ZicondDecode.table ++
     ZimopDecode.table

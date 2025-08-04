@@ -1733,15 +1733,18 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val perfBlock     = Seq(("ldDeqCount", ldDeqCount),
                           ("stDeqCount", stDeqCount))
   // let index = 0 be no event
-  val allPerfEvents = Seq(("noEvent", 0.U)) ++ perfFromUnits ++ perfFromPTW ++ perfBlock
+  val allPerfEvents = perfFromUnits ++ perfFromPTW ++ perfBlock
+  val globalPerfEvents = allPerfEvents.zipWithIndex.map { case ((name, cnt), i) =>
+    (name, PerfEvent(cnt, Cat(2.U(2.W), i.U(8.W))))
+  }
 
   if (printEventCoding) {
     for (((name, inc), i) <- allPerfEvents.zipWithIndex) {
-      println("MemBlock perfEvents Set", name, inc, i)
+      println("MemBlock perfEvents Set", name, inc, i + (2<<8))
     }
   }
 
-  val allPerfInc = allPerfEvents.map(_._2.asTypeOf(new PerfEvent))
+  val allPerfInc = globalPerfEvents.map(_._2)
   val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
   generatePerfEvent()
   private val cg = ClockGate.getTop

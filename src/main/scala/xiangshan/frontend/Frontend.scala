@@ -383,10 +383,12 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   val csrevents = pfevent.io.hpmevent.take(8)
 
   val perfFromUnits = Seq(ifu, ibuffer, icache, ftq, bpu).flatMap(_.getPerfEvents)
-  val perfFromIO    = Seq()
-  val perfBlock     = Seq()
+
   // let index = 0 be no event
-  val allPerfEvents = Seq(("noEvent", 0.U)) ++ perfFromUnits ++ perfFromIO ++ perfBlock
+  val allPerfEvents = Seq(("noEvent", 0.U)) ++ perfFromUnits
+  val globalPerfEvents = allPerfEvents.zipWithIndex.map { case ((name, cnt), i) =>
+    (name, PerfEvent(cnt, Cat(0.U(2.W), i.U(8.W))))
+  }
 
   if (printEventCoding) {
     for (((name, inc), i) <- allPerfEvents.zipWithIndex) {
@@ -394,7 +396,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
     }
   }
 
-  val allPerfInc = allPerfEvents.map(_._2.asTypeOf(new PerfEvent))
+  val allPerfInc = globalPerfEvents.map(_._2)
   override val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
   generatePerfEvent()
 

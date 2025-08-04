@@ -752,16 +752,18 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
 
   val perfBackend  = Seq()
   // let index = 0 be no event
-  val allPerfEvents = Seq(("noEvent", 0.U)) ++ ctrlBlockPerf ++ intSchedulerPerf ++ vecSchedulerPerf ++ memSchedulerPerf ++ perfBackend
-
+  val allPerfEvents = ctrlBlockPerf ++ intSchedulerPerf ++ vecSchedulerPerf ++ memSchedulerPerf ++ perfBackend
+  val globalPerfEvents = allPerfEvents.zipWithIndex.map { case ((name, cnt), i) =>
+    (name, PerfEvent(cnt, Cat(1.U(2.W), i.U(8.W))))
+  }
 
   if (printEventCoding) {
     for (((name, inc), i) <- allPerfEvents.zipWithIndex) {
-      println("backend perfEvents Set", name, inc, i)
+      println("backend perfEvents Set", name, inc, i + (1<<8))
     }
   }
 
-  val allPerfInc = allPerfEvents.map(_._2.asTypeOf(new PerfEvent))
+  val allPerfInc = globalPerfEvents.map(_._2)
   val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
   csrio.perf.perfEventsBackend := VecInit(perfEvents.map(_._2.asTypeOf(new PerfEvent)))
   generatePerfEvent()

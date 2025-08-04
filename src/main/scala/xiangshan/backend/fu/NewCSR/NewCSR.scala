@@ -1245,7 +1245,8 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   val hcEvents = Wire(Vec(numPCntHc * coreParams.L2NBanks, new PerfEvent))
   for (i <- 0 until numPCntHc * coreParams.L2NBanks) {
-    hcEvents(i) := io.perf.perfEventsHc(i)
+    hcEvents(i).value := io.perf.perfEventsHc(i).value
+    hcEvents(i).id    := Cat(3.U(2.W), i.U(8.W))
   }
 
   val hpmHc = HPerfMonitor(csrevents, hcEvents)

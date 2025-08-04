@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import freechips.rocketchip.util._
 import org.chipsalliance.cde.config.Parameters
-import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRRWField => RW, CSRRWField => RO}
+import xiangshan.backend.fu.NewCSR.CSRDefines.{CSRRWField => RW, CSRROField => RO}
 import xiangshan.HasXSParameter
 
 import scala.collection.immutable.SeqMap

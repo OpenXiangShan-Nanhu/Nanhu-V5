@@ -189,18 +189,18 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   }
   val isBranch = VecInit(io.fromRename(0).map(req =>
     // cover auipc (a fake branch)
-    !req.bits.preDecodeInfo.notCFI || FuType.isJump(req.bits.fuType)
+    (!req.bits.preDecodeInfo.notCFI || FuType.isJump(req.bits.fuType)) && req.valid
   ))
-  val isFp = VecInit(io.fromRename(0).map(req => FuType.isFArith(req.bits.fuType)))
-  val isVec     = VecInit(io.fromRename(0).map(req => FuType.isVArith (req.bits.fuType) ||
-                                                  FuType.isVsetRvfWvf(req.bits.fuType)))
-  val isMem    = VecInit(io.fromRename(0).map(req => FuType.isMem(req.bits.fuType) ||
-                                                  FuType.isVls (req.bits.fuType)))
-  val isLs     = VecInit(io.fromRename(0).map(req => FuType.isLoadStore(req.bits.fuType)))
-  val isVls    = VecInit(io.fromRename(0).map(req => FuType.isVls (req.bits.fuType)))
-  val isStore  = VecInit(io.fromRename(0).map(req => FuType.isStore(req.bits.fuType)))
-  val isVStore = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType)))
-  val isAMO    = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType)))
+  val isFp = VecInit(io.fromRename(0).map(req => FuType.isFArith(req.bits.fuType) && req.valid))
+  val isVec     = VecInit(io.fromRename(0).map(req => (FuType.isVArith (req.bits.fuType) ||
+                                                  FuType.isVsetRvfWvf(req.bits.fuType)) && req.valid))
+  val isMem    = VecInit(io.fromRename(0).map(req => (FuType.isMem(req.bits.fuType) ||
+                                                  FuType.isVls (req.bits.fuType)) && req.valid))
+  val isLs     = VecInit(io.fromRename(0).map(req => FuType.isLoadStore(req.bits.fuType) && req.valid))
+  val isVls    = VecInit(io.fromRename(0).map(req => FuType.isVls (req.bits.fuType) && req.valid))
+  val isStore  = VecInit(io.fromRename(0).map(req => FuType.isStore(req.bits.fuType) && req.valid))
+  val isVStore = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType) && req.valid))
+  val isAMO    = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType) && req.valid))
   val isCmo = VecInit(io.fromRename(0).map(req => req.valid && (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
   val isBlockBackward  = VecInit(io.fromRename(0).map(x => x.valid && x.bits.blockBackward))
   val isWaitForward    = VecInit(io.fromRename(0).map(x => x.valid && x.bits.waitForward))
@@ -342,7 +342,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
 
   for (i <- 0 until RenameWidth) {
     if (i > 0) {
-      currentCycleNeedBlockVec(i) := hasValidCmo && isCmo(i) && io.fromRename(0)(i).fire && !VecInit(hasValidException.take(i)).asUInt.orR
+      currentCycleNeedBlockVec(i) := hasValidCmo && isCmo(i) && io.fromRename(0)(i).fire && !hasValidException(i) && !VecInit(hasValidException.take(i)).asUInt.orR
       previousHasLs(i) := VecInit(isMemNotCmo.take(i)).asUInt.orR
     } else {
       currentCycleNeedBlockVec(i) := hasValidCmo && isCmo(i) && io.fromRename(0)(i).fire && !hasValidException(i)
@@ -461,10 +461,10 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   val hasSpecialInstr = Cat((0 until RenameWidth).map(i => isBlockBackward(i))).orR
 
   private val notCmoBlock = previousHasLs.zip(isMemNotCmo).map(x => !x._1 && !x._2)
-  private val canAccept = !hasValidInstr || !hasSpecialInstr && io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && notCmoBlock.reduce(_ || _))
+  private val canAccept = !hasValidInstr || !hasSpecialInstr && io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && notCmoBlock.reduce(_ && _))
 
   val isWaitForwardOrBlockBackward = isWaitForward.asUInt.orR || isBlockBackward.asUInt.orR
-  io.toRenameAllFire := !isWaitForwardOrBlockBackward && io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || (cmoBlockState === s_cmoBlock && notCmoBlock.reduce(_ || _)))
+  io.toRenameAllFire := !isWaitForwardOrBlockBackward && io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || (cmoBlockState === s_cmoBlock && notCmoBlock.reduce(_ && _)))
   for (i <- 0 until RenameWidth) {
     io.fromRename(0)(i).ready := thisCanActualOut(i) && io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || (cmoBlockState === s_cmoBlock && notCmoBlock(i)))
     io.fromRename(1)(i).ready := thisCanActualOut(i) && io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || (cmoBlockState === s_cmoBlock && notCmoBlock(i)))

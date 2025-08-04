@@ -735,8 +735,7 @@ class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
     raddrOh(i) := Mux(id === io.read.bits.rid, 1.B, 0.B) && valid(i)
     freeOh(i) := Mux(id === io.free.bits, 1.B, 0.B) && valid(i)
     (0 until LoadPipelineWidth).map{ j =>
-      forwardOh(j)(i) := Mux(infilght && infilghtId === io.forward(j).bits.rid && infilghtAddr === i.U, true.B,
-      Mux(id === io.forward(j).bits.rid && valid(i), true.B, false.B))
+      forwardOh(j)(i) := Mux(id === io.forward(j).bits.rid && valid(i), true.B, false.B)
     }
     
   })

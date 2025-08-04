@@ -1225,17 +1225,17 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   }
 
 
-//  missQueue.io.mem_grant <> gDQDeqBitsWire
- val isKeyword = missQueue.io.mem_grant.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
+  val isKeyword = bus.d.bits.echo.lift(IsKeywordKey).getOrElse(false.B)
   (0 until LoadPipelineWidth).map(i => {
-    val (_, _, done, _) = edge.count(missQueue.io.mem_grant)
-    when(missQueue.io.mem_grant.bits.opcode === TLMessages.GrantData) {
-      io.lsu.forward_D(i).apply(missQueue.io.mem_grant.valid, missQueue.io.mem_grant.bits.data, missQueue.io.mem_grant.bits.source, isKeyword ^ done)
-   //   io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source,done)
+    val (_, _, done, _) = edge.count(bus.d)
+    when(bus.d.bits.opcode === TLMessages.GrantData) {
+      io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source, isKeyword ^ done)
+      //   io.lsu.forward_D(i).apply(bus.d.valid, bus.d.bits.data, bus.d.bits.source,done)
     }.otherwise {
       io.lsu.forward_D(i).dontCare()
     }
   })
+
   // tl D channel wakeup
   val (_, _, done, _) = edge.count(bus.d)
   when (missQueue.io.mem_grant.bits.opcode === TLMessages.GrantData || missQueue.io.mem_grant.bits.opcode === TLMessages.Grant) {

@@ -375,7 +375,10 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       }
     }
     is(s_cmoBlock){
-      when(io.cmoFinish && (blockStartCnt === 0.U) && (blockEndCnt === 0.U)){
+      when(currentCycleNeedBlock) {
+        cmoBlockState := cmoBlockState
+        blockEndCnt := blockWindow.U
+      }.elsewhen(io.cmoFinish && (blockStartCnt === 0.U) && (blockEndCnt === 0.U)){
         cmoBlockState := s_idle
       }.otherwise{
         cmoBlockState := cmoBlockState

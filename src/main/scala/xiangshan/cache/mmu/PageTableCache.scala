@@ -433,7 +433,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 //    val ramDatas = Wire(l1.io.r.resp.data.cloneType)  //delay 1 cycle from data_resp
     val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
     //    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
-    val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
+//    val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
+    // track when an actual sram read is issued
+    val l1ReadValid = RegNext(l1RegModule.io.ren.get.reduce(_ || _), init = false.B)
+    val data_resp = Mux(l1ReadValid, l1RegModule.io.rdata, ramDatas)
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
     val hVec_delay = RegEnable(hVec_req, stageReq.fire)
     val gVec_delay = RegEnable(gVec_req, stageReq.fire)
@@ -473,9 +476,12 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 
     ridx.suggestName(s"l1_ridx")
     ramDatas.suggestName(s"l1_ramDatas")
+    dontTouch(ramDatas)
     hitVec.suggestName(s"l1_hitVec")
     hitWayData.suggestName(s"l1_hitWayData")
     hitWay.suggestName(s"l1_hitWay")
+    data_resp.suggestName(s"l1_data_resp")
+    dontTouch(data_resp)
 
     when (hit && stageCheck_valid_1cycle) { ptwl1replace.access(genPtwL1SetIdx(check_vpn), hitWay) }
 

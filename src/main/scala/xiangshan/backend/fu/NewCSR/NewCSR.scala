@@ -310,7 +310,8 @@ class NewCSR(implicit val p: Parameters) extends Module
   var csrIsIllegalMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] =
     hypervisorCSRMap ++
     virtualSupervisorCSRMap ++
-    machineLevelCSRIllegalMaps
+    machineLevelCSRIllegalMaps ++
+    unsupprotUnprivCSRMap
 
   val csrMods: Seq[CSRModule[_]] =
     machineLevelCSRMods ++

@@ -204,6 +204,16 @@ trait Unprivileged { self: NewCSR with MachineLevel with SupervisorLevel =>
     CSRs.instret -> (instret.w        -> instret.rdata),
   ) ++ hpmcounters.map(counter => (counter.addr -> (counter.w -> counter.rdata)))
 
+  val unsupprotUnprivCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap(
+    CSRs.vstart -> (vstart.w          -> vstart.rdata),
+    CSRs.vxsat  -> (vcsr.wAliasVxsat  -> vcsr.vxsat),
+    CSRs.vxrm   -> (vcsr.wAlisaVxrm   -> vcsr.vxrm),
+    CSRs.vcsr   -> (vcsr.w            -> vcsr.rdata),
+    CSRs.vl     -> (vl.w              -> vl.rdata),
+    CSRs.vtype  -> (vtype.w           -> vtype.rdata),
+    CSRs.vlenb  -> (vlenb.w           -> vlenb.rdata),
+  )
+
   val unprivilegedCSRMods: Seq[CSRModule[_]] = Seq(
     fcsr,
     vcsr,

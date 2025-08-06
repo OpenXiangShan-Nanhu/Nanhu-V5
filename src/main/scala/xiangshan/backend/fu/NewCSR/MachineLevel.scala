@@ -444,6 +444,8 @@ trait MachineLevel { self: NewCSR =>
 
   val machineLevelCSRIllegalMaps: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap(
     CSRs.mvip     -> (mvip.w              -> mvip.rdata),
+    CSRs.mtval2     -> (mtval2.w              -> mtval2.rdata),
+    CSRs.mtinst     -> (mtinst.w              -> mtinst.rdata),
   )
 
   val machineLevelCSRMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] = SeqMap.from(

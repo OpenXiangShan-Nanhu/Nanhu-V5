@@ -441,8 +441,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       wayData.entries.hit(delay_vpn, io.csr_dup(1).satp.asid, io.csr_dup(1).vsatp.asid, io.csr_dup(1).hgatp.vmid, ignoreID = g, s2xlate = delay_h) && v && (delay_h === h)})
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire)
-    val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle)
+    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
 
     //if(hasMbist){
     //  val mbistSramPortsL1 = mbistPlL1.map(_.toSRAM)
@@ -459,7 +459,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     //  }
     //}
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
+    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hit = ParallelOR(hitVec)

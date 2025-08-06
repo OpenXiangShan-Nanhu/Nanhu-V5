@@ -441,9 +441,9 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
     //    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
     val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
-    val vVec_delay = RegEnable(vVec_req, stageDelay_valid_1cycle)
-    val hVec_delay = RegEnable(hVec_req, stageDelay_valid_1cycle)
-    val gVec_delay = RegEnable(gVec_req, stageDelay_valid_1cycle)
+    val vVec_delay = RegEnable(vVec_req, stageReq.fire)
+    val hVec_delay = RegEnable(hVec_req, stageReq.fire)
+    val gVec_delay = RegEnable(gVec_req, stageReq.fire)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(gVec_delay.asBools).zip(hVec_delay).map { case (((wayData, v), g), h) =>
       wayData.entries.hit(delay_vpn, io.csr_dup(1).satp.asid, io.csr_dup(1).vsatp.asid, io.csr_dup(1).hgatp.vmid, ignoreID = g, s2xlate = delay_h) && v && (delay_h === h)})
     // check hit and ecc
@@ -609,7 +609,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   check_res.sp.apply(spHit, spPre, spHitData.ppn, spHitData.pbmt, spHitPerm, false.B, spHitLevel, spValid)
 
   val resp_res = Reg(new PageCacheRespBundle)
-  when (stageCheck_valid_1cycle) { resp_res := check_res }
+  when (stageCheck(1).fire) { resp_res := check_res }
 
   // stageResp bypass
   val bypassed = if (EnableSv48) Wire(Vec(4, Bool())) else Wire(Vec(3, Bool()))

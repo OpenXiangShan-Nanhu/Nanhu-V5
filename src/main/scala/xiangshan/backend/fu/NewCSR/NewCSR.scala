@@ -307,6 +307,11 @@ class NewCSR(implicit val p: Parameters) extends Module
     pmaCSRMap ++
     aiaCSRMap
 
+  var csrIsIllegalMap: SeqMap[Int, (CSRAddrWriteBundle[_], UInt)] =
+    hypervisorCSRMap ++
+    virtualSupervisorCSRMap ++
+    machineLevelCSRIllegalMaps
+
   val csrMods: Seq[CSRModule[_]] =
     machineLevelCSRMods ++
     supervisorLevelCSRMods ++
@@ -987,7 +992,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   private val needTargetUpdate = mnretEvent.out.targetPc.valid || mretEvent.out.targetPc.valid || sretEvent.out.targetPc.valid || dretEvent.out.targetPc.valid ||
     trapEntryMEvent.out.targetPc.valid || trapEntryMNEvent.out.targetPc.valid || trapEntryHSEvent.out.targetPc.valid || trapEntryVSEvent.out.targetPc.valid || trapEntryDEvent.out.targetPc.valid
 
-  private val noCSRIllegal = (ren || wen) && Cat(csrRwMap.keys.toSeq.sorted.map(csrAddr => !(addr === csrAddr.U))).andR
+  private val noCSRIllegal = (ren || wen) && (Cat(csrRwMap.keys.toSeq.sorted.map(csrAddr => !(addr === csrAddr.U))).andR || Cat(csrIsIllegalMap.keys.toSeq.sorted.map(csrAddr => (addr === csrAddr.U))).orR)
 
   private val s_idle :: s_waitIMSIC :: s_finish :: Nil = Enum(3)
 

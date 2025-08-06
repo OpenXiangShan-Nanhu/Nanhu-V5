@@ -180,6 +180,13 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val stageCheck = Wire(Vec(2, Decoupled(new PtwCacheReq()))) // check hit & check ecc
   val stageResp = Wire(Decoupled(new PtwCacheReq()))         // deq stage
 
+  stageReq.suggestName(s"stageReq")
+  dontTouch(stageDelay)
+  stageReq.suggestName(s"stageDelay")
+  dontTouch(stageCheck)
+  stageReq.suggestName(s"stageResp")
+  dontTouch(stageResp)
+
   val stageDelay_valid_1cycle = OneCycleValid(stageReq.fire, flush)      // catch ram data
   val stageCheck_valid_1cycle = OneCycleValid(stageDelay(1).fire, flush) // replace & perf counter
   val stageResp_valid_1cycle_dup = Wire(Vec(2, Bool()))
@@ -434,15 +441,15 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
     //    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
     val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
-    val vVec_delay = RegEnable(vVec_req, stageReq.fire)
-    val hVec_delay = RegEnable(hVec_req, stageReq.fire)
-    val gVec_delay = RegEnable(gVec_req, stageReq.fire)
+    val vVec_delay = RegEnable(vVec_req, stageDelay_valid_1cycle)
+    val hVec_delay = RegEnable(hVec_req, stageDelay_valid_1cycle)
+    val gVec_delay = RegEnable(gVec_req, stageDelay_valid_1cycle)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(gVec_delay.asBools).zip(hVec_delay).map { case (((wayData, v), g), h) =>
       wayData.entries.hit(delay_vpn, io.csr_dup(1).satp.asid, io.csr_dup(1).vsatp.asid, io.csr_dup(1).hgatp.vmid, ignoreID = g, s2xlate = delay_h) && v && (delay_h === h)})
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire)
-    val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle)
+    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
 
     //if(hasMbist){
     //  val mbistSramPortsL1 = mbistPlL1.map(_.toSRAM)
@@ -459,7 +466,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     //  }
     //}
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
+    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hit = ParallelOR(hitVec)
@@ -473,6 +480,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 
     ridx.suggestName(s"l1_ridx")
     ramDatas.suggestName(s"l1_ramDatas")
+    dontTouch(ramDatas)
     hitVec.suggestName(s"l1_hitVec")
     hitWayData.suggestName(s"l1_hitWayData")
     hitWay.suggestName(s"l1_hitWay")
@@ -601,7 +609,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   check_res.sp.apply(spHit, spPre, spHitData.ppn, spHitData.pbmt, spHitPerm, false.B, spHitLevel, spValid)
 
   val resp_res = Reg(new PageCacheRespBundle)
-  when (stageCheck(1).fire) { resp_res := check_res }
+  when (stageCheck_valid_1cycle) { resp_res := check_res }
 
   // stageResp bypass
   val bypassed = if (EnableSv48) Wire(Vec(4, Bool())) else Wire(Vec(3, Bool()))

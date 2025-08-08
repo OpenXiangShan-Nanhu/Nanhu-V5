@@ -360,10 +360,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVec).suggestName(s"l3_hitVec")
 
     // synchronize with other entries with RegEnable
-    l3Hit.map(_ := RegEnable(hit, stageDelay(1).fire))
-    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay(1).fire))
-    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay(1).fire))
-    l3Pre.map(_ := RegEnable(hitPre, stageDelay(1).fire))
+    l3Hit.map(_ := RegEnable(hit, stageDelay_valid_1cycle))
+    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay_valid_1cycle))
+    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay_valid_1cycle))
+    l3Pre.map(_ := RegEnable(hitPre, stageDelay_valid_1cycle))
   }
 
   // l2
@@ -398,10 +398,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVec).suggestName(s"l2_hitVec")
 
     // synchronize with other entries with RegEnable
-    hitReg := RegEnable(hit, stageDelay(1).fire)
-    hitPPNReg := RegEnable(hitPPN, stageDelay(1).fire)
-    hitPbmtReg := RegEnable(hitPbmt, stageDelay(1).fire)
-    hitPreReg := RegEnable(hitPre, stageDelay(1).fire)
+    hitReg := RegEnable(hit, stageDelay_valid_1cycle)
+    hitPPNReg := RegEnable(hitPPN, stageDelay_valid_1cycle)
+    hitPbmtReg := RegEnable(hitPbmt, stageDelay_valid_1cycle)
+    hitPreReg := RegEnable(hitPre, stageDelay_valid_1cycle)
 
     (hitReg, hitPPNReg, hitPbmtReg, hitPreReg)
   }
@@ -585,10 +585,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVecT).suggestName(s"sp_hitVecT")
     VecInit(hitVec).suggestName(s"sp_hitVec")
 
-    (RegEnable(hit, stageDelay(1).fire),
-     RegEnable(hitData, stageDelay(1).fire),
-     RegEnable(hitData.prefetch, stageDelay(1).fire),
-     RegEnable(hitData.v, stageDelay(1).fire))
+    (RegEnable(hit, stageDelay_valid_1cycle),
+     RegEnable(hitData, stageDelay_valid_1cycle),
+     RegEnable(hitData.prefetch, stageDelay_valid_1cycle),
+     RegEnable(hitData.v, stageDelay_valid_1cycle))
   }
   val spHitPerm = spHitData.perm.getOrElse(0.U.asTypeOf(new PtePermBundle))
   val spHitLevel = spHitData.level.getOrElse(0.U)
@@ -645,7 +645,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   io.resp.bits.toFsm.l2Hit := resp_res.l2.hit && !stage1Hit && !isOnlyStage2 && !stageResp.bits.isHptwReq
   io.resp.bits.toFsm.l1Hit := resp_res.l1.hit && !stage1Hit && !isOnlyStage2 && !stageResp.bits.isHptwReq
   io.resp.bits.toFsm.ppn   := Mux(resp_res.l1.hit, resp_res.l1.ppn, Mux(resp_res.l2.hit, resp_res.l2.ppn, resp_res.l3.getOrElse(0.U.asTypeOf(new PageCachePerPespBundle)).ppn))
-  io.resp.bits.toFsm.stage1Hit := stage1Hi
+  io.resp.bits.toFsm.stage1Hit := stage1Hit
   io.resp.bits.isHptwReq := stageResp.bits.isHptwReq
   if (EnableSv48) {
     io.resp.bits.toHptw.bypassed := ((hptw_bypassed(0) && !resp_res.l0.hit) || (hptw_bypassed(1) && !resp_res.l1.hit) || (hptw_bypassed(2) && !resp_res.l2.hit) || (hptw_bypassed(3) && !resp_res.l3.get.hit)) && stageResp.bits.isHptwReq

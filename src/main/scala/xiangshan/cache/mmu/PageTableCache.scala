@@ -515,8 +515,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       wayData.entries.hit(delay_vpn, io.csr_dup(0).satp.asid, io.csr_dup(0).vsatp.asid, io.csr_dup(0).hgatp.vmid, s2xlate = delay_h) && v && (delay_h === h)})
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire || mbistAckL0)
-    val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle || mbistAckL0)
+    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
 
     if(hasMbist){
       val mbistSramPortsL0 = mbistPlL0.map(_.toSRAM)
@@ -533,7 +533,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       }
     }
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
+    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hitWayEcc = hitWayEntry.ecc
@@ -645,8 +645,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   io.resp.bits.toFsm.l2Hit := resp_res.l2.hit && !stage1Hit && !isOnlyStage2 && !stageResp.bits.isHptwReq
   io.resp.bits.toFsm.l1Hit := resp_res.l1.hit && !stage1Hit && !isOnlyStage2 && !stageResp.bits.isHptwReq
   io.resp.bits.toFsm.ppn   := Mux(resp_res.l1.hit, resp_res.l1.ppn, Mux(resp_res.l2.hit, resp_res.l2.ppn, resp_res.l3.getOrElse(0.U.asTypeOf(new PageCachePerPespBundle)).ppn))
-  io.resp.bits.toFsm.stage1Hit := stage1Hit
-
+  io.resp.bits.toFsm.stage1Hit := stage1Hi
   io.resp.bits.isHptwReq := stageResp.bits.isHptwReq
   if (EnableSv48) {
     io.resp.bits.toHptw.bypassed := ((hptw_bypassed(0) && !resp_res.l0.hit) || (hptw_bypassed(1) && !resp_res.l1.hit) || (hptw_bypassed(2) && !resp_res.l2.hit) || (hptw_bypassed(3) && !resp_res.l3.get.hit)) && stageResp.bits.isHptwReq

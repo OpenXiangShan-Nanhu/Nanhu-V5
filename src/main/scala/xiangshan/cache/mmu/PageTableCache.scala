@@ -171,7 +171,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val flush = flush_dup(0)
 
   // when refill, refuce to accept new req
-  val rwHarzad = if (sramSinglePort) io.refill.valid else false.B
+  val rwHarzad_base = if (sramSinglePort) io.refill.valid else false.B
+
 
   // handle hand signal and req_info
   // TODO: replace with FlushableQueue
@@ -184,6 +185,12 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val stageCheck_valid_1cycle = OneCycleValid(stageDelay(1).fire, flush) // replace & perf counter
   val stageResp_valid_1cycle_dup = Wire(Vec(2, Bool()))
   stageResp_valid_1cycle_dup.map(_ := OneCycleValid(stageCheck(1).fire, flush))  // ecc flush
+
+  val l1l0ResultBusy = RegInit(false.B)
+  when (stageDelay_valid_1cycle) { l1l0ResultBusy := true.B }
+  when (stageDelay(1).fire)      { l1l0ResultBusy := false.B }
+  when (flush)                   { l1l0ResultBusy := false.B }
+  val rwHarzad = rwHarzad_base || l1l0ResultBusy
 
   stageReq <> io.req
   PipelineConnect(stageReq, stageDelay(0), stageDelay(1).ready, flush, rwHarzad)

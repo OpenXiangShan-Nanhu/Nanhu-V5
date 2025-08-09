@@ -171,7 +171,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val flush = flush_dup(0)
 
   // when refill, refuce to accept new req
-  val rwHarzad = if (sramSinglePort) io.refill.valid else false.B
+  val rwHarzad_base = if (sramSinglePort) io.refill.valid else false.B
 
   // handle hand signal and req_info
   // TODO: replace with FlushableQueue
@@ -184,6 +184,13 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val stageCheck_valid_1cycle = OneCycleValid(stageDelay(1).fire, flush) // replace & perf counter
   val stageResp_valid_1cycle_dup = Wire(Vec(2, Bool()))
   stageResp_valid_1cycle_dup.map(_ := OneCycleValid(stageCheck(1).fire, flush))  // ecc flush
+
+  //No new requests are allowed to enter before stageDelay(1).fire is triggered
+  val l1l0ResultBusy = RegInit(false.B)
+  when (stageDelay_valid_1cycle) { l1l0ResultBusy := true.B }
+  when (stageDelay(1).fire)      { l1l0ResultBusy := false.B }
+  when (flush)                   { l1l0ResultBusy := false.B }
+  val rwHarzad = rwHarzad_base || l1l0ResultBusy
 
   stageReq <> io.req
   PipelineConnect(stageReq, stageDelay(0), stageDelay(1).ready, flush, rwHarzad)
@@ -360,10 +367,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVec).suggestName(s"l3_hitVec")
 
     // synchronize with other entries with RegEnable
-    l3Hit.map(_ := RegEnable(hit, stageDelay(1).fire))
-    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay(1).fire))
-    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay(1).fire))
-    l3Pre.map(_ := RegEnable(hitPre, stageDelay(1).fire))
+    l3Hit.map(_ := RegEnable(hit, stageDelay_valid_1cycle))
+    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay_valid_1cycle))
+    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay_valid_1cycle))
+    l3Pre.map(_ := RegEnable(hitPre, stageDelay_valid_1cycle))
   }
 
   // l2
@@ -398,10 +405,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVec).suggestName(s"l2_hitVec")
 
     // synchronize with other entries with RegEnable
-    hitReg := RegEnable(hit, stageDelay(1).fire)
-    hitPPNReg := RegEnable(hitPPN, stageDelay(1).fire)
-    hitPbmtReg := RegEnable(hitPbmt, stageDelay(1).fire)
-    hitPreReg := RegEnable(hitPre, stageDelay(1).fire)
+    hitReg := RegEnable(hit, stageDelay_valid_1cycle)
+    hitPPNReg := RegEnable(hitPPN, stageDelay_valid_1cycle)
+    hitPbmtReg := RegEnable(hitPbmt, stageDelay_valid_1cycle)
+    hitPreReg := RegEnable(hitPre, stageDelay_valid_1cycle)
 
     (hitReg, hitPPNReg, hitPbmtReg, hitPreReg)
   }
@@ -441,8 +448,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       wayData.entries.hit(delay_vpn, io.csr_dup(1).satp.asid, io.csr_dup(1).vsatp.asid, io.csr_dup(1).hgatp.vmid, ignoreID = g, s2xlate = delay_h) && v && (delay_h === h)})
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire)
-    val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle)
+    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
 
     //if(hasMbist){
     //  val mbistSramPortsL1 = mbistPlL1.map(_.toSRAM)
@@ -459,7 +466,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     //  }
     //}
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
+    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hit = ParallelOR(hitVec)
@@ -515,8 +522,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       wayData.entries.hit(delay_vpn, io.csr_dup(0).satp.asid, io.csr_dup(0).vsatp.asid, io.csr_dup(0).hgatp.vmid, s2xlate = delay_h) && v && (delay_h === h)})
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay(1).fire || mbistAckL0)
-    val vVec = RegEnable(vVec_delay, stageDelay(1).fire).asBools
+    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle || mbistAckL0)
+    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
 
     if(hasMbist){
       val mbistSramPortsL0 = mbistPlL0.map(_.toSRAM)
@@ -533,7 +540,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       }
     }
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay(1).fire)
+    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hitWayEcc = hitWayEntry.ecc
@@ -585,10 +592,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVecT).suggestName(s"sp_hitVecT")
     VecInit(hitVec).suggestName(s"sp_hitVec")
 
-    (RegEnable(hit, stageDelay(1).fire),
-     RegEnable(hitData, stageDelay(1).fire),
-     RegEnable(hitData.prefetch, stageDelay(1).fire),
-     RegEnable(hitData.v, stageDelay(1).fire))
+    (RegEnable(hit, stageDelay_valid_1cycle),
+     RegEnable(hitData, stageDelay_valid_1cycle),
+     RegEnable(hitData.prefetch, stageDelay_valid_1cycle),
+     RegEnable(hitData.v, stageDelay_valid_1cycle))
   }
   val spHitPerm = spHitData.perm.getOrElse(0.U.asTypeOf(new PtePermBundle))
   val spHitLevel = spHitData.level.getOrElse(0.U)

@@ -186,11 +186,14 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val stageResp_valid_1cycle_dup = Wire(Vec(2, Bool()))
   stageResp_valid_1cycle_dup.map(_ := OneCycleValid(stageCheck(1).fire, flush))  // ecc flush
 
-  val l1l0ResultBusy = RegInit(false.B)
-  when (stageDelay_valid_1cycle) { l1l0ResultBusy := true.B }
-  when (stageDelay(1).fire)      { l1l0ResultBusy := false.B }
-  when (flush)                   { l1l0ResultBusy := false.B }
-  val rwHarzad = rwHarzad_base || l1l0ResultBusy
+  val s2Pending = stageDelay(1).valid && !stageDelay(1).fire
+  val rwHarzad = rwHarzad_base || s2Pending
+
+  val cap_vpn_S2 = Reg(UInt(vpnLen.W))
+  when (stageDelay_valid_1cycle) { cap_vpn_S2 := stageDelay(0).bits.req_info.vpn }
+  when (stageDelay(1).fire) {
+    XSError(cap_vpn_S2 =/= stageCheck(0).bits.req_info.vpn, "PageCache cross-packet at S2->S3!")
+  }
 
   stageReq <> io.req
   PipelineConnect(stageReq, stageDelay(0), stageDelay(1).ready, flush, rwHarzad)

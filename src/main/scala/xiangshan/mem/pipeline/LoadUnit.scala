@@ -872,6 +872,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val s1_gpaddr_dup_lsu   = Wire(UInt())
   val s1_paddr_dup_dcache = Wire(UInt())
   val s1_exception        = ExceptionNO.selectByFu(s1_out.uop.exceptionVec, LduCfg).asUInt.orR   // af & pf exception were modified below.
+  val s1_prf_w_exception  = s1_in.uop.fuOpType === LSUOpType.prefetch_w && io.tlb.resp.bits.excp(0).af.st
   val s1_tlb_miss         = io.tlb.resp.bits.miss && io.tlb.resp.valid && s1_valid
   val s1_tlb_fast_miss    = io.tlb.resp.bits.fastMiss && io.tlb.resp.valid && s1_valid
   val s1_pbmt             = Mux(io.tlb.resp.valid, io.tlb.resp.bits.pbmt(0), 0.U(2.W))
@@ -898,7 +899,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule
 
   io.dcache.s1_paddr_dup_lsu    <> s1_paddr_dup_lsu
   io.dcache.s1_paddr_dup_dcache <> s1_paddr_dup_dcache
-  io.dcache.s1_kill             := s1_kill || s1_dly_err || s1_tlb_miss || s1_exception
+  io.dcache.s1_kill             := s1_kill || s1_dly_err || s1_tlb_miss || s1_exception || s1_prf_w_exception
   io.dcache.s1_kill_data_read   := s1_kill || s1_dly_err || s1_tlb_fast_miss
 
   when(s1_valid && s1_out.uop.exceptionVec.asUInt.orR){

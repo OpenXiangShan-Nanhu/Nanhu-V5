@@ -801,7 +801,8 @@ class PteBundle(implicit p: Parameters) extends PtwBundle{
   }
 
   def onlyPf(levelUInt: UInt, s2xlate: UInt, pbmte: Bool) = {
-    s2xlate === noS2xlate && isPf(levelUInt, pbmte) && !isAf()
+    val level0NonLeaf = (levelUInt === 0.U) && isNext() // level0 NonLeaf is also pf
+    s2xlate === noS2xlate && (isPf(levelUInt, pbmte) || level0NonLeaf) && !isAf()
   }
 
   override def toPrintable: Printable = {

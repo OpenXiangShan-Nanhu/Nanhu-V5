@@ -288,6 +288,8 @@ trait MachineLevel { self: NewCSR =>
       ))
     }.elsewhen(lcofiReq) {
       reg.LCOFIP := lcofiReq
+    }.otherwise {
+      reg.LCOFIP := reg.LCOFIP
     }
   }).setAddr(CSRs.mip)
 

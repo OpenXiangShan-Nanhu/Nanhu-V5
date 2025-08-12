@@ -46,6 +46,8 @@ trait DebugLevel { self: NewCSR =>
     Module(new CSRModule(s"Trigger$i" + s"_Tdata1", new Tdata1Bundle) with HasTriggerBundle {
       when(wen){
         reg := wdata.writeTdata1(canWriteDmode, chainable).asUInt
+      }.otherwise{
+        reg := reg
       }
     })
   )

@@ -953,7 +953,12 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // }
 
   // cmoreq from sq send to MissQueue
-  lsq.io.cmoOpReq <> dcache.io.cmoOpReq
+  // lsq.io.cmoOpReq <> dcache.io.cmoOpReq
+  val cmoOpReqConnectPipe = Module(new PipelineConnectPipe(new MissReq))
+  cmoOpReqConnectPipe.io.in <> lsq.io.cmoOpReq
+  cmoOpReqConnectPipe.io.out <> dcache.io.cmoOpReq
+  cmoOpReqConnectPipe.io.rightOutFire := cmoOpReqConnectPipe.io.out.fire
+  cmoOpReqConnectPipe.io.isFlush := false.B
   // lsq.io.cmoOpResp <> dcache.io.cmoOpResp
 
   // Prefetcher

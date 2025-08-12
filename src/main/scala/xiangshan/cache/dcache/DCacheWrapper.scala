@@ -196,8 +196,8 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   val ProbeReplayDelayCycles = 2
   val ProbeqReplayCountBits = log2Up(ProbeReplayDelayCycles)
 
-  val MissqDataBufferDepth = 2 
-  val nGrantDataEntries = (cfg.nMissEntries - MissqDataBufferDepth) * refillCycles
+  val MissqDataBufferDepth = cfg.nMissEntries
+  val nGrantDataEntries = 0
 
   def set_to_dcache_div(set: UInt) = {
     require(set.getWidth >= DCacheSetBits)
@@ -1167,57 +1167,10 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     }
   }
 
-
-  val grantDataQueue = Module(new SRAMQueue(new GrantDataQueueEntry, entries = (scala.math.pow(2,log2Up(nGrantDataEntries)).toInt + 1), flow = true, pipe = true, singlePort = true,
-    hasMbist = hasMbist , suffix = "_grnt_q"))
-  grantDataQueue.io.enq.valid := false.B
-  grantDataQueue.io.enq.bits := DontCare
-
-  val gDQDeqBitsWire = Wire(DecoupledIO(new TLBundleD(edge.bundle)))
-  gDQDeqBitsWire.valid := grantDataQueue.io.deq.valid
-  gDQDeqBitsWire.bits := grantDataQueue.io.deq.bits.tlDBundle
-  grantDataQueue.io.deq.ready := gDQDeqBitsWire.ready
-
-  val grantDataQueueConnectPipe = Module(new PipelineConnectPipe(new TLBundleD(edge.bundle)))
-  val grantDataQueueLastSource = RegEnable(grantDataQueueConnectPipe.io.out.bits.source,grantDataQueueConnectPipe.io.out.fire)
-  grantDataQueueConnectPipe.io.in <> gDQDeqBitsWire
-  grantDataQueueConnectPipe.io.rightOutFire := grantDataQueueConnectPipe.io.out.fire
-  grantDataQueueConnectPipe.io.isFlush := false.B
-
-  val missGrantHasData = bus.d.bits.opcode === TLMessages.GrantData && bus.d.valid
-  val missQueueHasDataTLD = Wire(ValidIO(new TLBundleD(edge.bundle)))
-  missQueueHasDataTLD.valid := missGrantHasData
-  missQueueHasDataTLD.bits := bus.d.bits
-
-  val missGrantNoData = (bus.d.bits.opcode === TLMessages.Grant || bus.d.bits.opcode === TLMessages.CBOAck) && bus.d.valid
-  val missQueueNoDataTLD = Wire(ValidIO(new TLBundleD(edge.bundle)))
-
-  val missNoDataSel = missQueueNoDataTLD.valid &&
-    (grantDataQueueConnectPipe.io.out.valid && grantDataQueueConnectPipe.io.out.bits.source =/= grantDataQueueLastSource ||
-      !grantDataQueueConnectPipe.io.out.valid)
-
-  missQueueNoDataTLD.valid := missGrantNoData
-  missQueueNoDataTLD.bits := bus.d.bits
-
-  grantDataQueue.io.enq.valid := missQueueHasDataTLD.valid
-  grantDataQueue.io.enq.bits.tlDBundle := missQueueHasDataTLD.bits
-
-  grantDataQueueConnectPipe.io.out.ready := missQueue.io.mem_grant.ready && !missNoDataSel
-
-  missQueue.io.mem_grant.valid := grantDataQueueConnectPipe.io.out.valid || missQueueNoDataTLD.valid
-  missQueue.io.mem_grant.bits := Mux(missNoDataSel, missQueueNoDataTLD.bits, grantDataQueueConnectPipe.io.out.bits)
-
-  dontTouch(missNoDataSel)
-  dontTouch(missQueueHasDataTLD)
-  dontTouch(missQueueNoDataTLD)
-
-
   // in L1DCache, we ony expect Grant[Data] and ReleaseAck
   bus.d.ready := false.B
-  when(bus.d.bits.opcode === TLMessages.GrantData) {
-    bus.d.ready := grantDataQueue.io.enq.ready
-  }.elsewhen(bus.d.bits.opcode === TLMessages.Grant ||  bus.d.bits.opcode === TLMessages.CBOAck){
-    bus.d.ready := missQueue.io.mem_grant.ready && missNoDataSel
+  when(bus.d.bits.opcode === TLMessages.GrantData || bus.d.bits.opcode === TLMessages.Grant ||  bus.d.bits.opcode === TLMessages.CBOAck) {
+    missQueue.io.mem_grant <> bus.d
   }.elsewhen(bus.d.bits.opcode === TLMessages.ReleaseAck) {
     wb.io.mem_grant <> bus.d
   }.otherwise {

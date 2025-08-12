@@ -299,8 +299,8 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
       needWait(i) := hasCmoBeforeMem(i) || (io.dispatchIsInBlock && (isMem(i) && !isMem.take(i).reduce(_ || _)))
     }
 
-    uops(i).waitForward := io.in(i).bits.waitForward && !isNotWaitForwardCsrr(i) || (isMem(i) && needWait(i))
-    uops(i).blockBackward := (io.in(i).bits.blockBackward && !isNotBlockBackwardCsrr(i))
+    uops(i).waitForward := io.in(i).bits.waitForward || (isMem(i) && needWait(i))
+    uops(i).blockBackward := io.in(i).bits.blockBackward
     uops(i).mdpTag := MDPPCFold(io.in(i).bits.pc(VAddrBits - 1, 1), MemPredPCWidth)
 
     // update cf according to waittable result

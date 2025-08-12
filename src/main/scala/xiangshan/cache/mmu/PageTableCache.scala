@@ -290,45 +290,106 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     l0h(set)
   }
 
-  // fifo for l1 ram resp
+  // fifo for l3 l2 l1 l0 sp resp
   class RamRespEntry extends Bundle {
+    val l3_hit   = if (EnableSv48) Some(Bool()) else None
+    val l3_ppn   = if (EnableSv48) Some(UInt(gvpnLen.W)) else None
+    val l3_pbmt  = if (EnableSv48) Some(UInt(ptePbmtLen.W)) else None
+    val l3_pre   = if (EnableSv48) Some(Bool()) else None
+    val l2_hit   = Bool()
+    val l2_ppn   = UInt(gvpnLen.W)
+    val l2_pbmt  = UInt(ptePbmtLen.W)
+    val l2_pre   = Bool()
     val l1_ramDatas = l1RegModule.io.rdata.cloneType
     val l1_vVec = Vec(l2tlbParams.l1nWays, Bool())
     val l1_hitVec = Vec(l2tlbParams.l1nWays, Bool())
     val l0_ramDatas = l0.io.r.resp.data.cloneType
     val l0_vVec = Vec(l2tlbParams.l0nWays, Bool())
     val l0_hitVec = Vec(l2tlbParams.l0nWays, Bool())
+    val sp_hit   = Bool()
+    val sp_ppn   = UInt(gvpnLen.W)
+    val sp_pbmt  = UInt(ptePbmtLen.W)
+    val sp_perm  = new PtePermBundle()
+    val sp_pre   = Bool()
+    val sp_level = UInt(2.W)
+    val sp_valid = Bool()
     val id = UInt(3.W)
   }
-  val respFifo = withReset((reset.asBool || RegNext(flush, init=false.B)).asAsyncReset) {
-    Module(new Queue(new RamRespEntry, 4))
-  }
+  val respFifo = Module(new Queue(new RamRespEntry, 4, hasFlush = true))
+  respFifo.io.flush.get := flush
 
-
+  val l3HitEnq   = if (EnableSv48) Some(Wire(Bool())) else None; l3HitEnq.foreach(_ := DontCare)
+  val l3PpnEnq   = if (EnableSv48) Some(Wire(UInt(gvpnLen.W))) else None; l3PpnEnq.foreach(_ := DontCare)
+  val l3PbmtEnq  = if (EnableSv48) Some(Wire(UInt(ptePbmtLen.W))) else None; l3PbmtEnq.foreach(_ := DontCare)
+  val l3PreEnq   = if (EnableSv48) Some(Wire(Bool())) else None; l3PreEnq.foreach(_ := DontCare)
+  val l2HitEnq   = Wire(Bool()); l2HitEnq := DontCare
+  val l2PpnEnq   = Wire(UInt(gvpnLen.W)); l2PpnEnq := DontCare
+  val l2PbmtEnq  = Wire(UInt(ptePbmtLen.W)); l2PbmtEnq := DontCare
+  val l2PreEnq   = Wire(Bool()); l2PreEnq := DontCare
   val l1RamDatasEnq = Wire(l1RegModule.io.rdata.cloneType); l1RamDatasEnq := DontCare
   val l1VVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1VVecEnq := DontCare
   val l1HitVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1HitVecEnq := DontCare
   val l0RamDatasEnq = Wire(l0.io.r.resp.data.cloneType); l0RamDatasEnq := DontCare
   val l0VVecEnq = Wire(Vec(l2tlbParams.l0nWays, Bool())); l0VVecEnq := DontCare
   val l0HitVecEnq = Wire(Vec(l2tlbParams.l0nWays, Bool())); l0HitVecEnq := DontCare
+  val spHitEnq   = Wire(Bool()); spHitEnq := DontCare
+  val spPpnEnq   = Wire(UInt(gvpnLen.W)); spPpnEnq := DontCare
+  val spPbmtEnq  = Wire(UInt(ptePbmtLen.W)); spPbmtEnq := DontCare
+  val spPermEnq  = Wire(new PtePermBundle()); spPermEnq := DontCare
+  val spPreEnq   = Wire(Bool()); spPreEnq := DontCare
+  val spLevelEnq = Wire(UInt(2.W)); spLevelEnq := DontCare
+  val spValidEnq = Wire(Bool()); spValidEnq := DontCare
 
+  //enq logic
+  respFifo.io.enq.bits.l3_hit.foreach(_ := l3HitEnq.get)
+  respFifo.io.enq.bits.l3_ppn.foreach(_ := l3PpnEnq.get)
+  respFifo.io.enq.bits.l3_pbmt.foreach(_ := l3PbmtEnq.get)
+  respFifo.io.enq.bits.l3_pre.foreach(_ := l3PreEnq.get)
+  respFifo.io.enq.bits.l2_hit := l2HitEnq
+  respFifo.io.enq.bits.l2_ppn := l2PpnEnq
+  respFifo.io.enq.bits.l2_pbmt := l2PbmtEnq
+  respFifo.io.enq.bits.l2_pre := l2PreEnq
   respFifo.io.enq.bits.l1_ramDatas := l1RamDatasEnq
   respFifo.io.enq.bits.l1_vVec := l1VVecEnq
   respFifo.io.enq.bits.l1_hitVec := l1HitVecEnq
   respFifo.io.enq.bits.l0_ramDatas := l0RamDatasEnq
   respFifo.io.enq.bits.l0_vVec := l0VVecEnq
   respFifo.io.enq.bits.l0_hitVec := l0HitVecEnq
+  respFifo.io.enq.bits.sp_hit := spHitEnq
+  respFifo.io.enq.bits.sp_ppn := spPpnEnq
+  respFifo.io.enq.bits.sp_pbmt := spPbmtEnq
+  respFifo.io.enq.bits.sp_perm := spPermEnq
+  respFifo.io.enq.bits.sp_pre := spPreEnq
+  respFifo.io.enq.bits.sp_level := spLevelEnq
+  respFifo.io.enq.bits.sp_valid := spValidEnq
   respFifo.io.enq.bits.id := stageDelayId
   respFifo.io.enq.valid := stageDelay_valid_1cycle
 
+  //deq logic
   val fifoDeq = respFifo.io.deq
+  //when check fire,deq
   fifoDeq.ready := stageCheck(0).fire
+  val fifoL3Hit = if (EnableSv48) Some(fifoDeq.bits.l3_hit.get) else None
+  val fifoL3Ppn = if (EnableSv48) Some(fifoDeq.bits.l3_ppn.get) else None
+  val fifoL3Pbmt = if (EnableSv48) Some(fifoDeq.bits.l3_pbmt.get) else None
+  val fifoL3Pre = if (EnableSv48) Some(fifoDeq.bits.l3_pre.get) else None
+  val fifoL2Hit = fifoDeq.bits.l2_hit
+  val fifoL2Ppn = fifoDeq.bits.l2_ppn
+  val fifoL2Pbmt = fifoDeq.bits.l2_pbmt
+  val fifoL2Pre = fifoDeq.bits.l2_pre
   val fifoL1RamDatas = fifoDeq.bits.l1_ramDatas
   val fifoL1vVec = fifoDeq.bits.l1_vVec
   val fifoL1HitVec = fifoDeq.bits.l1_hitVec
   val fifoL0RamDatas = fifoDeq.bits.l0_ramDatas
   val fifoL0vVec = fifoDeq.bits.l0_vVec
   val fifoL0HitVec = fifoDeq.bits.l0_hitVec
+  val fifoSpHit = fifoDeq.bits.sp_hit
+  val fifoSpPpn = fifoDeq.bits.sp_ppn
+  val fifoSpPbmt = fifoDeq.bits.sp_pbmt
+  val fifoSpPerm = fifoDeq.bits.sp_perm
+  val fifoSpPre = fifoDeq.bits.sp_pre
+  val fifoSpLevel = fifoDeq.bits.sp_level
+  val fifoSpValid = fifoDeq.bits.sp_valid
 
   when(stageCheck(0).fire){
     XSError(!fifoDeq.valid || fifoDeq.bits.id =/= stageCheck0Id, "ptw cache resp id mismatch")
@@ -386,11 +447,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   ))
 
   // l3
-  val l3Hit = if(EnableSv48) Some(Wire(Bool())) else None
-  //val l3HitPPN = if(EnableSv48) Some(Wire(UInt(ppnLen.W))) else None
-  val l3HitPPN = if(EnableSv48) Some(Wire(UInt(gvpnLen.W))) else None
-  val l3HitPbmt = if(EnableSv48) Some(Wire(UInt(ptePbmtLen.W))) else None
-  val l3Pre = if(EnableSv48) Some(Wire(Bool())) else None
   val ptwl3replace = if(EnableSv48) Some(ReplacementPolicy.fromString(l2tlbParams.l3Replacer, l2tlbParams.l3Size)) else None
   if (EnableSv48) {
     val hitVecT = l3.get.zipWithIndex.map {
@@ -398,12 +454,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
           && l3v.get(i) && h_search === l3h.get(i))
     }
     val hitVec = hitVecT.map(RegEnable(_, stageReq.fire))
-
-    // stageDelay, but check for l3
-    val hitPPN = Mux(stageDelay_valid_1cycle, ParallelPriorityMux(hitVec zip l3.get.map(_.ppn)), l3HitPPN.get)
-    val hitPbmt = Mux(stageDelay_valid_1cycle, ParallelPriorityMux(hitVec zip l3.get.map(_.pbmt)), l3HitPbmt.get)
-    val hitPre = Mux(stageDelay_valid_1cycle, ParallelPriorityMux(hitVec zip l3.get.map(_.prefetch)), l3Pre.get)
-    val hit = Mux(stageDelay_valid_1cycle, ParallelOR(hitVec), l3Hit.get)
+    val hitPPN = ParallelPriorityMux(hitVec zip l3.get.map(_.ppn))
+    val hitPbmt = ParallelPriorityMux(hitVec zip l3.get.map(_.pbmt))
+    val hitPre = ParallelPriorityMux(hitVec zip l3.get.map(_.prefetch))
+    val hit = ParallelOR(hitVec)
 
     when (hit && stageDelay_valid_1cycle) { ptwl3replace.get.access(OHToUInt(hitVec)) }
 
@@ -416,32 +470,25 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVecT).suggestName(s"l3_hitVecT")
     VecInit(hitVec).suggestName(s"l3_hitVec")
 
-    // synchronize with other entries with RegEnable
-    l3Hit.map(_ := RegEnable(hit, stageDelay(1).fire))
-    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay(1).fire))
-    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay(1).fire))
-    l3Pre.map(_ := RegEnable(hitPre, stageDelay(1).fire))
+    l3HitEnq.get := hit
+    l3PpnEnq.get := hitPPN
+    l3PbmtEnq.get := hitPbmt
+    l3PreEnq.get := hitPre
   }
 
   // l2
   val ptwl2replace = ReplacementPolicy.fromString(l2tlbParams.l2Replacer, l2tlbParams.l2Size)
-  val (l2Hit, l2HitPPN, l2HitPbmt, l2Pre) = {
+
+  {
     val hitVecT = l2.zipWithIndex.map {
       case (e, i) => (e.hit(vpn_search, io.csr_dup(2).satp.asid, io.csr_dup(2).vsatp.asid, io.csr_dup(2).hgatp.vmid, ignoreID = l2g(i), s2xlate = h_search)
         && l2v(i) && h_search === l2h(i))
     }
     val hitVec = hitVecT.map(RegEnable(_, stageReq.fire))
-
-    val hitPPNReg = Wire(UInt())
-    val hitPbmtReg = Wire(UInt())
-    val hitPreReg = Wire(Bool())
-    val hitReg = Wire(Bool())
-
-    // stageDelay, but check for l2
-    val hitPPN = Mux(stageDelay_valid_1cycle, ParallelPriorityMux(hitVec zip l2.map(_.ppn)), hitPPNReg)
-    val hitPbmt = Mux(stageDelay_valid_1cycle, ParallelPriorityMux(hitVec zip l2.map(_.pbmt)), hitPbmtReg)
-    val hitPre = Mux(stageDelay_valid_1cycle, ParallelPriorityMux(hitVec zip l2.map(_.prefetch)), hitPreReg)
-    val hit = Mux(stageDelay_valid_1cycle, ParallelOR(hitVec), hitReg)
+    val hitPPN = ParallelPriorityMux(hitVec zip l2.map(_.ppn))
+    val hitPbmt = ParallelPriorityMux(hitVec zip l2.map(_.pbmt))
+    val hitPre = ParallelPriorityMux(hitVec zip l2.map(_.prefetch))
+    val hit = ParallelOR(hitVec)
 
     when (hit && stageDelay_valid_1cycle) { ptwl2replace.access(OHToUInt(hitVec)) }
 
@@ -454,13 +501,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVecT).suggestName(s"l2_hitVecT")
     VecInit(hitVec).suggestName(s"l2_hitVec")
 
-    // synchronize with other entries with RegEnable
-    hitReg := RegEnable(hit, stageDelay(1).fire)
-    hitPPNReg := RegEnable(hitPPN, stageDelay(1).fire)
-    hitPbmtReg := RegEnable(hitPbmt, stageDelay(1).fire)
-    hitPreReg := RegEnable(hitPre, stageDelay(1).fire)
-
-    (hitReg, hitPPNReg, hitPbmtReg, hitPreReg)
+    l2HitEnq := hit
+    l2PpnEnq := hitPPN
+    l2PbmtEnq := hitPbmt
+    l2PreEnq := hitPre
   }
 
   // l1
@@ -487,10 +531,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       onlyStage2 -> onlyStage2
     ))
 
-//    val ramDatas = Wire(l1.io.r.resp.data.cloneType)  //delay 1 cycle from data_resp
-//    val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
-    //    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
-//    val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
     val ramDatas_wire = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
     val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas_wire)
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
@@ -641,7 +681,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 
   // super page
   val spreplace = ReplacementPolicy.fromString(l2tlbParams.spReplacer, l2tlbParams.spSize)
-  val (spHit, spHitData, spPre, spValid) = {
+
+  {
     val hitVecT = sp.zipWithIndex.map { case (e, i) => e.hit(vpn_search, io.csr_dup(0).satp.asid, io.csr_dup(0).vsatp.asid, io.csr_dup(0).hgatp.vmid, s2xlate = h_search) && spv(i) && (sph(i) === h_search) }
     val hitVec = hitVecT.map(RegEnable(_, stageReq.fire))
     val hitData = ParallelPriorityMux(hitVec zip sp)
@@ -657,20 +698,21 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVecT).suggestName(s"sp_hitVecT")
     VecInit(hitVec).suggestName(s"sp_hitVec")
 
-    (RegEnable(hit, stageDelay(1).fire),
-     RegEnable(hitData, stageDelay(1).fire),
-     RegEnable(hitData.prefetch, stageDelay(1).fire),
-     RegEnable(hitData.v, stageDelay(1).fire))
+    spHitEnq   := hit
+    spPpnEnq   := hitData.ppn
+    spPbmtEnq  := hitData.pbmt
+    spPermEnq  := hitData.perm.getOrElse(0.U.asTypeOf(new PtePermBundle))
+    spPreEnq   := hitData.prefetch
+    spLevelEnq := hitData.level.getOrElse(0.U)
+    spValidEnq := hitData.v
   }
-  val spHitPerm = spHitData.perm.getOrElse(0.U.asTypeOf(new PtePermBundle))
-  val spHitLevel = spHitData.level.getOrElse(0.U)
 
   val check_res = Wire(new PageCacheRespBundle)
-  check_res.l3.map(_.apply(l3Hit.get, l3Pre.get, l3HitPPN.get))
-  check_res.l2.apply(l2Hit, l2Pre, l2HitPPN, l2HitPbmt)
+  check_res.l3.map(_.apply(fifoL3Hit.get, fifoL3Pre.get, fifoL3Ppn.get))
+  check_res.l2.apply(fifoL2Hit, fifoL2Pre, fifoL2Ppn, fifoL2Pbmt)
   check_res.l1.apply(l1Hit, l1Pre, l1HitPPN, l1HitPbmt, ecc = l1eccError)
   check_res.l0.apply(l0Hit, l0Pre, l0HitPPN, l0HitPbmt, l0HitPerm, l0eccError, valid = l0HitValid)
-  check_res.sp.apply(spHit, spPre, spHitData.ppn, spHitData.pbmt, spHitPerm, false.B, spHitLevel, spValid)
+  check_res.sp.apply(fifoSpHit, fifoSpPre, fifoSpPpn, fifoSpPbmt, fifoSpPerm, false.B, fifoSpLevel, fifoSpValid)
 
   val resp_res = Reg(new PageCacheRespBundle)
   when (stageCheck(1).fire) { resp_res := check_res }
@@ -1391,11 +1433,11 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
 
   val perfEvents = Seq(
     ("access           ", base_valid_access_0             ),
-    ("l2_hit           ", l2Hit                           ),
+    ("l2_hit           ", fifoL2Hit                           ),
     ("l1_hit           ", l1Hit                           ),
     ("l0_hit           ", l0Hit                           ),
-    ("sp_hit           ", spHit                           ),
-    ("pte_hit          ", l0Hit || spHit                  ),
+    ("sp_hit           ", fifoSpHit                           ),
+    ("pte_hit          ", l0Hit || fifoSpHit                  ),
     ("rwHarzad         ",  io.req.valid && !io.req.ready  ),
     ("out_blocked      ",  io.resp.valid && !io.resp.ready),
   )

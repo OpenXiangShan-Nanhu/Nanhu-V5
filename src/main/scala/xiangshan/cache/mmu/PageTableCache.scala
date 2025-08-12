@@ -186,15 +186,14 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val stageResp_valid_1cycle_dup = Wire(Vec(2, Bool()))
   stageResp_valid_1cycle_dup.map(_ := OneCycleValid(stageCheck(1).fire, flush))  // ecc flush
 
-  val checkBusyReg = RegInit(false.B)
-  when (flush)                      { checkBusyReg := false.B }
-  .elsewhen (stageCheck_valid_1cycle) { checkBusyReg := false.B } //already done
-  .elsewhen (stageDelay_valid_1cycle)  { checkBusyReg := true.B } //result just arrive
+  // request id for matching ram response
+  val reqId = RegInit(0.U(3.W))
+  when(io.req.fire){ reqId := reqId + 1.U }
+  val stageReqId   = RegEnable(reqId, io.req.fire)
+  val stageDelayId = RegEnable(stageReqId, stageReq.fire)
+  val stageCheck0Id = RegEnable(stageDelayId, stageDelay(1).fire)
 
-  val checkBusyThisCycle = stageDelay_valid_1cycle && !stageDelay(1).fire
-  val checkBusyNow = checkBusyReg || checkBusyThisCycle
-  val s2Pending = stageDelay(1).valid && !stageDelay(1).fire
-  val rwHarzad = rwHarzad_base || s2Pending || checkBusyThisCycle
+  val rwHarzad = Wire(Bool())
 
   stageReq <> io.req
   PipelineConnect(stageReq, stageDelay(0), stageDelay(1).ready, flush, rwHarzad)
@@ -290,6 +289,41 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     require(set.getWidth == log2Up(l2tlbParams.l0nSets))
     l0h(set)
   }
+
+  // fifo for l1 ram resp
+  class RamRespEntry extends Bundle {
+    val l1_ramDatas = l1RegModule.io.rdata.cloneType
+    val l1_vVec = Vec(l2tlbParams.l1nWays, Bool())
+    val l1_hitVec = Vec(l2tlbParams.l1nWays, Bool())
+    val id = UInt(3.W)
+  }
+  val respFifo = withReset((reset.asBool || RegNext(flush, init=false.B)).asAsyncReset) {
+    Module(new Queue(new RamRespEntry, 4))
+  }
+
+
+  val l1RamDatasEnq = Wire(l1RegModule.io.rdata.cloneType); l1RamDatasEnq := DontCare
+  val l1VVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1VVecEnq := DontCare
+  val l1HitVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1HitVecEnq := DontCare
+
+  respFifo.io.enq.bits.l1_ramDatas := l1RamDatasEnq
+  respFifo.io.enq.bits.l1_vVec := l1VVecEnq
+  respFifo.io.enq.bits.l1_hitVec := l1HitVecEnq
+  respFifo.io.enq.bits.id := stageDelayId
+  respFifo.io.enq.valid := stageDelay_valid_1cycle
+
+  val fifoDeq = respFifo.io.deq
+  fifoDeq.ready := stageCheck(0).fire
+  val fifoL1RamDatas = fifoDeq.bits.l1_ramDatas
+  val fifoL1vVec = fifoDeq.bits.l1_vVec
+  val fifoL1HitVec = fifoDeq.bits.l1_hitVec
+
+  when(stageCheck(0).fire){
+    XSError(!fifoDeq.valid || fifoDeq.bits.id =/= stageCheck0Id, "ptw cache resp id mismatch")
+  }
+
+  // hazard when fifo full
+  rwHarzad := rwHarzad_base || !respFifo.io.enq.ready
 
   // sp: level 1/2/3 leaf pte of 512GB/1GB/2MB super pages
   val sp = Reg(Vec(l2tlbParams.spSize, new PtwEntry(tagLen = SPTagLen, hasPerm = true, hasLevel = true)))
@@ -423,8 +457,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val ridx = genPtwL1SetIdx(vpn_search)
 //    l1.io.r.req.valid := stageReq.fire
 //    l1.io.r.req.bits.apply(setIdx = ridx)
-    val allowL1Read = stageReq.fire && !s2Pending && !checkBusyNow
-    l1RegModule.io.ren.get.foreach(_ := allowL1Read)
+    l1RegModule.io.ren.get.foreach(_ := stageReq.fire)
     l1RegModule.io.raddr.zipWithIndex.foreach({ case (addr, i) =>
       addr := ridx * l2tlbParams.l1nWays.U + i.U
     })
@@ -443,19 +476,25 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     ))
 
 //    val ramDatas = Wire(l1.io.r.resp.data.cloneType)  //delay 1 cycle from data_resp
-    val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
+//    val ramDatas = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
     //    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL1, l1.io.r.resp.data, ramDatas)
-    val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
+//    val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas)
+    val ramDatas_wire = Wire(l1RegModule.io.rdata.cloneType)  //delay 1 cycle from data_resp
+    val data_resp = Mux(stageDelay_valid_1cycle, l1RegModule.io.rdata, ramDatas_wire)
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
     val hVec_delay = RegEnable(hVec_req, stageReq.fire)
     val gVec_delay = RegEnable(gVec_req, stageReq.fire)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(gVec_delay.asBools).zip(hVec_delay).map { case (((wayData, v), g), h) =>
       wayData.entries.hit(delay_vpn, io.csr_dup(1).satp.asid, io.csr_dup(1).vsatp.asid, io.csr_dup(1).hgatp.vmid, ignoreID = g, s2xlate = delay_h) && v && (delay_h === h)})
+    // enqueue into fifo
+    l1RamDatasEnq := data_resp
+    l1VVecEnq := vVec_delay.asBools
+    l1HitVecEnq := hitVec_delay
+    ramDatas_wire := RegEnable(data_resp, stageDelay_valid_1cycle)
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle)
-    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
-
+    val ramDatas = fifoL1RamDatas
+    val vVec = fifoL1vVec
     //if(hasMbist){
     //  val mbistSramPortsL1 = mbistPlL1.map(_.toSRAM)
     //  val mbistSelectedOHL1 = mbistPlL1.map(_.toSRAM.map(_.selectedOH)).getOrElse(Seq(0.U))
@@ -471,7 +510,7 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     //  }
     //}
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
+    val hitVec = fifoL1HitVec
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hit = ParallelOR(hitVec)
@@ -489,9 +528,9 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     hitWayData.suggestName(s"l1_hitWayData")
     hitWay.suggestName(s"l1_hitWay")
 
-    when (hit && stageCheck_valid_1cycle) { ptwl1replace.access(genPtwL1SetIdx(check_vpn), hitWay) }
+    when (hit && stageCheck(0).fire) { ptwl1replace.access(genPtwL1SetIdx(check_vpn), hitWay) }
 
-    l1AccessPerf.zip(hitVec).map{ case (l, h) => l := h && stageCheck_valid_1cycle }
+    l1AccessPerf.zip(hitVec).map{ case (l, h) => l := h && stageCheck(0).fire }
     XSDebug(stageDelay_valid_1cycle, p"[l1] ridx:0x${Hexadecimal(ridx)}\n")
     for (i <- 0 until l2tlbParams.l1nWays) {
       XSDebug(stageCheck_valid_1cycle, p"[l1] ramDatas(${i.U}) ${ramDatas(i)}  l1v:${vVec(i)}  hit:${hit}\n")

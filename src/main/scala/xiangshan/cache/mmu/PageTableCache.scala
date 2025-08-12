@@ -295,6 +295,9 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val l1_ramDatas = l1RegModule.io.rdata.cloneType
     val l1_vVec = Vec(l2tlbParams.l1nWays, Bool())
     val l1_hitVec = Vec(l2tlbParams.l1nWays, Bool())
+    val l0_ramDatas = l0.io.r.resp.data.cloneType
+    val l0_vVec = Vec(l2tlbParams.l0nWays, Bool())
+    val l0_hitVec = Vec(l2tlbParams.l0nWays, Bool())
     val id = UInt(3.W)
   }
   val respFifo = withReset((reset.asBool || RegNext(flush, init=false.B)).asAsyncReset) {
@@ -305,10 +308,16 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val l1RamDatasEnq = Wire(l1RegModule.io.rdata.cloneType); l1RamDatasEnq := DontCare
   val l1VVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1VVecEnq := DontCare
   val l1HitVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1HitVecEnq := DontCare
+  val l0RamDatasEnq = Wire(l0.io.r.resp.data.cloneType); l0RamDatasEnq := DontCare
+  val l0VVecEnq = Wire(Vec(l2tlbParams.l0nWays, Bool())); l0VVecEnq := DontCare
+  val l0HitVecEnq = Wire(Vec(l2tlbParams.l0nWays, Bool())); l0HitVecEnq := DontCare
 
   respFifo.io.enq.bits.l1_ramDatas := l1RamDatasEnq
   respFifo.io.enq.bits.l1_vVec := l1VVecEnq
   respFifo.io.enq.bits.l1_hitVec := l1HitVecEnq
+  respFifo.io.enq.bits.l0_ramDatas := l0RamDatasEnq
+  respFifo.io.enq.bits.l0_vVec := l0VVecEnq
+  respFifo.io.enq.bits.l0_hitVec := l0HitVecEnq
   respFifo.io.enq.bits.id := stageDelayId
   respFifo.io.enq.valid := stageDelay_valid_1cycle
 
@@ -317,6 +326,9 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val fifoL1RamDatas = fifoDeq.bits.l1_ramDatas
   val fifoL1vVec = fifoDeq.bits.l1_vVec
   val fifoL1HitVec = fifoDeq.bits.l1_hitVec
+  val fifoL0RamDatas = fifoDeq.bits.l0_ramDatas
+  val fifoL0vVec = fifoDeq.bits.l0_vVec
+  val fifoL0HitVec = fifoDeq.bits.l0_hitVec
 
   when(stageCheck(0).fire){
     XSError(!fifoDeq.valid || fifoDeq.bits.id =/= stageCheck0Id, "ptw cache resp id mismatch")
@@ -405,10 +417,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVec).suggestName(s"l3_hitVec")
 
     // synchronize with other entries with RegEnable
-    l3Hit.map(_ := RegEnable(hit, stageDelay_valid_1cycle))
-    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay_valid_1cycle))
-    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay_valid_1cycle))
-    l3Pre.map(_ := RegEnable(hitPre, stageDelay_valid_1cycle))
+    l3Hit.map(_ := RegEnable(hit, stageDelay(1).fire))
+    l3HitPPN.map(_ := RegEnable(hitPPN, stageDelay(1).fire))
+    l3HitPbmt.map(_ := RegEnable(hitPbmt, stageDelay(1).fire))
+    l3Pre.map(_ := RegEnable(hitPre, stageDelay(1).fire))
   }
 
   // l2
@@ -443,10 +455,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVec).suggestName(s"l2_hitVec")
 
     // synchronize with other entries with RegEnable
-    hitReg := RegEnable(hit, stageDelay_valid_1cycle)
-    hitPPNReg := RegEnable(hitPPN, stageDelay_valid_1cycle)
-    hitPbmtReg := RegEnable(hitPbmt, stageDelay_valid_1cycle)
-    hitPreReg := RegEnable(hitPre, stageDelay_valid_1cycle)
+    hitReg := RegEnable(hit, stageDelay(1).fire)
+    hitPPNReg := RegEnable(hitPPN, stageDelay(1).fire)
+    hitPbmtReg := RegEnable(hitPbmt, stageDelay(1).fire)
+    hitPreReg := RegEnable(hitPre, stageDelay(1).fire)
 
     (hitReg, hitPPNReg, hitPbmtReg, hitPreReg)
   }
@@ -528,9 +540,9 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     hitWayData.suggestName(s"l1_hitWayData")
     hitWay.suggestName(s"l1_hitWay")
 
-    when (hit && stageCheck(0).fire) { ptwl1replace.access(genPtwL1SetIdx(check_vpn), hitWay) }
+    when (hit && stageCheck_valid_1cycle) { ptwl1replace.access(genPtwL1SetIdx(check_vpn), hitWay) }
 
-    l1AccessPerf.zip(hitVec).map{ case (l, h) => l := h && stageCheck(0).fire }
+    l1AccessPerf.zip(hitVec).map{ case (l, h) => l := h && stageCheck_valid_1cycle }
     XSDebug(stageDelay_valid_1cycle, p"[l1] ridx:0x${Hexadecimal(ridx)}\n")
     for (i <- 0 until l2tlbParams.l1nWays) {
       XSDebug(stageCheck_valid_1cycle, p"[l1] ramDatas(${i.U}) ${ramDatas(i)}  l1v:${vVec(i)}  hit:${hit}\n")
@@ -558,16 +570,24 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       onlyStage1 -> onlyStage1,
       onlyStage2 -> onlyStage2
     ))
-    val ramDatas = Wire(l0.io.r.resp.data.cloneType)
-    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL0, l0.io.r.resp.data, ramDatas)
+//    val ramDatas = Wire(l0.io.r.resp.data.cloneType)
+//    val data_resp = Mux(stageDelay_valid_1cycle || mbistAckL0, l0.io.r.resp.data, ramDatas)
+    val data_resp = l0.io.r.resp.data
     val vVec_delay = RegEnable(vVec_req, stageReq.fire)
     val hVec_delay = RegEnable(hVec_req, stageReq.fire)
     val hitVec_delay = VecInit(data_resp.zip(vVec_delay.asBools).zip(hVec_delay).map { case ((wayData, v), h) =>
       wayData.entries.hit(delay_vpn, io.csr_dup(0).satp.asid, io.csr_dup(0).vsatp.asid, io.csr_dup(0).hgatp.vmid, s2xlate = delay_h) && v && (delay_h === h)})
+
+    l0RamDatasEnq := data_resp
+    l0VVecEnq := vVec_delay.asBools
+    l0HitVecEnq := hitVec_delay
+
     // check hit and ecc
     val check_vpn = stageCheck(0).bits.req_info.vpn
-    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle || mbistAckL0)
-    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
+//    ramDatas := RegEnable(data_resp, stageDelay_valid_1cycle || mbistAckL0)
+//    val vVec = RegEnable(vVec_delay, stageDelay_valid_1cycle).asBools
+    val ramDatas = fifoL0RamDatas
+    val vVec = fifoL0vVec
 
     if(hasMbist){
       val mbistSramPortsL0 = mbistPlL0.map(_.toSRAM)
@@ -584,7 +604,8 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
       }
     }
 
-    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
+//    val hitVec = RegEnable(hitVec_delay, stageDelay_valid_1cycle)
+    val hitVec = fifoL0HitVec
     val hitWayEntry = ParallelPriorityMux(hitVec zip ramDatas)
     val hitWayData = hitWayEntry.entries
     val hitWayEcc = hitWayEntry.ecc
@@ -636,10 +657,10 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     VecInit(hitVecT).suggestName(s"sp_hitVecT")
     VecInit(hitVec).suggestName(s"sp_hitVec")
 
-    (RegEnable(hit, stageDelay_valid_1cycle),
-     RegEnable(hitData, stageDelay_valid_1cycle),
-     RegEnable(hitData.prefetch, stageDelay_valid_1cycle),
-     RegEnable(hitData.v, stageDelay_valid_1cycle))
+    (RegEnable(hit, stageDelay(1).fire),
+     RegEnable(hitData, stageDelay(1).fire),
+     RegEnable(hitData.prefetch, stageDelay(1).fire),
+     RegEnable(hitData.v, stageDelay(1).fire))
   }
   val spHitPerm = spHitData.perm.getOrElse(0.U.asTypeOf(new PtePermBundle))
   val spHitLevel = spHitData.level.getOrElse(0.U)

@@ -293,10 +293,10 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
 
     if (i == 0) {
       hasCmoBeforeMem(i) := false.B
-      needWait(i) := io.dispatchIsInBlock && isMem(i)
+      needWait(i) := false.B
     } else {
       hasCmoBeforeMem(i) := isMem(i) && isCmo.take(i).reduce(_ || _)
-      needWait(i) := hasCmoBeforeMem(i) || (io.dispatchIsInBlock && (isMem(i) && !isMem.take(i).reduce(_ || _)))
+      needWait(i) := hasCmoBeforeMem(i)
     }
 
     uops(i).waitForward := io.in(i).bits.waitForward || (isMem(i) && needWait(i))

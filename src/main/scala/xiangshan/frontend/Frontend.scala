@@ -77,9 +77,6 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
         val bpWrong = Output(UInt(XLEN.W))
       }
     }
-    val power = new Bundle {
-      val fencei = Input(Bool())
-    }
     val resetInFrontend = Output(Bool())
     val debugTopDown = new Bundle {
       val robHeadVaddr = Flipped(Valid(UInt(VAddrBits.W)))
@@ -190,7 +187,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   icache.io.csr_pf_enable     := RegNext(csrCtrl.l1I_pf_enable)
   icache.io.csr_parity_enable := RegNext(csrCtrl.icache_parity_enable)
 
-  icache.io.fencei := RegNext(io.fencei || io.power.fencei)
+  icache.io.fencei := RegNext(io.fencei)
 
   //IFU-Ibuffer
   ifu.io.toIbuffer    <> ibuffer.io.in

@@ -97,7 +97,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
       val timeout = Output(Bool())
       val flushSb = Input(Bool())
       val sbIsEmpty = Output(Bool())
-      val fencei = Input(Bool())
     }
     val debugTopDown = new Bundle {
       val robTrueCommit = Output(UInt(64.W))
@@ -127,7 +126,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   frontend.io.tlbCsr <> backend.io.frontendTlbCsr
   frontend.io.csrCtrl <> backend.io.frontendCsrCtrl
   frontend.io.fencei <> backend.io.fenceio.fencei
-  frontend.io.power.fencei := io.power.fencei
 
   backend.io.fromTop := memBlock.io.mem_to_ooo.topToBackendBypass
 

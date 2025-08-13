@@ -14,7 +14,7 @@ import xiangshan.AddrTransType
 
 
 class MNretEventOutput extends Bundle with EventUpdatePrivStateOutput with EventOutputBase {
-  val mnstatus  = ValidIO((new MnstatusBundle).addInEvent(_.MNPP, _.MNPV, _.NMIE))
+  val mnstatus  = ValidIO((new MnstatusBundle).addInEvent(_.MNPP, _.NMIE))
   val mstatus   = ValidIO((new MstatusBundle).addInEvent(_.MPRV))
   val targetPc  = ValidIO(new TargetPCBundle)
 }

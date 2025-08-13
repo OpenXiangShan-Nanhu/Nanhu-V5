@@ -692,7 +692,7 @@ class dataBufferReadReq(implicit p: Parameters) extends DCacheBundle {
 class dataBufferWriteReq(implicit p: Parameters) extends DCacheBundle {
   val wdata = UInt(l1BusDataWidth.W)
   val wid = UInt(log2Up(cfg.nMissEntries).W)
-  val wbeat = UInt((blockBytes/beatBytes).W)
+  val wbeat = UInt((log2Up(blockBytes/beatBytes)).W)
   val refill_count = Bool()
 }
 
@@ -716,7 +716,8 @@ class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
     output.asUInt
   }
 
-  val data = Reg(Vec(numEntries, Vec(CacheLineSize/l1BusDataWidth, UInt(l1BusDataWidth.W))))
+//  val data = Reg(Vec(numEntries, Vec(CacheLineSize/l1BusDataWidth, UInt(l1BusDataWidth.W))))
+  val data = Mem(numEntries, Vec(CacheLineSize/l1BusDataWidth, UInt(l1BusDataWidth.W)))
   val valid = RegInit(VecInit(List.fill(numEntries)(false.B)))
   val id = RegInit(VecInit(List.fill(numEntries)(0.U(log2Up(cfg.nMissEntries).W))))
   val waddr = OHToUInt(getFirstOneOH(VecInit(valid.map(!_)).asUInt))
@@ -726,16 +727,16 @@ class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   val freeAddr = WireInit(0.U(log2Up(numEntries).W))
   val forwardOh =VecInit(Seq.fill(LoadPipelineWidth)(VecInit(Seq.fill(numEntries)(false.B))))
   val forwardAddr = VecInit(Seq.fill(LoadPipelineWidth)(0.U(log2Up(numEntries).W)))
-  val infilghtAddr = RegInit(0.U(log2Up(numEntries).W))
-  val infilght = RegInit(false.B)
-  val infilghtId = Reg(UInt(log2Up(cfg.nMissEntries).W))
+  val inflightAddr = RegInit(0.U(log2Up(numEntries).W))
+  val inflight = RegInit(false.B)
+  val inflightId = Reg(UInt(log2Up(cfg.nMissEntries).W))
   dontTouch(raddrOh)
 
   id.zipWithIndex.foreach({ case (id, i) =>
     raddrOh(i) := Mux(id === io.read.bits.rid, 1.B, 0.B) && valid(i)
     freeOh(i) := Mux(id === io.free.bits, 1.B, 0.B) && valid(i)
     (0 until LoadPipelineWidth).map { j =>
-      forwardOh(j)(i) := Mux(infilght && infilghtId === io.forward(j).bits.rid && infilghtAddr === i.U, true.B,
+      forwardOh(j)(i) := Mux(inflight && inflightId === io.forward(j).bits.rid && inflightAddr === i.U, true.B,
         Mux(id === io.forward(j).bits.rid && valid(i), true.B, false.B))
     }
 
@@ -755,7 +756,7 @@ class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
     valid(freeAddr) := false.B
     assert(PopCount(freeOh.asUInt) <= 1.U)
   }
-  
+
   (0 until LoadPipelineWidth).map({ i =>
     io.forwardData := DontCare
   })
@@ -768,7 +769,7 @@ class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
       val reshapedData = VecInit(Seq.tabulate(8)(j => flatData(((j + 1) * 64) - 1, j * 64)))
       io.forwardData(i) := reshapedData
       assert(PopCount(forwardOh(i).asUInt) <= 1.U)
-    }     
+    }
   }
 
   io.full := valid.reduce(_ && _)
@@ -776,15 +777,24 @@ class DataBuffer(numEntries: Int)(implicit p: Parameters) extends DCacheModule {
   when(io.write.valid){
     assert(!io.full)
     when(io.write.bits.refill_count === 0.U){
-      infilghtAddr := waddr
-      infilght := true.B
-      infilghtId := io.write.bits.wid
-      data(waddr)(io.write.bits.wbeat) := io.write.bits.wdata 
+      inflightAddr := waddr
+      inflight := true.B
+      inflightId := io.write.bits.wid
     }.otherwise{
-      id(infilghtAddr) := io.write.bits.wid
-      valid(infilghtAddr) := true.B
-      data(infilghtAddr)(io.write.bits.wbeat) := io.write.bits.wdata
-      infilght := false.B
+      id(inflightAddr) := io.write.bits.wid
+      valid(inflightAddr) := true.B
+      inflight := false.B
     }
   }
+
+  val wd = VecInit(Seq.fill(CacheLineSize/l1BusDataWidth)(io.write.bits.wdata))
+  val wa = Mux(io.write.bits.refill_count === 0.U, waddr, inflightAddr)
+  val wm = (1.U << io.write.bits.wbeat).asBools
+
+  when(io.write.valid){
+    data.write(wa,wd,wm)
+  }
+
+
+
 }

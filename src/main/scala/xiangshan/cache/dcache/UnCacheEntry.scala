@@ -120,7 +120,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
 
   //  Response
   when (state === s_send_resp) {
-    io.resp.valid := !req.nc
+    io.resp.valid := !(req.nc && storeReq)
     io.resp.bits.data   := resp_data
     // meta data should go with the response
     io.resp.bits.id     := req.id

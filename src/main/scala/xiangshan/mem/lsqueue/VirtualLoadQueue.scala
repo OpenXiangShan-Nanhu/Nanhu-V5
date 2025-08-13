@@ -312,7 +312,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
 
   (0 until VirtualLoadQueueSize).map(i => {
     val bypassMatch = VecInit((0 until LoadPipelineWidth).map(j => lastCanAccept(j) && lastAllocIndexOH(j)(i) && lastReleasePAddrMatch(j))).asUInt.orR
-    when (RegNext(((paddrModule.io.releaseMmask.takeRight(1)(0)(i) && release1Cycle.valid) || bypassMatch) && allocated(i))) {
+    when (RegNext(((paddrModule.io.releaseMmask.takeRight(1)(0)(i) && release1Cycle.valid && addrvalid(i)) || bypassMatch) && allocated(i))) {
       released(i) := true.B
     }
   })

@@ -441,7 +441,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
   s2_out.mmio   := (s2_mmioORnc_region || s2_isCboM) && !s2_exception
   s2_out.nc     := s2_nc
-  s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) && !s2_mmioORnc_region ||
+  s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_mmioORnc_region ||
                                                 s2_pmp.st ||
                                                 (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception

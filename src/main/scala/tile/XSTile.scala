@@ -121,7 +121,6 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     // use for linknan
     core.module.io.power.wfiCtrRst := false.B
     core.module.io.power.flushSb := false.B
-    core.module.io.power.fencei := false.B
 
     l2top.module.io.hartId.fromTile := io.hartId
     core.module.io.hartId := l2top.module.io.hartId.toCore

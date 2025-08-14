@@ -1579,26 +1579,26 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffFpCSRState.coreid := hartId
     diffFpCSRState.fcsr := fcsr.rdata.asUInt
 
-    val diffHCSRState = DifftestModule(new DiffHCSRState)
-    CoreGateway.addOne(diffHCSRState, 0, "difftestHCSRState")
-    diffHCSRState.coreid      := hartId
-    diffHCSRState.virtMode    := privState.V.asBool
-    diffHCSRState.mtval2      := mtval2.rdata.asUInt
-    diffHCSRState.mtinst      := mtinst.rdata.asUInt
-    diffHCSRState.hstatus     := hstatus.rdata.asUInt
-    diffHCSRState.hideleg     := hideleg.rdata.asUInt
-    diffHCSRState.hedeleg     := hedeleg.rdata.asUInt
-    diffHCSRState.hcounteren  := hcounteren.rdata.asUInt
-    diffHCSRState.htval       := htval.rdata.asUInt
-    diffHCSRState.htinst      := htinst.rdata.asUInt
-    diffHCSRState.hgatp       := hgatp.rdata.asUInt
-    diffHCSRState.vsstatus    := vsstatus.rdata.asUInt
-    diffHCSRState.vstvec      := vstvec.rdata.asUInt
-    diffHCSRState.vsepc       := vsepc.rdata.asUInt
-    diffHCSRState.vscause     := vscause.rdata.asUInt
-    diffHCSRState.vstval      := vstval.rdata.asUInt
-    diffHCSRState.vsatp       := vsatp.rdata.asUInt
-    diffHCSRState.vsscratch   := vsscratch.rdata.asUInt
+    // val diffHCSRState = DifftestModule(new DiffHCSRState)
+    // CoreGateway.addOne(diffHCSRState, 0, "difftestHCSRState")
+    // diffHCSRState.coreid      := hartId
+    // diffHCSRState.virtMode    := privState.V.asBool
+    // diffHCSRState.mtval2      := mtval2.rdata.asUInt
+    // diffHCSRState.mtinst      := mtinst.rdata.asUInt
+    // diffHCSRState.hstatus     := hstatus.rdata.asUInt
+    // diffHCSRState.hideleg     := hideleg.rdata.asUInt
+    // diffHCSRState.hedeleg     := hedeleg.rdata.asUInt
+    // diffHCSRState.hcounteren  := hcounteren.rdata.asUInt
+    // diffHCSRState.htval       := htval.rdata.asUInt
+    // diffHCSRState.htinst      := htinst.rdata.asUInt
+    // diffHCSRState.hgatp       := hgatp.rdata.asUInt
+    // diffHCSRState.vsstatus    := vsstatus.rdata.asUInt
+    // diffHCSRState.vstvec      := vstvec.rdata.asUInt
+    // diffHCSRState.vsepc       := vsepc.rdata.asUInt
+    // diffHCSRState.vscause     := vscause.rdata.asUInt
+    // diffHCSRState.vstval      := vstval.rdata.asUInt
+    // diffHCSRState.vsatp       := vsatp.rdata.asUInt
+    // diffHCSRState.vsscratch   := vsscratch.rdata.asUInt
 
     val platformIRPMeipChange = !platformIRP.MEIP &&  RegNext(platformIRP.MEIP) ||
                                  platformIRP.MEIP && !RegNext(platformIRP.MEIP) ||

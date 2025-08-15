@@ -401,7 +401,7 @@ class MutiLevelPrefetchFilter(implicit p: Parameters) extends XSModule with HasL
   def _reset(e: MLPReqFilterBundle, v: Bool, idx: Int): Unit = {
     v := false.B
     //only need to reset control signals for firendly area
-    // e.reset(idx)
+     e.reset(idx)
   }
 
 

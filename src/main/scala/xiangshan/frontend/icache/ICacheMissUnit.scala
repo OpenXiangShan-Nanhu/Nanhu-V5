@@ -344,7 +344,7 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
   val last_fire = io.mem_grant.fire && edge.hasData(io.mem_grant.bits) && wait_last
 
   val (_, _, refill_done, _) = edge.addr_inc(io.mem_grant)
-  assert(!(refill_done ^ last_fire), "refill not done!")
+  assert(!((refill_done && io.mem_grant.bits.opcode === 1.U)  ^ last_fire), "refill not done!")
   io.mem_grant.ready := true.B
 
   val last_fire_r = RegNext(last_fire)

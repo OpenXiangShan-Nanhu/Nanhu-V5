@@ -55,6 +55,17 @@ class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   val req_coh = new ClientMetadata
   val id = UInt(reqIdWidth.W)
 
+  /**
+   * isBtoT is used to mark whether the current request requires BtoT permission.
+   * If so, other requests for BtoT in the same set are blocked. Otherwise,
+   * they are not blocked.
+   */
+  val isBtoT = Bool()
+  /**
+   * The way isBtoT requests to occupy
+   */
+  val occupy_way = UInt(nWays.W)
+
   // For now, miss queue entry req is actually valid when req.valid && !cancel
   // * req.valid is fast to generate
   // * cancel is slow to generate, it will not be used until the last moment
@@ -124,6 +135,8 @@ class MissReq(implicit p: Parameters) extends MissReqWoStoreData {
     out.lqIdx := lqIdx
     out.isCMO := isCMO
     out.cmoOpcode := cmoOpcode
+    out.isBtoT := isBtoT
+    out.occupy_way := occupy_way
     out
   }
 }
@@ -295,6 +308,10 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
     reg_valid() && get_block(req.addr) === get_block(release_addr)
   }
 
+   def evict_set_match(evict_set: UInt): Bool = {
+     reg_valid() && req.isBtoT && addr_to_dcache_set(req.vaddr) === evict_set
+   }
+
    def block_and_alias_match(releaseReq: MissQueueBlockReqBundle): Bool = {
      reg_valid() && get_block(req.addr) === get_block(releaseReq.addr) && is_alias_match(req.vaddr, releaseReq.vaddr)
    }
@@ -339,6 +356,10 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     // block replace when release an addr valid in mshr
     val replace_block_query = Flipped(new MissQueueBlockIO)
+
+    // block all way for set to BtoT
+    val evict_set = Input(UInt())
+    val btot_ways_for_set = Output(UInt(nWays.W))
 
     // req blocked by wbq
     val wbq_block_miss_req = Input(Bool())
@@ -546,6 +567,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       e.io.main_pipe_resp := io.main_pipe_resp.valid && io.main_pipe_resp.bits.ack_miss_queue && io.main_pipe_resp.bits.miss_id === i.U
       e.io.main_pipe_replay := io.mainpipe_info.s2_valid && io.mainpipe_info.s2_replay_to_mq && io.mainpipe_info.s2_miss_id === i.U
+      e.io.main_pipe_evict_BtoT_way := io.mainpipe_info.s2_valid && io.mainpipe_info.s2_evict_BtoT_way && io.mainpipe_info.s2_miss_id === i.U
+      e.io.main_pipe_next_evict_way := io.mainpipe_info.s2_next_evict_way
       e.io.main_pipe_refill_resp := io.mainpipe_info.s3_valid && io.mainpipe_info.s3_refill_resp && io.mainpipe_info.s3_miss_id === i.U
 
       e.io.nMaxPrefetchEntry := nMaxPrefetchEntry
@@ -592,6 +615,12 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   io.replace_block_query.block := io.replace_block_query.req.valid &&
     Cat(entries.map(e => e.io.replace.block) :+ miss_req_pipe_reg.block_and_alias_match(io.replace_block_query.req.bits)).orR
+  val btot_evict_set_hit = entries.map(e => e.io.req_isBtoT && e.io.req_vaddr.valid && addr_to_dcache_set(e.io.req_vaddr.bits) === io.evict_set) ++
+    Seq(miss_req_pipe_reg.evict_set_match(io.evict_set))
+  val btot_occupy_ways = entries.map(e => e.io.occupy_way) ++ Seq(miss_req_pipe_reg.req.occupy_way)
+  io.btot_ways_for_set := btot_evict_set_hit.zip(btot_occupy_ways).map {
+    case (hit, way) => Fill(nWays, hit) & way
+  }.reduce(_ | _)
 
   io.full := ~Cat(entries.map(_.io.primary_ready)).andR
 

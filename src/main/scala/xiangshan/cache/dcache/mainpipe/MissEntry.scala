@@ -58,14 +58,19 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val main_pipe_resp = Input(Bool())
     val main_pipe_refill_resp = Input(Bool())
     val main_pipe_replay = Input(Bool())
-
+    val main_pipe_evict_BtoT_way = Input(Bool())
+    val main_pipe_next_evict_way = Input(UInt(nWays.W))
     // for main pipe s2
     val refill_info = ValidIO(new MissQueueRefillInfo)
 
     val block_addr = ValidIO(UInt(PAddrBits.W))
+    val occupy_way = Output(UInt(nWays.W))
+
     val replace = Flipped(new MissQueueBlockIO)
 
     val req_addr = ValidIO(UInt(PAddrBits.W))
+    val req_vaddr = ValidIO(UInt(VAddrBits.W))
+    val req_isBtoT = Output(Bool())
 
     val req_handled_by_this_entry = Output(Bool())
 
@@ -113,6 +118,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   io.isCMO := req.isCMO && req_valid
 
   val set = addr_to_dcache_set(req.vaddr)
+  val evict_BtoT_way = RegInit(false.B)
   // initial keyword
   val isKeyword = RegInit(false.B)
 
@@ -200,8 +206,12 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     refill_count := 0.U
 
     req := miss_req_pipe_reg_bits.toMissReqWoStoreData()
+    req.isBtoT := miss_req_pipe_reg_bits.isBtoT
+    req.occupy_way := miss_req_pipe_reg_bits.occupy_way
     req_primary_fire := miss_req_pipe_reg_bits.toMissReqWoStoreData()
     req.addr := get_block_addr(miss_req_pipe_reg_bits.addr)
+    req_primary_fire := miss_req_pipe_reg_bits.toMissReqWoStoreData()
+    evict_BtoT_way := false.B
     //only  load miss need keyword
     isKeyword := Mux(miss_req_pipe_reg_bits.isFromLoad, miss_req_pipe_reg_bits.vaddr(5).asBool,false.B)
 
@@ -246,6 +256,9 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
     when (miss_req_pipe_reg_bits.isFromStore) {
       req := miss_req_pipe_reg_bits
+      req.isBtoT := miss_req_pipe_reg_bits.isBtoT
+      req.occupy_way := miss_req_pipe_reg_bits.occupy_way
+      evict_BtoT_way := false.B
       req.addr := get_block_addr(miss_req_pipe_reg_bits.addr)
       full_overwrite := miss_req_pipe_reg_bits.isFromStore && miss_req_pipe_reg_bits.full_overwrite
       assert(is_alias_match(req.vaddr, miss_req_pipe_reg_bits.vaddr), "alias bits should be the same when merging store")
@@ -299,9 +312,17 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     mainpipe_req_fired := true.B
   }
 
-  when (io.main_pipe_replay) {
+  when (io.main_pipe_replay || io.main_pipe_evict_BtoT_way) {
     s_mainpipe_req := false.B
   }
+
+  when(io.main_pipe_replay) {
+    evict_BtoT_way := false.B
+  }.elsewhen(io.main_pipe_evict_BtoT_way) {
+    evict_BtoT_way := true.B
+    req.occupy_way := io.main_pipe_next_evict_way
+  }
+  XSError(req_valid && req.isBtoT && io.main_pipe_evict_BtoT_way, "BtoT request will never evict a way")
 
   when (io.main_pipe_resp) {
     w_mainpipe_resp := true.B
@@ -469,12 +490,19 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   io.main_pipe_req.bits.id := req.id
   io.main_pipe_req.bits.pf_source := req.pf_source
   io.main_pipe_req.bits.access := access
+  io.main_pipe_req.bits.occupy_way := req.occupy_way
+  io.main_pipe_req.bits.miss_fail_cause_evict_btot := evict_BtoT_way
 
   io.block_addr.valid := req_valid && w_grantlast
   io.block_addr.bits := req.addr
 
   io.req_addr.valid := req_valid
   io.req_addr.bits := req.addr
+  io.req_vaddr.valid := req_valid
+  io.req_vaddr.bits := req.vaddr
+  io.req_isBtoT := req.isBtoT
+
+  io.occupy_way := req.occupy_way
 
   io.refill_info.valid := req_valid && w_grantlast
   io.refill_info.bits.store_data := DontCare

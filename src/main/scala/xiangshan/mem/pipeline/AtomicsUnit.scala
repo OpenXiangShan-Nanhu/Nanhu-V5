@@ -326,6 +326,7 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
     pipe_req.amo_data  := genWdata(in.src(1), in.uop.fuOpType(1,0))
     pipe_req.amo_mask  := genWmask(paddr, in.uop.fuOpType(1,0))
     pipe_req.lrsc_isD   := in.uop.fuOpType(0)  // bit0 = 1 is D; else is W;
+    pipe_req.miss_fail_cause_evict_btot := false.B
 
     io.dcache.req.valid := Mux(
       io.dcache.req.bits.cmd === M_XLR,

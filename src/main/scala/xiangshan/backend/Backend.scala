@@ -764,8 +764,10 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   }
 
   val allPerfInc = globalPerfEvents.map(_._2)
-  val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
-  csrio.perf.perfEventsBackend := VecInit(perfEvents.map(_._2.asTypeOf(new PerfEvent)))
+  override val perfEvents = HPerfMonitor(csrevents, allPerfInc).getPerfEvents
+  csrio.perf.perfEventsBackend.zip(perfEvents).foreach { case (csrio, perf) =>
+    csrio.value := perf._2
+  }
   generatePerfEvent()
 
   private val cg = ClockGate.getTop

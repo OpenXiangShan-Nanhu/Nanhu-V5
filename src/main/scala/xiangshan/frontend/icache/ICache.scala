@@ -605,8 +605,7 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
   XSPerfAccumulate("softPrefetch_block_ftq", softPrefetchValid && io.ftqPrefetch.req.valid)
 
   val perfEvents = Seq(
-    ("icache_miss_cnt  ", false.B),
-    ("icache_miss_penalty", BoolStopWatch(start = false.B, stop = false.B || false.B, startHighPriority = true)),
+    ("icache_miss_cnt  ", mainPipe.io.mshr.req.fire),
   )
   generatePerfEvent()
 }

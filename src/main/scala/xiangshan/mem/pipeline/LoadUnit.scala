@@ -1682,9 +1682,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   val perfEvents = Seq(
     ("load_s0_in_fire         ", s0_fire                                                        ),
     ("stall_dcache            ", s0_valid && s0_can_go && !io.dcache.req.ready                  ),
-    ("load_s1_in_fire         ", s0_fire                                                        ),
+    ("load_s1_in_fire         ", s1_fire                                                        ),
     ("load_s1_tlb_miss        ", s1_fire && io.tlb.resp.bits.miss                               ),
-    ("load_s2_in_fire         ", s1_fire                                                        ),
+    ("load_s2_in_fire         ", s2_fire                                                        ),
     ("load_s2_dcache_miss     ", s2_fire && io.dcache.resp.bits.miss                            ),
   )
   generatePerfEvent()

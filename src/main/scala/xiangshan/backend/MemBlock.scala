@@ -629,13 +629,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   ptw.io.csr.tlb <> tlbcsr
   ptw.io.csr.distribute_csr <> csrCtrl.distribute_csr
 
-  val perfEventsPTW = Wire(Vec(19, new PerfEvent))
-  if (!coreParams.softPTW) {
-    perfEventsPTW := ptw.getPerf
-  } else {
-    perfEventsPTW := DontCare
-  }
-
   // dtlb
   val DTLB_PORT_NUM = LduCnt + StaCnt + 1 + 2 //bop sms stride
   val DTLB_PORT_START_LD = 0
@@ -1734,7 +1727,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   )
 
   val perfFromUnits = (loadUnits ++ Seq(sbuffer, lsq, dcache)).flatMap(_.getPerfEvents)
-  val perfFromPTW    = perfEventsPTW.map(x => ("perfEventsPTW", x.value))
+  val perfFromPTW   = ptw.getPerfEvents
   val perfBlock     = Seq(("ldDeqCount", ldDeqCount),
                           ("stDeqCount", stDeqCount))
   // let index = 0 be no event

@@ -317,27 +317,27 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val respFifo = Module(new Queue(new RamRespEntry, 4, hasFlush = true))
   respFifo.io.flush.get := flush
 
-  val l3HitEnq   = if (EnableSv48) Some(Wire(Bool())) else None; l3HitEnq.foreach(_ := DontCare)
-  val l3PpnEnq   = if (EnableSv48) Some(Wire(UInt(gvpnLen.W))) else None; l3PpnEnq.foreach(_ := DontCare)
-  val l3PbmtEnq  = if (EnableSv48) Some(Wire(UInt(ptePbmtLen.W))) else None; l3PbmtEnq.foreach(_ := DontCare)
-  val l3PreEnq   = if (EnableSv48) Some(Wire(Bool())) else None; l3PreEnq.foreach(_ := DontCare)
-  val l2HitEnq   = Wire(Bool()); l2HitEnq := DontCare
-  val l2PpnEnq   = Wire(UInt(gvpnLen.W)); l2PpnEnq := DontCare
-  val l2PbmtEnq  = Wire(UInt(ptePbmtLen.W)); l2PbmtEnq := DontCare
-  val l2PreEnq   = Wire(Bool()); l2PreEnq := DontCare
-  val l1RamDatasEnq = Wire(l1RegModule.io.rdata.cloneType); l1RamDatasEnq := DontCare
-  val l1VVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1VVecEnq := DontCare
-  val l1HitVecEnq = Wire(Vec(l2tlbParams.l1nWays, Bool())); l1HitVecEnq := DontCare
-  val l0RamDatasEnq = Wire(l0.io.r.resp.data.cloneType); l0RamDatasEnq := DontCare
-  val l0VVecEnq = Wire(Vec(l2tlbParams.l0nWays, Bool())); l0VVecEnq := DontCare
-  val l0HitVecEnq = Wire(Vec(l2tlbParams.l0nWays, Bool())); l0HitVecEnq := DontCare
-  val spHitEnq   = Wire(Bool()); spHitEnq := DontCare
-  val spPpnEnq   = Wire(UInt(gvpnLen.W)); spPpnEnq := DontCare
-  val spPbmtEnq  = Wire(UInt(ptePbmtLen.W)); spPbmtEnq := DontCare
-  val spPermEnq  = Wire(new PtePermBundle()); spPermEnq := DontCare
-  val spPreEnq   = Wire(Bool()); spPreEnq := DontCare
-  val spLevelEnq = Wire(UInt(2.W)); spLevelEnq := DontCare
-  val spValidEnq = Wire(Bool()); spValidEnq := DontCare
+  val l3HitEnq   = if (EnableSv48) Some(WireInit(false.B)) else None
+  val l3PpnEnq   = if (EnableSv48) Some(WireInit(0.U(gvpnLen.W))) else None
+  val l3PbmtEnq  = if (EnableSv48) Some(WireInit(0.U(ptePbmtLen.W))) else None
+  val l3PreEnq   = if (EnableSv48) Some(WireInit(false.B)) else None
+  val l2HitEnq   = WireInit(false.B)
+  val l2PpnEnq   = WireInit(0.U(gvpnLen.W))
+  val l2PbmtEnq  = WireInit(0.U(ptePbmtLen.W))
+  val l2PreEnq   = WireInit(false.B)
+  val l1RamDatasEnq = WireInit(0.U.asTypeOf(l1RegModule.io.rdata.cloneType))
+  val l1VVecEnq = WireInit(VecInit(Seq.fill(l2tlbParams.l1nWays)(false.B)))
+  val l1HitVecEnq = WireInit(VecInit(Seq.fill(l2tlbParams.l1nWays)(false.B)))
+  val l0RamDatasEnq = WireInit(0.U.asTypeOf(l0.io.r.resp.data.cloneType))
+  val l0VVecEnq = WireInit(VecInit(Seq.fill(l2tlbParams.l0nWays)(false.B)))
+  val l0HitVecEnq = WireInit(VecInit(Seq.fill(l2tlbParams.l0nWays)(false.B)))
+  val spHitEnq   = WireInit(false.B)
+  val spPpnEnq   = WireInit(0.U(gvpnLen.W))
+  val spPbmtEnq  = WireInit(0.U(ptePbmtLen.W))
+  val spPermEnq  = WireInit(0.U.asTypeOf(new PtePermBundle()))
+  val spPreEnq   = WireInit(false.B)
+  val spLevelEnq = WireInit(0.U(2.W))
+  val spValidEnq = WireInit(false.B)
 
   //enq logic
   respFifo.io.enq.bits.l3_hit.foreach(_ := l3HitEnq.get)
@@ -368,27 +368,27 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val fifoDeq = respFifo.io.deq
   //when check fire,deq
   fifoDeq.ready := stageCheck(0).fire
-  val fifoL3Hit = if (EnableSv48) Some(fifoDeq.bits.l3_hit.get) else None
-  val fifoL3Ppn = if (EnableSv48) Some(fifoDeq.bits.l3_ppn.get) else None
-  val fifoL3Pbmt = if (EnableSv48) Some(fifoDeq.bits.l3_pbmt.get) else None
-  val fifoL3Pre = if (EnableSv48) Some(fifoDeq.bits.l3_pre.get) else None
-  val fifoL2Hit = fifoDeq.bits.l2_hit
-  val fifoL2Ppn = fifoDeq.bits.l2_ppn
-  val fifoL2Pbmt = fifoDeq.bits.l2_pbmt
-  val fifoL2Pre = fifoDeq.bits.l2_pre
-  val fifoL1RamDatas = fifoDeq.bits.l1_ramDatas
-  val fifoL1vVec = fifoDeq.bits.l1_vVec
-  val fifoL1HitVec = fifoDeq.bits.l1_hitVec
-  val fifoL0RamDatas = fifoDeq.bits.l0_ramDatas
-  val fifoL0vVec = fifoDeq.bits.l0_vVec
-  val fifoL0HitVec = fifoDeq.bits.l0_hitVec
-  val fifoSpHit = fifoDeq.bits.sp_hit
-  val fifoSpPpn = fifoDeq.bits.sp_ppn
-  val fifoSpPbmt = fifoDeq.bits.sp_pbmt
-  val fifoSpPerm = fifoDeq.bits.sp_perm
-  val fifoSpPre = fifoDeq.bits.sp_pre
-  val fifoSpLevel = fifoDeq.bits.sp_level
-  val fifoSpValid = fifoDeq.bits.sp_valid
+  val fifoL3Hit = if (EnableSv48) Some(Mux(fifoDeq.valid, fifoDeq.bits.l3_hit.get, false.B)) else None
+  val fifoL3Ppn = if (EnableSv48) Some(Mux(fifoDeq.valid, fifoDeq.bits.l3_ppn.get, 0.U(gvpnLen.W))) else None
+  val fifoL3Pbmt = if (EnableSv48) Some(Mux(fifoDeq.valid, fifoDeq.bits.l3_pbmt.get, 0.U(ptePbmtLen.W))) else None
+  val fifoL3Pre = if (EnableSv48) Some(Mux(fifoDeq.valid, fifoDeq.bits.l3_pre.get, false.B)) else None
+  val fifoL2Hit = Mux(fifoDeq.valid, fifoDeq.bits.l2_hit, false.B)
+  val fifoL2Ppn = Mux(fifoDeq.valid, fifoDeq.bits.l2_ppn, 0.U(gvpnLen.W))
+  val fifoL2Pbmt = Mux(fifoDeq.valid, fifoDeq.bits.l2_pbmt, 0.U(ptePbmtLen.W))
+  val fifoL2Pre = Mux(fifoDeq.valid, fifoDeq.bits.l2_pre, false.B)
+  val fifoL1RamDatas = Mux(fifoDeq.valid, fifoDeq.bits.l1_ramDatas, 0.U.asTypeOf(respFifo.io.enq.bits.l1_ramDatas))
+  val fifoL1vVec = Mux(fifoDeq.valid, fifoDeq.bits.l1_vVec, VecInit(Seq.fill(l2tlbParams.l1nWays)(false.B)))
+  val fifoL1HitVec = Mux(fifoDeq.valid, fifoDeq.bits.l1_hitVec, VecInit(Seq.fill(l2tlbParams.l1nWays)(false.B)))
+  val fifoL0RamDatas = Mux(fifoDeq.valid, fifoDeq.bits.l0_ramDatas, 0.U.asTypeOf(respFifo.io.enq.bits.l0_ramDatas))
+  val fifoL0vVec = Mux(fifoDeq.valid, fifoDeq.bits.l0_vVec, VecInit(Seq.fill(l2tlbParams.l0nWays)(false.B)))
+  val fifoL0HitVec = Mux(fifoDeq.valid, fifoDeq.bits.l0_hitVec, VecInit(Seq.fill(l2tlbParams.l0nWays)(false.B)))
+  val fifoSpHit = Mux(fifoDeq.valid, fifoDeq.bits.sp_hit, false.B)
+  val fifoSpPpn = Mux(fifoDeq.valid, fifoDeq.bits.sp_ppn, 0.U(gvpnLen.W))
+  val fifoSpPbmt = Mux(fifoDeq.valid, fifoDeq.bits.sp_pbmt, 0.U(ptePbmtLen.W))
+  val fifoSpPerm = Mux(fifoDeq.valid, fifoDeq.bits.sp_perm, 0.U.asTypeOf(respFifo.io.enq.bits.sp_perm))
+  val fifoSpPre = Mux(fifoDeq.valid, fifoDeq.bits.sp_pre, false.B)
+  val fifoSpLevel = Mux(fifoDeq.valid, fifoDeq.bits.sp_level, 0.U(2.W))
+  val fifoSpValid = Mux(fifoDeq.valid, fifoDeq.bits.sp_valid, false.B)
 
   when(stageCheck(0).fire){
     XSError(!fifoDeq.valid || fifoDeq.bits.id =/= stageCheck0Id, "ptw cache resp id mismatch")
@@ -1428,13 +1428,19 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   XSDebug(RegNext(sfence_dup(0).valid), p"[sfence] l0g:${Binary(l0g)}\n")
   XSDebug(RegNext(sfence_dup(0).valid), p"[sfence] spv:${Binary(spv)}\n")
 
+  val l2HitEvent  = Mux(io.resp.fire, fifoL2Hit, false.B)
+  val l1HitEvent  = Mux(io.resp.fire, l1Hit, false.B)
+  val l0HitEvent  = Mux(io.resp.fire, l0Hit, false.B)
+  val spHitEvent  = Mux(io.resp.fire, fifoSpHit, false.B)
+  val pteHitEvent = Mux(io.resp.fire, l0Hit || fifoSpHit, false.B)
+
   val perfEvents = Seq(
     ("access           ", base_valid_access_0             ),
-    ("l2_hit           ", fifoL2Hit                           ),
-    ("l1_hit           ", l1Hit                           ),
-    ("l0_hit           ", l0Hit                           ),
-    ("sp_hit           ", fifoSpHit                           ),
-    ("pte_hit          ", l0Hit || fifoSpHit                  ),
+    ("l2_hit           ", l2HitEvent                           ),
+    ("l1_hit           ", l1HitEvent                           ),
+    ("l0_hit           ", l0HitEvent                           ),
+    ("sp_hit           ", spHitEvent                           ),
+    ("pte_hit          ", pteHitEvent                  ),
     ("rwHarzad         ",  io.req.valid && !io.req.ready  ),
     ("out_blocked      ",  io.resp.valid && !io.resp.ready),
   )

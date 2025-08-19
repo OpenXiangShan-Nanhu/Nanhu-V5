@@ -25,8 +25,8 @@ import xs.utils.perf._
 import xiangshan._
 import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
-import xs.utils.cache.{MemBackTypeMM, MemBackTypeMMField, MemPageTypeNC, MemPageTypeNCField}
 import difftest._
+import xs.utils.cache.{DeviceType, DeviceTypeField}
 
 
 class UncacheFlushBundle extends Bundle {
@@ -50,7 +50,7 @@ class Uncache()(implicit p: Parameters) extends LazyModule with HasXSParameter {
       "uncache",
       sourceId = IdRange(0, idRange)
     )),
-    requestFields = Seq(MemBackTypeMMField(), MemPageTypeNCField())
+    requestFields = Seq(DeviceTypeField())
   )
   val clientNode = TLClientNode(Seq(clientParameters))
 
@@ -123,7 +123,7 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
     val difftest = DifftestModule(new DiffUncacheMMStoreEvent, delay = 1)
     difftest.coreid := io.hartId
     difftest.index  := 0.U
-    difftest.valid  := mem_acquire.fire && (mem_acquire.bits.opcode === MemoryOpConstants.M_XWR) && mem_acquire.bits.user.lift(MemBackTypeMM).getOrElse(false.B)
+    difftest.valid  := mem_acquire.fire && (mem_acquire.bits.opcode === MemoryOpConstants.M_XWR) && !mem_acquire.bits.user.lift(DeviceType).getOrElse(true.B)
     difftest.addr   := mem_acquire.bits.address
     difftest.data   := mem_acquire.bits.data.asTypeOf(Vec(DataBytes, UInt(8.W)))
     difftest.mask   := mem_acquire.bits.mask

@@ -19,7 +19,6 @@ package xiangshan.frontend.icache
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xs.utils.cache.MemBackTypeMM
 import freechips.rocketchip.tilelink._
 import xiangshan._
 import xs.utils._
@@ -176,7 +175,6 @@ class ICacheMSHR(edge: TLEdgeOut, isFetch: Boolean, ID: Int)(implicit p: Paramet
   )._2
   io.acquire.bits.acquire := getBlock
   io.acquire.bits.acquire.user.lift(ReqSourceKey).foreach(_ := MemReqSource.CPUInst.id.U)
-  io.acquire.bits.acquire.user.lift(MemBackTypeMM).foreach(_ := true.B) // icache is always requesting main memory
   io.acquire.bits.vSetIdx := vSetIdx
 
   // get victim way when acquire fire

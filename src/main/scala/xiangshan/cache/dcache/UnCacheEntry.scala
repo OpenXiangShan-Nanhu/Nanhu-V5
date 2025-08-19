@@ -5,7 +5,7 @@ import chisel3._
 import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.PriorityMuxWithFlag
-import xs.utils.cache.{MemBackTypeMM, MemPageTypeNC}
+import xs.utils.cache.{DeviceType}
 import xs.utils.perf.XSDebug
 
 
@@ -97,8 +97,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   when (state === s_refill_req) {
     io.mem_acquire.valid := true.B
     io.mem_acquire.bits := Mux(storeReq, store, load)
-    io.mem_acquire.bits.user.lift(MemBackTypeMM).foreach(_ := req.nc)
-    io.mem_acquire.bits.user.lift(MemPageTypeNC).foreach(_ := req.nc)
+    io.mem_acquire.bits.user.lift(DeviceType).foreach(_ := !req.nc)
     when (io.mem_acquire.fire) {
       state := s_refill_resp
     }

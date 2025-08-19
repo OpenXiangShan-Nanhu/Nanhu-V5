@@ -28,7 +28,6 @@ import xs.utils.perf._
 import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.GPAMemEntry
 import xs.utils.ChiselDB
-import xs.utils.cache.{MemBackTypeMM, MemBackTypeMMField, MemPageTypeNC, MemPageTypeNCField}
 
 trait HasInstrMMIOConst extends HasXSParameter with HasIFUConst{
   def mmioBusWidth = 64
@@ -824,8 +823,7 @@ class NewIFU(implicit p: Parameters) extends XSModule
   toUncache.bits.addr := Mux((mmio_state === m_resendReq), mmio_resend_addr, f3_paddrs(0))
   // if !pmp_mmio, then we're actually sending a MMIO request to main memory, it must be pbmt.nc/io
   // we need to tell L2 Cache about this to make it work correctly
-  toUncache.bits.memBackTypeMM := !f3_pmp_mmio
-  toUncache.bits.memPageTypeNC := f3_itlb_pbmt === Pbmt.nc
+  toUncache.bits.device := f3_pmp_mmio
   // always ready to receive response: we just send one request at same time
   fromUncache.ready   := true.B
 

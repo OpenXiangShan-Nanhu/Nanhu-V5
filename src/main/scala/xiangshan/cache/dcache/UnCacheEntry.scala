@@ -110,8 +110,6 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     when (io.mem_grant.fire) {
       resp_data := io.mem_grant.bits.data
       resp_nderr := io.mem_grant.bits.denied | io.mem_grant.bits.corrupt
-      io.resp.valid := req.nc && storeReq
-      io.resp.bits.isNC  := req.nc
       assert(refill_done, "Uncache response should be one beat only!")
       state := Mux(storeReq && req.nc, s_invalid, s_send_resp)
     }
@@ -119,7 +117,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
 
   //  Response
   when (state === s_send_resp) {
-    io.resp.valid := !(req.nc && storeReq)
+    io.resp.valid := true.B
     io.resp.bits.data   := resp_data
     // meta data should go with the response
     io.resp.bits.id     := req.id

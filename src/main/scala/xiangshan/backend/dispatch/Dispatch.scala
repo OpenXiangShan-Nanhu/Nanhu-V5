@@ -580,7 +580,6 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     ("dispatch_empty",              !hasValidInstr                                                                 ),
     ("dispatch_utili",              PopCount(io.fromRename(3).map(_.valid))                                           ),
     ("dispatch_waitinstr",          PopCount(io.fromRename(3).map(!_.valid && canAccept))                 ),
-    ("dispatch_stall_cycle_lsq",    false.B                                                                        ),
     ("dispatch_stall_cycle_rob",    stall_rob                                                                      ),
     ("dispatch_stall_cycle_int_dq", stall_int_dq                                                                   ),
     ("dispatch_stall_cycle_fp_dq",  stall_fp_dq                                                                    ),

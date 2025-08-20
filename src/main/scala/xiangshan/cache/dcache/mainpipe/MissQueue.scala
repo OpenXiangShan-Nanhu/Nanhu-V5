@@ -605,7 +605,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   XSPerfAccumulate("pipereg_valid", miss_req_pipe_reg.reg_valid())
 
   val acquire_sources = Seq(acquire_from_pipereg) ++ entries.map(_.io.mem_acquire)
-  TLArbiter.lowest(edge, io.mem_acquire, acquire_sources:_*)
+  TLArbiter.robin(edge, io.mem_acquire, acquire_sources:_*)
   TLArbiter.lowest(edge, io.mem_finish, entries.map(_.io.mem_finish):_*)
 
   // amo's main pipe req out

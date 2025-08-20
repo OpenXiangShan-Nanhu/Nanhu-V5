@@ -216,7 +216,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     isKeyword := Mux(miss_req_pipe_reg_bits.isFromLoad, miss_req_pipe_reg_bits.vaddr(5).asBool,false.B)
 
     s_acquire := io.acquire_fired_by_pipe_reg
-    s_grantack := false.B
+    s_grantack := miss_req_pipe_reg_bits.isFromCMO
     s_mainpipe_req := false.B
 
     w_grantfirst := false.B

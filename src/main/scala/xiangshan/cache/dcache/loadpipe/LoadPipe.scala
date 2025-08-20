@@ -612,11 +612,11 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   XSPerfAccumulate("ideal_ld_fast_wakeup", io.banked_data_read.fire && s1_tag_match_dup_dc)
 
   val perfEvents = Seq(
-    ("load_req                 ", io.lsu.req.fire                                               ),
-    ("load_replay              ", io.lsu.resp.fire && resp.bits.replay                          ),
-    ("load_replay_for_data_nack", io.lsu.resp.fire && resp.bits.replay && s2_nack_data          ),
-    ("load_replay_for_no_mshr  ", io.lsu.resp.fire && resp.bits.replay && s2_nack_no_mshr       ),
-    ("load_replay_for_conflict ", io.lsu.resp.fire && resp.bits.replay && io.bank_conflict_slow ),
+    (s"loadpipe${id}_req                 ", io.lsu.req.fire                                               ),
+    (s"loadpipe${id}_replay              ", io.lsu.resp.fire && resp.bits.replay                          ),
+    (s"loadpipe${id}_replay_for_data_nack", io.lsu.resp.fire && resp.bits.replay && s2_nack_data          ),
+    (s"loadpipe${id}_replay_for_no_mshr  ", io.lsu.resp.fire && resp.bits.replay && s2_nack_no_mshr       ),
+    (s"loadpipe${id}_replay_for_conflict ", io.lsu.resp.fire && resp.bits.replay && io.bank_conflict_slow ),
   )
   generatePerfEvent()
 }

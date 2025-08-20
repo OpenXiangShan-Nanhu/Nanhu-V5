@@ -948,9 +948,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
   XSPerfAccumulate("replay_hint_priority_beat1", io.l2_hint.valid && io.l2_hint.bits.isKeyword)
 
   val perfEvents: Seq[(String, UInt)] = Seq(
-    ("enq", enqNumber),
-    ("deq", deqNumber),
-    ("deq_block", deqBlockCount),
+    ("lq_replay_enq", enqNumber),
+    ("lq_replay_deq", deqNumber),
+    ("lq_replay_deq_block", deqBlockCount),
     ("replay_full", io.lqFull),
     // ("replay_rar_nack", replayRARRejectCount),
     ("replay_raw_nack", replayRAWRejectCount),

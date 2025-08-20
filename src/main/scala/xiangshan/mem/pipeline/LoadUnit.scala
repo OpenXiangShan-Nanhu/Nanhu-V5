@@ -104,7 +104,7 @@ class LoadUnitTriggerIO(implicit p: Parameters) extends XSBundle {
   val addrHit     = Output(Bool())
 }
 
-class LoadUnit(implicit p: Parameters) extends XSModule
+class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   with HasLoadHelper
   with HasPerfEvents
   with HasDCacheParameters
@@ -1680,12 +1680,12 @@ class LoadUnit(implicit p: Parameters) extends XSModule
   // bug lyq: some signals in perfEvents are no longer suitable for the current MemBlock design
   // hardware performance counter
   val perfEvents = Seq(
-    ("load_s0_in_fire         ", s0_fire                                                        ),
-    ("stall_dcache            ", s0_valid && s0_can_go && !io.dcache.req.ready                  ),
-    ("load_s1_in_fire         ", s1_fire                                                        ),
-    ("load_s1_tlb_miss        ", s1_fire && io.tlb.resp.bits.miss                               ),
-    ("load_s2_in_fire         ", s2_fire                                                        ),
-    ("load_s2_dcache_miss     ", s2_fire && io.dcache.resp.bits.miss                            ),
+    (s"ldu${id}_s0_in_fire         ", s0_fire                                                        ),
+    (s"ldu${id}_stall_dcache       ", s0_valid && s0_can_go && !io.dcache.req.ready                  ),
+    (s"ldu${id}_s1_in_fire         ", s1_fire                                                        ),
+    (s"ldu${id}_s1_tlb_miss        ", s1_fire && io.tlb.resp.bits.miss                               ),
+    (s"ldu${id}_s2_in_fire         ", s2_fire                                                        ),
+    (s"ldu${id}_s2_dcache_miss     ", s2_fire && io.dcache.resp.bits.miss                            ),
   )
   generatePerfEvent()
 

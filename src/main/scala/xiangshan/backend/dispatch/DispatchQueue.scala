@@ -126,7 +126,7 @@ class DispatchQueueIO(enqnum: Int, deqnum: Int, size: Int)(implicit p: Parameter
 }
 
 // dispatch queue: accepts at most enqnum uops from dispatch1 and dispatches deqnum uops at every clock cycle
-class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(implicit p: Parameters)
+class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0, instName: String = "")(implicit p: Parameters)
   extends XSModule with HasCircularQueuePtrHelper with HasPerfEvents {
   val fanoutNum= 4
   val io = IO(new DispatchQueueIO(enqnum, deqnum, size))
@@ -380,14 +380,14 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int, dqIndex: Int = 0)(impli
 
   val validEntries = RegNext(PopCount(stateEntries.map(_ =/= s_invalid)))
   val perfEvents = Seq(
-    ("dispatchq_in",         numEnq                                                          ),
-    ("dispatchq_out",        PopCount(io.deq.map(_.fire))                                    ),
-    ("dispatchq_out_try",    PopCount(io.deq.map(_.valid))                                   ),
-    ("dispatchq_fake_block", fake_block                                                      ),
-    ("dispatchq_1_4_valid ", validEntries <  (size / 4).U                                    ),
-    ("dispatchq_2_4_valid ", validEntries >= (size / 4).U && validEntries <= (size / 2).U    ),
-    ("dispatchq_3_4_valid ", validEntries >= (size / 2).U && validEntries <= (size * 3 / 4).U),
-    ("dispatchq_4_4_valid ", validEntries >= (size * 3 / 4).U                                )
+    (s"${instName}_dispatchq_in",         numEnq                                                          ),
+    (s"${instName}_dispatchq_out",        PopCount(io.deq.map(_.fire))                                    ),
+    (s"${instName}_dispatchq_out_try",    PopCount(io.deq.map(_.valid))                                   ),
+    (s"${instName}_dispatchq_fake_block", fake_block                                                      ),
+    (s"${instName}_dispatchq_1_4_valid ", validEntries <  (size / 4).U                                    ),
+    (s"${instName}_dispatchq_2_4_valid ", validEntries >= (size / 4).U && validEntries <= (size / 2).U    ),
+    (s"${instName}_dispatchq_3_4_valid ", validEntries >= (size / 2).U && validEntries <= (size * 3 / 4).U),
+    (s"${instName}_dispatchq_4_4_valid ", validEntries >= (size * 3 / 4).U                                )
   )
   generatePerfEvent()
 }

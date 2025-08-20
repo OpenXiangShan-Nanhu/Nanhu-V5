@@ -389,7 +389,7 @@ class LoadQueueRAW(implicit p: Parameters) extends XSModule
   XSPerfAccumulate("enqs", canEnqCount)
   XSPerfAccumulate("stld_rollback", rollbaclValid)
   val perfEvents: Seq[(String, UInt)] = Seq(
-    ("enq ", canEnqCount),
+    ("lq_raw", canEnqCount),
     ("stld_rollback", rollbaclValid),
   )
   generatePerfEvent()

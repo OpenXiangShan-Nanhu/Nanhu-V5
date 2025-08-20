@@ -417,7 +417,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   mdp.io.reUpdate.bits.stFoldPc := io.memPredUpdate.stFoldPc
 
 
-  val loadUnits = Seq.fill(LduCnt)(Module(new LoadUnit))
+  val loadUnits = Seq.tabulate(LduCnt)(i => Module(new LoadUnit(i)))
   val storeUnits = Seq.fill(StaCnt)(Module(new StoreUnit))
   val stdExeUnits = Seq.fill(StdCnt)(Module(new MemExeUnit(backendParams.memSchdParams.get.issueBlockParams.find(_.StdCnt != 0).get.exuBlockParams.head)))
   val stData = stdExeUnits.map(_.io.out)

@@ -411,7 +411,7 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
   val lastCycleIqEnqFireVec    = RegNext(VecInit(issueQueues.map(_.io.enq.map(_.fire)).flatten))
   val lastCycleIqFullVec       = RegNext(VecInit(issueQueues.map(_.io.enq.head.ready)))
 
-  val issueQueueFullVecPerf = issueQueues.zip(lastCycleIqFullVec)map{ case (iq, full) => (iq.params.getIQName + s"_full", full) }
+  val issueQueueFullVecPerf = issueQueues.zip(lastCycleIqFullVec).zipWithIndex.map{ case ((iq, full),id) => (iq.params.getIQName + s"${id}_full", full) }
   val basePerfEvents = Seq(
     ("dispatch2Iq_out_fire_cnt", PopCount(lastCycleDp2IqOutFireVec)                 ),
     ("issueQueue_enq_fire_cnt",  PopCount(lastCycleIqEnqFireVec)                    )

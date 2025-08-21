@@ -124,10 +124,11 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
     difftest.coreid := io.hartId
     difftest.index  := 0.U
     difftest.valid  := mem_acquire.fire && (mem_acquire.bits.opcode === MemoryOpConstants.M_XWR) && !mem_acquire.bits.user.lift(DeviceType).getOrElse(true.B)
-    difftest.addr   := mem_acquire.bits.address
+    difftest.addr   := mem_acquire.bits.address >> log2Ceil(XLEN/8).U << log2Ceil(XLEN/8).U
     difftest.data   := mem_acquire.bits.data.asTypeOf(Vec(DataBytes, UInt(8.W)))
     difftest.mask   := mem_acquire.bits.mask
   }
+
 
 
   println(s"Uncahe Buffer Size: $UncacheBufferSize entries")

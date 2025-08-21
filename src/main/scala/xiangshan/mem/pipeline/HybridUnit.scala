@@ -761,12 +761,12 @@ class HybridUnit(implicit p: Parameters) extends XSModule
   // load debug
   XSDebug(s1_valid && s1_ld_flow,
     p"S1: pc ${Hexadecimal(s1_out.uop.pc)}, lId ${Hexadecimal(s1_out.uop.lqIdx.asUInt)}, tlb_miss ${io.tlb.resp.bits.miss}, " +
-    p"paddr ${Hexadecimal(s1_out.paddr)}, mmio ${s1_out.mmio}\n")
+    p"paddr ${Hexadecimal(s1_out.paddr)}, mmio ${s1_out.pmpIsMMIO}\n")
 
   // store debug
   XSDebug(s1_valid && !s1_ld_flow,
     p"S1: pc ${Hexadecimal(s1_out.uop.pc)}, lId ${Hexadecimal(s1_out.uop.sqIdx.asUInt)}, tlb_miss ${io.tlb.resp.bits.miss}, " +
-    p"paddr ${Hexadecimal(s1_out.paddr)}, mmio ${s1_out.mmio}\n")
+    p"paddr ${Hexadecimal(s1_out.paddr)}, mmio ${s1_out.pmpIsMMIO}\n")
 
   // store out
   io.stu_io.lsq.valid         := s1_valid && !s1_ld_flow && !s1_prf && !s1_isvec
@@ -988,7 +988,7 @@ class HybridUnit(implicit p: Parameters) extends XSModule
   s2_out                  := s2_in
   s2_out.data             := 0.U // data will be generated in load s3
   s2_out.uop.fpWen        := s2_in.uop.fpWen && !s2_exception && s2_ld_flow
-  s2_out.mmio             := s2_ld_mmio || s2_st_mmio
+  s2_out.pmpIsMMIO             := s2_ld_mmio || s2_st_mmio
   s2_out.atomic           := s2_st_atomic
   s2_out.uop.flushPipe    := false.B
   s2_out.uop.exceptionVec := s2_exception_vec
@@ -1179,12 +1179,12 @@ class HybridUnit(implicit p: Parameters) extends XSModule
 
   // Int flow, if hit, will be writebacked at s3
   s3_out.valid                := s3_valid &&
-                                (!s3_ld_flow && !s3_in.feedbacked || !io.ldu_io.lsq.ldin.bits.rep_info.need_rep) && !s3_in.mmio
+                                (!s3_ld_flow && !s3_in.feedbacked || !io.ldu_io.lsq.ldin.bits.rep_info.need_rep) && !s3_in.pmpIsMMIO
   s3_out.bits.uop             := s3_in.uop
   s3_out.bits.uop.exceptionVec(loadAccessFault) := (s3_dly_ld_err  || s3_in.uop.exceptionVec(loadAccessFault)) && s3_ld_flow
   s3_out.bits.uop.replayInst := s3_rep_frm_fetch
   s3_out.bits.data            := s3_in.data
-  s3_out.bits.debug.isMMIO    := s3_in.mmio
+  s3_out.bits.debug.isMMIO    := s3_in.pmpIsMMIO
   s3_out.bits.debug.isPerfCnt := false.B
   s3_out.bits.debug.paddr     := s3_in.paddr
   s3_out.bits.debug.vaddr     := s3_in.vaddr
@@ -1230,7 +1230,7 @@ class HybridUnit(implicit p: Parameters) extends XSModule
   io.vec_stu_io.feedbackSlow.bits := RegNext(s2_vec_feedback.bits)
 
   io.ldu_io.ldCancel.ld2Cancel := s3_valid && s3_ld_flow && (                          // is load
-    io.ldu_io.lsq.ldin.bits.rep_info.need_rep || s3_in.mmio                            // exe fail or is mmio
+    io.ldu_io.lsq.ldin.bits.rep_info.need_rep || s3_in.pmpIsMMIO                            // exe fail or is mmio
   )
 
   // data from dcache hit
@@ -1306,7 +1306,7 @@ class HybridUnit(implicit p: Parameters) extends XSModule
       sx_valid(i) := s3_valid &&
                     !s3_ld_flow &&
                     !s3_in.feedbacked &&
-                    !s3_in.mmio
+                    !s3_in.pmpIsMMIO
       sx_in(i)    := s3_out.bits
       sx_ready(i) := !s3_valid(i) || sx_in(i).uop.robIdx.needFlush(io.redirect) || (if (TotalDelayCycles == 0) io.stout.ready else sx_ready(i+1))
     } else {

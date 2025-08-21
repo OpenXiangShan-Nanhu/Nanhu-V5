@@ -29,8 +29,10 @@ import xiangshan.backend.Bundles.{DynInst, MemExuInput}
 import xiangshan.backend.rob.RobPtr
 import xiangshan.cache._
 import xiangshan.backend.fu.FenceToSbuffer
+import xiangshan.cache.mmu.{HasTlbConst, Pbmt}
 import xiangshan.cache.wpu.ReplayCarry
 import xiangshan.mem.prefetch.PrefetchReqBundle
+
 import math._
 
 object genWmask {
@@ -79,7 +81,8 @@ object shiftMaskToLow {
 
 class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   with HasDCacheParameters
-  with HasVLSUParameters {
+  with HasVLSUParameters
+  with HasTlbConst {
   val uop = new DynInst
   val vaddr = UInt(VAddrBits.W)
   // For exception vaddr generate
@@ -98,8 +101,12 @@ class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   val tlbMiss = Bool()
   val ptwBack = Bool()
   val af = Bool()
-  val mmio = Bool()
-  val nc = Bool()
+  val pf = Bool()
+  val pmpIsMMIO = Bool()
+  val device = Bool()
+  val uncache = Bool()
+  val nc = Bool() //for store only
+  val pbmt = UInt(ptePbmtLen.W)
   val mmio_can_direct_exu = Bool()
   val atomic = Bool()
 
@@ -185,8 +192,6 @@ class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
     if (latch) tlbMiss := RegEnable(input.tlbMiss, enable) else tlbMiss := input.tlbMiss
     if (latch) ptwBack := RegEnable(input.ptwBack, enable) else ptwBack := input.ptwBack
     if (latch) af := RegEnable(input.af, enable) else af := input.af
-    if (latch) mmio := RegEnable(input.mmio, enable) else mmio := input.mmio
-    if (latch) nc := RegEnable(input.nc, enable) else nc := input.nc
     if (latch) mmio_can_direct_exu := RegEnable(input.mmio_can_direct_exu, enable) else mmio_can_direct_exu := input.mmio_can_direct_exu
     if (latch) forwardMask := RegEnable(input.forwardMask, enable) else forwardMask := input.forwardMask
     if (latch) forwardData := RegEnable(input.forwardData, enable) else forwardData := input.forwardData
@@ -213,8 +218,7 @@ class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
     if (latch) vecBaseVaddr        := RegEnable(input.vecBaseVaddr, enable)        else vecBaseVaddr        := input.vecBaseVaddr
     if (latch) vecVaddrOffset      := RegEnable(input.vecVaddrOffset, enable)      else vecVaddrOffset      := input.vecVaddrOffset
     if (latch) vecTriggerMask      := RegEnable(input.vecTriggerMask, enable)      else vecTriggerMask      := input.vecTriggerMask
-    // if (latch) flowPtr             := RegEnable(input.flowPtr, enable)             else flowPtr             := input.flowPtr
-    // if (latch) sflowPtr            := RegEnable(input.sflowPtr, enable)            else sflowPtr            := input.sflowPtr
+    if (latch) pf                  := RegEnable(input.pf, enable)                  else pf                  := input.pf
 
     meta_prefetch := DontCare
     meta_access := DontCare
@@ -231,6 +235,11 @@ class LdPrefetchTrainBundle(implicit p: Parameters) extends LsPipelineBundle {
     lateKill := DontCare
     feedbacked := DontCare
     ldCancel := DontCare
+    pmpIsMMIO := DontCare
+    nc := DontCare
+    pbmt := DontCare
+    uncache := DontCare
+    device := DontCare
   }
 
   def asPrefetchReqBundle(): PrefetchReqBundle = {
@@ -270,7 +279,7 @@ class LqWriteBundle(implicit p: Parameters) extends LsPipelineBundle {
     if(latch) miss := RegEnable(input.miss, enable) else miss := input.miss
     if(latch) tlbMiss := RegEnable(input.tlbMiss, enable) else tlbMiss := input.tlbMiss
     if(latch) ptwBack := RegEnable(input.ptwBack, enable) else ptwBack := input.ptwBack
-    if(latch) mmio := RegEnable(input.mmio, enable) else mmio := input.mmio
+    if(latch) pmpIsMMIO := RegEnable(input.pmpIsMMIO, enable) else pmpIsMMIO := input.pmpIsMMIO
     if(latch) mmio_can_direct_exu := RegEnable(input.mmio_can_direct_exu, enable) else mmio_can_direct_exu := input.mmio_can_direct_exu
     if(latch) atomic := RegEnable(input.atomic, enable) else atomic := input.atomic
     if(latch) forwardMask := RegEnable(input.forwardMask, enable) else forwardMask := input.forwardMask

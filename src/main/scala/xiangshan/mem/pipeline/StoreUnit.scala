@@ -321,8 +321,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.vaNeedExt := s1_vaNeedExt
   s1_out.isHyper   := s1_isHyper
   s1_out.miss      := false.B
-  s1_out.nc        := Pbmt.isNC(s1_pbmt)
-  s1_out.mmio      := Pbmt.isIO(s1_pbmt)
+  s1_out.pbmt := s1_pbmt
+  s1_out.nc := Pbmt.isNC(s1_pbmt)
+  s1_out.pf := io.tlb.resp.bits.excp(0).pf.st
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
 //  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
@@ -415,18 +416,23 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   val s2_pmp = WireInit(io.pmp)
 
-  val s2_exception = RegNext(s1_feedback.bits.hit) &&
-                    (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_out.uop.exceptionVec, StaCfg).asUInt.orR)
+  val s2_exception = !s2_in.tlbMiss && (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_out.uop.exceptionVec, StaCfg).asUInt.orR)
+  val s2_nc = Pbmt.isNC(s2_pbmt)
 
-  val s2_main_memory   = !Pbmt.isIO(s2_pbmt) && !s2_pmp.mmio
-  val s2_mmio          = s2_in.mmio || s2_pmp.mmio  // namely !s2_main_memory
-  val s2_nc            = Pbmt.isUncache(s2_pbmt)
-  val s2_mmioORnc_region = (s2_mmio || s2_nc) && RegNext(s1_feedback.bits.hit)
-  dontTouch(s2_main_memory)
-  dontTouch(s2_mmio)
+  val s2_deviceType = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) | !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
+  val s2_deviceTypeRegion = s2_deviceType && !s2_in.tlbMiss
+
+  val s2_uncacheType = s2_deviceType | (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
+  val s2_uncacheTypeRegion = s2_uncacheType && !s2_in.tlbMiss
+
+
+  dontTouch(s2_uncacheType)
+  dontTouch(s2_uncacheTypeRegion)
+  dontTouch(s2_deviceType)
+  dontTouch(s2_deviceTypeRegion)
   dontTouch(s2_nc)
 
-  s2_kill := ((s2_mmioORnc_region && !s2_exception) && !s2_in.isvec) || s2_in.uop.robIdx.needFlush(io.redirect)
+  s2_kill := ((s2_deviceTypeRegion && !s2_exception) && !s2_in.isvec) || s2_in.uop.robIdx.needFlush(io.redirect)
 
   // The response signal of `pmp/pma` is credible only after the physical address is actually generated.
   // Therefore, the response signals of pmp/pma generated after an address translation has produced an `access fault` or a `page fault` are completely unreliable.
@@ -435,23 +441,26 @@ class StoreUnit(implicit p: Parameters) extends XSModule
     s2_in.uop.exceptionVec(storePageFault)   ||
     s2_in.uop.exceptionVec(storeGuestPageFault)
   )
-  val s2_mmioORnc = s2_tlb_hit && !s2_un_access_exception && s2_mmioORnc_region && RegNext(s1_feedback.bits.hit)
+//  val s2_mmioORnc = s2_tlb_hit && !s2_un_access_exception && s2_deviceTypeRegion && !s2_in.tlbMiss
 
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
-  s2_out.mmio   := (s2_mmioORnc_region || s2_isCboM) && !s2_exception
-  s2_out.nc     := s2_nc
+  s2_out.device := s2_deviceType
+  s2_out.uncache := (s2_uncacheType || s2_isCboM) && !s2_exception
+  s2_out.nc := s2_nc
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
-                                                s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_mmioORnc_region ||
+                                                s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_deviceType ||
                                                 s2_pmp.st ||
                                                 (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception
-                                                ((s2_in.isvec || s2_isCboAll) && s2_mmioORnc && RegNext(s1_feedback.bits.hit))
+                                                ((s2_in.isvec || s2_isCboAll) && s2_uncacheTypeRegion && !s2_in.tlbMiss)
                                                 ) && s2_vecActive
-  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_mmioORnc_region
+//  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_deviceType && !s2_in.tlbMiss && !s2_in.pf
+    s2_out.uop.exceptionVec(storeAddrMisaligned) := Mux(s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_deviceType && !s2_in.tlbMiss && !s2_in.pf, false.B, s2_in.uop.exceptionVec(storeAddrMisaligned))
+
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew
 
   // kill dcache write intent request when mmio or exception
-  io.dcache.s2_kill := (s2_mmioORnc_region || s2_exception || s2_in.uop.robIdx.needFlush(io.redirect))
+  io.dcache.s2_kill := (s2_deviceTypeRegion || s2_exception || s2_in.uop.robIdx.needFlush(io.redirect))
   io.dcache.s2_pc   := s2_out.uop.pc
   // TODO: dcache resp
   io.dcache.resp.ready := true.B
@@ -464,17 +473,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   val s2_vecFeedback = RegNext(!s1_out.uop.robIdx.needFlush(io.redirect) && s1_feedback.bits.hit && s1_feedback.valid) && s2_in.isvec
 
-  val s2_misalign_stout = WireInit(0.U.asTypeOf(io.misalign_stout))
-  s2_misalign_stout.valid := s2_valid && s2_can_go && s2_frm_mabuf
-  s2_misalign_stout.bits.mmio := s2_out.mmio
-  s2_misalign_stout.bits.vaddr := s2_out.vaddr
-  s2_misalign_stout.bits.isHyper := s2_out.isHyper
-  s2_misalign_stout.bits.paddr := s2_out.paddr
-  s2_misalign_stout.bits.gpaddr := s2_out.gpaddr
-  s2_misalign_stout.bits.isForVSnonLeafPTE := s2_out.isForVSnonLeafPTE
-  s2_misalign_stout.bits.need_rep := RegEnable(s1_tlb_miss, s1_fire)
-  s2_misalign_stout.bits.uop.exceptionVec := s2_out.uop.exceptionVec
-  io.misalign_stout := s2_misalign_stout
+  io.misalign_stout := DontCare
 
   // mmio and exception
   io.lsq_replenish := s2_out
@@ -486,7 +485,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   // RegNext prefetch train for better timing
   // ** Now, prefetch train is valid at store s3 **
   val s2_prefetch_train_valid = WireInit(false.B)
-  s2_prefetch_train_valid := s2_valid && io.dcache.resp.fire && !s2_out.mmio && !s2_in.tlbMiss && !s2_in.isHWPrefetch
+  s2_prefetch_train_valid := s2_valid && io.dcache.resp.fire && !s2_out.uncache && !s2_in.tlbMiss && !s2_in.isHWPrefetch
   if(EnableStorePrefetchSMS) {
     io.s1_prefetch_spec := s1_fire
     io.s2_prefetch_spec := s2_prefetch_train_valid
@@ -520,7 +519,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   // store misalign will not writeback to rob now
   when (s2_fire) {
-    s3_valid := (!s2_mmioORnc_region || s2_exception) && !s2_out.isHWPrefetch
+    s3_valid := (!s2_uncacheTypeRegion || s2_exception) && !s2_out.isHWPrefetch
   } .elsewhen (s3_fire) {
       s3_valid := false.B
   } .elsewhen (s3_kill) {
@@ -535,7 +534,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s3_out                 := DontCare
   s3_out.uop             := s3_in.uop
   s3_out.data            := DontCare
-  s3_out.debug.isMMIO    := s3_in.mmio
+  s3_out.debug.isMMIO    := s3_in.device
   s3_out.debug.paddr     := s3_in.paddr
   s3_out.debug.vaddr     := s3_in.vaddr
   s3_out.debug.isPerfCnt := false.B
@@ -557,7 +556,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
       sx_valid(i)          := s3_valid
       sx_in(i).output      := s3_out
       sx_in(i).vecFeedback := s3_vecFeedback
-      sx_in(i).mmio        := s3_in.mmio
+      sx_in(i).mmio        := s3_in.pmpIsMMIO
       sx_in(i).usSecondInv := s3_in.usSecondInv
       sx_in(i).elemIdx     := s3_in.elemIdx
       sx_in(i).alignedType := s3_in.alignedType

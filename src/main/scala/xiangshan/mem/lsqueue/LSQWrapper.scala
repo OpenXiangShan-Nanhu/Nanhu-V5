@@ -188,7 +188,6 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.forward      <> io.forward // overlap forwardMask & forwardData, DO NOT CHANGE SEQUENCE
   storeQueue.io.force_write  <> io.force_write
   storeQueue.io.cmoOpReq     <> io.cmoOpReq
-  // storeQueue.io.cmoOpResp    <> io.cmoOpResp
   storeQueue.io.flushSbuffer <> io.flushSbuffer
   storeQueue.io.maControl    <> io.maControl
   storeQueue.io.cbomfinish   := io.cbomfinish

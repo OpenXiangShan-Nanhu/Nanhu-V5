@@ -426,11 +426,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
         datavalid(loadWbIndex) :=
           (if (EnableFastForward) {
               hasExceptions ||
-             (!io.ldin(i).bits.mmio && !io.ldin(i).bits.miss && !io.ldin(i).bits.dcacheRequireReplay) || // do not writeback if that inst will be resend from rs
+             (!io.ldin(i).bits.uncache && !io.ldin(i).bits.miss && !io.ldin(i).bits.dcacheRequireReplay) || // do not writeback if that inst will be resend from rs
               io.ldin(i).bits.isSWPrefetch
            } else {
               hasExceptions ||
-              (!io.ldin(i).bits.mmio && !io.ldin(i).bits.miss) ||
+              (!io.ldin(i).bits.uncache && !io.ldin(i).bits.miss) ||
               io.ldin(i).bits.isSWPrefetch
            })
 
@@ -444,7 +444,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
         uop(loadWbIndex).debugInfo := io.ldin(i).bits.rep_info.debug
 
         //  Debug info
-        debug_mmio(loadWbIndex) := io.ldin(i).bits.mmio
+        debug_mmio(loadWbIndex) := io.ldin(i).bits.pmpIsMMIO
         debug_paddr(loadWbIndex) := io.ldin(i).bits.paddr
 
         XSInfo(io.ldin(i).valid,
@@ -456,7 +456,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
           io.ldin(i).bits.mask,
           io.ldin(i).bits.forwardData.asUInt,
           io.ldin(i).bits.forwardMask.asUInt,
-          io.ldin(i).bits.mmio,
+          io.ldin(i).bits.pmpIsMMIO,
           io.ldin(i).bits.isvec
         )
       }

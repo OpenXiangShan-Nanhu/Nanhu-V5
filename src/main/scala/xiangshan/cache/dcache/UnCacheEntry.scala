@@ -27,6 +27,15 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
       val valid = Bool()
       val paddr = UInt(PAddrBits.W)
     })
+
+//    val difftestInfo = Output(new Bundle(){
+//      val valid = Bool()
+//      val isDevice = Bool()
+//      val isStore = Bool()
+//      val addr = UInt(PAddrBits.W)
+//      val data = UInt(XLEN.W)
+//      val mask = UInt((XLEN/8).W)
+//    })
   })
   //  ================================================
   //  FSM state description:
@@ -97,7 +106,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
   when (state === s_refill_req) {
     io.mem_acquire.valid := true.B
     io.mem_acquire.bits := Mux(storeReq, store, load)
-    io.mem_acquire.bits.user.lift(DeviceType).foreach(_ := !req.nc)
+    io.mem_acquire.bits.user.lift(DeviceType).foreach(_ := req.device)
     when (io.mem_acquire.fire) {
       state := s_refill_resp
     }
@@ -111,7 +120,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
       resp_data := io.mem_grant.bits.data
       resp_nderr := io.mem_grant.bits.denied | io.mem_grant.bits.corrupt
       assert(refill_done, "Uncache response should be one beat only!")
-      state := Mux(storeReq && req.nc, s_invalid, s_send_resp)
+      state := Mux(storeReq && !req.device, s_invalid, s_send_resp)
     }
   }
 
@@ -126,10 +135,19 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     io.resp.bits.tag_error := false.B
     io.resp.bits.error := false.B
     io.resp.bits.nderr := resp_nderr
-    io.resp.bits.isNC  := req.nc
+    io.resp.bits.isNC  := !req.device
 
     when (io.resp.fire) {
       state := s_invalid
     }
   }
+
+//  io.difftestInfo.valid := state =/= s_invalid
+//  io.difftestInfo.isStore := storeReq
+//  io.difftestInfo.addr := Mux(storeReq, store.address, load.address)
+//  io.difftestInfo.data := Mux(storeReq, store.data, load.data)
+//  io.difftestInfo.mask := Mux(storeReq, store.mask, load.mask)
+//  io.difftestInfo.isDevice := req.device
+
+
 }

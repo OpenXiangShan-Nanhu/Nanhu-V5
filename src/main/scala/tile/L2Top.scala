@@ -239,7 +239,8 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       io.l2_tlb_req.req.bits.kill := l2.io.l2_tlb_req.req.bits.kill
       io.l2_tlb_req.req.bits.no_translate := l2.io.l2_tlb_req.req.bits.no_translate
       io.l2_tlb_req.req_kill := l2.io.l2_tlb_req.req_kill
-      io.perfEvents := l2.io_perf
+      io.perfEvents := DontCare
+      io.perfEvents.zip(l2.io_perf).foreach({case(a, b) => a := b})
 
       val allPerfEvents = l2.getPerfEvents
       if (printEventCoding) {

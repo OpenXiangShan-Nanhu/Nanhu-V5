@@ -185,13 +185,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val stageResp_valid_1cycle_dup = Wire(Vec(2, Bool()))
   stageResp_valid_1cycle_dup.map(_ := OneCycleValid(stageCheck(1).fire, flush))  // ecc flush
 
-  // request id for matching ram response
-  val reqId = RegInit(0.U(3.W))
-  when(io.req.fire){ reqId := reqId + 1.U }
-  val stageReqId   = RegEnable(reqId, io.req.fire)
-  val stageDelayId = RegEnable(stageReqId, stageReq.fire)
-  val stageCheck0Id = RegEnable(stageDelayId, stageDelay(1).fire)
-
   val rwHarzad = Wire(Bool())
 
   stageReq <> io.req
@@ -312,7 +305,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
     val sp_pre   = Bool()
     val sp_level = UInt(2.W)
     val sp_valid = Bool()
-    val id = UInt(3.W)
   }
   val respFifo = Module(new Queue(new RamRespEntry, 4, hasFlush = true))
   respFifo.io.flush.get := flush
@@ -361,7 +353,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   respFifo.io.enq.bits.sp_pre := spPreEnq
   respFifo.io.enq.bits.sp_level := spLevelEnq
   respFifo.io.enq.bits.sp_valid := spValidEnq
-  respFifo.io.enq.bits.id := stageDelayId
   respFifo.io.enq.valid := stageDelay_valid_1cycle
 
   //deq logic
@@ -390,9 +381,6 @@ class PtwCache()(implicit p: Parameters) extends XSModule with HasPtwConst with 
   val fifoSpLevel = Mux(fifoDeq.valid, fifoDeq.bits.sp_level, 0.U(2.W))
   val fifoSpValid = Mux(fifoDeq.valid, fifoDeq.bits.sp_valid, false.B)
 
-  when(stageCheck(0).fire){
-    XSError(!fifoDeq.valid || fifoDeq.bits.id =/= stageCheck0Id, "ptw cache resp id mismatch")
-  }
 
   // hazard when fifo full
   rwHarzad := rwHarzad_base || !respFifo.io.enq.ready

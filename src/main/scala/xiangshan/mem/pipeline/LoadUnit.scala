@@ -1060,10 +1060,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
                           s2_mmioORnc_region &&
                          !s2_exception &&
                          !s2_in.tlbMiss
-  val s2_main_memory   = !Pbmt.isIO(s2_pbmt) && !s2_pmp.mmio
-  val s2_mmio          = !s2_main_memory
-  val s2_nc            = Pbmt.isUncache(s2_pbmt)
-  dontTouch(s2_main_memory)
+  val s2_mmio          = s2_pmp.mmio && !s2_in.tlbMiss && !s2_prf
+  val s2_nc            = Pbmt.isUncache(s2_pbmt) && !s2_exception && !s2_in.tlbMiss && !s2_prf
+
   dontTouch(s2_mmio)
   dontTouch(s2_nc)
   // exception that may cause load addr to be invalid / illegal
@@ -1073,12 +1072,12 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   when (!s2_in.delayedLoadError) {
     s2_exception_vec(loadAccessFault) := (s2_in.uop.exceptionVec(loadAccessFault) ||
                                          s2_pmp.ld ||
-                                         s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_mmioORnc_region ||
+                                         s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_mmio ||
                                          s2_isvec && s2_pmp.mmio && !s2_prf && !s2_in.tlbMiss ||
                                          (io.dcache.resp.bits.tag_error && GatedValidRegNext(io.csrCtrl.cache_error_enable))
                                          ) && s2_vecActive
   }
-  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_mmioORnc_region
+  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_mmio
   // soft prefetch will not trigger any exception (but ecc error interrupt may
   // be triggered)
   val s2_tlb_unrelated_exceps = s2_in.uop.exceptionVec(loadAddrMisaligned) ||
@@ -1218,7 +1217,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s2_out                     := s2_in
   s2_out.data                := 0.U // data will be generated in load s3
   s2_out.uop.fpWen           := s2_in.uop.fpWen
-  s2_out.mmio                := s2_mmioORnc
+  s2_out.mmio                := s2_mmio
   s2_out.nc                  := s2_nc
   s2_out.uop.flushPipe       := false.B
   s2_out.uop.exceptionVec    := s2_exception_vec
@@ -1545,6 +1544,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
                           (s3_out.valid && !s3_vecout.isvec))
   io.ldout.bits.uop.exceptionVec := ExceptionNO.selectByFu(s3_ld_wb_meta.uop.exceptionVec, LduCfg)
   io.ldout.bits.isFromLoadUnit := true.B
+
+  dontTouch(s2_safe_writeback)
+  dontTouch(s3_safe_writeback)
 
   val s3_wakeUpValid = RegNextN(io.wakeup.valid,3)
   val s3_wakeUpBits = RegNextN(io.wakeup.bits,3)

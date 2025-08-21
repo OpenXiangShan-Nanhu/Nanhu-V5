@@ -426,11 +426,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
         datavalid(loadWbIndex) :=
           (if (EnableFastForward) {
               hasExceptions ||
-             (!io.ldin(i).bits.mmio && !io.ldin(i).bits.miss && !io.ldin(i).bits.dcacheRequireReplay) || // do not writeback if that inst will be resend from rs
+             (!(io.ldin(i).bits.mmio || io.ldin(i).bits.nc) && !io.ldin(i).bits.miss && !io.ldin(i).bits.dcacheRequireReplay) || // do not writeback if that inst will be resend from rs
               io.ldin(i).bits.isSWPrefetch
            } else {
               hasExceptions ||
-              (!io.ldin(i).bits.mmio && !io.ldin(i).bits.miss) ||
+              (!(io.ldin(i).bits.mmio || io.ldin(i).bits.nc) && !io.ldin(i).bits.miss) ||
               io.ldin(i).bits.isSWPrefetch
            })
 

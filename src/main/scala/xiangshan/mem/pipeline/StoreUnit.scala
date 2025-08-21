@@ -418,7 +418,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_exception = RegNext(s1_feedback.bits.hit) &&
                     (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_out.uop.exceptionVec, StaCfg).asUInt.orR)
 
-  val s2_main_memory   = !Pbmt.isIO(s2_pbmt) && !s2_pmp.mmio
+  val s2_main_memory   = !s2_pmp.mmio
   val s2_mmio          = s2_in.mmio || s2_pmp.mmio  // namely !s2_main_memory
   val s2_nc            = Pbmt.isUncache(s2_pbmt)
   val s2_mmioORnc_region = (s2_mmio || s2_nc) && RegNext(s1_feedback.bits.hit)
@@ -442,12 +442,12 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s2_out.mmio   := (s2_mmioORnc_region || s2_isCboM) && !s2_exception
   s2_out.nc     := s2_nc
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
-                                                s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_mmioORnc_region ||
+                                                s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_mmio ||
                                                 s2_pmp.st ||
                                                 (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception
                                                 ((s2_in.isvec || s2_isCboAll) && s2_mmioORnc && RegNext(s1_feedback.bits.hit))
                                                 ) && s2_vecActive
-  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_mmioORnc_region
+  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_mmio
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew
 
   // kill dcache write intent request when mmio or exception

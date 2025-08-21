@@ -41,6 +41,7 @@ import xiangshan.mem.mdp._
 import xiangshan.frontend.HasInstrMMIOConst
 import xiangshan.mem.prefetch.{BasePrefecher, L1Prefetcher, SMSParams, SMSPrefetcher}
 import xiangshan.backend.datapath.NewPipelineConnect
+import xiangshan.mem.skidBufferConnect
 import xs.utils._
 import xs.utils.cache.common._
 import xs.utils.mbist.{MbistInterface, MbistPipeline}
@@ -952,6 +953,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   cmoOpReqConnectPipe.io.out <> dcache.io.cmoOpReq
   cmoOpReqConnectPipe.io.rightOutFire := cmoOpReqConnectPipe.io.out.fire
   cmoOpReqConnectPipe.io.isFlush := false.B
+  // for ready pipe
+  val cmoOpReqBwdConnectPipe = Module(new skidBufferConnect(new MissReq))
+  cmoOpReqBwdConnectPipe.io.in <> lsq.io.cmoOpReq
+  cmoOpReqBwdConnectPipe.io.out <> dcache.io.cmoOpReq
+  cmoOpReqBwdConnectPipe.io.flush := false.B
   // lsq.io.cmoOpResp <> dcache.io.cmoOpResp
 
   // Prefetcher

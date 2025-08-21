@@ -595,8 +595,9 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   dataBuffer.io.read.bits.rid := io.mainpipe_info.s2_miss_id
   io.refill_info.bits.store_data := dataBuffer.io.rdata
 
-  dataBuffer.io.free.valid :=  io.mainpipe_info.s3_valid && io.mainpipe_info.s3_refill_resp
-  dataBuffer.io.free.bits := io.mainpipe_info.s3_miss_id
+  val dataBufferFree = io.mainpipe_info.s3_valid && io.mainpipe_info.s3_refill_resp
+  dataBuffer.io.free.valid := RegNext(dataBufferFree, false.B)
+  dataBuffer.io.free.bits := RegEnable(io.mainpipe_info.s3_miss_id, dataBufferFree)
 
   acquire_from_pipereg.valid := miss_req_pipe_reg.can_send_acquire(io.req.valid, io.req.bits)
   acquire_from_pipereg.bits := miss_req_pipe_reg.get_acquire(io.l2_pf_store_only)

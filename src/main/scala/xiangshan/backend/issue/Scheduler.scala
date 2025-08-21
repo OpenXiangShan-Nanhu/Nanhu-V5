@@ -411,7 +411,9 @@ abstract class SchedulerImpBase(wrapper: Scheduler)(implicit params: SchdBlockPa
   val lastCycleIqEnqFireVec    = RegNext(VecInit(issueQueues.map(_.io.enq.map(_.fire)).flatten))
   val lastCycleIqFullVec       = RegNext(VecInit(issueQueues.map(_.io.enq.head.ready)))
 
-  val issueQueueFullVecPerf = issueQueues.zip(lastCycleIqFullVec).zipWithIndex.map{ case ((iq, full),id) => (iq.params.getIQName + s"${id}_full", full) }
+  val issueQueueFullVecPerf = issueQueues.zip(lastCycleIqFullVec).zipWithIndex.map{ case ((iq, full),id) =>
+    (iq.params.getIQName + s"${id}_full", full)
+  }.filterNot(_._1.contains("Vldu"))
   val basePerfEvents = Seq(
     ("dispatch2Iq_out_fire_cnt", PopCount(lastCycleDp2IqOutFireVec)                 ),
     ("issueQueue_enq_fire_cnt",  PopCount(lastCycleIqEnqFireVec)                    )
@@ -635,6 +637,6 @@ class SchedulerMemImp(override val wrapper: Scheduler)(implicit params: SchdBloc
   val v0BusyTablePerf  = v0BusyTable.get
   val vlBusyTablePerf  = vlBusyTable.get
 
-  val perfEvents = basePerfEvents ++ Seq(intBusyTablePerf, vecBusyTablePerf, v0BusyTablePerf, vlBusyTablePerf).flatten(_.getPerfEvents)
+  val perfEvents = basePerfEvents ++ Seq(intBusyTablePerf, vecBusyTablePerf, vlBusyTablePerf, v0BusyTablePerf).flatten(_.getPerfEvents).init
   generatePerfEvent()
 }

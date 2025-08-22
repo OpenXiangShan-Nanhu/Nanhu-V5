@@ -379,9 +379,8 @@ class MutiLevelPrefetchFilter(implicit p: Parameters) extends XSModule with HasL
     val confidence = Input(UInt(1.W))
     val l2PfqBusy = Input(Bool())
   })
-
-  val l1_array = Reg(Vec(MLP_L1_SIZE, new MLPReqFilterBundle))
-  val l2_array = Reg(Vec(MLP_L2L3_SIZE, new MLPReqFilterBundle))
+  val l1_array = RegInit(VecInit(Seq.fill(MLP_L1_SIZE)(0.U.asTypeOf(new MLPReqFilterBundle))))
+  val l2_array = RegInit(VecInit(Seq.fill(MLP_L2L3_SIZE)(0.U.asTypeOf(new MLPReqFilterBundle))))
   val l1_valids = RegInit(VecInit(Seq.fill(MLP_L1_SIZE)(false.B)))
   val l2_valids = RegInit(VecInit(Seq.fill(MLP_L2L3_SIZE)(false.B)))
 

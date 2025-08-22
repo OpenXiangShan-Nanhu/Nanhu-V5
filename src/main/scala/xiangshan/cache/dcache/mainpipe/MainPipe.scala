@@ -526,6 +526,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val (_, probe_shrink_param, _) = s3_coh_dup.onProbe(s3_req_probe_param_dup)
 
 
+  val s3_sc_miss = RegEnable(s2_sc_miss, s2_fire_to_s3)
   val miss_update_meta = s3_req.miss
   val probe_update_meta = s3_req.probe && s3_tag_match && s3_coh =/= probe_new_coh
   val store_update_meta = s3_req.isStore && !s3_req.probe && s3_hit_coh =/= s3_new_hit_coh
@@ -563,7 +564,6 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val s3_lr = !s3_req.probe && s3_req.isAMO && s3_req.cmd === M_XLR
   val s3_sc = !s3_req.probe && s3_req.isAMO && s3_req.cmd === M_XSC
   val s3_lrsc_addr_match = lrsc_valid && (lrsc_addr === s3_req.addr) && (lr_fuOpcode === s3_req.lrsc_isD)
-  val s3_sc_miss = RegEnable(s2_sc_miss, s2_fire_to_s3)
   val s3_sc_fail = s3_sc && (!s3_lrsc_addr_match || s3_sc_miss)
   val debug_s3_sc_fail_addr_match = s3_sc && lrsc_addr === get_block_addr(s3_req.addr) && !lrsc_valid
   val s3_sc_resp = Mux(s3_sc_fail, 1.U, 0.U)

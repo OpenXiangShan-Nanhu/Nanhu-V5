@@ -529,7 +529,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   val miss_update_meta = s3_req.miss
   val probe_update_meta = s3_req.probe && s3_tag_match && s3_coh =/= probe_new_coh
   val store_update_meta = s3_req.isStore && !s3_req.probe && s3_hit_coh =/= s3_new_hit_coh
-  val amo_update_meta = s3_req.isAMO && !s3_req.probe && s3_hit_coh =/= s3_new_hit_coh
+  val amo_update_meta = s3_req.isAMO && !s3_req.probe && s3_hit_coh =/= s3_new_hit_coh && !s3_sc_miss
   val amo_wait_amoalu = s3_req.isAMO && s3_req.cmd =/= M_XLR && s3_req.cmd =/= M_XSC
   val update_meta = (miss_update_meta || probe_update_meta || store_update_meta || amo_update_meta) && !s3_req.replace
 

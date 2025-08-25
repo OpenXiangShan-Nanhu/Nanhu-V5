@@ -191,7 +191,7 @@ class CtrlBlockImp(
   private val exuRedirects: Seq[ValidIO[Redirect]] = io_writeback.filter(_.bits.redirect.nonEmpty).map(x => {
     val hasCSR = x.bits.params.hasCSR
     val out = Wire(Valid(new Redirect()))
-    out.valid := x.valid && x.bits.redirect.get.valid && x.bits.redirect.get.bits.cfiUpdate.isMisPred && !x.bits.robIdx.needFlush(Seq(s1_s3_redirect, s2_s4_redirect))
+    out.valid := x.valid && x.bits.redirect.get.valid && (x.bits.redirect.get.bits.cfiUpdate.isMisPred || x.bits.redirect.get.bits.cfiUpdate.hasBackendFault) && !x.bits.robIdx.needFlush(Seq(s1_s3_redirect, s2_s4_redirect))
     out.bits := x.bits.redirect.get.bits
     out.bits.debugIsCtrl := true.B
     out.bits.debugIsMemVio := false.B
@@ -222,6 +222,8 @@ class CtrlBlockImp(
   io.memPredPcRead.ptr := redirectGen.io.memPredPcRead.ptr
   io.memPredPcRead.offset := redirectGen.io.memPredPcRead.offset
   redirectGen.io.memPredPcRead.data := io.memPredPcRead.data
+
+  io.memPredUpdate := redirectGen.io.memPredUpdate
 
   redirectGen.io.hartId := io.fromTop.hartId
   redirectGen.io.oldestExuRedirect.valid := GatedValidRegNext(oldestExuRedirect.valid)
@@ -434,14 +436,14 @@ class CtrlBlockImp(
     val snptRobidx = snpt.io.snapshots(idx).robIdx.head
     // (redirectRobidx.value =/= snptRobidx.value) for only flag diffrence
     snpt.io.valids(idx) && ((redirectRobidx > snptRobidx) && (redirectRobidx.value =/= snptRobidx.value) ||
-      !s1_s3_redirect.bits.flushItself() && redirectRobidx === snptRobidx)
+      redirectRobidx === snptRobidx)
   }.reduceTree(_ || _)
   val snptSelect = MuxCase(
     0.U(log2Ceil(RenameSnapshotNum).W),
     (1 to RenameSnapshotNum).map(i => (snpt.io.enqPtr - i.U).value).map{case idx =>
       val thisSnapRobidx = snpt.io.snapshots(idx).robIdx.head
       (snpt.io.valids(idx) && (redirectRobidx > thisSnapRobidx && (redirectRobidx.value =/= thisSnapRobidx.value) ||
-        !s1_s3_redirect.bits.flushItself() && redirectRobidx === thisSnapRobidx), idx)
+        redirectRobidx === thisSnapRobidx), idx)
     }
   )
 
@@ -500,29 +502,6 @@ class CtrlBlockImp(
     }
 
   }
-
-  // memory dependency predict
-  // when decode, send fold pc to mdp
-  private val mdpFlodPcVecVld = Wire(Vec(DecodeWidth, Bool()))
-  private val mdpFlodPcVec = Wire(Vec(DecodeWidth, UInt(MemPredPCWidth.W)))
-  for (i <- 0 until DecodeWidth) {
-    mdpFlodPcVecVld(i) := decode.io.out(i).fire || GatedValidRegNext(decode.io.out(i).fire)
-    mdpFlodPcVec(i) := Mux(
-      decode.io.out(i).fire,
-      decode.io.in(i).bits.foldpc,
-      rename.io.in(i).bits.foldpc
-    )
-  }
-
-  // currently, we only update mdp info when isReplay
-//  memCtrl.io.redirect := s1_s3_redirect
-//  memCtrl.io.csrCtrl := io.csrCtrl                          // RegNext in memCtrl
-//  memCtrl.io.stIn := io.fromMem.stIn                        // RegNext in memCtrl
-//  memCtrl.io.memPredUpdate := redirectGen.io.memPredUpdate  // RegNext in memCtrl
-//  memCtrl.io.mdpFoldPcVecVld := mdpFlodPcVecVld
-//  memCtrl.io.mdpFlodPcVec := mdpFlodPcVec
-//  memCtrl.io.dispatchLFSTio <> dispatch.io.lfst
-  io.memPredUpdate := redirectGen.io.memPredUpdate
 
   rat.io.redirect := s1_s3_redirect.valid
   rat.io.rabCommits := rob.io.rabCommits

@@ -219,13 +219,16 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     singleStepState := s_holdRobidx
     robidxStepNext := io.fromRename(0)(0).bits.robIdx
   }
+  robidxStepReg := robidxCanCommitStepping
   
   when(singleStepState === s_updateRobidx) {
-    robidxStepReg := robidxStepNext
     robidxCanCommitStepping := robidxStepNext
   }.elsewhen(singleStepState === s_holdRobidx) {
-    robidxStepReg := robidxStepReg 
-    robidxCanCommitStepping := robidxStepReg
+    when(io.redirect.valid){
+      robidxCanCommitStepping.flag := !robidxStepReg.flag
+    }.otherwise {
+      robidxCanCommitStepping := robidxStepReg
+    }
   }
 
   // 0 to identify and ready  1 to rob   2 to dq   3 to perf & busytable

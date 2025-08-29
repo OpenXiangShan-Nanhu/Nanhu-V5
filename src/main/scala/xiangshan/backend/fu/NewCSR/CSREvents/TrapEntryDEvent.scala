@@ -48,6 +48,7 @@ class TrapEntryDEventModule(implicit val p: Parameters) extends Module with CSRE
   private val triggerEnterDebugMode   = in.triggerEnterDebugMode
   private val hasDebugEbreakException = in.hasDebugEbreakException
   private val hasSingleStep           = in.hasSingleStep
+  private val isFetchMalAddr          = in.isFetchMalAddr
 
   private val hasExceptionInDmode = debugMode && hasTrap
   val causeIntr = DcsrCause.Haltreq.asUInt
@@ -85,7 +86,7 @@ class TrapEntryDEventModule(implicit val p: Parameters) extends Module with CSRE
   out.dcsr.bits.V             := current.privState.V.asUInt
   out.dcsr.bits.PRV           := current.privState.PRVM.asUInt
   out.dcsr.bits.CAUSE         := Mux(hasDebugIntr, causeIntr, causeExp)
-  out.dpc.bits.epc            := trapPC(63, 1)
+  out.dpc.bits.epc            := Mux(isFetchMalAddr, in.fetchMalTval(63, 1), trapPC(63, 1))
 
   out.targetPc.bits.pc        := debugPc
   out.targetPc.bits.raiseIPF  := false.B

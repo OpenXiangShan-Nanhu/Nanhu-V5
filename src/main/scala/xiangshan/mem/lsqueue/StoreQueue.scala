@@ -194,6 +194,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val rob = Flipped(new RobLsqIO)
     val uncache = new UncacheWordIO
     val sqHasCmo = Output(Bool())
+    val cbomfinish = Input(Bool())
     // val refill = Flipped(Valid(new DCacheLineReq ))
     val exceptionAddr = new ExceptionAddrIO
     val flushSbuffer = new SbufferFlushBundle
@@ -946,7 +947,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   }
   // assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
   
-  val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _)
+  val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _) && io.cbomfinish
   // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 2cycle is used for timing alignment.
   val cboZeroFlushSb      = GatedRegNext(deqCanDoCboZero)
   

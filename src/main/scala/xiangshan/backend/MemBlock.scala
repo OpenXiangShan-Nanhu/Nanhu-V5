@@ -573,7 +573,23 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   lsq.io := DontCare
   mdp.io.ldUpdate := lsq.io.mdpTrainUpdate
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
-  io.mem_to_ooo.sqHasCmo := lsq.io.sqHasCmo
+
+    // cmoreq from sq send to MissQueue
+  // lsq.io.cmoOpReq <> dcache.io.cmoOpReq
+  val cmoOpReqConnectPipe = Module(new PipelineConnectPipe(new MissReq))
+  cmoOpReqConnectPipe.io.in <> lsq.io.cmoOpReq
+  cmoOpReqConnectPipe.io.out <> dcache.io.cmoOpReq
+  cmoOpReqConnectPipe.io.rightOutFire := cmoOpReqConnectPipe.io.out.fire
+  cmoOpReqConnectPipe.io.isFlush := false.B
+  // for ready pipe
+  val cmoOpReqBwdConnectPipe = Module(new skidBufferConnect(new MissReq))
+  cmoOpReqBwdConnectPipe.io.in <> lsq.io.cmoOpReq
+  cmoOpReqBwdConnectPipe.io.out <> dcache.io.cmoOpReq
+  cmoOpReqBwdConnectPipe.io.flush := false.B
+  // lsq.io.cmoOpResp <> dcache.io.cmoOpResp
+  val cmoSkidBufferPending = cmoOpReqBwdConnectPipe.io.in.ready
+
+  io.mem_to_ooo.sqHasCmo := lsq.io.sqHasCmo && cmoSkidBufferPending
 
   dcache.io.hartId := io.hartId
   lsq.io.hartId := io.hartId
@@ -946,19 +962,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   //     lsq.io.cmoOpResp.bits  := 0.U.asTypeOf(new CMOResp)
   // }
 
-  // cmoreq from sq send to MissQueue
-  // lsq.io.cmoOpReq <> dcache.io.cmoOpReq
-  val cmoOpReqConnectPipe = Module(new PipelineConnectPipe(new MissReq))
-  cmoOpReqConnectPipe.io.in <> lsq.io.cmoOpReq
-  cmoOpReqConnectPipe.io.out <> dcache.io.cmoOpReq
-  cmoOpReqConnectPipe.io.rightOutFire := cmoOpReqConnectPipe.io.out.fire
-  cmoOpReqConnectPipe.io.isFlush := false.B
-  // for ready pipe
-  val cmoOpReqBwdConnectPipe = Module(new skidBufferConnect(new MissReq))
-  cmoOpReqBwdConnectPipe.io.in <> lsq.io.cmoOpReq
-  cmoOpReqBwdConnectPipe.io.out <> dcache.io.cmoOpReq
-  cmoOpReqBwdConnectPipe.io.flush := false.B
-  // lsq.io.cmoOpResp <> dcache.io.cmoOpResp
 
   // Prefetcher
 //  val StreamDTLBPortIndex = TlbStartVec(dtlb_ld_idx) + LduCnt + HyuCnt
@@ -1367,6 +1370,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   io.mem_to_ooo.sbIsEmpty := RegNext(stIsEmpty)
   io.power.sbIsEmpty := RegNext(stIsEmpty)
   io.mem_to_ooo.cmoFinish := dcache.io.cmofinish //todo
+
+  lsq.io.cbomfinish := dcache.io.cmofinish || cmoSkidBufferPending
 
   // if both of them tries to flush sbuffer at the same time
   // something must have gone wrong

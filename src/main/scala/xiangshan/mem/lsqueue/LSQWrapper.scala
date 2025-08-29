@@ -126,7 +126,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
     val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
     val sqHasCmo = Output(Bool())
-
+    val cbomfinish = Input(Bool())
     // top-down
     val debugTopDown = new LoadQueueTopDownIO
 
@@ -191,6 +191,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   // storeQueue.io.cmoOpResp    <> io.cmoOpResp
   storeQueue.io.flushSbuffer <> io.flushSbuffer
   storeQueue.io.maControl    <> io.maControl
+  storeQueue.io.cbomfinish   := io.cbomfinish
   if(env.EnableDifftest){
     storeQueue.io.diffStoreEventCount.get  := io.diffStoreEventCount.get
   }

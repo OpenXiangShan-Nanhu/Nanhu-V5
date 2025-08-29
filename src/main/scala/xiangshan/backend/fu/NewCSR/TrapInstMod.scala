@@ -39,7 +39,7 @@ class TrapInstMod(implicit p: Parameters) extends Module with HasCircularQueuePt
 
   // alias
   // delay flush one cycle to alias fromrob trap interrupt
-  val flush = RegNext(io.fromRob.flush)
+  val flush = io.fromRob.flush
   val newTrapInstInfo = io.fromDecode.trapInstInfo
 
   val valid = RegInit(false.B)

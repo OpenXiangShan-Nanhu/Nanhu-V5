@@ -1001,7 +1001,6 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   missQueue.io.l2_pf_store_only := RegNext(io.l2_pf_store_only, false.B)
   missQueue.io.debugTopDown <> io.debugTopDown
   missQueue.io.l2_hint <> RegNext(io.l2_hint)
-  missQueue.io.l2_hint <> DontCare
   missQueue.io.mainpipe_info := mainPipe.io.mainpipe_info
   mainPipe.io.refill_info := missQueue.io.refill_info
   mainPipe.io.replace <> missQueue.io.replace_block_query

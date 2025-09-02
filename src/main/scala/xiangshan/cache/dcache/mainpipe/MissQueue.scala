@@ -42,6 +42,9 @@ class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
   val isCMO = Bool()
   val cmoOpcode = UInt(3.W)   // 0-cbo.clean, 1-cbo.flush, 2-cbo.inval, 3-cbo.zero
 
+  //for missreq
+  val s2_missLqIdx = new LqPtr
+  //for keyword
   val lqIdx = new LqPtr
   // store
   val full_overwrite = Bool()
@@ -137,6 +140,7 @@ class MissReq(implicit p: Parameters) extends MissReqWoStoreData {
     out.cmoOpcode := cmoOpcode
     out.isBtoT := isBtoT
     out.occupy_way := occupy_way
+    out.s2_missLqIdx := DontCare
     out
   }
 }

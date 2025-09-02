@@ -388,7 +388,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
 
   // send load miss to miss queue
   val s2_miss_cancel = io.lsu.s2_kill || s2_tag_error
-  io.miss_req.valid := s2_miss_req_valid && !(s2_miss_cancel)
+  io.miss_req.valid := s2_miss_req_valid
   io.miss_req.bits := DontCare
   io.miss_req.bits.source := s2_instrtype
   io.miss_req.bits.pf_source := RegNext(RegNext(io.lsu.pf_source))  // TODO: clock gate
@@ -396,7 +396,8 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   io.miss_req.bits.addr := get_block_addr(s2_paddr)
   io.miss_req.bits.vaddr := s2_vaddr
   io.miss_req.bits.req_coh := s2_hit_coh
-  io.miss_req.bits.cancel := false.B
+  io.miss_req.bits.s2_missLqIdx := s2_req.lqIdx
+  io.miss_req.bits.cancel := s2_miss_cancel
   io.miss_req.bits.pc := io.lsu.s2_pc
   io.miss_req.bits.lqIdx := io.lsu.req.bits.lqIdx
 

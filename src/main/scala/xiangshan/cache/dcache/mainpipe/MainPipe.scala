@@ -767,7 +767,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.data_readline.bits.way_en := s1_way_en
   io.data_readline.bits.addr := s1_req.vaddr
 
-  io.miss_req.valid := s2_valid && s2_can_go_to_mq && !s2_grow_perm_fail
+  io.miss_req.valid := s2_valid && s2_can_go_to_mq
   val miss_req = io.miss_req.bits
   miss_req := DontCare
   miss_req.source := s2_req.source
@@ -783,7 +783,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   miss_req.lrsc_isD := s2_req.lrsc_isD
   miss_req.req_coh := s2_hit_coh
   miss_req.id := s2_req.id
-  miss_req.cancel := false.B
+  miss_req.cancel := s2_grow_perm_fail
   miss_req.pc := DontCare
   miss_req.full_overwrite := s2_req.isStore && s2_req.store_mask.andR
   miss_req.isBtoT := s2_grow_perm

@@ -1070,8 +1070,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   // will be force writebacked to rob
   val s2_exception_vec = WireInit(s2_in.uop.exceptionVec)
   when (!s2_in.delayedLoadError) {
-    s2_exception_vec(loadAccessFault) := (((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !s2_in.tlbMiss) ||
-                                         (io.dcache.resp.bits.tag_error && GatedValidRegNext(io.csrCtrl.cache_error_enable))) && s2_vecActive
+    s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !s2_in.tlbMiss) && s2_vecActive
   }
 //  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf
   s2_exception_vec(loadAddrMisaligned) := Mux(s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf && s2_in.uop.exceptionVec(loadAddrMisaligned), false.B, s2_in.uop.exceptionVec(loadAddrMisaligned))
@@ -1389,7 +1388,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s3_out.valid                := s3_valid && s3_safe_writeback
   s3_out.bits.uop             := s3_in.uop
   s3_out.bits.uop.fpWen       := s3_in.uop.fpWen && !s3_exception
-  s3_out.bits.uop.exceptionVec(loadAccessFault) := (s3_dly_ld_err || s3_in.uop.exceptionVec(loadAccessFault)) && s3_vecActive
+  s3_out.bits.uop.exceptionVec(loadAccessFault) := s3_in.uop.exceptionVec(loadAccessFault) && s3_vecActive
   s3_out.bits.uop.flushPipe   := false.B
   s3_out.bits.uop.replayInst  := s3_rep_frm_fetch || s3_flushPipe
   s3_out.bits.data            := s3_in.data

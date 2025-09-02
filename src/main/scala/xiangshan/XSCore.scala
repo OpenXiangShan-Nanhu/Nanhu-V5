@@ -128,6 +128,10 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   frontend.io.fencei <> backend.io.fenceio.fencei
 
   backend.io.fromTop := memBlock.io.mem_to_ooo.topToBackendBypass
+  backend.io.fromTop.externalInterrupt.nmi.nmi_31 := memBlock.io.mem_to_ooo.topToBackendBypass.externalInterrupt.nmi.nmi_31 || 
+    (memBlock.io.error.valid && backend.io.csrCustomCtrl.cache_error_enable)
+  backend.io.fromTop.externalInterrupt.nmi.nmi_43 := memBlock.io.mem_to_ooo.topToBackendBypass.externalInterrupt.nmi.nmi_43 || 
+    (memBlock.io.outer_beu_errors_icache.ecc_error.valid && backend.io.csrCustomCtrl.cache_error_enable)
 
   require(backend.io.mem.stIn.length == memBlock.io.mem_to_ooo.stIn.length)
   backend.io.mem.stIn.zip(memBlock.io.mem_to_ooo.stIn).foreach { case (sink, source) =>

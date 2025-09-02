@@ -31,7 +31,7 @@ import xiangshan.cache.wpu._
 import xiangshan.mem.{AddPipelineReg, HasL1PrefetchSourceParameter}
 import xiangshan.mem.prefetch._
 import xiangshan.mem.LqPtr
-import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, PipelineConnect, PipelineConnectPipe, ReplacementPolicy, SRAMQueue}
+import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ParallelOperation, PipelineConnect, PipelineConnectPipe, ReplacementPolicy, SRAMQueue}
 import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.cache.common.{AliasField, IsKeywordField, IsKeywordKey, PrefetchField, VaddrField}
@@ -327,6 +327,16 @@ trait HasDCacheParameters extends HasL1CacheParameters with HasL1PrefetchSourceP
   }
 
   val numReplaceRespPorts = 2
+
+  def selectOldestMissReq(xs: Seq[Valid[LqPtr]]): Vec[Bool] = {
+    val compareVec = (0 until xs.length).map(i => (0 until i).map(j => xs(j).bits > xs(i).bits))
+    val resultOnehot = VecInit((0 until xs.length).map(i => Cat((0 until xs.length).map(j =>
+      (if (j < i) !xs(j).valid || compareVec(i)(j)
+      else if (j == i) xs(i).valid
+      else !xs(j).valid || !compareVec(j)(i))
+    )).andR))
+    resultOnehot
+  }
 
   require(isPow2(nSets), s"nSets($nSets) must be pow2")
   require(isPow2(nWays), s"nWays($nWays) must be pow2")
@@ -1315,12 +1325,22 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   io.lsu.atomics.resp.bits := RegEnable(mainPipe.io.atomic_resp.bits, atomic_resp_valid)
   io.lsu.atomics.block_lr := mainPipe.io.block_lr
 
+
+  val missReqVec = ldu.map(_.io.miss_req.valid).zip(ldu.map(_.io.miss_req.bits.s2_missLqIdx)).map({case r =>
+    val bundle = Wire(Valid(new LqPtr))
+    bundle.valid := r._1
+    bundle.bits := r._2
+    bundle
+  })
+  val missSelVec = selectOldestMissReq(missReqVec)
+
   // Request
   val missReqArb = Module(new TreeArbiter(new MissReq, MissReqPortCount))
-
   missReqArb.io.in(MainPipeMissReqPort) <> mainPipe.io.miss_req
   for (w <- 0 until backendParams.LduCnt) {
-    missReqArb.io.in(w + 1) <> ldu(w).io.miss_req
+    missReqArb.io.in(w + 1).valid := ldu(w).io.miss_req.valid & missSelVec(w)
+    missReqArb.io.in(w + 1).bits := ldu(w).io.miss_req.bits
+    ldu(w).io.miss_req.ready := missReqArb.io.in(w + 1).ready & missSelVec(w)
   }
   missReqArb.io.in(MissReqPortCount-1) <> io.cmoOpReq
 

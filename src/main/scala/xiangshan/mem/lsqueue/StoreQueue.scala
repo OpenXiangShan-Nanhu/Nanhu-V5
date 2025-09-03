@@ -904,15 +904,15 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   dontTouch(mmioReq)
 
-  // cbo debug infor
-  val debug_iscbom = WireInit(VecInit(List.fill(StoreQueueSize)(false.B)))
-  val debug_iscboz = WireInit(VecInit(List.fill(StoreQueueSize)(false.B)))
-  dontTouch(debug_iscbom)
-  dontTouch(debug_iscboz)
+  // cbo  infor
+  val iscbom = WireInit(VecInit(List.fill(StoreQueueSize)(false.B)))
+  val iscboz = WireInit(VecInit(List.fill(StoreQueueSize)(false.B)))
+  dontTouch(iscbom)
+  dontTouch(iscboz)
 
   for (i <- 0 until StoreQueueSize) {
-    debug_iscbom(i) := allocated(i) & LSUOpType.isCbom(uop(i).fuOpType)
-    debug_iscboz(i) := allocated(i) & (uop(i).fuOpType === LSUOpType.cbo_zero)
+    iscbom(i) := allocated(i) & LSUOpType.isCbom(uop(i).fuOpType)
+    iscboz(i) := allocated(i) & (uop(i).fuOpType === LSUOpType.cbo_zero)
   }
 
   // cbo manage instr
@@ -950,7 +950,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   }
   // assert(!(PopCount(isCboZeroToSbVec) > 1.U), "Multiple cbo zero instructions cannot be executed at the same time")
   
-  val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _) && io.cbomfinish
+  val deqCanDoCboZero         = isCboZeroToSbVec.reduce(_ || _)
   // when io.sbuffer.fire , delay 2 cycle, then flush sbuffer. 2cycle is used for timing alignment.
   val cboZeroFlushSb      = GatedRegNext(deqCanDoCboZero)
 
@@ -1062,6 +1062,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // module keeps growing higher. Now we give data read a whole cycle.
   for (i <- 0 until EnsbufferWidth) {
     val ptr = rdataPtrExt(i).value
+    val cbozStall = if(i == 0) iscboz(rdataPtrExt(0).value) && !io.cbomfinish else (iscboz(rdataPtrExt(i).value) || iscboz(rdataPtrExt(i-1).value)) && !io.cbomfinish
     val mmioStall = if(i == 0) uncache(rdataPtrExt(0).value) else (uncache(rdataPtrExt(i).value) || uncache(rdataPtrExt(i-1).value))
     val exceptionValid = if(i == 0) hasException(rdataPtrExt(0).value) else {
       hasException(rdataPtrExt(i).value) || (hasException(rdataPtrExt(i-1).value) && uop(rdataPtrExt(i).value).robIdx === uop(rdataPtrExt(i-1).value).robIdx)
@@ -1074,13 +1075,13 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       dataBuffer.io.enq(i).valid := Mux(
         doMisalignSt,
         io.maControl.control.writeSb,
-        allocated(ptr) && committed(ptr) && ((!isVec(ptr) && (allvalid(ptr) || hasException(ptr))) || vecMbCommit(ptr)) && !mmioStall
+        allocated(ptr) && committed(ptr) && ((!isVec(ptr) && (allvalid(ptr) || hasException(ptr))) || vecMbCommit(ptr)) && !mmioStall && !cbozStall
       )
     } else {
       dataBuffer.io.enq(i).valid := Mux(
         doMisalignSt,
         false.B,
-        allocated(ptr) && committed(ptr) && ((!isVec(ptr) && (allvalid(ptr) || hasException(ptr))) || vecMbCommit(ptr)) && !mmioStall
+        allocated(ptr) && committed(ptr) && ((!isVec(ptr) && (allvalid(ptr) || hasException(ptr))) || vecMbCommit(ptr)) && !mmioStall && !cbozStall
       )
     }
     // Note that store data/addr should both be valid after store's commit

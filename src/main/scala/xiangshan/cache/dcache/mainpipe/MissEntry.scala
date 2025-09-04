@@ -521,7 +521,7 @@ class MissEntry(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val w_grantfirst_forward_info = Mux(isKeyword, w_grantlast, w_grantfirst)
   val w_grantlast_forward_info = Mux(isKeyword, w_grantfirst, w_grantlast)
   val refill_and_store_data = VecInit(Seq.fill(blockRows)(0.U(rowBits.W)))
-  io.forwardInfo.apply(req_valid && (req.isFromLoad || req.isFromPrefetch), req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info)
+  io.forwardInfo.apply(req_valid && (req.isFromLoad || req.isFromPrefetch), req.addr, refill_and_store_data, w_grantfirst_forward_info, w_grantlast_forward_info, error)
 
   io.matched := req_valid && (get_block(req.addr) === get_block(io.req.bits.addr)) && !prefetch
   io.prefetch_info.late_prefetch := io.req.valid && !(io.req.bits.isFromPrefetch) && req_valid && (get_block(req.addr) === get_block(io.req.bits.addr)) && prefetch

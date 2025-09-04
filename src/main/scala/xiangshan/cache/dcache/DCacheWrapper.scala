@@ -704,18 +704,20 @@ class MissEntryForwardIO(implicit p: Parameters) extends DCacheBundle {
   val raw_data = Vec(blockRows, UInt(rowBits.W))
   val firstbeat_valid = Bool()
   val lastbeat_valid = Bool()
+  val error = Bool()
 
-  def apply(mshr_valid : Bool, mshr_paddr : UInt, mshr_rawdata : Vec[UInt], mshr_first_valid : Bool, mshr_last_valid : Bool) = {
+  def apply(mshr_valid : Bool, mshr_paddr : UInt, mshr_rawdata : Vec[UInt], mshr_first_valid : Bool, mshr_last_valid : Bool, mshr_error : Bool) = {
     inflight := mshr_valid
     paddr := mshr_paddr
     raw_data := mshr_rawdata
     firstbeat_valid := mshr_first_valid
     lastbeat_valid := mshr_last_valid
+    error := mshr_error
   }
 
   // check if we can forward from mshr or D channel
   def check(req_valid : Bool, req_paddr : UInt) = {
-    RegNext(req_valid && inflight && req_paddr(PAddrBits - 1, blockOffBits) === paddr(PAddrBits - 1, blockOffBits)) // TODO: clock gate(1-bit)
+    RegNext(req_valid && inflight && req_paddr(PAddrBits - 1, blockOffBits) === paddr(PAddrBits - 1, blockOffBits) && !error) // TODO: clock gate(1-bit)
   }
 
   def forward(req_valid : Bool, req_paddr : UInt, mshr_raw_data: Vec[UInt]) = {

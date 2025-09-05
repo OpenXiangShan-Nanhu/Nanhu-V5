@@ -966,6 +966,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     s1_out.uop.exceptionVec(loadPageFault)   := io.tlb.resp.bits.excp(0).pf.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
     s1_out.uop.exceptionVec(loadGuestPageFault)   := io.tlb.resp.bits.excp(0).gpf.ld && !s1_tlb_miss && !s1_in.tlbNoQuery
     s1_out.uop.exceptionVec(loadAccessFault) := io.tlb.resp.bits.excp(0).af.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
+    s1_out.uop.exceptionVec(loadAddrMisaligned) := s1_in.uop.exceptionVec(loadAddrMisaligned) && !s1_tlb_miss
   } .otherwise {
     s1_out.uop.exceptionVec(loadPageFault)      := false.B
     s1_out.uop.exceptionVec(loadGuestPageFault) := false.B
@@ -1070,7 +1071,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   // will be force writebacked to rob
   val s2_exception_vec = WireInit(s2_in.uop.exceptionVec)
   when (!s2_in.delayedLoadError) {
-    s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !s2_in.tlbMiss) && s2_vecActive
+    s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !(s2_in.tlbMiss || s2_in.pf)) && s2_vecActive
   }
 //  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf
   s2_exception_vec(loadAddrMisaligned) := Mux(s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf && s2_in.uop.exceptionVec(loadAddrMisaligned), false.B, s2_in.uop.exceptionVec(loadAddrMisaligned))

@@ -333,15 +333,10 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 //    s1_out.uop.exceptionVec(storeAddrMisaligned) := false.B
 //  }
 
-  s1_out.uop.exceptionVec(storePageFault)      := (io.tlb.resp.bits.excp(0).pf.st  || io.tlb.resp.bits.excp(0).pf.ld)&& s1_vecActive
-  s1_out.uop.exceptionVec(storeAccessFault)    := (io.tlb.resp.bits.excp(0).af.st  || io.tlb.resp.bits.excp(0).af.ld)&& s1_vecActive
+  s1_out.uop.exceptionVec(storePageFault)      := (io.tlb.resp.bits.excp(0).pf.st  || io.tlb.resp.bits.excp(0).pf.ld)&& s1_vecActive && !s1_tlb_miss
+  s1_out.uop.exceptionVec(storeAccessFault)    := (io.tlb.resp.bits.excp(0).af.st  || io.tlb.resp.bits.excp(0).af.ld)&& s1_vecActive && !s1_tlb_miss
   s1_out.uop.exceptionVec(storeGuestPageFault) := (io.tlb.resp.bits.excp(0).gpf.st || io.tlb.resp.bits.excp(0).gpf.ld) && s1_vecActive
-
-  when(s1_in.uop.exceptionVec(storeAddrMisaligned)){
-    s1_out.uop.exceptionVec(storePageFault) := false.B
-    s1_out.uop.exceptionVec(storeAccessFault) := false.B
-    s1_out.uop.exceptionVec(storeGuestPageFault) := false.B
-  }
+  s1_out.uop.exceptionVec(storeAddrMisaligned) := s1_in.uop.exceptionVec(storeAddrMisaligned) && !s1_tlb_miss
 
   // trigger
   val storeTrigger = Module(new MemTrigger(MemType.STORE))
@@ -420,10 +415,10 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_nc = Pbmt.isNC(s2_pbmt)
 
   val s2_deviceType = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) | !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
-  val s2_deviceTypeRegion = s2_deviceType && !s2_in.tlbMiss
+  val s2_deviceTypeRegion = s2_deviceType && !s2_in.tlbMiss && !s2_in.pf
 
   val s2_uncacheType = s2_deviceType | (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
-  val s2_uncacheTypeRegion = s2_uncacheType && !s2_in.tlbMiss
+  val s2_uncacheTypeRegion = s2_uncacheType && !s2_in.tlbMiss && !s2_in.pf
 
 
   dontTouch(s2_uncacheType)
@@ -450,9 +445,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s2_out.nc := s2_nc
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_deviceType ||
-                                                s2_pmp.st ||
-                                                (s2_pmp.ld && s2_isCboM) ||   // cmo need read permission but produce store exception
-                                                ((s2_in.isvec || s2_isCboAll) && s2_uncacheTypeRegion && !s2_in.tlbMiss)
+                                                s2_pmp.st && !s2_in.pf ||
+                                                (s2_pmp.ld && s2_isCboM && !s2_in.pf) ||   // cmo need read permission but produce store exception
+                                                ((s2_in.isvec || s2_isCboAll) && s2_uncacheTypeRegion)
                                                 ) && s2_vecActive
 //  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_deviceType && !s2_in.tlbMiss && !s2_in.pf
     s2_out.uop.exceptionVec(storeAddrMisaligned) := Mux(s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_deviceType && !s2_in.tlbMiss && !s2_in.pf, false.B, s2_in.uop.exceptionVec(storeAddrMisaligned))

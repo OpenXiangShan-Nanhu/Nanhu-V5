@@ -1001,7 +1001,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   loadTrigger.io.fromLoadStore.isVectorUnitStride    := s1_in.isvec && s1_in.is128bit
   loadTrigger.io.fromLoadStore.mask                  := s1_in.mask
 
-  val s1_trigger_action = loadTrigger.io.toLoadStore.triggerAction
+  val s1_trigger_action = Mux(s1_prf, TriggerAction.None, loadTrigger.io.toLoadStore.triggerAction)
   val s1_trigger_debug_mode = TriggerAction.isDmode(s1_trigger_action)
   val s1_trigger_breakpoint = TriggerAction.isExp(s1_trigger_action)
   s1_out.uop.trigger                  := s1_trigger_action

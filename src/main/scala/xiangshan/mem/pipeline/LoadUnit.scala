@@ -946,18 +946,18 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
   s1_out                   := s1_in
   s1_out.vaddr             := s1_vaddr
-  s1_out.vaNeedExt         := io.tlb.resp.bits.excp(0).vaNeedExt
-  s1_out.isHyper           := io.tlb.resp.bits.excp(0).isHyper
+  s1_out.vaNeedExt         := Mux(s1_in.isFastReplay, s1_in.vaNeedExt, io.tlb.resp.bits.excp(0).vaNeedExt)
+  s1_out.isHyper           := Mux(s1_in.isFastReplay, s1_in.isHyper, io.tlb.resp.bits.excp(0).isHyper)
   s1_out.paddr             := s1_paddr_dup_lsu
   s1_out.gpaddr            := s1_gpaddr_dup_lsu
-  s1_out.isForVSnonLeafPTE := io.tlb.resp.bits.isForVSnonLeafPTE
+  s1_out.isForVSnonLeafPTE := Mux(s1_in.isFastReplay, s1_in.isForVSnonLeafPTE, io.tlb.resp.bits.isForVSnonLeafPTE)
   s1_out.tlbMiss           := s1_tlb_miss
-  s1_out.ptwBack           := io.tlb.resp.bits.ptwBack
+  s1_out.ptwBack           := Mux(s1_in.isFastReplay, s1_in.ptwBack, io.tlb.resp.bits.ptwBack)
   s1_out.rep_info.debug    := s1_in.uop.debugInfo
   s1_out.rep_info.nuke     := s1_nuke && !s1_prf
   s1_out.delayedLoadError  := s1_dly_err
-  s1_out.pbmt := io.tlb.resp.bits.pbmt(0)
-  s1_out.pf := io.tlb.resp.bits.excp(0).pf.ld
+  s1_out.pbmt := Mux(s1_in.isFastReplay, s1_in.pbmt, io.tlb.resp.bits.pbmt(0))
+  s1_out.pf := Mux(s1_in.isFastReplay, s1_in.pf, io.tlb.resp.bits.excp(0).pf.ld) 
 
   when (!s1_dly_err) {
     // current ori test will cause the case of ldest == 0, below will be modifeid in the future.

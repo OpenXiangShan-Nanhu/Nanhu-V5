@@ -345,7 +345,6 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
 
   val dcache_resp_data  = Reg(UInt())
   val dcache_resp_id    = Reg(UInt())
-  val dcache_resp_error = Reg(Bool())
 
   when (state === s_cache_resp) {
     // when not miss
@@ -365,7 +364,6 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
       } .otherwise {
         dcache_resp_data := io.dcache.resp.bits.data
         dcache_resp_id := io.dcache.resp.bits.id
-        dcache_resp_error := io.dcache.resp.bits.error
         state := s_cache_resp_latch
       }
     }
@@ -409,13 +407,6 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule
       LSUOpType.amominu_d -> SignExt(rdataSel(63, 0), XLEN),
       LSUOpType.amomaxu_d -> SignExt(rdataSel(63, 0), XLEN)
     ))
-
-    when (dcache_resp_error && io.csrCtrl.cache_error_enable) {
-      exceptionVec(loadAccessFault)  := isLr
-      exceptionVec(storeAccessFault) := !isLr
-      assert(!exceptionVec(loadAccessFault))
-      assert(!exceptionVec(storeAccessFault))
-    }
 
     resp_data := resp_data_wire
     state := s_finish

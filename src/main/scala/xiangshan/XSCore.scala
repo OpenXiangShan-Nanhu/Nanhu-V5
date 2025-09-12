@@ -129,7 +129,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
 
   backend.io.fromTop := memBlock.io.mem_to_ooo.topToBackendBypass
   backend.io.fromTop.externalInterrupt.nmi.nmi_31 := memBlock.io.mem_to_ooo.topToBackendBypass.externalInterrupt.nmi.nmi_31 || 
-    (memBlock.io.error.valid && backend.io.csrCustomCtrl.cache_error_enable)
+    ((memBlock.io.error.valid || memBlock.io.uncacheError) && backend.io.csrCustomCtrl.cache_error_enable)
   backend.io.fromTop.externalInterrupt.nmi.nmi_43 := memBlock.io.mem_to_ooo.topToBackendBypass.externalInterrupt.nmi.nmi_43 || 
     (memBlock.io.outer_beu_errors_icache.ecc_error.valid && backend.io.csrCustomCtrl.cache_error_enable)
 

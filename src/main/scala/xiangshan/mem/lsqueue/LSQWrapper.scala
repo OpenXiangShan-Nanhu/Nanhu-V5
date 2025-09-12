@@ -127,6 +127,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val mdpTrainUpdate = Vec(LoadPipelineWidth, Output(Valid(new MDPResUpdateIO)))
     val sqHasCmo = Output(Bool())
     val cbomfinish = Input(Bool())
+    val uncacheError = Output(Bool())
     // top-down
     val debugTopDown = new LoadQueueTopDownIO
 
@@ -251,6 +252,8 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   loadQueue.io.uncache.resp.bits := io.uncache.resp.bits
   storeQueue.io.uncache.resp.bits := io.uncache.resp.bits
   io.uncache.resp.ready := true.B
+
+  io.uncacheError := loadQueue.io.uncacheError
 
   loadQueue.io.debugTopDown <> io.debugTopDown
 

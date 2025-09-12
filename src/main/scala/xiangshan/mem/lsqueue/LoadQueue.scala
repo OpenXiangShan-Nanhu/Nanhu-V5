@@ -244,6 +244,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     val l2_hint = Input(Valid(new L2ToL1Hint()))
     val tlb_hint = Flipped(new TlbHintIO)
     val lqEmpty = Output(Bool())
+    val uncacheError = Output(Bool())
 
     val lqDeqPtr = Output(new LqPtr)
     val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
@@ -367,6 +368,8 @@ class LoadQueue(implicit p: Parameters) extends XSModule
 
   io.replayQValidCount := loadQueueReplay.io.validCount
   loadQueueReplay.io.debugTopDown <> io.debugTopDown
+
+  io.uncacheError := loadQueueReplay.io.uncacheError
 
   // virtualLoadQueue.io.lqFull replaces loadQueueRAR.io.lqFull
   val full_mask = Cat(virtualLoadQueue.io.lqFull, loadQueueRAW.io.lqFull, loadQueueReplay.io.lqFull)

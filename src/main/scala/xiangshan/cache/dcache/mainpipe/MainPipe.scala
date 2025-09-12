@@ -794,7 +794,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   io.wbq_conflict_check.bits := s2_req.addr
 
   val s2_isStore = RegEnable(s1_isStore, s1_fire) //s2_isStore is from sbuffer; s2_req.isStore is from sbuffer or missQueue
-  io.store_replay_resp.valid := s2_valid && (s2_can_go_to_mq && replay && s2_req.isStore || s2_grow_perm_fail && s2_isStore)
+  io.store_replay_resp.valid := s2_valid && (s2_can_go_to_mq && replay || s2_grow_perm_fail) && s2_isStore
   io.store_replay_resp.bits.data := DontCare
   io.store_replay_resp.bits.miss := true.B
   io.store_replay_resp.bits.replay := true.B
@@ -844,7 +844,8 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents w
   atomic_replay_resp.ack_miss_queue := false.B
   atomic_replay_resp.id := DontCare
 
-  val atomic_replay_resp_valid = s2_valid && (s2_can_go_to_mq && replay || s2_grow_perm_fail) && s2_req.isAMO
+  val s2_isAMO = RegEnable(s1_isAMO, s1_fire) // s2_isAMO is from AtomicUnit and s2_req.isAMO is from AtomicsUnit or missQueue
+  val atomic_replay_resp_valid = s2_valid && (s2_can_go_to_mq && replay || s2_grow_perm_fail) && s2_isAMO
   val atomic_hit_resp_valid = s3_valid_dup && (s3_sc_miss || s3_amo_can_go || s3_miss_can_go && s3_req.isAMO)
 
   io.atomic_resp.valid := atomic_replay_resp_valid || atomic_hit_resp_valid

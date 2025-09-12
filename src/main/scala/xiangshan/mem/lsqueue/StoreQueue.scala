@@ -334,6 +334,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.rob.uop := DontCare
 
   val mmioStout_fire = io.mmioStout.fire
+  val cbomhasException = (LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && committed(deqPtr) && hasException(deqPtr))
   // val cmoCanDeq = io.cmoOpReq.fire || (LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && hasException(deqPtr))
   // Read dataModule
   assert(EnsbufferWidth <= 2)
@@ -341,7 +342,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val rdataPtrExtNext = Wire(Vec(EnsbufferWidth, new SqPtr))
   rdataPtrExtNext := WireInit(Mux(dataBuffer.io.enq(1).fire,
     VecInit(rdataPtrExt.map(_ + 2.U)),
-    Mux(dataBuffer.io.enq(0).fire || io.mmioStout.fire || io.cmoOpReq.fire,
+    Mux(dataBuffer.io.enq(0).fire || io.mmioStout.fire || io.cmoOpReq.fire || cbomhasException,
       VecInit(rdataPtrExt.map(_ + 1.U)),
       rdataPtrExt
     )
@@ -358,7 +359,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val deqPtrExtNext = Wire(Vec(EnsbufferWidth, new SqPtr))
   deqPtrExtNext := Mux(RegNext(io.sbuffer(1).fire),
     VecInit(deqPtrExt.map(_ + 2.U)),
-    Mux((RegNext(io.sbuffer(0).fire)) || io.mmioStout.fire || io.cmoOpReq.fire,
+    Mux((RegNext(io.sbuffer(0).fire)) || io.mmioStout.fire || io.cmoOpReq.fire || cbomhasException,
       VecInit(deqPtrExt.map(_ + 1.U)),
       deqPtrExt
     )

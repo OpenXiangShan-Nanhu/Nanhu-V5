@@ -62,7 +62,7 @@ object ArgParser {
     c.newInstance(1.asInstanceOf[Object]).asInstanceOf[Parameters]
   }
   def parse(args: Array[String]): (Parameters, Array[String], Array[String]) = {
-    val default = new DefaultConfig(1)
+    val default = new RtsConfig()
     var firrtlOpts = Array[String]()
     var firtoolOpts = Array[String]()
     @tailrec
@@ -79,10 +79,6 @@ object ArgParser {
           nextOption(config, tail)
         case "--config" :: confString :: tail =>
           nextOption(getConfigByName(confString), tail)
-        case "--issue" :: issueString :: tail =>
-          nextOption(config.alter((site, here, up) => {
-            case coupledL2.tl2chi.CHIIssue => issueString
-          }), tail)
         case "--num-cores" :: value :: tail =>
           nextOption(config.alter((site, here, up) => {
             case XSTileKey => (0 until value.toInt) map { i =>

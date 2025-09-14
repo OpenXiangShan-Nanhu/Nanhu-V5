@@ -2,12 +2,10 @@ package xiangshan.backend.issue
 
 import chisel3._
 import chisel3.util._
-import fudian.utils.SignExt
+import xiangshan.backend.fu.fpu.fudian.SignExt
 import xiangshan.SelImm
 import xiangshan.backend.decode.ImmUnion
 import xiangshan.backend.datapath.DataConfig._
-
-import scala.collection.MapView
 
 class ImmExtractorIO(dataBits: Int) extends Bundle {
   val in = Input(new Bundle {

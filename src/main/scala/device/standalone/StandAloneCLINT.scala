@@ -18,7 +18,8 @@ package device.standalone
 
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.AddressSet
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule}
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.interrupts._

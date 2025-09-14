@@ -17,10 +17,8 @@
 package device
 
 import chisel3._
-import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy.AddressSet
-import utils._
 import xs.utils._
 import difftest._
 

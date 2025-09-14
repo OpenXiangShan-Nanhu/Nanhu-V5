@@ -16,12 +16,10 @@
 
 package xiangshan.backend.fu.fpu
 
-import _root_.utils._
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import fudian._
-import fudian.utils.Multiplier
 import xs.utils._
 import xs.utils.perf._
 import xiangshan._

@@ -35,7 +35,7 @@ MEM_GEN = ./scripts/vlsi_mem_gen
 MEM_GEN_SEP = ./scripts/gen_sep_mem.sh
 ABS_WORK_DIR := $(shell pwd)
 
-CONFIG ?= NanhuV5_3Config
+CONFIG ?= RtsConfig
 NUM_CORES ?= 1
 ISSUE ?= E.b
 
@@ -151,9 +151,9 @@ test-jar:
 $(TOP_V): $(SCALA_FILE)
 	mkdir -p $(@D)
 	$(TIME_CMD) mill -i xiangshan.runMain $(FPGATOP)   \
-		--target-dir $(@D) --config $(CONFIG) --issue $(ISSUE) $(FPGA_MEM_ARGS)		\
+		--target-dir $(@D) --config $(CONFIG) $(FPGA_MEM_ARGS)		\
 		--num-cores $(NUM_CORES) $(RELEASE_ARGS) --full-stacktrace
-	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
+# 	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
 	@git log -n 1 >> .__head__
 	@git diff >> .__diff__
 	@sed -i 's/^/\/\// ' .__head__
@@ -169,9 +169,9 @@ $(SIM_TOP_V): $(SCALA_FILE) $(TEST_FILE)
 	@echo -e "\n[mill] Generating Verilog files..." > $(TIMELOG)
 	@date -R | tee -a $(TIMELOG)
 	$(TIME_CMD) mill -i xiangshan.test.runMain $(SIMTOP)    \
-		--target-dir $(@D) --config $(CONFIG) --issue $(ISSUE) $(SIM_MEM_ARGS)		\
+		--target-dir $(@D) --config $(CONFIG) $(SIM_MEM_ARGS)		\
 		--num-cores $(NUM_CORES) $(SIM_ARGS) --full-stacktrace
-	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
+# 	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
 	@git log -n 1 >> .__head__
 	@git diff >> .__diff__
 	@sed -i 's/^/\/\// ' .__head__
@@ -194,13 +194,12 @@ endif
 sim-verilog: $(SIM_TOP_V)
 
 clean:
-	$(MAKE) -C ./difftest clean
+	$(MAKE) -C ./dependencies/difftest clean
 	rm -rf $(BUILD_DIR)
 	rm -rf sim
 
 init:
 	git submodule update --init
-	cd rocket-chip && git submodule update --init
 
 bump:
 	git submodule foreach "git fetch origin&&git checkout master&&git reset --hard origin/master"
@@ -213,13 +212,13 @@ idea:
 
 # verilator simulation
 emu: sim-verilog
-	$(MAKE) -C ./difftest emu SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
+	$(MAKE) -C ./dependencies/difftest emu SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
 
 emu-run: emu
-	$(MAKE) -C ./difftest emu-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
+	$(MAKE) -C ./dependencies/difftest emu-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
 
 emu_rtl: sim-verilog
-	$(MAKE) -C ./difftest emu SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) \
+	$(MAKE) -C ./dependencies/difftest emu SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) \
 	WITH_DRAMSIM3=$(WITH_DRAMSIM3) EMU_TRACE=1 EMU_THREADS=16 SIMDIR=1
 
 RANDOM = $(shell echo $$RANDOM)
@@ -240,11 +239,11 @@ vcs-rtl:
 	$(MAKE) sim-verilog ENABLE_XPROP=1 WITH_CHISELDB=0
 
 simv: vcs-rtl
-	$(MAKE) -C ./difftest simv SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) \
+	$(MAKE) -C ./dependencies/difftest simv SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) \
 	CONSIDER_FSDB=1 ENABLE_XPROP=1 WITH_CHISELDB=0
 
 simv-run:
-	$(MAKE) -C ./difftest simv-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) RUN_BIN=$(RUN_BIN) RUN_BIN_DIR=$(RUN_BIN_DIR) \
+	$(MAKE) -C ./dependencies/difftest simv-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX) RUN_BIN=$(RUN_BIN) RUN_BIN_DIR=$(RUN_BIN_DIR) \
 	TRACE=1 CONSIDER_FSDB=1 REF_SO=$(NOOP_HOME)/ready-to-run/riscv64-nemu-interpreter-so
 
 verdi:
@@ -252,13 +251,13 @@ verdi:
 
 # palladium simulation
 pldm-build: sim-verilog
-	$(MAKE) -C ./difftest pldm-build SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
+	$(MAKE) -C ./dependencies/difftest pldm-build SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
 
 pldm-run:
-	$(MAKE) -C ./difftest pldm-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
+	$(MAKE) -C ./dependencies/difftest pldm-run SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
 
 pldm-debug:
-	$(MAKE) -C ./difftest pldm-debug SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
+	$(MAKE) -C ./dependencies/difftest pldm-debug SIM_TOP=SimTop DESIGN_DIR=$(NOOP_HOME) NUM_CORES=$(NUM_CORES) RTL_SUFFIX=$(RTL_SUFFIX)
 
 include Makefile.test
 

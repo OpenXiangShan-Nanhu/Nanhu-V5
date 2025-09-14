@@ -19,7 +19,7 @@ package top
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.TLMessages._
 import freechips.rocketchip.tilelink._
 import xs.utils.GTimer

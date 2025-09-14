@@ -29,7 +29,7 @@ import xiangshan.backend.regfile._
 import xiangshan.backend.BackendParams
 import xiangshan.backend.trace._
 import xiangshan.cache.DCacheParameters
-import xiangshan.frontend.{BasePredictor, BranchPredictionResp, FTB, RAS, ITTage, Tage_SC, FauFTB}
+import xiangshan.frontend.{BasePredictor, BranchPredictionResp, FauFTB}
 import xiangshan.frontend.icache.ICacheParameters
 import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
 import xiangshan.cache.wpu.WPUParameters
@@ -96,24 +96,13 @@ case class XSCoreParameters
   jalOffsetWidth: Int = 21,
   branchPredictor: (BranchPredictionResp, Parameters) => Tuple2[Seq[BasePredictor], BranchPredictionResp] =
   (resp_in: BranchPredictionResp, p: Parameters) => {
-    val ftb = Module(new FTB()(p))
     val uftb = Module(new FauFTB()(p))
-    val tage = Module(new Tage_SC()(p))
-    val ras = Module(new RAS()(p))
-    val ittage = Module(new ITTage()(p))
-    val preds = Seq(uftb, tage, ftb, ittage, ras)
+
+    val preds = Seq(uftb)
     preds.map(_.io := DontCare)
-
-    ftb.io.fauftb_entry_in  := uftb.io.fauftb_entry_out
-    ftb.io.fauftb_entry_hit_in := uftb.io.fauftb_entry_hit_out
-
     uftb.io.in.bits.resp_in(0) := resp_in
-    tage.io.in.bits.resp_in(0) := uftb.io.out
-    ftb.io.in.bits.resp_in(0) := tage.io.out
-    ittage.io.in.bits.resp_in(0) := ftb.io.out
-    ras.io.in.bits.resp_in(0) := ittage.io.out
 
-    (preds, ras.io.out)
+    (preds, uftb.io.out)
   },
   ICacheForceMetaECCError: Boolean = false,
   ICacheForceDataECCError: Boolean = false,
@@ -183,7 +172,7 @@ case class XSCoreParameters
   IntRegCacheSize: Int = 16,
   MemRegCacheSize: Int = 12,
   EnableMiniConfig: Boolean = false,
-  prefetcher: Option[PrefetcherParams] = Some(SMSParams()),
+  prefetcher: Option[PrefetcherParams] = None,
   IfuRedirectNum: Int = 1,
   LoadPipelineWidth: Int = 2,
   StorePipelineWidth: Int = 1,

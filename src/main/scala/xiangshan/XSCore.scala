@@ -21,19 +21,16 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import device.MsiInfoBundle
-import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.bundlebridge.BundleBridgeSource
 import freechips.rocketchip.tile.HasFPUParameters
-import xiangshan.XSL1BusErrors
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xs.utils.mbist.MbistInterface
 import xiangshan.backend._
-import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend._
-import xiangshan.cache.mmu.TlbRequestIO
-import xs.utils.cache.common.PrefetchCtrlFromCore
 
 abstract class XSModule(implicit val p: Parameters) extends Module
   with HasXSParameter
@@ -84,26 +81,8 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     val cpu_halt = Output(Bool())
     val resetInFrontend = Output(Bool())
     val traceCoreInterface = new TraceCoreInterface
-    val l2_pf_enable = Output(Bool())
-    val l2PfCtrl = Output(new PrefetchCtrlFromCore)
     val perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val beu_errors = Output(new XSL1BusErrors())
-    val l2_hint = Input(Valid(new L2ToL1Hint()))
-    val l2_tlb_req = Flipped(new TlbRequestIO(nRespDups = 2))
-    val l2_pmp_resp = new PMPRespBundle
-    val l2PfqBusy = Input(Bool())
-    val power = new Bundle {
-      val wfiCtrRst = Input(Bool())
-      val timeout = Output(Bool())
-      val flushSb = Input(Bool())
-      val sbIsEmpty = Output(Bool())
-    }
-    val debugTopDown = new Bundle {
-      val robTrueCommit = Output(UInt(64.W))
-      val robHeadPaddr = Valid(UInt(PAddrBits.W))
-      val l2MissMatch = Input(Bool())
-      val l3MissMatch = Input(Bool())
-    }
     val dft = new Bundle() {
       val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
       val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
@@ -190,8 +169,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   backend.io.perf.perfEventsBackend := DontCare
   backend.io.perf.retiredInstr := DontCare
   backend.io.perf.ctrlInfo := DontCare
-  backend.io.power.wfiCtrRst := io.power.wfiCtrRst
-  io.power.timeout := backend.io.power.timeout
 
   // top -> memBlock
   memBlock.io.fromTopToBackend.clintTime := io.clintTime
@@ -201,7 +178,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.outer_hc_perfEvents := io.perfEvents
   // frontend -> memBlock
   memBlock.io.inner_beu_errors_icache <> frontend.io.error.bits.toL1BusErrorUnitInfo(frontend.io.error.valid)
-  memBlock.io.inner_l2_pf_enable := backend.io.csrCustomCtrl.l2_pf_enable
   memBlock.io.ooo_to_mem.backendToTopBypass := backend.io.toTop
   memBlock.io.ooo_to_mem.issueLda <> backend.io.mem.issueLda
   memBlock.io.ooo_to_mem.issueSta <> backend.io.mem.issueSta
@@ -237,25 +213,10 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.ooo_to_mem.isVlsException         := backend.io.mem.isVlsException
 
   memBlock.io.fetch_to_mem.itlb <> frontend.io.ptw
-  memBlock.io.l2_hint.valid := io.l2_hint.valid
-  memBlock.io.l2_hint.bits.sourceId := io.l2_hint.bits.sourceId
-  memBlock.io.l2_tlb_req <> io.l2_tlb_req
-  memBlock.io.l2_pmp_resp <> io.l2_pmp_resp
-  memBlock.io.l2_hint.bits.isKeyword := io.l2_hint.bits.isKeyword
-  memBlock.io.l2PfqBusy := io.l2PfqBusy
-
-  memBlock.io.power.flushSb := io.power.flushSb
-  io.power.sbIsEmpty := memBlock.io.power.sbIsEmpty
-
-  // if l2 prefetcher use stream prefetch, it should be placed in XSCore
 
   // top-down info
   memBlock.io.debugTopDown.robHeadVaddr := backend.io.debugTopDown.fromRob.robHeadVaddr
   frontend.io.debugTopDown.robHeadVaddr := backend.io.debugTopDown.fromRob.robHeadVaddr
-  io.debugTopDown.robHeadPaddr := backend.io.debugTopDown.fromRob.robHeadPaddr
-  io.debugTopDown.robTrueCommit := backend.io.debugRolling.robTrueCommit
-  backend.io.debugTopDown.fromCore.l2MissMatch := io.debugTopDown.l2MissMatch
-  backend.io.debugTopDown.fromCore.l3MissMatch := io.debugTopDown.l3MissMatch
   backend.io.debugTopDown.fromCore.fromMem := memBlock.io.debugTopDown.toCore
   memBlock.io.debugRolling := backend.io.debugRolling
 
@@ -263,15 +224,8 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   io.beu_errors.icache <> memBlock.io.outer_beu_errors_icache
   io.beu_errors.dcache <> memBlock.io.error.bits.toL1BusErrorUnitInfo(memBlock.io.error.valid)
   io.beu_errors.l2 <> DontCare
-  io.l2_pf_enable := memBlock.io.outer_l2_pf_enable
   io.traceCoreInterface <> backend.io.traceCoreInterface
 
-
-  io.l2PfCtrl.l2_pf_master_en := backend.io.mem.csrCtrl.l2_pf_enable
-  io.l2PfCtrl.l2_pf_recv_en   := true.B
-  io.l2PfCtrl.l2_pbop_en      := true.B
-  io.l2PfCtrl.l2_vbop_en      := true.B
-  io.l2PfCtrl.l2_tp_en        := true.B
   memBlock.io.resetInFrontendBypass.fromFrontend := frontend.io.resetInFrontend
   io.resetInFrontend := memBlock.io.resetInFrontendBypass.toL2Top
   if(env.EnableHWMoniter){
@@ -288,6 +242,9 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     backend.io.dft.func.get := memBlock.io.dftBypass.toBackend.func.get
     backend.io.dft.reset.get := memBlock.io.dftBypass.toBackend.reset.get
   }
+
+  private val sramCtrl = SramHelper.genSramCtrlBundleTop()
+  sramCtrl := DontCare
 
 //  if (debugOpts.ResetGen) {
 //    backend.reset := memBlock.io.reset_backend

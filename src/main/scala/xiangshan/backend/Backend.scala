@@ -20,7 +20,7 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import device.MsiInfoBundle
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xiangshan._
 import xiangshan.backend.Bundles.{DynInst, IssueQueueIQWakeUpBundle, LoadShouldCancel, MemExuInput, MemExuOutput, VPUCtrlSignals}
 import xiangshan.backend.ctrlblock.{DebugLSIO, LsTopdownInfo}
@@ -244,7 +244,6 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   ctrlBlock.io.redirectPcRead <> pcTargetMem.io.toCtrl.redirectRead
   ctrlBlock.io.exceptionPcRead <> pcTargetMem.io.toCtrl.exceptionRead
   ctrlBlock.io.tracePcRead <> pcTargetMem.io.toCtrl.tracePcRead
-  ctrlBlock.io.power <> io.power
 
   io.memPredUpdate := ctrlBlock.io.memPredUpdate
 
@@ -905,10 +904,6 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
 
   val sqHasCmo = Input(Bool())
   val cmoFinish = Input(Bool())
-  val power = new Bundle {
-    val wfiCtrRst = Input(Bool())
-    val timeout = Output(Bool())
-  }
 
   val debugTopDown = new Bundle {
     val fromRob = new RobCoreTopDownIO

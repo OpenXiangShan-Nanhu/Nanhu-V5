@@ -1,8 +1,6 @@
 package xiangshan.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
-import chisel3._
-import chisel3.util._
 import xs.utils.DataHoldBypass
 import xiangshan.backend.fu.{FuConfig, FuncUnit}
 

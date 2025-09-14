@@ -16,13 +16,13 @@
 package device
 
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule, LazyModuleImp}
 import chisel3._
 import chisel3.experimental.{ExtModule, prefix}
 import chisel3.util._
 import difftest.common.DifftestMem
 import freechips.rocketchip.amba.axi4.{AXI4MasterNode, AXI4Parameters, AXI4SlaveNode}
-import freechips.rocketchip.diplomacy.{AddressSet, InModuleBody, LazyModule, LazyModuleImp}
-import xs.utils._
+import freechips.rocketchip.diplomacy.AddressSet
 import xs.utils.perf._
 
 class MemoryRequestHelper(requestType: Int)

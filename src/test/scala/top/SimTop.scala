@@ -24,8 +24,8 @@ import chisel3.experimental.dataview._
 import device.{AXI4MemorySlave, SimJTAG}
 import difftest._
 import freechips.rocketchip.amba.axi4.AXI4Bundle
-import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
-import freechips.rocketchip.util.HeterogeneousBag
+import org.chipsalliance.diplomacy.DisableMonitors
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 import xs.utils.{ChiselDB, Constantin, FileRegisters, GTimer}
 import xs.utils.perf.DebugOptionsKey
 import system.SoCParamsKey
@@ -39,9 +39,7 @@ class SimTop(implicit p: Parameters) extends Module {
   // so that we can re-use this SimTop for any generated Verilog RTL.
   dontTouch(soc.io)
 
-  if (!l_soc.module.dma.isEmpty) {
-    l_soc.module.dma.get <> WireDefault(0.U.asTypeOf(l_soc.module.dma.get))
-  }
+  l_soc.module.dma <> WireDefault(0.U.asTypeOf(l_soc.module.dma))
 
   val l_simMMIO = LazyModule(new SimMMIO(l_soc.misc.peripheralNode.in.head._2)(p.alter((site, here, up) => {
     case SoCParamsKey => up(SoCParamsKey).copy(UARTLiteForDTS = false)
@@ -64,10 +62,10 @@ class SimTop(implicit p: Parameters) extends Module {
   soc.io.sram_config := 0.U
   soc.io.pll0_lock := true.B
   soc.io.cacheable_check := DontCare
-  soc.io.riscv_rst_vec.foreach(_ := 0x10000000L.U)
+  soc.io.riscv_rst_vec := 0x10000000L.U
   l_soc.nmi.foreach(_.foreach(intr => { intr := false.B; dontTouch(intr) }))
-  soc.io.traceCoreInterface.foreach(_.fromEncoder.enable := false.B)
-  soc.io.traceCoreInterface.foreach(_.fromEncoder.stall  := false.B)
+  soc.io.traceCoreInterface.fromEncoder.enable := false.B
+  soc.io.traceCoreInterface.fromEncoder.stall  := false.B
 
   // soc.io.rtc_clock is a div100 of soc.io.clock
   val rtcClockDiv = 100

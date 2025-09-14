@@ -2,7 +2,7 @@ package xiangshan.backend
 
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import org.chipsalliance.cde.config.Parameters
 import xs.utils.SyncDataModuleTemplate
 import xiangshan.HasXSParameter

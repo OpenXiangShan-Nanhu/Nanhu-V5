@@ -121,6 +121,7 @@ class FauFTB(implicit p: Parameters) extends BasePredictor with FauFTBParams {
   io.out.s1.full_pred.map(_ .hit := s1_hit && fauftb_enable)
   io.fauftb_entry_out := s1_hit_fauftbentry
   io.fauftb_entry_hit_out := s1_hit && fauftb_enable
+  io.out.last_stage_ftb_entry := s1_hit_fauftbentry
 
   // Illegal check for FTB entry reading
   val s1_pc_startLower             = Cat(0.U(1.W), s1_pc_dup(0)(instOffsetBits + log2Ceil(PredictWidth) - 1, instOffsetBits))
@@ -132,8 +133,8 @@ class FauFTB(implicit p: Parameters) extends BasePredictor with FauFTBParams {
 
   // assign metas
   io.out.last_stage_meta := resp_meta.asUInt
-  resp_meta.hit := RegEnable(RegEnable(s1_hit, io.s1_fire(0)), io.s2_fire(0))
-  if(resp_meta.pred_way.isDefined) {resp_meta.pred_way.get := RegEnable(RegEnable(s1_hit_way, io.s1_fire(0)), io.s2_fire(0))}
+  resp_meta.hit := RegEnable(s1_hit, io.s1_fire(0))
+  if(resp_meta.pred_way.isDefined) {resp_meta.pred_way.get := RegEnable(s1_hit_way, io.s1_fire(0))}
 
   // pred update replacer state
   val s1_fire = io.s1_fire(0)

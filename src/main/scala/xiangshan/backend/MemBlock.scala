@@ -19,8 +19,8 @@ package xiangshan.backend
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.{BundleBridgeSource, BufferParams}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.interrupts.{IntSinkNode, IntSinkPortSimple}
 import freechips.rocketchip.tile.HasFPUParameters
 import freechips.rocketchip.tilelink._
@@ -43,13 +43,11 @@ import xiangshan.mem.prefetch.{BasePrefecher, L1Prefetcher, SMSParams, SMSPrefet
 import xiangshan.backend.datapath.NewPipelineConnect
 import xiangshan.mem.skidBufferConnect
 import xs.utils._
-import xs.utils.cache.common._
-import xs.utils.mbist.{MbistInterface, MbistPipeline}
-import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.mbist.MbistPipeline
+import xs.utils.sram.SramBroadcastBundle
 import xs.utils.perf.{HasPerfEvents, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
-import xs.utils.cache.common.{PrefetchRecv, CMOResp, CMOReq}
-import xs.utils.cache.EnableCHI
+import xs.utils.cache.common.PrefetchRecv
 
 trait HasMemBlockParameters extends HasXSParameter {
   // number of memory units
@@ -237,15 +235,10 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
   val ptw = LazyModule(new L2TLBWrapper())
   val ptw_to_l2_buffer = if (!coreParams.softPTW) LazyModule(new TLBuffer) else null
   val l1d_to_l2_buffer = if (coreParams.dcacheParametersOpt.nonEmpty) LazyModule(new TLBuffer) else null
-  val dcache_port = TLNameNode("dcache_client") // to keep dcache-L2 port name
   val l2_pf_sender_opt = coreParams.prefetcher.map(_ =>
     BundleBridgeSource(() => new PrefetchRecv)
   )
-  val l3_pf_sender_opt = if (L3notEmpty && !p(EnableCHI)) coreParams.prefetcher.map(_ =>
-    BundleBridgeSource(() => new PrefetchRecv)
-  ) else None
-  val cmo_sender  = if (HasCMO && !p(EnableCHI)) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None
-  val cmo_reciver = if (HasCMO && !p(EnableCHI)) Some(BundleBridgeSink(Some(() => DecoupledIO(new CMOResp)))) else None
+
   val frontendBridge = LazyModule(new FrontendBridge)
   // interrupt sinks
   val clint_int_sink = IntSinkNode(IntSinkPortSimple(1, 2))
@@ -321,10 +314,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       val dcacheMSHRFull = Output(Bool())
     }
     val debug_ls = new DebugLSIO
-    val l2_hint = Input(Valid(new L2ToL1Hint()))
-    val l2PfqBusy = Input(Bool())
-    val l2_tlb_req = Flipped(new TlbRequestIO(nRespDups = 2))
-    val l2_pmp_resp = new PMPRespBundle
 
     val debugTopDown = new Bundle {
       val robHeadVaddr = Flipped(Valid(UInt(VAddrBits.W)))
@@ -344,16 +333,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     val inner_beu_errors_icache = Input(new L1BusErrorUnitInfo)
     val outer_beu_errors_icache = Output(new L1BusErrorUnitInfo)
     val uncacheError = Output(Bool())
-    val inner_l2_pf_enable = Input(Bool())
-    val outer_l2_pf_enable = Output(Bool())
     val inner_hc_perfEvents = Output(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val outer_hc_perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val memPredUpdate = Input(new MemPredUpdateReq)
-
-    val power = new Bundle{
-      val flushSb = Input(Bool())
-      val sbIsEmpty = Output(Bool())
-    }
 
     // reset signals of frontend & backend are generated in memblock
     val reset_backend = Output(Reset())
@@ -384,8 +366,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   dontTouch(io.outer_cpu_halt)
   dontTouch(io.inner_beu_errors_icache)
   dontTouch(io.outer_beu_errors_icache)
-  dontTouch(io.inner_l2_pf_enable)
-  dontTouch(io.outer_l2_pf_enable)
   dontTouch(io.inner_hc_perfEvents)
   dontTouch(io.outer_hc_perfEvents)
 
@@ -467,7 +447,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       l1Prefetcher.io.enable := enableL1StreamPrefetcher &&
         GatedRegNextN(io.ooo_to_mem.csrCtrl.l1D_pf_enable, 2, Some(false.B))
       l1Prefetcher.pf_ctrl <> dcache.io.pf_ctrl
-      l1Prefetcher.l2PfqBusy := io.l2PfqBusy
+      l1Prefetcher.l2PfqBusy := false.B
 
       // stride will train on miss or prefetch hit
       for (i <- 0 until LduCnt) {
@@ -615,18 +595,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       table.log(l2_trace, l1_pf_to_l2.valid, "StreamPrefetchTrace", clock, reset)
       table.log(l2_trace, !l1_pf_to_l2.valid && sms_pf_to_l2.valid, "L2PrefetchTrace", clock, reset)
 
-      val l1_pf_to_l3 = ValidIODelay(l1_pf.io.l3_req, 4)
-      outer.l3_pf_sender_opt.foreach(_.out.head._1.addr_valid := l1_pf_to_l3.valid)
-      outer.l3_pf_sender_opt.foreach(_.out.head._1.addr := l1_pf_to_l3.bits)
-      outer.l3_pf_sender_opt.foreach(_.out.head._1.l2_pf_en := RegNextN(io.ooo_to_mem.csrCtrl.l2_pf_enable, 4, Some(true.B)))
-
-      val l3_trace = Wire(new LoadPfDbBundle)
-      l3_trace.paddr := outer.l3_pf_sender_opt.map(_.out.head._1.addr).getOrElse(0.U)
-      val l3_table = ChiselDB.createTable(s"L3PrefetchTrace$hartId", new LoadPfDbBundle, basicDB = false)
-      l3_table.log(l3_trace, l1_pf_to_l3.valid, "StreamPrefetchTrace", clock, reset)
-
       XSPerfAccumulate("prefetch_fire_l2", outer.l2_pf_sender_opt.get.out.head._1.addr_valid)
-      XSPerfAccumulate("prefetch_fire_l3", outer.l3_pf_sender_opt.map(_.out.head._1.addr_valid).getOrElse(false.B))
       XSPerfAccumulate("l1pf_fire_l2", l1_pf_to_l2.valid)
       XSPerfAccumulate("sms_fire_l2", !l1_pf_to_l2.valid && sms_pf_to_l2.valid)
       XSPerfAccumulate("sms_block_by_l1pf", l1_pf_to_l2.valid && sms_pf_to_l2.valid)
@@ -875,10 +844,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     loadUnits(i).io.l2l_fwd_in := DontCare
     loadUnits(i).io.replay <> lsq.io.replay(i)
 
-    val l2_hint = RegNext(io.l2_hint)
 
     // L2 Hint for DCache
-    dcache.io.l2_hint <> l2_hint
+    dcache.io.l2_hint := DontCare
 
     loadUnits(i).io.tlb_hint.id := dtlbRepeater.io.hint.get.req(i).id
     loadUnits(i).io.tlb_hint.full := dtlbRepeater.io.hint.get.req(i).full ||
@@ -894,9 +862,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     lsq.io.ld_raw_data <> loadUnits(0).io.lsq.ld_raw_data
     loadUnits(1).io.lsq.uncache := DontCare
     loadUnits(1).io.lsq.ld_raw_data := DontCare
-    lsq.io.l2_hint.valid := l2_hint.valid
-    lsq.io.l2_hint.bits.sourceId := l2_hint.bits.sourceId
-    lsq.io.l2_hint.bits.isKeyword := l2_hint.bits.isKeyword
+    lsq.io.l2_hint := DontCare
 
     lsq.io.tlb_hint <> dtlbRepeater.io.hint.get
 
@@ -989,9 +955,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         dtlb_reqs(DTLB_PORT_START_STRIDE).req.valid := false.B
         dtlb_reqs(DTLB_PORT_START_STRIDE).resp.ready := true.B
   }
-  dtlb_reqs(DTLB_PORT_START_BOP) <> io.l2_tlb_req
+  dtlb_reqs(DTLB_PORT_START_BOP) := DontCare
   dtlb_reqs(DTLB_PORT_START_BOP).resp.ready := true.B
-  io.l2_pmp_resp := pmpCheckResp(DTLB_PORT_START_BOP)
 
   // StoreUnit
   for (i <- 0 until StdCnt) {
@@ -1371,11 +1336,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // flush sbuffer
   val cmoFlush = lsq.io.flushSbuffer.valid
   val fenceFlush = io.ooo_to_mem.flushSb
-  val shutOffFlush = io.power.flushSb
   val atomicsFlush = atomicsUnit.io.flush_sbuffer.valid || vSegmentUnit.io.flush_sbuffer.valid
   val stIsEmpty = sbuffer.io.flush.empty && uncache.io.flush.empty
   io.mem_to_ooo.sbIsEmpty := RegNext(stIsEmpty)
-  io.power.sbIsEmpty := RegNext(stIsEmpty)
   io.mem_to_ooo.cmoFinish := dcache.io.cmofinish //todo
 
   lsq.io.cbomfinish := dcache.io.cmofinish && cmoSkidBufferPending
@@ -1383,7 +1346,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   // if both of them tries to flush sbuffer at the same time
   // something must have gone wrong
   assert(!(fenceFlush && atomicsFlush && cmoFlush))
-  sbuffer.io.flush.valid := RegNext(fenceFlush || atomicsFlush || cmoFlush || shutOffFlush)
+  sbuffer.io.flush.valid := RegNext(fenceFlush || atomicsFlush || cmoFlush)
   uncache.io.flush.valid := sbuffer.io.flush.valid
 
   // AtomicsUnit: AtomicsUnit will override other control signials,
@@ -1654,7 +1617,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   io.inner_reset_vector := RegNext(io.outer_reset_vector)
   io.outer_cpu_halt := io.ooo_to_mem.backendToTopBypass.cpuHalted
   io.outer_beu_errors_icache := RegNext(io.inner_beu_errors_icache)
-  io.outer_l2_pf_enable := io.inner_l2_pf_enable
   io.inner_hc_perfEvents <> io.outer_hc_perfEvents
 
   // vector segmentUnit

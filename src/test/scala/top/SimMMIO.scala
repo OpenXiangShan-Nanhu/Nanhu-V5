@@ -18,9 +18,10 @@ package top
 
 import chisel3._
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule, LazyModuleImp}
 import device._
 import freechips.rocketchip.amba.axi4.{AXI4EdgeParameters, AXI4MasterNode, AXI4Xbar}
-import freechips.rocketchip.diplomacy.{AddressSet, InModuleBody, LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.AddressSet
 import difftest._
 import xs.utils.AXI4Error
 import system.{HasPeripheralRanges, HasSoCParameter}

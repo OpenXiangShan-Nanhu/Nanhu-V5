@@ -284,7 +284,7 @@ class MissReqPipeRegBundle(edge: TLEdgeOut)(implicit p: Parameters) extends DCac
     acquire.user.lift(VaddrKey).foreach(_ := req.vaddr(VAddrBits - 1, blockOffBits))
 
     // miss req pipe reg pass keyword to L2, is priority
-    acquire.echo.lift(IsKeywordKey).foreach(_ := isKeyword())
+    acquire.echo.lift(IsKeywordKey).foreach(_ := false.B)
 
     // trigger prefetch
     acquire.user.lift(PrefetchKey).foreach(_ := Mux(l2_pf_store_only, req.isFromStore, true.B))

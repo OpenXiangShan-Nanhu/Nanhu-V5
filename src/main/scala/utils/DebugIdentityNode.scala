@@ -19,7 +19,7 @@ package utils
 import chisel3._
 import org.chipsalliance.cde.config.Parameters
 import chisel3.util.DecoupledIO
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.{TLBundle, TLClientNode, TLIdentityNode, TLMasterParameters, TLMasterPortParameters}
 import xs.utils.perf.XSDebug
 

@@ -17,19 +17,12 @@
 package device
 
 import chisel3._
-import xiangshan._
-import chisel3.experimental.{ExtModule, IntParam, noPrefix}
-import chisel3.util._
+import chisel3.experimental.{ExtModule, IntParam}
 import chisel3.util.HasExtModuleResource
 import org.chipsalliance.cde.config.{Field, Parameters}
-import freechips.rocketchip.subsystem._
-import freechips.rocketchip.amba.apb._
-import freechips.rocketchip.diplomacy._
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyRawModuleImp}
 import freechips.rocketchip.jtag._
-import freechips.rocketchip.util._
-import freechips.rocketchip.prci.{ClockSinkNode, ClockSinkParameters}
-import freechips.rocketchip.tilelink._
-import freechips.rocketchip.devices.debug.{DebugCustomXbar, DebugIO, DebugTransportModuleJTAG, JtagDTMConfig, PSDIO, ResetCtrlIO, SystemJTAGIO, TLDebugModule}
+import freechips.rocketchip.devices.debug.{DebugCustomXbar, DebugIO, DebugTransportModuleJTAG, ResetCtrlIO, SystemJTAGIO, TLDebugModule}
 import freechips.rocketchip.devices.debug._
 
 // this file uses code from rocketchip Periphery.scala

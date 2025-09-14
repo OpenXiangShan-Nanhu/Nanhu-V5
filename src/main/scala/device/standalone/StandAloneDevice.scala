@@ -17,11 +17,12 @@
 package device.standalone
 
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.{annotate, ChiselAnnotation}
 import chisel3.experimental.dataview._
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.{AddressSet, RegionType, TransferSizes, IdRange}
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.DisableMonitors
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule, LazyModuleImp, LazyRawModuleImp, LazyModuleImpLike}
 import freechips.rocketchip.devices.debug.DebugModuleKey
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.amba.axi4._
@@ -43,13 +44,13 @@ trait HasMasterInterface { this: StandAloneDevice =>
         TLSlaveParameters.v1(
           address = Seq(AddressSet(0, (BigInt(1) << addrWidth) - 1)),
           regionType = RegionType.UNCACHED,
-          supportsGet = TransferSizes(1, p(SoCParamsKey).L3BlockSize),
-          supportsPutPartial = TransferSizes(1, p(SoCParamsKey).L3BlockSize),
-          supportsPutFull = TransferSizes(1, p(SoCParamsKey).L3BlockSize),
+          supportsGet = TransferSizes(1, p(SoCParamsKey).BlockSize),
+          supportsPutPartial = TransferSizes(1, p(SoCParamsKey).BlockSize),
+          supportsPutFull = TransferSizes(1, p(SoCParamsKey).BlockSize),
           fifoId = Some(0)
         )
       ),
-      beatBytes = p(SoCParamsKey).L3OuterBusWidth / 8
+      beatBytes = p(SoCParamsKey).BusWidth / 8
     )
   )))
   tlmaster.foreach(_ := masternode)
@@ -62,12 +63,12 @@ trait HasMasterInterface { this: StandAloneDevice =>
         AXI4SlaveParameters(
           address = Seq(AddressSet(0, (BigInt(1) << addrWidth) - 1)),
           regionType = RegionType.UNCACHED,
-          supportsRead = TransferSizes(1, p(SoCParamsKey).L3BlockSize),
-          supportsWrite = TransferSizes(1, p(SoCParamsKey).L3BlockSize),
+          supportsRead = TransferSizes(1, p(SoCParamsKey).BlockSize),
+          supportsWrite = TransferSizes(1, p(SoCParamsKey).BlockSize),
           interleavedId = Some(0)
         )
       ),
-      beatBytes = p(SoCParamsKey).L3OuterBusWidth / 8
+      beatBytes = p(SoCParamsKey).BusWidth / 8
     )
   )))
   axi4master.foreach(
@@ -77,10 +78,10 @@ trait HasMasterInterface { this: StandAloneDevice =>
       AXI4Buffer() :=
       AXI4IdIndexer(1) :=
       AXI4UserYanker() :=
-      AXI4Deinterleaver(p(SoCParamsKey).L3BlockSize) :=
+      AXI4Deinterleaver(p(SoCParamsKey).BlockSize) :=
       TLToAXI4() :=
       TLSourceShrinker(64) :=
-      TLWidthWidget(p(SoCParamsKey).L3OuterBusWidth / 8) :=
+      TLWidthWidget(p(SoCParamsKey).BusWidth / 8) :=
       TLBuffer.chainNode(2) :=
       masternode
   )

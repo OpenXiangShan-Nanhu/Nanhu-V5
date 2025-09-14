@@ -86,12 +86,12 @@ class CfiUpdateInfo(implicit p: Parameters) extends XSBundle with HasBPUParamete
   val pc = UInt(VAddrBits.W)
   // frontend -> backend -> frontend
   val pd = new PreDecodeInfo
-  val ssp = UInt(log2Up(RasSize).W)
-  val sctr = UInt(RasCtrSize.W)
-  val TOSW = new RASPtr
-  val TOSR = new RASPtr
-  val NOS = new RASPtr
-  val topAddr = UInt(VAddrBits.W)
+  // val ssp = UInt(log2Up(RasSize).W)
+  // val sctr = UInt(RasCtrSize.W)
+  // val TOSW = new RASPtr
+  // val TOSR = new RASPtr
+  // val NOS = new RASPtr
+  // val topAddr = UInt(VAddrBits.W)
   // val hist = new ShiftingGlobalHistory
   val folded_hist = new AllFoldedHistories(foldedGHistInfos)
   val afhob = new AllAheadFoldedHistoryOldestBits(foldedGHistInfos)
@@ -117,12 +117,12 @@ class CfiUpdateInfo(implicit p: Parameters) extends XSBundle with HasBPUParamete
   def fromFtqRedirectSram(entry: Ftq_Redirect_SRAMEntry) = {
     // this.hist := entry.ghist
     this.histPtr := entry.histPtr
-    this.ssp := entry.ssp
-    this.sctr := entry.sctr
-    this.TOSW := entry.TOSW
-    this.TOSR := entry.TOSR
-    this.NOS := entry.NOS
-    this.topAddr := entry.topAddr
+    // this.ssp := entry.ssp
+    // this.sctr := entry.sctr
+    // this.TOSW := entry.TOSW
+    // this.TOSR := entry.TOSR
+    // this.NOS := entry.NOS
+    // this.topAddr := entry.topAddr
     this
   }
 

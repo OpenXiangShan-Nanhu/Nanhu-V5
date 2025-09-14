@@ -737,8 +737,6 @@ class BranchPredictionBundle(val isNotS3: Boolean)(implicit p: Parameters) exten
 
 class BranchPredictionResp(implicit p: Parameters) extends XSBundle with HasBPUConst {
   val s1 = new BranchPredictionBundle(isNotS3 = true)
-  val s2 = new BranchPredictionBundle(isNotS3 = true)
-  val s3 = new BranchPredictionBundle(isNotS3 = false)
 
   val s1_uftbHit = Bool()
   val s1_uftbHasIndirect = Bool()
@@ -750,22 +748,9 @@ class BranchPredictionResp(implicit p: Parameters) extends XSBundle with HasBPUC
 
   val topdown_info = new FrontendTopDownBundle
 
-  def selectedResp ={
-    val res =
-      PriorityMux(Seq(
-        ((s3.valid(3) && s3.hasRedirect(3)) -> s3),
-        ((s2.valid(3) && s2.hasRedirect(3)) -> s2),
-        (s1.valid(3) -> s1)
-      ))
-    res
-  }
-  def selectedRespIdxForFtq =
-    PriorityMux(Seq(
-      ((s3.valid(3) && s3.hasRedirect(3)) -> BP_S3),
-      ((s2.valid(3) && s2.hasRedirect(3)) -> BP_S2),
-      (s1.valid(3) -> BP_S1)
-    ))
-  def lastStage = s3
+  def selectedResp = s1
+  def selectedRespIdxForFtq = BP_S1
+  def lastStage = s1
 }
 
 class BpuToFtqBundle(implicit p: Parameters) extends BranchPredictionResp {}
@@ -806,22 +791,7 @@ class BranchPredictionUpdate(implicit p: Parameters) extends XSBundle with HasBP
 }
 
 class BranchPredictionRedirect(implicit p: Parameters) extends Redirect with HasBPUConst {
-  // override def toPrintable: Printable = {
-  //   p"-----------BranchPredictionRedirect----------- " +
-  //     p"-----------cfiUpdate----------- " +
-  //     p"[pc] ${Hexadecimal(cfiUpdate.pc)} " +
-  //     p"[predTaken] ${cfiUpdate.predTaken}, [taken] ${cfiUpdate.taken}, [isMisPred] ${cfiUpdate.isMisPred} " +
-  //     p"[target] ${Hexadecimal(cfiUpdate.target)} " +
-  //     p"------------------------------- " +
-  //     p"[robPtr] f=${robIdx.flag} v=${robIdx.value} " +
-  //     p"[ftqPtr] f=${ftqIdx.flag} v=${ftqIdx.value} " +
-  //     p"[ftqOffset] ${ftqOffset} " +
-  //     p"[level] ${level}, [interrupt] ${interrupt} " +
-  //     p"[stFtqIdx] f=${stFtqIdx.flag} v=${stFtqIdx.value} " +
-  //     p"[stFtqOffset] ${stFtqOffset} " +
-  //     p"\n"
 
-  // }
 
   // TODO: backend should pass topdown signals here
   // must not change its parent since BPU has used asTypeOf(this type) from its parent class

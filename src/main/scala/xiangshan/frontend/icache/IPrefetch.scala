@@ -57,7 +57,6 @@ class IPrefetchIO(implicit p: Parameters) extends ICacheBundle {
   val flushFromBackend  = Input(Bool())
 
   val req               = Flipped(Decoupled(new IPrefetchReq))
-  val flushFromBpu      = Flipped(new BpuFlushInfo)
   val itlb              = Vec(PortNumber, new TlbRequestIO)
   val itlbFlushPipe     = Bool()
   val pmp               = Vec(PortNumber, new ICachePMPBundle)
@@ -79,7 +78,6 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   val s0_fire, s1_fire, s2_fire             = WireInit(false.B)
   val s0_ready, s1_ready, s2_ready          = WireInit(false.B)
   val s0_flush, s1_flush, s2_flush          = WireInit(false.B)
-  val from_bpu_s0_flush, from_bpu_s1_flush  = WireInit(false.B)
 
   /**
     ******************************************************************************
@@ -103,9 +101,7 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   val s0_req_vSetIdx      = s0_req_vaddr.map(get_idx)
   val s0_backendException = VecInit(Seq.fill(PortNumber)(io.req.bits.backendException))
 
-  from_bpu_s0_flush := !s0_isSoftPrefetch && (io.flushFromBpu.shouldFlushByStage2(s0_req_ftqIdx) ||
-                                              io.flushFromBpu.shouldFlushByStage3(s0_req_ftqIdx))
-  s0_flush := io.flushFromBackend || (io.flushFromIFU && !s0_isSoftPrefetch) || from_bpu_s0_flush || s1_flush
+  s0_flush := io.flushFromBackend || (io.flushFromIFU && !s0_isSoftPrefetch) || s1_flush
 
   val s0_can_go = s1_ready && toITLB(0).ready && toITLB(1).ready && toMeta.ready
   io.req.ready := s0_can_go
@@ -426,8 +422,7 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   }
 
   /** Stage 1 control */
-  from_bpu_s1_flush := s1_valid && !s1_isSoftPrefetch && io.flushFromBpu.shouldFlushByStage3(s1_req_ftqIdx)
-  s1_flush := io.flushFromBackend || (io.flushFromIFU && !s1_isSoftPrefetch) || from_bpu_s1_flush
+  s1_flush := io.flushFromBackend || (io.flushFromIFU && !s1_isSoftPrefetch)
   // when s1 is flushed, itlb pipeline should also be flushed
   io.itlbFlushPipe := s1_flush
 
@@ -522,8 +517,6 @@ class IPrefetchPipe(implicit p: Parameters) extends ICacheModule {
   s2_fire       := s2_valid && s2_finish && !s2_flush
 
   /** PerfAccumulate */
-  XSPerfAccumulate("bpu_s0_flush", from_bpu_s0_flush)
-  XSPerfAccumulate("bpu_s1_flush", from_bpu_s1_flush)
   XSPerfAccumulate("prefetch_req_receive_hw", io.req.fire && !io.req.bits.isSoftPrefetch)
   XSPerfAccumulate("prefetch_req_receive_sw", io.req.fire && io.req.bits.isSoftPrefetch)
   XSPerfAccumulate("prefetch_req_send_hw", toMSHR.fire && !s2_isSoftPrefetch)

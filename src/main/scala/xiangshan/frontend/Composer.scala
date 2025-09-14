@@ -48,11 +48,6 @@ class Composer(implicit p: Parameters) extends BasePredictor with HasBPUConst wi
 
     c.io.s0_fire := io.s0_fire
     c.io.s1_fire := io.s1_fire
-    c.io.s2_fire := io.s2_fire
-    c.io.s3_fire := io.s3_fire
-
-    c.io.s2_redirect := io.s2_redirect
-    c.io.s3_redirect := io.s3_redirect
 
     c.io.redirect := io.redirect
     c.io.ctrl := DelayN(io.ctrl, 1)
@@ -69,7 +64,6 @@ class Composer(implicit p: Parameters) extends BasePredictor with HasBPUConst wi
   io.in.ready := components.map(_.io.s1_ready).reduce(_ && _)
 
   io.s1_ready := components.map(_.io.s1_ready).reduce(_ && _)
-  io.s2_ready := components.map(_.io.s2_ready).reduce(_ && _)
 
   require(meta_sz <= MaxMetaLength)
   io.out.last_stage_meta := metas

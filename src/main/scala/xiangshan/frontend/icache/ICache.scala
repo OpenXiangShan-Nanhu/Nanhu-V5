@@ -512,7 +512,6 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
   prefetcher.io.csr_pf_enable     := io.csr_pf_enable
 //  prefetcher.io.csr_parity_enable := io.csr_parity_enable
   prefetcher.io.MSHRResp          := missUnit.io.fetch_resp
-  prefetcher.io.flushFromBpu      := io.ftqPrefetch.flushFromBpu
   // cache softPrefetch
   private val softPrefetchValid = RegInit(false.B)
   private val softPrefetch = RegInit(0.U.asTypeOf(new IPrefetchReq))

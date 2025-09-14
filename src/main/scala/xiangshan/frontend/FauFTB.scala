@@ -132,8 +132,8 @@ class FauFTB(implicit p: Parameters) extends BasePredictor with FauFTBParams {
 
   // assign metas
   io.out.last_stage_meta := resp_meta.asUInt
-  resp_meta.hit := RegEnable(RegEnable(s1_hit, io.s1_fire(0)), io.s2_fire(0))
-  if(resp_meta.pred_way.isDefined) {resp_meta.pred_way.get := RegEnable(RegEnable(s1_hit_way, io.s1_fire(0)), io.s2_fire(0))}
+  resp_meta.hit := RegEnable(s1_hit, io.s1_fire(0))
+  if(resp_meta.pred_way.isDefined) {resp_meta.pred_way.get := RegEnable(s1_hit_way, io.s1_fire(0))}
 
   // pred update replacer state
   val s1_fire = io.s1_fire(0)

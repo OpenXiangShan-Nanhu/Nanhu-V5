@@ -59,205 +59,6 @@ class BaseConfig(n: Int) extends Config((site, here, up) => {
   case EnableJtag => true.B
 })
 
-// Synthesizable minimal XiangShan
-// * It is still an out-of-order, super-scalaer arch
-// * L1 cache included
-// * L2 cache NOT included
-// * L3 cache included
-class MinimalConfig(n: Int = 1) extends Config(
-  new BaseConfig(n).alter((site, here, up) => {
-    case XSTileKey => up(XSTileKey).map(
-      p => p.copy(
-        DecodeWidth = 6,
-        RenameWidth = 6,
-        RobCommitWidth = 8,
-        FetchWidth = 8,
-        VirtualLoadQueueSize = 24,
-        LoadQueueRAWSize = 12,
-        LoadQueueReplaySize = 24,
-        LoadUncacheBufferSize = 8,
-        LoadQueueNWriteBanks = 4, // NOTE: make sure that LoadQueue{RAR, RAW, Replay}Size is divided by LoadQueueNWriteBanks.
-        RollbackGroupSize = 8,
-        StoreQueueSize = 20,
-        StoreQueueNWriteBanks = 4, // NOTE: make sure that StoreQueueSize is divided by StoreQueueNWriteBanks
-        StoreQueueForwardWithMask = true,
-        // ============ VLSU ============
-        VlMergeBufferSize = 16,
-        VsMergeBufferSize = 8,
-        UopWritebackWidth = 2,
-        // ==============================
-        RobSize = 48,
-        RabSize = 96,
-        FtqSize = 8,
-        IBufSize = 24,
-        IBufNBank = 6,
-        StoreBufferSize = 4,
-        StoreBufferThreshold = 3,
-        dpParams = DispatchParameters(
-          IntDqSize = 12,
-          FpDqSize = 12,
-          LsDqSize = 12,
-          IntDqDeqWidth = 8,
-          FpDqDeqWidth = 6,
-          VecDqDeqWidth = 6,
-          LsDqDeqWidth = 6
-        ),
-        intPreg = IntPregParams(
-          numEntries = 64,
-          numRead = None,
-          numWrite = None,
-        ),
-        vfPreg = VfPregParams(
-          numEntries = 160,
-          numRead = None,
-          numWrite = None,
-        ),
-        icacheParameters = ICacheParameters(
-          nSets = 64, // 16KB ICache
-          tagECC = Some("parity"),
-          dataECC = Some("parity"),
-          replacer = Some("setplru"),
-        ),
-        dcacheParametersOpt = Some(DCacheParameters(
-          nSets = 64, // 32KB DCache
-          nWays = 8,
-          tagECC = Some("secded"),
-          dataECC = Some("secded"),
-          replacer = Some("setplru"),
-          nMissEntries = 4,
-          nProbeEntries = 4,
-          nReleaseEntries = 8,
-          nMaxPrefetchEntry = 2,
-        )),
-        // ============ BPU ===============
-        EnableGHistDiff = false,
-        FtbSize = 256,
-        FtbWays = 2,
-        RasSize = 8,
-        RasSpecSize = 16,
-        TageTableInfos =
-          Seq((512, 4, 6),
-            (512, 9, 6),
-            (1024, 19, 6)),
-        SCNRows = 128,
-        SCNTables = 2,
-        SCHistLens = Seq(0, 5),
-        ITTageTableInfos =
-          Seq((256, 4, 7),
-            (256, 8, 7),
-            (512, 16, 7)),
-        // ================================
-        itlbParameters = TLBParameters(
-          name = "itlb",
-          fetchi = true,
-          useDmode = false,
-          NWays = 4,
-        ),
-        dtlbParameters = TLBParameters(
-          name = "ldtlb",
-          NWays = 4,
-          partialStaticPMP = true,
-          outsideRecvFlush = true,
-          outReplace = false,
-          lgMaxSize = 4
-        ),
-        ldtlbParameters = TLBParameters(
-          name = "ldtlb",
-          NWays = 4,
-          partialStaticPMP = true,
-          outsideRecvFlush = true,
-          outReplace = false,
-          lgMaxSize = 4
-        ),
-        sttlbParameters = TLBParameters(
-          name = "sttlb",
-          NWays = 4,
-          partialStaticPMP = true,
-          outsideRecvFlush = true,
-          outReplace = false,
-          lgMaxSize = 4
-        ),
-        hytlbParameters = TLBParameters(
-          name = "hytlb",
-          NWays = 4,
-          partialStaticPMP = true,
-          outsideRecvFlush = true,
-          outReplace = false,
-          lgMaxSize = 4
-        ),
-        pftlbParameters = TLBParameters(
-          name = "pftlb",
-          NWays = 4,
-          partialStaticPMP = true,
-          outsideRecvFlush = true,
-          outReplace = false,
-          lgMaxSize = 4
-        ),
-        btlbParameters = TLBParameters(
-          name = "btlb",
-          NWays = 4,
-        ),
-        l2tlbParameters = L2TLBParameters(
-          l3Size = 4,
-          l2Size = 4,
-          l1nSets = 4,
-          l1nWays = 4,
-          l1ReservedBits = 1,
-          l0nSets = 4,
-          l0nWays = 8,
-          l0ReservedBits = 0,
-          spSize = 4,
-        ),
-        L2NBanks = 2,
-        prefetcher = None // if L2 pf_recv_node does not exist, disable SMS prefetcher
-      )
-    )
-    case L2ParamKey =>
-      val core = site(XSTileKey).head
-      up(L2ParamKey).copy(
-        sets = 128,
-        echoField = Seq(DirtyField()),
-        prefetch = Nil,
-        clientCaches = Seq(L1Param(
-          "dcache",
-          isKeywordBitsOpt = core.dcacheParametersOpt.get.isKeywordBitsOpt
-        )),
-      )
-    case SoCParamsKey =>
-      val tiles = site(XSTileKey)
-      val l2 = site(L2ParamKey)
-      up(SoCParamsKey).copy(
-        L3CacheParamsOpt = Some(up(SoCParamsKey).L3CacheParamsOpt.get.copy(
-          sets = 1024,
-          inclusive = false,
-          clientCaches = tiles.map{ core =>
-            val clientDirBytes = tiles.map{ t =>
-              t.L2NBanks * l2.toCacheParams.capacity
-            }.sum
-            val l2params = l2.toCacheParams
-            l2params.copy(sets = 2 * clientDirBytes / core.L2NBanks / l2params.ways / 64)
-          },
-          simulation = !site(DebugOptionsKey).FPGAPlatform,
-          prefetch = None
-        )),
-        L3NBanks = 1
-      )
-  })
-)
-
-// Non-synthesizable MinimalConfig, for fast simulation only
-class MinimalSimConfig(n: Int = 1) extends Config(
-  new MinimalConfig(n).alter((site, here, up) => {
-    case XSTileKey => up(XSTileKey).map(_.copy(
-      dcacheParametersOpt = None,
-      softPTW = true
-    ))
-    case SoCParamsKey => up(SoCParamsKey).copy(
-      L3CacheParamsOpt = None
-    )
-  })
-)
-
 class WithNKBL1I(n: Int, ways: Int = 4) extends Config((site, here, up) => {
   case XSTileKey =>
     val sets = n * 1024 / ways / 64
@@ -369,43 +170,6 @@ class WithNKBL3(n: Int, ways: Int = 8, inclusive: Boolean = true, banks: Int = 1
       ))
     )
 })
-
-class WithL3DebugConfig extends Config(
-  new WithNKBL3(256, inclusive = false) ++ new WithNKBL2(64)
-)
-
-class WithFuzzer extends Config((site, here, up) => {
-  case DebugOptionsKey => up(DebugOptionsKey).copy(
-    EnablePerfDebug = false,
-  )
-  case SoCParamsKey => up(SoCParamsKey).copy(
-    L3CacheParamsOpt = Some(up(SoCParamsKey).L3CacheParamsOpt.get.copy(
-      enablePerf = false,
-    )),
-  )
-  case L2ParamKey => up(L2ParamKey).copy(
-    enablePerf = false,
-  )
-})
-
-class MinimalAliasDebugConfig(n: Int = 1) extends Config(
-  new WithNKBL3(512, inclusive = false) ++
-    new WithNKBL2(256, inclusive = true) ++
-    new WithNKBL1D(128) ++
-    new MinimalConfig(n)
-)
-
-class MediumConfig(n: Int = 1) extends Config(
-  new WithNKBL3(4096, inclusive = false, banks = 4)
-    ++ new WithNKBL2(512, inclusive = true)
-    ++ new WithNKBL1D(128)
-    ++ new BaseConfig(n)
-)
-
-class FuzzConfig(dummy: Int = 0) extends Config(
-  new WithFuzzer
-    ++ new DefaultConfig(1)
-)
 
 class DefaultConfig(n: Int = 1) extends Config(
   new WithNKBL3(16 * 1024, inclusive = false, banks = 4, ways = 16)
@@ -608,5 +372,117 @@ class FpgaDefaultConfig(n: Int = 1) extends Config(
         sramClkDivBy2 = false,
       )),
     )
+  })
+)
+
+class RtsConfig(n: Int = 1) extends Config(
+  new WithNKBL3(256, inclusive = false, banks = 4, ways = 8)
+    ++ new WithNKBL2(32, inclusive = true, banks = 2, ways = 8, tp = false)
+    ++ new WithNKBL1I(8, ways = 4)
+    ++ new WithNKBL1D(8, ways = 4)
+    ++ new BaseConfig(n) alter ((site, here, up) => {
+    case XSTileKey => up(XSTileKey).map(_.copy(
+      DecodeWidth = 2, //2
+      RenameWidth = 2, //4
+      IBufSize = 16, //32
+      FtqSize = 16, //48
+      FtbSize = 2048,
+
+      //backend
+      RobSize = 64, //96
+      RabSize = 96, //96
+      intPreg = IntPregParams(
+        numEntries = 64, //128
+        numRead = None,
+        numWrite = None,
+      ),
+      vfPreg = VfPregParams(
+        numEntries = 96, //160
+        numRead = None,
+        numWrite = None,
+      ),
+      v0Preg = V0PregParams(
+        numEntries = 8, //22
+        numRead = None,
+        numWrite = None,
+      ),
+      vlPreg = VlPregParams(
+        numEntries = 8, //32
+        numRead = None,
+        numWrite = None,
+      ),
+      IntRegCacheSize = 4,
+      MemRegCacheSize = 4,
+      EnableMiniConfig = true,
+      dpParams = DispatchParameters(
+        IntDqSize = 8,
+        FpDqSize = 8,
+        LsDqSize = 8,
+        IntDqDeqWidth = 8,
+        FpDqDeqWidth = 6,
+        VecDqDeqWidth = 6,
+        LsDqDeqWidth = 6
+      ),
+      //Memblock
+      VirtualLoadQueueSize = 24, //56
+      LoadQueueRAWSize = 12, //24
+      LoadQueueReplaySize = 24, //32
+      LoadUncacheBufferSize = 4, //8
+      StoreQueueSize = 20, //32
+      StoreBufferSize = 4, //8
+      StoreQueueNWriteBanks = 4, //8
+      StoreBufferThreshold = 3, //7
+      VlMergeBufferSize = 4, //16
+      VsMergeBufferSize = 4, //16
+      VSegmentBufferSize = 4, //8
+
+      icacheParameters = ICacheParameters(
+        nSets = 32,  // 8KiB
+        nWays = 4,
+      ),
+      dcacheParametersOpt = Some(DCacheParameters(
+        nSets = 16, //32 kB DCache, 16*1024/4/64
+        nWays = 8,
+        nMissEntries = 4, //16
+        nProbeEntries = 2, //4
+        nReleaseEntries = 2, //4
+        nMaxPrefetchEntry = 2, //6
+      )),
+      itlbParameters = TLBParameters(
+        name = "itlb",
+        fetchi = true,
+        useDmode = false,
+        NWays = 4,
+      ),
+      dtlbParameters = TLBParameters(
+        name = "dtlb",
+        NWays = 4,
+        outReplace = false,
+        partialStaticPMP = true,
+        outsideRecvFlush = true,
+        saveLevel = false,
+        lgMaxSize = 4
+      ),
+      ldtlbParameters = TLBParameters(
+        name = "ldtlb",
+        NWays = 4,
+        outReplace = false,
+        partialStaticPMP = true,
+        outsideRecvFlush = true,
+        saveLevel = false,
+        lgMaxSize = 4
+      ),
+      l2tlbParameters = L2TLBParameters(
+        l3Size = 4,
+        l2Size = 4,
+        l1nSets = 4,
+        l1nWays = 4,
+        l1ReservedBits = 1,
+        l0nSets = 4,
+        l0nWays = 8,
+        l0ReservedBits = 0,
+        spSize = 4,
+      )
+    ))
   })
 )

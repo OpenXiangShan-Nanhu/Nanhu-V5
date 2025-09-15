@@ -27,7 +27,7 @@ import scala.math.min
 
 trait HasBPUConst extends HasXSParameter {
   val MaxMetaBaseLength =  if (!env.FPGAPlatform) 512 else 96 // TODO: Reduce meta length
-  val MaxMetaLength = if (HasHExtension) MaxMetaBaseLength + 4 else MaxMetaBaseLength  // 64X152 sram is batter than 64X150
+  val MaxMetaLength = if (!env.FPGAPlatform) 6 else 1 // uftb hit //if (HasHExtension) MaxMetaBaseLength + 4 else MaxMetaBaseLength  // 64X152 sram is batter than 64X150
   val MaxBasicBlockSize = 32
   val LHistoryLength = 32
   // val numBr = 2
@@ -254,7 +254,10 @@ class Predictor(implicit p: Parameters) extends XSModule
     topdown_stages(i + 1) := topdown_stages(i)
   }
 
-
+  private val waitAfterReset = RegInit(false.B)
+  when(RegNextN(RegNext(reset.asBool) && !reset.asBool, 100, Some(false.B))) {
+    waitAfterReset := true.B
+  }
 
   // ctrl signal
   predictors.io.ctrl := ctrl
@@ -347,7 +350,7 @@ class Predictor(implicit p: Parameters) extends XSModule
 
   s1_components_ready_dup.foreach(_ := predictors.io.s1_ready)
   for (((s1_ready, s1_fire), s1_valid) <- s1_ready_dup zip s1_fire_dup zip s1_valid_dup)
-    s1_ready := (s1_fire || !s1_valid) && !io.halt
+    s1_ready := (s1_fire || !s1_valid) && !io.halt && waitAfterReset
   for (((s0_fire, s1_components_ready), s1_ready) <- s0_fire_dup zip s1_components_ready_dup zip s1_ready_dup)
     s0_fire := s1_components_ready && s1_ready
   predictors.io.s0_fire := s0_fire_dup

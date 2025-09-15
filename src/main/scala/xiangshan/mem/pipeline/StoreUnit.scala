@@ -404,6 +404,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_isCboM = LSUOpType.isCbom(s2_in.uop.fuOpType)
   val s2_tlb_hit = RegEnable(s1_tlb_hit, s1_fire)
 
+  val s2_paddrPBMTisConfidential = !(s2_in.uop.exceptionVec(storePageFault) | s2_in.uop.exceptionVec(storeAccessFault) | s2_in.uop.exceptionVec(storeGuestPageFault))
+  // s2_in.pbmt := Mux(s2_paddrPBMTisConfidential, RegEnable(s1_out.pbmt,s1_fire), 0.U(2.W))
+
   s2_ready := !s2_valid || s2_kill || s3_ready
   when (s1_fire) { s2_valid := true.B }
   .elsewhen (s2_fire) { s2_valid := false.B }
@@ -414,10 +417,10 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_exception = !s2_in.tlbMiss && (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_out.uop.exceptionVec, StaCfg).asUInt.orR)
   val s2_nc = Pbmt.isNC(s2_pbmt)
 
-  val s2_deviceType = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) | !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
+  val s2_deviceType = s2_paddrPBMTisConfidential & (s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) | !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt))
   val s2_deviceTypeRegion = s2_deviceType && !s2_in.tlbMiss && !s2_in.pf
 
-  val s2_uncacheType = s2_deviceType | (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
+  val s2_uncacheType = s2_deviceType | s2_paddrPBMTisConfidential & (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
   val s2_uncacheTypeRegion = s2_uncacheType && !s2_in.tlbMiss && !s2_in.pf
 
 
@@ -445,8 +448,8 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s2_out.nc := s2_nc
   s2_out.uop.exceptionVec(storeAccessFault) := (s2_in.uop.exceptionVec(storeAccessFault) ||
                                                 s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_deviceType ||
-                                                s2_pmp.st && !s2_in.pf ||
-                                                (s2_pmp.ld && s2_isCboM && !s2_in.pf) ||   // cmo need read permission but produce store exception
+                                                s2_paddrPBMTisConfidential && s2_pmp.st && !s2_in.pf ||
+                                                (s2_paddrPBMTisConfidential && s2_pmp.ld && s2_isCboM && !s2_in.pf) ||   // cmo need read permission but produce store exception
                                                 ((s2_in.isvec || s2_isCboAll) && s2_uncacheTypeRegion)
                                                 ) && s2_vecActive
 //  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_deviceType && !s2_in.tlbMiss && !s2_in.pf

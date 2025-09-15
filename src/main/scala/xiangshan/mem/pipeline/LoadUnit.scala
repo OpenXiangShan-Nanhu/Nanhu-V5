@@ -1043,6 +1043,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   .elsewhen (s2_fire) { s2_valid := false.B }
   .elsewhen (s2_kill) { s2_valid := false.B }
   s2_in := RegEnable(s1_out, s1_fire)
+  // when tlb resp af/pf/gpf, the pbmt is not confidential, so in order to avoid wrong exception report, set it zero.
+  val s2_paddrPBMTisConfidential = !(s2_in.uop.exceptionVec(loadPageFault) | s2_in.uop.exceptionVec(loadAccessFault) | s2_in.uop.exceptionVec(loadGuestPageFault))
+  // s2_in.pbmt := Mux(s2_paddrPBMTisConfidential, RegEnable(s1_out.pbmt,s1_fire), 0.U(2.W))
 
   val s2_pmp = WireInit(io.pmp)
 
@@ -1051,9 +1054,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
   val s2_exception = Wire(Bool())
 
-  val s2_deviceTypeRegion = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) |
-                      !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
-  val s2_UnCacheRegion = s2_deviceTypeRegion | (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
+  val s2_deviceTypeRegion = s2_paddrPBMTisConfidential & (s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) |
+                      !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt))
+  val s2_UnCacheRegion = s2_deviceTypeRegion | s2_paddrPBMTisConfidential & (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
 
   val s2_deviceType = !s2_prf && s2_deviceTypeRegion && !s2_exception && !s2_in.tlbMiss && !s2_in.pf
   val s2_UnCacheType = !s2_prf && s2_UnCacheRegion && !s2_exception && !s2_in.tlbMiss  && !s2_in.pf
@@ -1071,7 +1074,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   // will be force writebacked to rob
   val s2_exception_vec = WireInit(s2_in.uop.exceptionVec)
   when (!s2_in.delayedLoadError) {
-    s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !(s2_in.tlbMiss || s2_in.pf)) && s2_vecActive
+    s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld & s2_paddrPBMTisConfidential || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !(s2_in.tlbMiss || s2_in.pf)) && s2_vecActive
   }
 //  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf
   s2_exception_vec(loadAddrMisaligned) := Mux(s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf && s2_in.uop.exceptionVec(loadAddrMisaligned), false.B, s2_in.uop.exceptionVec(loadAddrMisaligned))

@@ -334,6 +334,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.rob.uop := DontCare
 
   val mmioStout_fire = io.mmioStout.fire
+  // val cbomhasException = (LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && committed(deqPtr) && hasException(deqPtr))
   // val cmoCanDeq = io.cmoOpReq.fire || (LSUOpType.isCbom(uop(deqPtr).fuOpType) && allocated(deqPtr) && addrvalid(deqPtr) && committed(deqPtr) && hasException(deqPtr))
   // Read dataModule
   assert(EnsbufferWidth <= 2)
@@ -1033,7 +1034,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   // TODO: Deal with vector store mmio
   for (i <- 0 until CommitWidth) {
     // don't mark misalign store as committed
-    when (allocated(cmtPtrExt(i).value) && !unaligned(cmtPtrExt(i).value) && isNotAfter(uop(cmtPtrExt(i).value).robIdx, GatedRegNext(io.rob.pendingPtr)) && !needCancel(cmtPtrExt(i).value) && (!waitStoreS2(cmtPtrExt(i).value) || isVec(cmtPtrExt(i).value))) {
+    // cbom that has exception should not be marked as committed in order to correctly be flushed from storeq
+    when (allocated(cmtPtrExt(i).value) && !unaligned(cmtPtrExt(i).value) && isNotAfter(uop(cmtPtrExt(i).value).robIdx, GatedRegNext(io.rob.pendingPtr)) && !needCancel(cmtPtrExt(i).value) && (!waitStoreS2(cmtPtrExt(i).value) || isVec(cmtPtrExt(i).value)) && (!iscbom(cmtPtrExt(i).value) || iscbom(cmtPtrExt(i).value)) && !hasException(cmtPtrExt(i).value)) {
       if (i == 0){
         // TODO: fixme for vector mmio
         when ((uncacheState === s_idle) || (uncacheState === s_wait && scommit > 0.U)){

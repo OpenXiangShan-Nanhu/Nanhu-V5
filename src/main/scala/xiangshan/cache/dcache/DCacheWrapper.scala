@@ -35,6 +35,8 @@ import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ParallelOperat
 import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.cache.common.{AliasField, IsKeywordField, IsKeywordKey, PrefetchField, VaddrField}
+import xiangshan.mem.SqInfoIO
+import xiangshan.mem.SbufferInfo
 
 // DCache specific parameters
 case class DCacheParameters
@@ -792,6 +794,8 @@ class DCacheToLsuIO(implicit p: Parameters) extends DCacheBundle {
   val release = ValidIO(new Release) // cacheline release hint for ld-ld violation check
   val forward_D = Output(Vec(LoadPipelineWidth, new DcacheToLduForwardIO))
   val forward_mshr = Vec(LoadPipelineWidth, new LduToMissqueueForwardIO)
+  val diffSQInfoIO = if (env.EnableDifftest) Some(Input(new SqInfoIO)) else None
+  val diffSBInfoIO = if (env.EnableDifftest) Some(Input(new SbufferInfo)) else None
 }
 
 class DCacheTopDownIO(implicit p: Parameters) extends DCacheBundle {
@@ -1525,6 +1529,12 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     sink.valid   := source.valid && !block_signal
     source.ready := sink.ready   && !block_signal
     sink.bits    := source.bits
+  }
+
+
+  if (env.EnableDifftest){
+    missQueue.io.diffSBInfoIO.get := io.lsu.diffSBInfoIO.get
+    missQueue.io.diffSQInfoIO.get := io.lsu.diffSQInfoIO.get
   }
 
   //----------------------------------------

@@ -29,6 +29,8 @@ import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.cache.common._
 import xs.utils.cache.common.{AliasKey, DirtyKey, IsKeywordKey, PrefetchKey, VaddrKey}
+import xiangshan.mem.SqInfoIO
+import xiangshan.mem.SbufferInfo
 
 
 class MissReqWoStoreData(implicit p: Parameters) extends DCacheBundle {
@@ -391,6 +393,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val mq_enq_cancel = Output(Bool())
 
     val debugTopDown = new DCacheTopDownIO
+    val diffSQInfoIO = if (env.EnableDifftest) Some(Input(new SqInfoIO)) else None
+    val diffSBInfoIO = if (env.EnableDifftest) Some(Input(new SbufferInfo)) else None
   })
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
   val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
@@ -649,6 +653,13 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   // Difftest
   if (env.EnableDifftest) {
+    //store Data
+    val storeData = Wire(Vec(8, Vec(8, UInt(8.W))))
+    val storeMask = Wire(Vec(8, Vec(8, Bool())))
+    val hasStoreData = Wire(Bool())
+
+    // val difftest = DifftestModule(new DiffRefillEvent, dontCare = true)
+
     val difftest = DifftestModule(new DiffRefillEvent, dontCare = true)
     difftest.coreid := io.hartId
     difftest.index := 1.U
@@ -657,11 +668,78 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     difftest.data := difftest_data_raw.asTypeOf(difftest.data)
     difftest.idtfr := DontCare
 
+    difftest.hasStoreData := hasStoreData
+    difftest.storeData := storeData.asTypeOf(difftest.storeData)
+    difftest.storeMask := storeMask.asTypeOf(difftest.storeMask)
+
+
+  //todo:merge cboz
+    //merge store Queue data
+    val sQData = WireInit(VecInit(Seq.fill(8)(VecInit(Seq.fill(8)(0.U(8.W))))))
+    val sQMask = WireInit(VecInit(Seq.fill(8)(VecInit(Seq.fill(8)(false.B)))))
+    val sQHasData = sQMask.asTypeOf(UInt()).orR
+    val start = io.diffSQInfoIO.get.commitPtr.value
+    val end = io.diffSQInfoIO.get.enqPtr.value
+
+    for(c <- 0 until 2){  //c=0:from cmt to end; c=1:from 0 to cmt
+      for(i <- 0 until StoreQueueSize){
+        val rawPaddr = io.diffSQInfoIO.get.entry(i).addr
+        val data128 = io.diffSQInfoIO.get.entry(i).data.asTypeOf(Vec(16,UInt(8.W)))
+        val mask128 = io.diffSQInfoIO.get.entry(i).mask.asTypeOf(Vec(16,Bool()))
+        val paMatch = get_block(io.diffSQInfoIO.get.entry(i).addr) === get_block(io.refill_to_ldq.bits.addr)
+        val indexMatch = if(c == 0) i.U >= start else i.U <= end
+        val blockOffset = io.diffSQInfoIO.get.entry(i).addr(log2Up(VLEN/8), 0)
+        for(j <- 0 until 8){
+          for(k <- 0 until 8){
+            val isPaMatch = ((j*8+k).U === blockOffset) && paMatch
+            val isMaskMatch = mask128((j*8+k) % 16)
+            val isMatch = isPaMatch && isMaskMatch && indexMatch
+            when(isMatch){
+              sQMask(j)(k) := true.B
+              sQData(j)(k) := data128((j*8+k) % 16)
+            }
+          }
+        }
+      }
+    }
+    
+  
+    //merge store Buffer data
+    val sBData = WireInit(VecInit(Seq.fill(8)(VecInit(Seq.fill(8)(0.U(8.W))))))
+    val sBMask = WireInit(VecInit(Seq.fill(8)(VecInit(Seq.fill(8)(false.B)))))
+    val sBHasData = WireInit(false.B)
+
+    for(i <- 0 until StoreBufferSize){
+      val paMatch = io.diffSBInfoIO.get.entry(i).ptag === get_block(io.refill_to_ldq.bits.addr)
+      val isMatch = paMatch && io.diffSBInfoIO.get.entry(i).valid
+      when(isMatch){
+        sBData := io.diffSBInfoIO.get.entry(i).data
+        sBMask := io.diffSBInfoIO.get.entry(i).mask.asTypeOf(sBMask)
+        sBHasData := true.B
+      }
+    }
+
+    //merge sbuffer and sq
+    hasStoreData := sQHasData || sBHasData
+    for(j <- 0 until 8){
+      for (k <- 0 until 8){
+        storeMask(j)(k) := sBMask(j)(k) || sQMask(j)(k)
+        storeData(j)(k) := Mux(sQMask(j)(k), sQData(j)(k), sBData(j)(k))
+      }
+    }
+
     // commit cbo.inval to difftest
     val cmoInvalEvent = DifftestModule(new DiffCMOInvalEvent)
     cmoInvalEvent.coreid := io.hartId
     cmoInvalEvent.valid  := io.mem_acquire.fire && io.mem_acquire.bits.opcode === TLMessages.CBOInval
     cmoInvalEvent.addr   := io.mem_acquire.bits.address
+
+    dontTouch(sQData)
+    dontTouch(sQMask)
+    dontTouch(sBData)
+    dontTouch(sBMask)
+    dontTouch(storeMask)
+    dontTouch(storeData)
 
   }
 

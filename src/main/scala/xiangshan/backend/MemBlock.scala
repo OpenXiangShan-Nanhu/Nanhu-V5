@@ -400,8 +400,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   private val dcache = outer.dcache.module
   val uncache = outer.uncache.module
 
-  //val delayedDcacheRefill = RegNext(dcache.io.lsu.lsq)
-
   val csrCtrl = DelayN(io.ooo_to_mem.csrCtrl, 2)
   dcache.io.csr.distribute_csr <> csrCtrl.distribute_csr
   dcache.io.l2_pf_store_only := RegNext(io.ooo_to_mem.csrCtrl.l2_pf_store_only, false.B)
@@ -425,9 +423,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val stdExeUnits = Seq.fill(StdCnt)(Module(new MemExeUnit(backendParams.memSchdParams.get.issueBlockParams.find(_.StdCnt != 0).get.exuBlockParams.head)))
   val stData = stdExeUnits.map(_.io.out)
   val exeUnits = loadUnits ++ storeUnits
-  // val vlWrapper = Module(new VectorLoadWrapper)
-  // val vsUopQueue = Module(new VsUopQueue)
-  // val vsFlowQueue = Module(new VsFlowQueue)
 
   // The number of vector load/store units is decoupled with the number of load/store units
   val vlSplit = Seq.fill(VlduCnt)(Module(new VLSplitImp))
@@ -599,6 +594,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   atomicsUnit.io.hartId := io.hartId
 
   dcache.io.lqEmpty := lsq.io.lqEmpty
+  
 
   // load/store prefetch to l2 cache
   prefetcherOpt.foreach(sms_pf => {
@@ -795,6 +791,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
         loadUnits(i).io.dcache.req.valid -> loadUnits(i).io.dcache.req.bits
       ))
       vSegmentUnit.io.rdcache.req.ready := dcache.io.lsu.load(i).req.ready
+    }
+
+    if(env.EnableDifftest){
+      dcache.io.lsu.diffSBInfoIO.get := sbuffer.io.diffSBInfo.get
+      dcache.io.lsu.diffSQInfoIO.get := lsq.io.diffSQInfoIO.get
     }
 
     // Dcache requests must also be preempted by the segment.

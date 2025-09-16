@@ -69,6 +69,18 @@ class SqEnqIO(implicit p: Parameters) extends MemBlockBundle {
   val resp = Vec(LSQEnqWidth, Output(new SqPtr))
 }
 
+class SqInfoIO(implicit p: Parameters) extends MemBlockBundle {
+  val entry = Vec(StoreQueueSize, new Bundle() {
+    val valid = Bool()
+    val addr = UInt(PAddrBits.W)
+    val mask = UInt((VLEN/8).W)
+    val data = UInt(VLEN.W)
+    val isCboZero = Bool()
+  })
+  val enqPtr = new SqPtr
+  val commitPtr = new SqPtr
+}
+
 class DataBufferEntry (implicit p: Parameters)  extends DCacheBundle {
   val addr   = UInt(PAddrBits.W)
   val vaddr  = UInt(VAddrBits.W)
@@ -211,6 +223,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val force_write = Output(Bool())
     val maControl   = Flipped(new StoreMaBufToSqControlIO)
     val diffStoreEventCount = if (env.EnableDifftest) Some(Input(UInt(64.W))) else None
+    val diffSQInfoIO = if (env.EnableDifftest) Some(Output(new SqInfoIO)) else None
   })
 
   println("StoreQueue: size:" + StoreQueueSize)
@@ -275,7 +288,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   val debug_paddr = Reg(Vec(StoreQueueSize, UInt((PAddrBits).W)))
   val debug_vaddr = Reg(Vec(StoreQueueSize, UInt((VAddrBits).W)))
-  val debug_data = Reg(Vec(StoreQueueSize, UInt((XLEN).W)))
+  val debug_data = Reg(Vec(StoreQueueSize, UInt((VLEN).W)))
+  val debug_mask = Reg(Vec(StoreQueueSize, UInt((VLEN/8).W)))
 
   // state & misc
   val allocated = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // sq entry has been allocated
@@ -525,6 +539,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
       // debug_paddr(paddrModule.io.waddr(i)) := paddrModule.io.wdata(i)
       debug_paddr(addrModule.io.waddr(i)) := addrModule.io.wdata_p(i)
+      debug_mask(addrModule.io.waddr(i)) := addrModule.io.wmask(i)
 
       // mmio(stWbIndex) := io.storeAddrIn(i).bits.mmio
 
@@ -1343,6 +1358,22 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     enqPtrExt(0).value === deqPtrExt(0).value &&
     enqPtrExt(0).flag === deqPtrExt(0).flag
   )
+
+  if(env.EnableDifftest){
+    io.diffSQInfoIO.get.entry.zipWithIndex.foreach({case (entry, i) => {
+        entry.valid := allocated(i) && committed(i) && !uncache(i) && !hasException(i) && !LSUOpType.isCbom(uop(i).fuOpType)
+        entry.addr := debug_paddr(i)
+        entry.data := debug_data(i) //has aligned to VLEN/8
+        entry.mask := debug_mask(i) //has aligned to VLEN/8
+        entry.isCboZero := LSUOpType.isCboZ(uop(i).fuOpType)
+    }})
+
+    io.diffSQInfoIO.get.enqPtr := enqPtrExt(0)
+    io.diffSQInfoIO.get.commitPtr := cmtPtrExt(0)
+  }
+
+
+  
   // perf counter
   QueuePerf(StoreQueueSize, validCount, !allowEnqueue)
   val vecValidVec = WireInit(VecInit((0 until StoreQueueSize).map(i => allocated(i) && isVec(i))))

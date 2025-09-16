@@ -36,6 +36,16 @@ class SbufferFlushBundle extends Bundle {
   val empty = Input(Bool())
 }
 
+class SbufferInfo(implicit p: Parameters) extends XSBundle with HasSbufferConst{
+  val entry = Vec(StoreBufferSize ,new Bundle {
+    val valid = Bool()
+    val data = Vec(8, Vec(8, UInt(8.W)))
+    val mask = Vec(8, Vec(8, Bool()))
+    val ptag = UInt(PTagWidth.W)
+  })
+}
+
+
 trait HasSbufferConst extends HasXSParameter {
   val EvictCycles = 1 << 10
   val SbufferReplayDelayCycles = 16
@@ -209,6 +219,7 @@ class Sbuffer(implicit p: Parameters)
     val store_prefetch = Vec(StorePipelineWidth, DecoupledIO(new StorePrefetchReq)) // to dcache
     val force_write = Input(Bool())
     val diffStoreEventCount = if (env.EnableDifftest) Some(Output(UInt(64.W))) else None
+    val diffSBInfo = if (env.EnableDifftest) Some(Output(new SbufferInfo)) else None
   })
 
   val dataModule = Module(new SbufferData)
@@ -860,7 +871,16 @@ class Sbuffer(implicit p: Parameters)
       stateVec(i).w_timeout
     )
   }
-  
+
+  if(env.EnableDifftest){
+    io.diffSBInfo.get.entry.zipWithIndex.foreach({case(entry,i) => {
+      entry.valid := stateVec(i).state_valid
+      entry.data := dataModule.io.dataOut(i).asTypeOf(Vec(8, Vec(8, UInt(8.W))))
+      entry.mask := dataModule.io.maskOut(i).asTypeOf(Vec(8, Vec(8, Bool())))
+      entry.ptag := ptag(i)
+    }})
+  }
+
   /*
   *
   **********************************************************

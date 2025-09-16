@@ -132,6 +132,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val debugTopDown = new LoadQueueTopDownIO
 
     val diffStoreEventCount = if (env.EnableDifftest) Some(Input(UInt(64.W))) else None
+    val diffSQInfoIO = if (env.EnableDifftest) Some(Output(new SqInfoIO)) else None
   })
 
   val loadQueue = Module(new LoadQueue)
@@ -194,6 +195,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.cbomfinish   := io.cbomfinish
   if(env.EnableDifftest){
     storeQueue.io.diffStoreEventCount.get  := io.diffStoreEventCount.get
+    io.diffSQInfoIO.get := storeQueue.io.diffSQInfoIO.get
   }
 
   /* <------- DANGEROUS: Don't change sequence here ! -------> */

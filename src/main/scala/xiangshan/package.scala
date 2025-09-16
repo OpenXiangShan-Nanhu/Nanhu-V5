@@ -588,6 +588,7 @@ package object xiangshan {
     def isCboClean(op: UInt): Bool = isCbom(op) && (op(3, 0) === cbo_clean)
     def isCboFlush(op: UInt): Bool = isCbom(op) && (op(3, 0) === cbo_flush)
     def isCboInval(op: UInt): Bool = isCbom(op) && (op(3, 0) === cbo_inval)
+    def isCboZ(op: UInt): Bool = op(3,0) === cbo_zero
 
     // atomics
     // bit(1, 0) are size

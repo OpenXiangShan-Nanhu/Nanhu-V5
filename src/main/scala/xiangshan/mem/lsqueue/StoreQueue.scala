@@ -1051,9 +1051,10 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     // don't mark misalign store as committed
     // cbom that has exception should not be marked as committed in order to correctly be flushed from storeq
     when (allocated(cmtPtrExt(i).value) && !unaligned(cmtPtrExt(i).value) && 
-          isAfter(uop(cmtPtrExt(i).value).robIdx, GatedRegNext(io.rob.pendingPtr)) && 
+          isNotAfter(uop(cmtPtrExt(i).value).robIdx, GatedRegNext(io.rob.pendingPtr)) && 
           !needCancel(cmtPtrExt(i).value) && 
-          (!waitStoreS2(cmtPtrExt(i).value) || isVec(cmtPtrExt(i).value))) {
+          (!waitStoreS2(cmtPtrExt(i).value) || isVec(cmtPtrExt(i).value)) && 
+          !hasException(cmtPtrExt(i).value)) {
       if (i == 0){
         // TODO: fixme for vector mmio
         when ((uncacheState === s_idle) || (uncacheState === s_wait && scommit > 0.U)){

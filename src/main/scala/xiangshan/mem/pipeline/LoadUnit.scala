@@ -957,7 +957,8 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s1_out.rep_info.nuke     := s1_nuke && !s1_prf
   s1_out.delayedLoadError  := s1_dly_err
   s1_out.pbmt := Mux(s1_in.isFastReplay, s1_in.pbmt, io.tlb.resp.bits.pbmt(0))
-  s1_out.pf := Mux(s1_in.isFastReplay, s1_in.pf, io.tlb.resp.bits.excp(0).pf.ld) 
+  s1_out.pf := Mux(s1_in.isFastReplay, s1_in.pf, io.tlb.resp.bits.excp(0).pf.ld)
+  s1_out.af := Mux(s1_in.isFastReplay, s1_in.af, io.tlb.resp.bits.excp(0).af.ld)
 
   when (!s1_dly_err) {
     // current ori test will cause the case of ldest == 0, below will be modifeid in the future.
@@ -1051,12 +1052,24 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
   val s2_exception = Wire(Bool())
 
-  val s2_deviceTypeRegion = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) |
-                      !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
+  /*
+  ------------------------------------------------
+    PMA   PBMT   Device   0~2G   2G~128G   3T~4T
+  ------------------------------------------------
+    IO    None    true     ✓                 ✓
+    IO     IO     true     ✓                 ✓
+    IO     NC    false                       ✓
+    Mem   None   false              ✓        ✓
+    Mem    IO     true                       ✓
+    Mem    NC    false              ✓        ✓
+  ------------------------------------------------
+   */
+  val s2_deviceTypeRegion = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) | !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
   val s2_UnCacheRegion = s2_deviceTypeRegion | (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
 
-  val s2_deviceType = !s2_prf && s2_deviceTypeRegion && !s2_exception && !s2_in.tlbMiss && !s2_in.pf
-  val s2_UnCacheType = !s2_prf && s2_UnCacheRegion && !s2_exception && !s2_in.tlbMiss  && !s2_in.pf
+  // when tlb resp miss/af/pf/gpf, the paddr and pbmt is not confidential, so in order to avoid wrong exception report, set it zero.
+  val s2_deviceType = !s2_prf && s2_deviceTypeRegion && !s2_exception && !s2_in.tlbMiss && !s2_in.pf && !s2_in.af
+  val s2_UnCacheType = !s2_prf && s2_UnCacheRegion && !s2_exception && !s2_in.tlbMiss && !s2_in.pf && !s2_in.af
   val s2_PMPMMIO = s2_pmp.mmio && !s2_in.tlbMiss && !s2_prf && !s2_in.pf
 
 

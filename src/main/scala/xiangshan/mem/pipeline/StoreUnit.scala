@@ -324,6 +324,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.pbmt := s1_pbmt
   s1_out.nc := Pbmt.isNC(s1_pbmt)
   s1_out.pf := io.tlb.resp.bits.excp(0).pf.st
+  s1_out.af := io.tlb.resp.bits.excp(0).af.st
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
 //  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
@@ -411,14 +412,27 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   val s2_pmp = WireInit(io.pmp)
 
+  /*
+  ------------------------------------------------
+    PMA   PBMT   Device   0~2G   2G~128G   3T~4T
+  ------------------------------------------------
+    IO    None    true     ✓                 ✓
+    IO     IO     true     ✓                 ✓
+    IO     NC    false                       ✓
+    Mem   None   false              ✓        ✓
+    Mem    IO     true                       ✓
+    Mem    NC    false              ✓        ✓
+  ------------------------------------------------
+   */
+
   val s2_exception = !s2_in.tlbMiss && (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_out.uop.exceptionVec, StaCfg).asUInt.orR)
   val s2_nc = Pbmt.isNC(s2_pbmt)
 
   val s2_deviceType = s2_pmp.mmio & !Pbmt.isNC(s2_in.pbmt) | !s2_pmp.mmio & Pbmt.isIO(s2_in.pbmt)
-  val s2_deviceTypeRegion = s2_deviceType && !s2_in.tlbMiss && !s2_in.pf
+  val s2_deviceTypeRegion = s2_deviceType && !s2_in.tlbMiss && !s2_in.pf && !s2_in.af
 
   val s2_uncacheType = s2_deviceType | (s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt)) | (!s2_pmp.mmio & Pbmt.isNC(s2_in.pbmt))
-  val s2_uncacheTypeRegion = s2_uncacheType && !s2_in.tlbMiss && !s2_in.pf
+  val s2_uncacheTypeRegion = s2_uncacheType && !s2_in.tlbMiss && !s2_in.pf && !s2_in.af
 
 
   dontTouch(s2_uncacheType)
@@ -436,7 +450,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
     s2_in.uop.exceptionVec(storePageFault)   ||
     s2_in.uop.exceptionVec(storeGuestPageFault)
   )
-//  val s2_mmioORnc = s2_tlb_hit && !s2_un_access_exception && s2_deviceTypeRegion && !s2_in.tlbMiss
 
   s2_out        := s2_in
   s2_out.af     := s2_out.uop.exceptionVec(storeAccessFault)
@@ -449,7 +462,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
                                                 (s2_pmp.ld && s2_isCboM && !s2_in.pf) ||   // cmo need read permission but produce store exception
                                                 ((s2_in.isvec || s2_isCboAll) && s2_uncacheTypeRegion)
                                                 ) && s2_vecActive
-//  s2_out.uop.exceptionVec(storeAddrMisaligned) := s2_in.uop.exceptionVec(storeAddrMisaligned) && !s2_deviceType && !s2_in.tlbMiss && !s2_in.pf
     s2_out.uop.exceptionVec(storeAddrMisaligned) := Mux(s2_in.uop.exceptionVec(storeAddrMisaligned) && s2_deviceType && !s2_in.tlbMiss && !s2_in.pf, false.B, s2_in.uop.exceptionVec(storeAddrMisaligned))
 
     s2_out.uop.vpu.vstart     := s2_in.vecVaddrOffset >> s2_in.uop.vpu.veew

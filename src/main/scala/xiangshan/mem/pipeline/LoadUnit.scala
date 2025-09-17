@@ -872,7 +872,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   val s1_gpaddr_dup_lsu   = Wire(UInt())
   val s1_paddr_dup_dcache = Wire(UInt())
   val s1_exception        = ExceptionNO.selectByFu(s1_out.uop.exceptionVec, LduCfg).asUInt.orR   // af & pf exception were modified below.
-  val s1_prf_w_exception  = s1_in.uop.fuOpType === LSUOpType.prefetch_w && io.tlb.resp.bits.excp(0).af.st //when prefetch write has af, DCache req should be kill
+  val s1_prf_w_exception  = s1_in.uop.fuOpType === LSUOpType.prefetch_w && (io.tlb.resp.bits.excp(0).af.st || io.tlb.resp.bits.excp(0).pf.st)//when prefetch write has af or pf, DCache req should be kill
   val s1_tlb_miss         = io.tlb.resp.bits.miss && io.tlb.resp.valid && s1_valid
   val s1_tlb_fast_miss    = io.tlb.resp.bits.fastMiss && io.tlb.resp.valid && s1_valid
   val s1_pbmt             = Mux(io.tlb.resp.valid, io.tlb.resp.bits.pbmt(0), 0.U(2.W))

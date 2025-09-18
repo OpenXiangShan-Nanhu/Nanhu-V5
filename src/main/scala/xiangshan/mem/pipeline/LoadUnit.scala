@@ -862,9 +862,6 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s1_in   := RegEnable(s0_out, s0_fire)
 
   val s1_fast_rep_dly_kill = RegEnable(io.fast_rep_in.bits.lateKill, io.fast_rep_in.valid) && s1_in.isFastReplay
-  val s1_fast_rep_dly_err =  RegEnable(io.fast_rep_in.bits.delayedLoadError, io.fast_rep_in.valid) && s1_in.isFastReplay
-  val s1_l2l_fwd_dly_err  = RegEnable(io.l2l_fwd_in.dly_ld_err, io.l2l_fwd_in.valid) && s1_in.isFastPath
-  val s1_dly_err          = s1_fast_rep_dly_err || s1_l2l_fwd_dly_err
   val s1_vaddr_hi         = Wire(UInt())
   val s1_vaddr_lo         = Wire(UInt())
   val s1_vaddr            = Wire(UInt())
@@ -893,14 +890,14 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     s1_out.uop.debugInfo.tlbRespTime := GTimer()
   }
 
-  io.tlb.req_kill   := s1_kill || s1_dly_err
+  io.tlb.req_kill   := s1_kill
   io.tlb.req.bits.pmp_addr := s1_in.paddr
   io.tlb.resp.ready := true.B
 
   io.dcache.s1_paddr_dup_lsu    <> s1_paddr_dup_lsu
   io.dcache.s1_paddr_dup_dcache <> s1_paddr_dup_dcache
-  io.dcache.s1_kill             := s1_kill || s1_dly_err || s1_tlb_miss || s1_exception || s1_prf_w_exception
-  io.dcache.s1_kill_data_read   := s1_kill || s1_dly_err || s1_tlb_fast_miss
+  io.dcache.s1_kill             := s1_kill || s1_tlb_miss || s1_exception || s1_prf_w_exception
+  io.dcache.s1_kill_data_read   := s1_kill || s1_tlb_fast_miss
 
   when(s1_valid && s1_out.uop.exceptionVec.asUInt.orR){
     assert(io.dcache.s1_kill,"the load has exception should be canceled!")
@@ -908,7 +905,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
 
   // store to load forwarding
-  io.sbuffer.valid := s1_valid && !(s1_exception || s1_tlb_miss || s1_kill || s1_dly_err || s1_prf)
+  io.sbuffer.valid := s1_valid && !(s1_exception || s1_tlb_miss || s1_kill || s1_prf)
   io.sbuffer.vaddr := s1_vaddr
   io.sbuffer.paddr := s1_paddr_dup_lsu
   io.sbuffer.uop   := s1_in.uop
@@ -918,7 +915,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.sbuffer.mdpFoldPc := DontCare
 
   val enableNewMDP = true.B
-  io.lsq.forward.valid     := s1_valid && !(s1_exception || s1_tlb_miss || s1_kill || s1_dly_err || s1_prf)
+  io.lsq.forward.valid     := s1_valid && !(s1_exception || s1_tlb_miss || s1_kill || s1_prf)
   io.lsq.forward.vaddr     := s1_vaddr
   io.lsq.forward.paddr     := s1_paddr_dup_lsu
   io.lsq.forward.uop       := s1_in.uop
@@ -955,25 +952,15 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s1_out.ptwBack           := Mux(s1_in.isFastReplay, s1_in.ptwBack, io.tlb.resp.bits.ptwBack)
   s1_out.rep_info.debug    := s1_in.uop.debugInfo
   s1_out.rep_info.nuke     := s1_nuke && !s1_prf
-  s1_out.delayedLoadError  := s1_dly_err
+  s1_out.delayedLoadError  := false.B
   s1_out.pbmt := Mux(s1_in.isFastReplay, s1_in.pbmt, io.tlb.resp.bits.pbmt(0))
   s1_out.pf := Mux(s1_in.isFastReplay, s1_in.pf, io.tlb.resp.bits.excp(0).pf.ld)
   s1_out.af := Mux(s1_in.isFastReplay, s1_in.af, io.tlb.resp.bits.excp(0).af.ld)
 
-  when (!s1_dly_err) {
-    // current ori test will cause the case of ldest == 0, below will be modifeid in the future.
-    // af & pf exception were modified
-    // if is tlbNoQuery request, don't trigger exception from tlb resp
-    s1_out.uop.exceptionVec(loadPageFault)   := io.tlb.resp.bits.excp(0).pf.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
-    s1_out.uop.exceptionVec(loadGuestPageFault)   := io.tlb.resp.bits.excp(0).gpf.ld && !s1_tlb_miss && !s1_in.tlbNoQuery
-    s1_out.uop.exceptionVec(loadAccessFault) := io.tlb.resp.bits.excp(0).af.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
-    s1_out.uop.exceptionVec(loadAddrMisaligned) := s1_in.uop.exceptionVec(loadAddrMisaligned) && !s1_tlb_miss
-  } .otherwise {
-    s1_out.uop.exceptionVec(loadPageFault)      := false.B
-    s1_out.uop.exceptionVec(loadGuestPageFault) := false.B
-    s1_out.uop.exceptionVec(loadAddrMisaligned) := false.B
-    s1_out.uop.exceptionVec(loadAccessFault)    := s1_dly_err && s1_vecActive
-  }
+  s1_out.uop.exceptionVec(loadPageFault)   := io.tlb.resp.bits.excp(0).pf.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
+  s1_out.uop.exceptionVec(loadGuestPageFault)   := io.tlb.resp.bits.excp(0).gpf.ld && !s1_tlb_miss && !s1_in.tlbNoQuery
+  s1_out.uop.exceptionVec(loadAccessFault) := io.tlb.resp.bits.excp(0).af.ld && s1_vecActive && !s1_tlb_miss && !s1_in.tlbNoQuery
+  s1_out.uop.exceptionVec(loadAddrMisaligned) := s1_in.uop.exceptionVec(loadAddrMisaligned) && !s1_tlb_miss
 
   val s1_redirect_reg = Wire(Valid(new Redirect))
   s1_redirect_reg.bits := RegEnable(io.redirect.bits, io.redirect.valid)
@@ -1072,31 +1059,24 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   val s2_UnCacheType = !s2_prf && s2_UnCacheRegion && !s2_exception && !s2_in.tlbMiss && !s2_in.pf && !s2_in.af
   val s2_PMPMMIO = s2_pmp.mmio && !s2_in.tlbMiss && !s2_prf && !s2_in.pf
 
-
   dontTouch(s2_UnCacheRegion)
   dontTouch(s2_UnCacheType)
   dontTouch(s2_deviceTypeRegion)
   dontTouch(s2_deviceType)
   dontTouch(s2_PMPMMIO)
 
-  // exception that may cause load addr to be invalid / illegal
-  // if such exception happen, that inst and its exception info
-  // will be force writebacked to rob
   val s2_exception_vec = WireInit(s2_in.uop.exceptionVec)
-  when (!s2_in.delayedLoadError) {
-    s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !(s2_in.tlbMiss || s2_in.pf)) && s2_vecActive
-  }
-//  s2_exception_vec(loadAddrMisaligned) := s2_in.uop.exceptionVec(loadAddrMisaligned) && !s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf
+  s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !(s2_in.tlbMiss || s2_in.pf)) && s2_vecActive
   s2_exception_vec(loadAddrMisaligned) := Mux(s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf && s2_in.uop.exceptionVec(loadAddrMisaligned), false.B, s2_in.uop.exceptionVec(loadAddrMisaligned))
+
   // soft prefetch will not trigger any exception (but ecc error interrupt may
   // be triggered)
-  val s2_tlb_unrelated_exceps = s2_in.uop.exceptionVec(loadAddrMisaligned) ||
-                                s2_in.uop.exceptionVec(breakPoint)
-  when (!s2_in.delayedLoadError && (s2_prf || s2_in.tlbMiss && !s2_tlb_unrelated_exceps)) {
+  val s2_tlb_unrelated_exceps = s2_in.uop.exceptionVec(loadAddrMisaligned) || s2_in.uop.exceptionVec(breakPoint)
+  when (s2_prf || s2_in.tlbMiss && !s2_tlb_unrelated_exceps) {
     s2_exception_vec := 0.U.asTypeOf(s2_exception_vec.cloneType)
   }
-  s2_exception := s2_vecActive &&
-                    (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_exception_vec, LduCfg).asUInt.orR)
+  s2_exception := s2_vecActive && (s2_trigger_debug_mode || ExceptionNO.selectByFu(s2_exception_vec, LduCfg).asUInt.orR)
+
   val (s2_fwd_frm_d_chan, s2_fwd_data_frm_d_chan) = io.tl_d_channel.forward(s1_valid && s1_out.forward_tlDchannel, s1_out.mshrid, s1_out.paddr)
   val (s2_fwd_data_valid, s2_fwd_frm_mshr, s2_fwd_data_frm_mshr) = io.forward_mshr.forward()
   val s2_fwd_frm_d_chan_or_mshr = s2_fwd_data_valid && (s2_fwd_frm_d_chan || s2_fwd_frm_mshr)
@@ -1143,12 +1123,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
                         })).asUInt.orR && !s2_tlb_miss || s2_in.rep_info.nuke
 
   val s2_cache_handled   = io.dcache.resp.bits.handled
-  val s2_cache_tag_error = GatedValidRegNext(io.csrCtrl.cache_error_enable) &&
-                           io.dcache.resp.bits.tag_error
 
   val s2_troublem        = !s2_exception &&
                            !s2_prf &&
-                           !s2_in.delayedLoadError &&
                            !s2_UnCacheType
 
   // write paddr into virtualq
@@ -1157,7 +1134,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.lsq.mmio_paddr.bits.paddr := s2_in.paddr
 
   io.dcache.resp.ready  := true.B
-  val s2_dcache_should_resp = !(s2_in.tlbMiss || s2_exception || s2_in.delayedLoadError || s2_UnCacheType || s2_prf)
+  val s2_dcache_should_resp = !(s2_in.tlbMiss || s2_exception || s2_UnCacheType || s2_prf)
   assert(!(s2_valid && (s2_dcache_should_resp && !io.dcache.resp.valid)), "DCache response got lost")
 
   // fast replay require
@@ -1184,7 +1161,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
                      !s2_frm_mabuf &&
                      s2_troublem
 
-  val s2_data_fwded = s2_dcache_miss && (s2_full_fwd || s2_cache_tag_error)
+  val s2_data_fwded = s2_dcache_miss && s2_full_fwd
 
   val s2_vp_match_fail = (io.lsq.forward.matchInvalid || io.sbuffer.matchInvalid) && s2_troublem
   val s2_safe_wakeup = !s2_out.rep_info.need_rep && !s2_UnCacheType && !s2_exception // don't need to replay and is not a mmio and misalign
@@ -1340,14 +1317,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   val s3_data_select  = RegEnable(s2_data_select, 0.U(s2_data_select.getWidth.W), s2_fire)
   val s3_data_select_by_offset = RegEnable(s2_data_select_by_offset, 0.U.asTypeOf(s2_data_select_by_offset), s2_fire)
   val s3_pbmt         = RegEnable(s2_pbmt, s2_fire)
-  val s3_dly_ld_err   =
-      if (EnableAccurateLoadError) {
-        io.dcache.resp.bits.error_delayed && GatedValidRegNext(io.csrCtrl.cache_error_enable) && s3_troublem
-      } else {
-        WireInit(false.B)
-      }
+
   val s3_safe_wakeup  = RegEnable(s2_safe_wakeup, s2_fire)
-  val s3_safe_writeback = RegEnable(s2_safe_writeback, s2_fire) || s3_dly_ld_err
+  val s3_safe_writeback = RegEnable(s2_safe_writeback, s2_fire)
   val s3_exception = RegEnable(s2_exception, s2_fire)
   val s3_trigger_debug_mode = RegEnable(s2_trigger_debug_mode, false.B, s2_fire)
   // TODO: Fix vector load merge buffer nack
@@ -1379,7 +1351,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
   io.s3_dly_ld_err := false.B // s3_dly_ld_err && s3_valid
   io.lsq.ldin.bits.dcacheRequireReplay  := s3_dcache_rep
-  io.fast_rep_out.bits.delayedLoadError := s3_dly_ld_err
+  io.fast_rep_out.bits.delayedLoadError := false.B
 
   val s3_vp_match_fail = GatedValidRegNext(io.lsq.forward.matchInvalid || io.sbuffer.matchInvalid) && s3_troublem
   val s3_rep_frm_fetch = s3_vp_match_fail
@@ -1392,7 +1364,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   val s3_rep_info = WireInit(s3_in.rep_info)
   val s3_sel_rep_cause = PriorityEncoderOH(s3_rep_info.cause.asUInt)
 
-  when (s3_exception || s3_dly_ld_err || s3_rep_frm_fetch) {
+  when (s3_exception || s3_rep_frm_fetch) {
     io.lsq.ldin.bits.rep_info.cause := 0.U.asTypeOf(s3_rep_info.cause.cloneType)
   } .otherwise {
     io.lsq.ldin.bits.rep_info.cause := VecInit(s3_sel_rep_cause.asBools)
@@ -1670,7 +1642,6 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   XSPerfAccumulate("s1_tlb_miss",                  s1_fire && s1_tlb_miss)
   XSPerfAccumulate("s1_tlb_miss_first_issue",      s1_fire && s1_tlb_miss && s1_in.isFirstIssue)
   XSPerfAccumulate("s1_stall_out",                 s1_valid && !s1_can_go)
-  XSPerfAccumulate("s1_dly_err",                   s1_valid && s1_fast_rep_dly_err)
 
   XSPerfAccumulate("s2_in_valid",                  s2_valid)
   XSPerfAccumulate("s2_in_fire",                   s2_fire)

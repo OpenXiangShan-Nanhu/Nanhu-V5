@@ -85,6 +85,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   val uop = Reg(Vec(VirtualLoadQueueSize, new DynInst))
   val addrvalid = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // non-mmio addr is valid
   val datavalid = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // non-mmio data is valid
+  val ignoreRARCheck = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // softprefetch ignore rar check
   // vector load: inst -> uop (pdest registor) -> flow (once load operation in loadunit)
   val isvec = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // vector load flow
   val veccommitted = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // vector load uop has commited
@@ -238,7 +239,8 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
         when (j.U < validVLoadOffset(i)) {
           allocated((index + j.U).value) := true.B
           uop((index + j.U).value) := io.enq.req(i).bits
-          uop((index + j.U).value).lqIdx := lqIdx + j.U
+          ignoreRARCheck((index + j.U).value) := LSUOpType.isPrefetch(io.enq.req(i).bits.fuOpType)
+//          uop((index + j.U).value).lqIdx := lqIdx + j.U
 
           // init
           addrvalid((index + j.U).value) := false.B
@@ -339,7 +341,8 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     // val lqIdxMask = lqIdxMask1.asBools.zip(lqIdxMask2.asBools).map { case ( lq1, lq2 ) => lq1 || lq2}
     val matchMask = (0 until VirtualLoadQueueSize).map(i => {
       RegNext(
-        isFromDCache(i) &
+        !ignoreRARCheck(i) &
+          isFromDCache(i) &
         (allocated(i) & addrvalid(i) & datavalid(i) &
       paddrModule.io.releaseViolationMmask(w)(i) &
       lqIdxMask(i) &

@@ -323,8 +323,8 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.miss      := false.B
   s1_out.pbmt := s1_pbmt
   s1_out.nc := Pbmt.isNC(s1_pbmt)
-  s1_out.pf := io.tlb.resp.bits.excp(0).pf.st
-  s1_out.af := io.tlb.resp.bits.excp(0).af.st
+  // s1_out.pf := io.tlb.resp.bits.excp(0).pf.st
+  // s1_out.af := io.tlb.resp.bits.excp(0).af.st
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
 //  when (!s1_out.isvec && RegNext(io.tlb.req.bits.checkfullva) &&
@@ -404,7 +404,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_isCboAll = RegEnable(s1_isCboAll, s1_fire)
   val s2_isCboM = LSUOpType.isCbom(s2_in.uop.fuOpType)
   val s2_tlb_hit = RegEnable(s1_tlb_hit, s1_fire)
-
+  s2_in.pf := s2_in.uop.exceptionVec(storePageFault)
+  s2_in.af := s2_in.uop.exceptionVec(storeAccessFault)
+   
   s2_ready := !s2_valid || s2_kill || s3_ready
   when (s1_fire) { s2_valid := true.B }
   .elsewhen (s2_fire) { s2_valid := false.B }

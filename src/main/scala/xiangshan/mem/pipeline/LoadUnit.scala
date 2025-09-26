@@ -1067,7 +1067,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
   val s2_exception_vec = WireInit(s2_in.uop.exceptionVec)
   s2_exception_vec(loadAccessFault) := ((s2_in.uop.exceptionVec(loadAccessFault) || s2_pmp.ld || s2_in.uop.exceptionVec(loadAddrMisaligned) && s2_deviceTypeRegion) && !(s2_in.tlbMiss || s2_in.pf)) && s2_vecActive
-  s2_exception_vec(loadAddrMisaligned) := Mux(s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf && s2_in.uop.exceptionVec(loadAddrMisaligned), false.B, s2_in.uop.exceptionVec(loadAddrMisaligned))
+  s2_exception_vec(loadAddrMisaligned) := Mux(s2_deviceTypeRegion && !s2_in.tlbMiss && !s2_in.pf && !s2_in.af && s2_in.uop.exceptionVec(loadAddrMisaligned), false.B, s2_in.uop.exceptionVec(loadAddrMisaligned))
 
   // soft prefetch will not trigger any exception (but ecc error interrupt may
   // be triggered)

@@ -65,9 +65,7 @@ class TLB(Width: Int, nRespDups: Int = 1, Block: Seq[Boolean], q: TLBParameters)
   val redirect = io.redirect
   val req_in = req
   val req_out = req.map(a => RegEnable(a.bits, a.fire || a.bits.no_translate))
-  val req_out_v =
-    if(q.fetchi) (0 until Width).map(i => ValidHold(req_in(i).fire && !req_in(i).bits.kill, resp(i).fire, flush_pipe(i)||flush_mmu))
-    else (0 until Width).map(i => ValidHold(req_in(i).fire && !req_in(i).bits.kill, resp(i).fire, flush_pipe(i)))
+  val req_out_v = (0 until Width).map(i => ValidHold(req_in(i).fire && !req_in(i).bits.kill, resp(i).fire, flush_pipe(i)))
 
   val isHyperInst = (0 until Width).map(i => req_out_v(i) && req_out(i).hyperinst)
 

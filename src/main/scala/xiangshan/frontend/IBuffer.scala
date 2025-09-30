@@ -490,7 +490,7 @@ class IBuffer(implicit p: Parameters) extends XSModule
     ("IBuffer_2_4_valid", (numValid >= (1 * (IBufSize / 4)).U) & (numValid < (2 * (IBufSize / 4)).U)),
     ("IBuffer_3_4_valid", (numValid >= (2 * (IBufSize / 4)).U) & (numValid < (3 * (IBufSize / 4)).U)),
     ("IBuffer_4_4_valid", (numValid >= (3 * (IBufSize / 4)).U) & (numValid < (4 * (IBufSize / 4)).U)),
-    ("IBuffer_full     ", numValid.andR),
+    ("IBuffer_full     ", numValid === IBufSize.U),
     ("Front_Bubble     ", FrontBubble)
   )
   generatePerfEvent()

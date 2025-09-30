@@ -218,7 +218,7 @@ class MmioFsm(implicit p: Parameters) extends XSModule with HasICacheParameters 
     is(m_tlbResp) {
       when(io.itlbRespFire) {
         // we are using a blocked tlb, so resp.fire must have !resp.bits.miss
-        assert(!io.itlbRespBits.miss, "blocked mode iTLB miss when resp.fire")
+        assert(!io.itlbRespBits.miss || io.itlbRespBits.excp(0).pf.instr, "blocked mode iTLB miss when resp.fire")
         val tlb_exception = ExceptionType.fromTlbResp(io.itlbRespBits)
         // if itlb re-check respond pbmt mismatch with previous check, must be access fault
         val pbmt_mismatch_exception = Mux(

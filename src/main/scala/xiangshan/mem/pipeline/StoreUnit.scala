@@ -321,6 +321,9 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.uop.exceptionVec(storeGuestPageFault) := (io.tlb.resp.bits.excp(0).gpf.st || io.tlb.resp.bits.excp(0).gpf.ld) && s1_vecActive
   s1_out.uop.exceptionVec(storeAddrMisaligned) := s1_in.uop.exceptionVec(storeAddrMisaligned) && !s1_tlb_miss   //  when tlb miss is high, exceptionVec(storeAddrMisaligned) is set to false in s1;
 
+  s1_out.pf := s1_out.uop.exceptionVec(storePageFault)
+  s1_out.af := s1_out.uop.exceptionVec(storeAccessFault)
+
   // trigger
   val storeTrigger = Module(new MemTrigger(MemType.STORE))
   storeTrigger.io.fromCsrTrigger.tdataVec             := io.fromCsrTrigger.tdataVec
@@ -382,8 +385,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s2_isCboAll = RegEnable(s1_isCboAll, s1_fire)
   val s2_isCboM = LSUOpType.isCbom(s2_in.uop.fuOpType)
   val s2_tlb_hit = RegEnable(s1_tlb_hit, s1_fire)
-  s2_in.pf := s2_in.uop.exceptionVec(storePageFault)
-  s2_in.af := s2_in.uop.exceptionVec(storeAccessFault)
    
   s2_ready := !s2_valid || s2_kill || s3_ready
   when (s1_fire) { s2_valid := true.B }

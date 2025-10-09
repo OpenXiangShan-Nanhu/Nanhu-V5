@@ -10,6 +10,7 @@ import xiangshan.backend.fu.util.SdtrigExt
 import xiangshan.cache.HasDCacheParameters
 import xiangshan._
 import utils._
+import xs.utils.SignExt
 
 class Debug(implicit val p: Parameters) extends Module with HasXSParameter {
   val io = IO(new DebugIO)
@@ -286,7 +287,7 @@ class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Param
     VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
       !tdata.select && !debugMode && en &&
         tdata.store && io.isCbo.getOrElse(false.B) &&
-        (vaddr >> DCacheLineOffset) === (tdata.tdata2 >> DCacheLineOffset)
+        (SignExt(vaddr,XLEN) >> DCacheLineOffset) === (tdata.tdata2 >> DCacheLineOffset)
     })
     )
   }

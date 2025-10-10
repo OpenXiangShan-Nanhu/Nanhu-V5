@@ -686,14 +686,15 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
         val rawPaddr = io.diffSQInfoIO.get.entry(i).addr
         val data128 = io.diffSQInfoIO.get.entry(i).data.asTypeOf(Vec(16,UInt(8.W)))
         val mask128 = io.diffSQInfoIO.get.entry(i).mask.asTypeOf(Vec(16,Bool()))
-        val paMatch = get_block(io.diffSQInfoIO.get.entry(i).addr) === get_block(io.refill_to_ldq.bits.addr)
+        val blockOffsetMatch = get_block(io.diffSQInfoIO.get.entry(i).addr) === get_block(io.refill_to_ldq.bits.addr)
         val indexMatch = if(c == 0) i.U >= start else i.U <= end
-        val blockOffset = io.diffSQInfoIO.get.entry(i).addr(log2Up(VLEN/8), 0)
+
         for(j <- 0 until 8){
           for(k <- 0 until 8){
-            val isPaMatch = ((j*8+k).U === blockOffset) && paMatch
-            val isMaskMatch = mask128((j*8+k) % 16)
-            val isMatch = isPaMatch && isMaskMatch && indexMatch
+            val j_index = j.U(3.W)
+            val k_index = k.U(3.W)
+            val maskMatch = mask128((j*8+k) % 16)
+            val isMatch = Cat(j_index,k_index)(5,4) === io.diffSQInfoIO.get.entry(i).addr(5,4) && blockOffsetMatch && indexMatch && maskMatch
             when(isMatch){
               sQMask(j)(k) := true.B
               sQData(j)(k) := data128((j*8+k) % 16)
@@ -701,7 +702,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
           }
         }
       }
-    }
+    }     
     
   
     //merge store Buffer data

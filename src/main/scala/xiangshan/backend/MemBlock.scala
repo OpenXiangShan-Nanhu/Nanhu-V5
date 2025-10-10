@@ -671,7 +671,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val pte_resp_next_data_dup = ptw_resp_next.data
 
   val sfenceDelay = RegNext(RegNext(sfence))
-  val ptw_resp_v = RegNext(ptwio.resp.valid && !(sfenceDelay.valid && tlbcsr.satp.changed && tlbcsr.vsatp.changed && tlbcsr.hgatp.changed), init = false.B)
+  val ptw_resp_v = RegNext(ptwio.resp.valid && !(sfenceDelay.valid || tlbcsr.satp.changed || tlbcsr.vsatp.changed || tlbcsr.hgatp.changed), init = false.B)
   ptwio.resp.ready := true.B
 
   val tlbreplay = WireInit(VecInit(Seq.fill(LdExuCnt)(false.B)))

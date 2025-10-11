@@ -296,7 +296,7 @@ class MemTrigger(memType: Boolean = MemType.LOAD)(override implicit val p: Param
     VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
       !tdata.select && !debugMode && en &&
         (if(memType == MemType.LOAD) tdata.load else tdata.store) &&
-        (vaddr >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
+        (SignExt(vaddr,XLEN) >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
     })
   }
 }
@@ -326,7 +326,7 @@ class VSegmentTrigger(override implicit val p: Parameters) extends BaseTrigger {
     VecInit(tdataVec.zip(tEnableVec).map{ case(tdata, en) =>
       !tdata.select && !debugMode && en &&
         Mux(io.memType === MemType.LOAD.asBool, tdata.load, tdata.store) &&
-        (vaddr >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
+        (SignExt(vaddr,XLEN) >> lowBitWidth) === (tdata.tdata2 >> lowBitWidth)
     })
   }
 

@@ -1645,10 +1645,7 @@ class PFEvent(implicit p: Parameters) extends XSModule with HasCSRConst  {
 
   val w = io.distribute_csr.w
 
-  val perfEvents = List.fill(8)(RegInit("h0000000000".U(XLEN.W))) ++
-                   List.fill(8)(RegInit("h4010040100".U(XLEN.W))) ++
-                   List.fill(8)(RegInit("h8020080200".U(XLEN.W))) ++
-                   List.fill(5)(RegInit("hc0300c0300".U(XLEN.W)))
+  val perfEvents = List.fill(29)(RegInit("h0000000000".U(XLEN.W)))
 
   val perfEventMapping = (0 until 29).map(i => {Map(
     MaskedRegMap(addr = Mhpmevent3 +i,

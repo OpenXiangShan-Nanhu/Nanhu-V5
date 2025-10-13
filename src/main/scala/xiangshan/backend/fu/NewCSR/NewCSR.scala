@@ -967,9 +967,11 @@ class NewCSR(implicit val p: Parameters) extends Module
   val pmaModify = wenLegal && (Cat(pmaCSRMap.keys.toSeq.sorted.map(csrAddr => (addr === csrAddr.U))).orR)
   val pmpOrpmaChange = RegEnable(pmpModify || pmaModify,false.B, valid)
 
+  val intrCsrModify = RegEnable((Cat(Seq(mip, mie, sip, sie, mideleg).map(_.addr.U === addr)).orR && wenLegal), false.B, valid)
+
   val flushPipe = resetSatp ||
     triggerFrontendChange || floatStatusOnOff || vectorStatusOnOff ||
-    vstartChange || frmChange || pmpOrpmaChange
+    vstartChange || frmChange || pmpOrpmaChange || intrCsrModify
 
   private val rdata = Mux1H(csrRwMap.map { case (id, (_, rdata)) =>
     if (vsMapS.contains(id)) {

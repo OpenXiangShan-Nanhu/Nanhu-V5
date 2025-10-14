@@ -699,7 +699,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
             val j_index = j.U(3.W)
             val k_index = k.U(3.W)
             val maskMatch = mask128((j*8+k) % 16)
-            val isMatch = Cat(j_index,k_index)(5,4) === io.diffSQInfoIO.get.entry(i).addr(5,4) && blockOffsetMatch && indexMatch && maskMatch
+            val isMatch = Cat(j_index,k_index)(5,4) === io.diffSQInfoIO.get.entry(i).addr(5,4) && blockOffsetMatch && indexMatch && maskMatch && io.diffSQInfoIO.get.entry(i).valid
             when(isMatch){
               sQMask(j)(k) := true.B
               sQData(j)(k) := data128((j*8+k) % 16)

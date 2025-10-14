@@ -400,7 +400,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
   val difftest_data_raw = Reg(Vec(blockBytes/beatBytes, UInt(beatBits.W)))
 
-  val miss_req_pipe_reg_valid = RegInit(false.B)
+  val miss_req_pipe_reg_CMO_valid = RegInit(false.B)
   val miss_req_pipe_reg = RegInit(0.U.asTypeOf(new MissReqPipeRegBundle(edge)))
   val acquire_from_pipereg = Wire(chiselTypeOf(io.mem_acquire))
 
@@ -414,7 +414,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val hasSameAddrCMOEntry = entries.map(e => {
     e.io.req_addr.valid & get_block(e.io.req_addr.bits) === get_block(io.req.bits.addr)
   }).reduce(_|_)
-  val hasSameAddrCMOPipe = miss_req_pipe_reg_valid & miss_req_pipe_reg.alloc & get_block(miss_req_pipe_reg.req.addr) === get_block(io.req.bits.addr)
+  val hasSameAddrCMOPipe = miss_req_pipe_reg_CMO_valid & miss_req_pipe_reg.alloc & get_block(miss_req_pipe_reg.req.addr) === get_block(io.req.bits.addr)
   val hasSameAddrCMO = io.req.valid & io.req.bits.isCMO & (hasSameAddrCMOEntry | hasSameAddrCMOPipe)
 
   val merge = !isCMOReq && ParallelORR(Cat(secondary_ready_vec ++ Seq(miss_req_pipe_reg.merge_req(io.req.bits))))
@@ -437,7 +437,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
    *
    */
   when(io.req.valid){
-    miss_req_pipe_reg_valid   := true.B
+    // miss_req_pipe_reg_valid   := true.B
     miss_req_pipe_reg.req     := io.req.bits
   }
   // miss_req_pipe_reg.req     := io.req.bits
@@ -506,7 +506,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
   val diff_refill = Wire(Bool())
   diff_refill := merge && io.req.valid && !io.req.bits.cancel && io.req.bits.isFromLoad
 
-  val pipeHasCmo = miss_req_pipe_reg.req.isCMO && miss_req_pipe_reg_valid
+  val pipeHasCmo = miss_req_pipe_reg.req.isCMO && miss_req_pipe_reg_CMO_valid
   val mshrHasCmo = entries.map { e => e.io.isCMO }.reduce(_ || _)
   io.cmofinish := !pipeHasCmo && !mshrHasCmo
 
@@ -564,11 +564,16 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
       when(miss_req_pipe_reg.reg_valid() && miss_req_pipe_reg.mshr_id === i.U) {
         e.io.miss_req_pipe_reg := miss_req_pipe_reg
-        miss_req_pipe_reg_valid := false.B
+        // miss_req_pipe_reg_valid := false.B
       }.otherwise {
         e.io.miss_req_pipe_reg       := DontCare
         e.io.miss_req_pipe_reg.merge := false.B
         e.io.miss_req_pipe_reg.alloc := false.B
+      }
+      when(io.req.fire && io.req.bits.isCMO) {
+        miss_req_pipe_reg_CMO_valid := true.B
+      } .elsewhen(miss_req_pipe_reg.reg_valid() && miss_req_pipe_reg.mshr_id === i.U && miss_req_pipe_reg.req.isCMO) {
+        miss_req_pipe_reg_CMO_valid := false.B
       }
 
       e.io.acquire_fired_by_pipe_reg := acquire_from_pipereg.fire

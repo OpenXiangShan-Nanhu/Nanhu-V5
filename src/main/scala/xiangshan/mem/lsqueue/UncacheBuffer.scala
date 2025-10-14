@@ -125,6 +125,8 @@ class UncacheBufferEntrySimple(implicit p: Parameters) extends XSModule
   when (io.uncache.resp.fire) {
     uncacheData := io.uncache.resp.bits.data
     nderr := io.uncache.resp.bits.nderr
+  }.otherwise {
+    nderr := false.B
   }
 
   // uncache writeback

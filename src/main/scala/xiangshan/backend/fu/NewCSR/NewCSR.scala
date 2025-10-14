@@ -372,14 +372,14 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   val intrVec = RegEnable(intrMod.io.out.interruptVec.bits, 0.U, intrMod.io.out.interruptVec.valid)
   val debug = RegEnable(intrMod.io.out.debug, false.B, intrMod.io.out.interruptVec.valid)
-  val nmi = RegEnable(intrMod.io.out.nmi, false.B, intrMod.io.out.interruptVec.valid)
   val virtualInterruptIsHvictlInject = RegEnable(intrMod.io.out.virtualInterruptIsHvictlInject, false.B, intrMod.io.out.interruptVec.valid)
   val irToHS = RegEnable(intrMod.io.out.irToHS, false.B, intrMod.io.out.interruptVec.valid)
   val irToVS = RegEnable(intrMod.io.out.irToVS, false.B, intrMod.io.out.interruptVec.valid)
+  val nmi = intrMod.io.out.nmi
 
   when(hasTrap && trapIsInterrupt && nmi) {
-    nmip.NMI_31 := nmip.NMI_31 & (!intrVec(NonMaskableIRNO.NMI_31) | intrVec(NonMaskableIRNO.NMI_43))
-    nmip.NMI_43 := nmip.NMI_43 & !intrVec(NonMaskableIRNO.NMI_43)
+    nmip.NMI_31 := nmip.NMI_31 & (!intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_31) | intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_43))
+    nmip.NMI_43 := nmip.NMI_43 & !intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_43)
   }
 
   val trapHandleMod = Module(new TrapHandleModule)
@@ -966,10 +966,13 @@ class NewCSR(implicit val p: Parameters) extends Module
   val pmpModify = wenLegal && (Cat(pmpCSRMap.keys.toSeq.sorted.map(csrAddr => (addr === csrAddr.U))).orR)
   val pmaModify = wenLegal && (Cat(pmaCSRMap.keys.toSeq.sorted.map(csrAddr => (addr === csrAddr.U))).orR)
   val pmpOrpmaChange = RegEnable(pmpModify || pmaModify,false.B, valid)
+  
+  //flush pipe when modify the interrupt related csr
+  val intrCsrModify = RegEnable((Cat(Seq(mip, mie, sip, sie, mideleg).map(_.addr.U === addr)).orR && wenLegal), false.B, valid)
 
   val flushPipe = resetSatp ||
     triggerFrontendChange || floatStatusOnOff || vectorStatusOnOff ||
-    vstartChange || frmChange || pmpOrpmaChange
+    vstartChange || frmChange || pmpOrpmaChange || intrCsrModify
 
   private val rdata = Mux1H(csrRwMap.map { case (id, (_, rdata)) =>
     if (vsMapS.contains(id)) {

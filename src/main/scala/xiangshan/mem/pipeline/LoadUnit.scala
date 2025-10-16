@@ -1667,6 +1667,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   // hardware performance counter
   val perfEvents = Seq(
     (s"ldu${id}_s0_in_fire         ", s0_fire                                                        ),
+    (s"ldu${id}_stall_dcache       ", s0_valid && s0_can_go && !io.dcache.req.ready                  ),
     (s"ldu${id}_s1_in_fire         ", s1_fire                                                        ),
     (s"ldu${id}_s1_tlb_miss        ", s1_fire && io.tlb.resp.bits.miss                               ),
     (s"ldu${id}_s2_in_fire         ", s2_fire                                                        ),

@@ -113,9 +113,11 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
 
   // RVCDecoder fsIsOff
   ifu.io.csr_fsIsOff := csrCtrl.fsIsOff
+  ifu.io.satpMode := tlbCsr.satp.mode
 
   // bpu ctrl
   bpu.io.ctrl := csrCtrl.bp_ctrl
+  bpu.io.satpMode := tlbCsr.satp.mode
   bpu.io.reset_vector := io.reset_vector
   bpu.io.halt := io.halt
 

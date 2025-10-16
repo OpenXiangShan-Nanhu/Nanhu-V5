@@ -755,7 +755,8 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   io.out.s2.full_pred.zip(s2_hit_dup).map {case (fp, h) => fp.hit := h}
   for (full_pred & s2_ftb_entry & s2_pc & s1_pc & s1_fire <-
     io.out.s2.full_pred zip s2_ftb_entry_dup zip s2_pc_dup zip s1_pc_dup zip io.s1_fire) {
-      full_pred.fromFtbEntry(s2_ftb_entry,
+      full_pred.fromFtbEntry(io.satpMode,
+      s2_ftb_entry,
         s2_pc.getAddr(),
         // Previous stage meta for better timing
         Some(s1_pc, s1_fire),
@@ -767,7 +768,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
   io.out.s3.full_pred.zip(s3_multi_hit_dup).map {case (fp, m) => fp.multiHit := m}
   for (full_pred & s3_ftb_entry & s3_pc & s2_pc & s2_fire <-
     io.out.s3.full_pred zip s3_ftb_entry_dup zip s3_pc_dup zip s2_pc_dup zip io.s2_fire)
-      full_pred.fromFtbEntry(s3_ftb_entry, s3_pc.getAddr(), Some((s2_pc.getAddr(), s2_fire)), Some(real_s2_ftb_entry, s2_fire))
+      full_pred.fromFtbEntry(io.satpMode, s3_ftb_entry, s3_pc.getAddr(), Some((s2_pc.getAddr(), s2_fire)), Some(real_s2_ftb_entry, s2_fire))
 
   // Overwrite the fallThroughErr value
   io.out.s3.full_pred.zipWithIndex.map {case(fp, i) => fp.fallThroughErr := real_s3_fallThroughErr_dup(i)}

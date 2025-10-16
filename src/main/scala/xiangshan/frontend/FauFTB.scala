@@ -108,7 +108,7 @@ class FauFTB(implicit p: Parameters) extends BasePredictor with FauFTBParams {
   for (c & fp & e <- ctrs zip s1_possible_full_preds zip s1_all_entries) {
     fp.hit := DontCare
     fp.multiHit := false.B
-    fp.fromFtbEntry(e, s1_pc_dup(0))
+    fp.fromFtbEntry(io.satpMode, e, s1_pc_dup(0))
     for (i <- 0 until numBr) {
       fp.br_taken_mask(i) := c(i)(1) || e.always_taken(i)
     }

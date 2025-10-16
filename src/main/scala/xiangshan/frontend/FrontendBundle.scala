@@ -646,6 +646,7 @@ class FullBranchPrediction(val isNotS3: Boolean)(implicit p: Parameters) extends
   def taken = br_taken_mask.reduce(_||_) || slot_valids.last // || (is_jal || is_jalr)
 
   def fromFtbEntry(
+                    satpMode: UInt,
                     entry: FTBEntry,
                     pc: UInt,
                     last_stage_pc: Option[Tuple2[UInt, Bool]] = None,
@@ -677,14 +678,22 @@ class FullBranchPrediction(val isNotS3: Boolean)(implicit p: Parameters) extends
       val lowerBound = RegEnable(startLowerNextLine_last_stage < endLowerwithCarry_last_stage, last_stage_pc.get._2)
 
       fallThroughErr := upperBound || lowerBound
-      fallThroughAddr := Mux(fallThroughErr,
+      val ftAddrTmp = Mux(fallThroughErr,
         RegEnable(last_stage_pc.get._1 + (FetchWidth * 4).U, last_stage_pc.get._2),
         entry.getFallThrough(pc, last_stage_pc, last_stage_entry))
+      fallThroughAddr := MuxLookup(satpMode, ftAddrTmp)(Seq(
+        8.U -> SignExt(ftAddrTmp(39-1, 0), VAddrBits),
+        9.U -> SignExt(ftAddrTmp(48-1, 0), VAddrBits)
+      ))
     } else {
       val startLower        = Cat(0.U(1.W),    pc(instOffsetBits+log2Ceil(PredictWidth)-1, instOffsetBits))
       val endLowerwithCarry = Cat(entry.carry, entry.pftAddr)
       fallThroughErr := startLower >= endLowerwithCarry || endLowerwithCarry > (startLower + (PredictWidth).U)
-      fallThroughAddr := Mux(fallThroughErr, pc + (FetchWidth * 4).U, entry.getFallThrough(pc, None, last_stage_entry))
+      val ftAddrTmp = Mux(fallThroughErr, pc + (FetchWidth * 4).U, entry.getFallThrough(pc, None, last_stage_entry))
+      fallThroughAddr := MuxLookup(satpMode, ftAddrTmp)(Seq(
+        8.U -> SignExt(ftAddrTmp(39-1, 0), VAddrBits),
+        9.U -> SignExt(ftAddrTmp(48-1, 0), VAddrBits)
+      ))
     }
   }
 

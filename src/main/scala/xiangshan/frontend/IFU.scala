@@ -82,6 +82,7 @@ class NewIFUIO(implicit p: Parameters) extends XSBundle {
   val pmp             = new ICachePMPBundle
   val mmioCommitRead  = new mmioCommitRead
   val csr_fsIsOff     = Input(Bool())
+  val satpMode        = Input(UInt(4.W))
 }
 
 // record the situation in which fallThruAddr falls into
@@ -482,7 +483,12 @@ class NewIFU(implicit p: Parameters) extends XSModule
   .elsewhen(f1_fire)              {f1_valid  := false.B}
 
   val f1_pc_high            = f1_ftq_req.startAddr(VAddrBits-1, PcCutPoint)
-  val f1_pc_high_plus1      = f1_pc_high + 1.U
+
+  // Sign enteneion pc(fetch address) by satp mode
+  val f1_pc_high_plus1      = MuxLookup(io.satpMode, f1_pc_high + 1.U)(Seq(
+    8.U -> SignExt((f1_pc_high + 1.U)(39 - PcCutPoint - 1, 0), VAddrBits - PcCutPoint),
+    9.U -> SignExt((f1_pc_high + 1.U)(48 - PcCutPoint - 1, 0), VAddrBits - PcCutPoint)
+  ))
 
   /**
    * In order to reduce power consumption, avoid calculating the full PC value in the first level.

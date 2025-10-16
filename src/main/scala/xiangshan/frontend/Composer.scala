@@ -56,6 +56,7 @@ class Composer(implicit p: Parameters) extends BasePredictor with HasBPUConst wi
 
     c.io.redirect := io.redirect
     c.io.ctrl := DelayN(io.ctrl, 1)
+    c.io.satpMode := io.satpMode
     c.io.redirectFromIFU := io.redirectFromIFU
 
     if (c.meta_size > 0) {

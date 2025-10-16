@@ -155,6 +155,7 @@ class BasePredictorIO (implicit p: Parameters) extends XSBundle with HasBPUConst
   val fauftb_entry_hit_out = Output(Bool())
 
   val ctrl = Input(new BPUCtrl)
+  val satpMode = Input(UInt(4.W))
 
   val s0_fire = Input(Vec(numDup, Bool()))
   val s1_fire = Input(Vec(numDup, Bool()))
@@ -227,6 +228,7 @@ class PredictorIO(implicit p: Parameters) extends XSBundle {
   val bpu_to_ftq = new BpuToFtqIO()
   val ftq_to_bpu = Flipped(new FtqToBpuIO)
   val ctrl = Input(new BPUCtrl)
+  val satpMode = Input(UInt(4.W))
   val reset_vector = Input(UInt(PAddrBits.W))
   val halt = Input(Bool())
 }
@@ -278,6 +280,7 @@ class Predictor(implicit p: Parameters) extends XSModule
 
   // ctrl signal
   predictors.io.ctrl := ctrl
+  predictors.io.satpMode := io.satpMode
   predictors.io.reset_vector := io.reset_vector
 
   val s0_stall_dup = dup_wire(Bool()) // For some reason s0 stalled, usually FTQ Full

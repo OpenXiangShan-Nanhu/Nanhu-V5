@@ -1257,8 +1257,9 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
 
   // RegNext prefetch train for better timing
   // ** Now, prefetch train is valid at load s3 **
+  val s2_soft_prf = LSUOpType.isPrefetch(s2_in.uop.fuOpType)
   val s2_prefetch_train_valid = WireInit(false.B)
-  s2_prefetch_train_valid              := s2_valid && !s2_UnCacheRegion && (!s2_in.tlbMiss || s2_hw_prf) && !s2_exception
+  s2_prefetch_train_valid              := s2_valid && !s2_UnCacheRegion && (!s2_in.tlbMiss || s2_hw_prf) && !s2_exception && !s2_soft_prf
   io.prefetch_train.valid              := GatedValidRegNext(s2_prefetch_train_valid)
   io.prefetch_train.bits.fromLsPipelineBundle(s2_in, latch = true, enable = s2_prefetch_train_valid)
   io.prefetch_train.bits.miss          := RegEnable(io.dcache.resp.bits.miss, s2_prefetch_train_valid) // TODO: use trace with bank conflict?
@@ -1269,7 +1270,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.s2_prefetch_spec := s2_prefetch_train_valid
 
   val s2_prefetch_train_l1_valid = WireInit(false.B)
-  s2_prefetch_train_l1_valid              := s2_valid && !s2_UnCacheRegion && (!s2_in.tlbMiss || s2_hw_prf) && !s2_exception
+  s2_prefetch_train_l1_valid              := s2_valid && !s2_UnCacheRegion && !s2_in.tlbMiss && !s2_exception && !s2_soft_prf
   io.prefetch_train_l1.valid              := GatedValidRegNext(s2_prefetch_train_l1_valid)
   io.prefetch_train_l1.bits.fromLsPipelineBundle(s2_in, latch = true, enable = s2_prefetch_train_l1_valid)
   io.prefetch_train_l1.bits.miss          := RegEnable(io.dcache.resp.bits.miss, s2_prefetch_train_l1_valid)

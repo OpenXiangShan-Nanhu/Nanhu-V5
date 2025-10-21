@@ -968,7 +968,9 @@ class NewCSR(implicit val p: Parameters) extends Module
   val pmpOrpmaChange = RegEnable(pmpModify || pmaModify,false.B, valid)
   
   //flush pipe when modify the interrupt related csr
-  val intrCsrModify = RegEnable((Cat(Seq(mip, mie, sip, sie, mideleg).map(_.addr.U === addr)).orR && wenLegal), false.B, valid)
+  val intrCsrModify = RegEnable(((Cat(Seq(mip, mie, sip, sie, mideleg).map(_.addr.U === addr)).orR || 
+    (addr === mstatus.addr.U && mstatus.w.wdataFields.MIE =/= mstatus.regOut.MIE) || 
+    (addr === CSRs.sstatus.asUInt && mstatus.wAliasSstatus.wdataFields.SIE =/= mstatus.sstatus.SIE)) && wenLegal), false.B, valid)
 
   val flushPipe = resetSatp ||
     triggerFrontendChange || floatStatusOnOff || vectorStatusOnOff ||

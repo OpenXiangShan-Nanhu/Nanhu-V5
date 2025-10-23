@@ -696,12 +696,12 @@ class FullBranchPrediction(val isNotS3: Boolean)(implicit p: Parameters) extends
 class SpeculativeInfo(implicit p: Parameters) extends XSBundle
   with HasBPUConst with BPUUtils {
   val histPtr = new CGHPtr
-  val ssp = UInt(log2Up(RasSize).W)
-  val sctr = UInt(RasCtrSize.W)
-  val TOSW = new RASPtr
-  val TOSR = new RASPtr
-  val NOS = new RASPtr
-  val topAddr = UInt(VAddrBits.W)
+  // val ssp = UInt(log2Up(RasSize).W)
+  // val sctr = UInt(RasCtrSize.W)
+  // val TOSW = new RASPtr
+  // val TOSR = new RASPtr
+  // val NOS = new RASPtr
+  // val topAddr = UInt(VAddrBits.W)
 }
 
 // 

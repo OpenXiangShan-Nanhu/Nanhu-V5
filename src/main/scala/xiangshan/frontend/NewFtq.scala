@@ -565,22 +565,22 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   val ftq_redirect_mem = Module(new SyncDataModuleTemplate(new Ftq_Redirect_SRAMEntry,
     FtqSize, IfuRedirectNum+FtqRedirectAheadNum+1, 1, hasRen = true))
   // these info is intended to enq at the last stage of bpu
-  ftq_redirect_mem.io.wen(0) := io.fromBpu.resp.bits.lastStage.valid(3)
-  ftq_redirect_mem.io.waddr(0) := io.fromBpu.resp.bits.lastStage.ftq_idx.value
+  ftq_redirect_mem.io.wen(0) := bpu_in_fire
+  ftq_redirect_mem.io.waddr(0) := bpu_in_resp_idx
   ftq_redirect_mem.io.wdata(0) := io.fromBpu.resp.bits.last_stage_spec_info
   println(f"ftq redirect MEM: entry ${ftq_redirect_mem.io.wdata(0).getWidth} * ${FtqSize} * 3")
 
   val ftq_meta_1r_sram = Module(new FtqNRSRAM(new Ftq_1R_SRAMEntry, 1))
   // these info is intended to enq at the last stage of bpu
-  ftq_meta_1r_sram.io.wen := io.fromBpu.resp.bits.lastStage.valid(3)
-  ftq_meta_1r_sram.io.waddr := io.fromBpu.resp.bits.lastStage.ftq_idx.value
+  ftq_meta_1r_sram.io.wen := bpu_in_fire
+  ftq_meta_1r_sram.io.waddr := bpu_in_resp_idx
   ftq_meta_1r_sram.io.wdata.meta := io.fromBpu.resp.bits.last_stage_meta
   ftq_meta_1r_sram.io.wdata.ftb_entry := io.fromBpu.resp.bits.last_stage_ftb_entry
   //                                                            ifuRedirect + backendRedirect (commit moved to ftq_meta_1r_sram)
   val ftb_entry_mem = Module(new SyncDataModuleTemplate(new FTBEntry_FtqMem,
     FtqSize, IfuRedirectNum+FtqRedirectAheadNum, 1, hasRen = true))
-  ftb_entry_mem.io.wen(0) := io.fromBpu.resp.bits.lastStage.valid(3)
-  ftb_entry_mem.io.waddr(0) := io.fromBpu.resp.bits.lastStage.ftq_idx.value
+  ftb_entry_mem.io.wen(0) := bpu_in_fire
+  ftb_entry_mem.io.waddr(0) := bpu_in_resp_idx
   ftb_entry_mem.io.wdata(0) := io.fromBpu.resp.bits.last_stage_ftb_entry
   private val mbistPl = MbistPipeline.PlaceMbistPipeline(1, "MbistPipeFtq", hasMbist)
 
@@ -993,9 +993,9 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
 
   val toBpuCfi = ifuRedirectToBpu.bits.cfiUpdate
   toBpuCfi.fromFtqRedirectSram(ftq_redirect_mem.io.rdata.head)
-  when (ifuRedirectReg.bits.cfiUpdate.pd.isRet && ifuRedirectReg.bits.cfiUpdate.pd.valid) {
-    toBpuCfi.target := toBpuCfi.topAddr
-  }
+  // when (ifuRedirectReg.bits.cfiUpdate.pd.isRet && ifuRedirectReg.bits.cfiUpdate.pd.valid) {
+  //   toBpuCfi.target := toBpuCfi.topAddr
+  // }
 
   when (ifuRedirectReg.valid) {
     ifuRedirected(ifuRedirectReg.bits.ftqIdx.value) := true.B

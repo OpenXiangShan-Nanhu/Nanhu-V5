@@ -531,7 +531,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
       sx_in(i).vecTriggerMask := s3_in.vecTriggerMask
       sx_ready(i) := !s3_valid(i) || sx_in(i).output.uop.robIdx.needFlush(io.redirect) || (if (TotalDelayCycles == 0) io.stout.ready else sx_ready(i+1))
     } else {
-      val cur_kill   = sx_in(i).output.uop.robIdx.needFlush(io.redirect)
+      val cur_kill   = sx_in(i).output.uop.robIdx.needFlush(io.redirect) && sx_valid(i)
       val cur_can_go = (if (i == TotalDelayCycles) io.stout.ready else sx_ready(i+1))
       val cur_fire   = sx_valid(i) && !cur_kill && cur_can_go
       val prev_fire  = sx_valid(i-1) && !sx_in(i-1).output.uop.robIdx.needFlush(io.redirect) && sx_ready(i)

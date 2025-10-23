@@ -487,7 +487,7 @@ class PTWFilter(Width: Int, Size: Int, FenceDelay: Int)(implicit p: Parameters) 
     v && ptwResp_hit(vpn, s2xlate, io.ptw.resp.bits)
   }
   }
-  val ptwResp_valid = GatedValidRegNext(io.ptw.resp.fire && Cat(ptwResp_OldMatchVec).orR, init = false.B)
+  val ptwResp_valid = GatedValidRegNext(io.ptw.resp.fire && !flush && Cat(ptwResp_OldMatchVec).orR, init = false.B)
   // May send repeated requests to L2 tlb with same vpn(26, 3) when sector tlb
   val oldMatchVec_early = io.tlb.req.map(a => vpn.zip(v).zip(s2xlate).map{ case ((pi, vi), s2xlate) => vi && pi === a.bits.vpn && s2xlate === a.bits.s2xlate })
   val lastReqMatchVec_early = io.tlb.req.map(a => tlb_req.map{ b => b.valid && b.bits.vpn === a.bits.vpn && canEnqueue && b.bits.s2xlate === a.bits.s2xlate})

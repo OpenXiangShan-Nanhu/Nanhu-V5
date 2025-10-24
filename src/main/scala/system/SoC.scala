@@ -53,12 +53,7 @@ case class SoCParameters
   UARTLiteForDTS: Boolean = true, // should be false in SimMMIO
   extIntrs: Int = 64,
   L3NBanks: Int = 4,
-  L3CacheParamsOpt: Option[HCCacheParameters] = Some(HCCacheParameters(
-    name = "L3",
-    level = 3,
-    ways = 8,
-    sets = 2048 // 1MB per bank
-  )),
+  L3CacheParamsOpt: Option[HCCacheParameters] = None,
   XSTopPrefix: Option[String] = None,
   NodeIDWidthList: Map[String, Int] = Map(
     "B" -> 7,
@@ -139,11 +134,6 @@ trait HasPeripheralRanges {
     "UART"  -> soc.UARTLiteRange,
     "DEBUG" -> dm.get.address,
     "MMPMA" -> AddressSet(mmpma.address, mmpma.mask)
-  ) ++ (
-    if (soc.L3CacheParamsOpt.map(_.ctrl.isDefined).getOrElse(false))
-      Map("L3CTL" -> AddressSet(soc.L3CacheParamsOpt.get.ctrl.get.address, 0xffff))
-    else
-      Map()
   )
 
   def peripheralRange = onChipPeripheralRanges.values.foldLeft(Seq(AddressSet(0x0, 0x7fffffffL))) { (acc, x) =>

@@ -120,11 +120,8 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     core_with_l2(i).memory_port.foreach(port => (misc.core_to_l3_ports.get)(i) :=* port)
   }
 
-  val core_rst_nodes = if(l3cacheOpt.nonEmpty && l3cacheOpt.get.rst_nodes.nonEmpty){
-    l3cacheOpt.get.rst_nodes.get
-  } else {
-    core_with_l2.map(_ => BundleBridgeSource(() => Reset()))
-  }
+  val core_rst_nodes = core_with_l2.map(_ => BundleBridgeSource(() => Reset()))
+
 
   core_rst_nodes.zip(core_with_l2.map(_.core_reset_sink)).foreach({
     case (source, sink) =>  sink := source
@@ -228,11 +225,8 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       dontTouch(core.module.io.sram_ctrl) := 0.U.asTypeOf(core.module.io.sram_ctrl)
     }
 
-    if(l3cacheOpt.isEmpty || l3cacheOpt.get.rst_nodes.isEmpty){
-      // tie off core soft reset
-      for(node <- core_rst_nodes){
-        node.out.head._1 := false.B.asAsyncReset
-      }
+    for(node <- core_rst_nodes){
+      node.out.head._1 := false.B.asAsyncReset
     }
 
     l3cacheOpt match {

@@ -38,10 +38,8 @@ class XSTile()(implicit p: Parameters) extends LazyModule
   val enableL2 = true // p(L2ParamKey).isDefined
   // =========== Public Ports ============
   val memBlock = core.memBlock.inner
-  val core_l3_pf_port = memBlock.l3_pf_sender_opt
   val memory_port = if (enableCHI && enableL2) None else Some(l2top.inner.memory_port.get)
   val tl_uncache = l2top.inner.mmio_port
-  // val axi4_uncache = if (enableCHI) Some(AXI4UserYanker()) else None
   val beu_int_source = l2top.inner.beu.intNode
   val core_reset_sink = BundleBridgeSink(Some(() => Reset()))
   val clint_int_node = l2top.inner.clint_int_node
@@ -75,14 +73,8 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     case None =>
   }
 
-  val core_l3_tpmeta_source_port = l2top.inner.l2cache match {
-    case Some(l2) => l2.tpmeta_source_node
-    case None => None
-  }
-  val core_l3_tpmeta_sink_port = l2top.inner.l2cache match {
-    case Some(l2) => l2.tpmeta_sink_node
-    case None => None
-  }
+  val core_l3_tpmeta_source_port = None
+  val core_l3_tpmeta_sink_port = None
 
   // mmio
   l2top.inner.i_mmio_port := l2top.inner.i_mmio_buffer.node := memBlock.frontendBridge.instr_uncache_node

@@ -101,17 +101,12 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     })))
   )
 
-  val chi_dummyllc_opt = Option.when(enableCHI)(LazyModule(new DummyLLC(numRNs = NumCores)(p)))
-
-  // receive all prefetch req from cores
-  val memblock_pf_recv_nodes: Seq[Option[BundleBridgeSink[PrefetchRecv]]] = core_with_l2.map(_.core_l3_pf_port).map{
-    x => x.map(_ => BundleBridgeSink(Some(() => new PrefetchRecv)))
+  l3cacheOpt match {
+    case Some(l3) =>
+      misc.l3_out :*= l3.node :*= misc.l3_banked_xbar.get
+    case None =>
   }
 
-  val l3_pf_sender_opt = soc.L3CacheParamsOpt.getOrElse(HCCacheParameters()).prefetch match {
-    case Some(pf) => Some(BundleBridgeSource(() => new PrefetchRecv))
-    case None => None
-  }
   val nmiIntNode = IntSourceNode(IntSourcePortSimple(1, NumCores, (new NonmaskableInterruptIO).elements.size))
   val nmi = InModuleBody(nmiIntNode.makeIOs())
 
@@ -121,14 +116,8 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     core_with_l2(i).debug_int_node := misc.debugModule.debug.dmOuter.dmOuter.intnode
     core_with_l2(i).nmi_int_node := nmiIntNode
     misc.plic.intnode := IntBuffer() := core_with_l2(i).beu_int_source
-    if (!enableCHI) {
-      misc.peripheral_ports.get(i) := core_with_l2(i).tl_uncache
-    }
+    misc.peripheral_ports.get(i) := core_with_l2(i).tl_uncache
     core_with_l2(i).memory_port.foreach(port => (misc.core_to_l3_ports.get)(i) :=* port)
-    memblock_pf_recv_nodes(i).map(recv => {
-      println(s"Connecting Core_${i}'s L1 pf source to L3!")
-      recv := core_with_l2(i).core_l3_pf_port.get
-    })
   }
 
   l3cacheOpt.map(_.ctlnode.map(_ := misc.peripheralXbar.get))
@@ -145,36 +134,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
   core_rst_nodes.zip(core_with_l2.map(_.core_reset_sink)).foreach({
     case (source, sink) =>  sink := source
   })
-
-  l3cacheOpt match {
-    case Some(l3) =>
-      misc.l3_out :*= l3.node :*= misc.l3_banked_xbar.get
-      l3.pf_recv_node.map(recv => {
-        println("Connecting L1 prefetcher to L3!")
-        recv := l3_pf_sender_opt.get
-      })
-      l3.tpmeta_recv_node.foreach(recv => {
-        for ((core, i) <- core_with_l2.zipWithIndex) {
-          println(s"Connecting core_$i\'s L2 TPmeta request to L3!")
-          recv := core.core_l3_tpmeta_source_port.get
-        }
-      })
-      l3.tpmeta_send_node.foreach(send => {
-        val broadcast = LazyModule(new ValidIOBroadcast[TPmetaResp]())
-        broadcast.node := send
-        for ((core, i) <- core_with_l2.zipWithIndex) {
-          println(s"Connecting core_$i\'s L2 TPmeta response to L3!")
-          core.core_l3_tpmeta_sink_port.get := broadcast.node
-        }
-      })
-    case None =>
-  }
-
-  chi_dummyllc_opt match {
-    case Some(llc) =>
-      misc.soc_xbar.get := llc.axi4node
-    case None =>
-  }
 
   class XSTopImp(wrapper: LazyModule) extends LazyRawModuleImp(wrapper) {
     override def provideImplicitClockToLazyChildren = true
@@ -272,10 +231,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
       core.module.io.reset_vector := io.riscv_rst_vec(i)
       dontTouch(core.module.io.dft) := 0.U.asTypeOf(core.module.io.dft)
       dontTouch(core.module.io.sram_ctrl) := 0.U.asTypeOf(core.module.io.sram_ctrl)
-      chi_dummyllc_opt.foreach { case llc =>
-        llc.module.io.rn(i) <> core.module.io.chi.get
-        core.module.io.nodeID.get := i.U // TODO
-      }
     }
 
     if(l3cacheOpt.isEmpty || l3cacheOpt.get.rst_nodes.isEmpty){
@@ -287,17 +242,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
 
     l3cacheOpt match {
       case Some(l3) =>
-        l3.pf_recv_node match {
-          case Some(recv) =>
-            l3_pf_sender_opt.get.out.head._1.addr_valid := VecInit(memblock_pf_recv_nodes.map(_.get.in.head._1.addr_valid)).asUInt.orR
-            for (i <- 0 until NumCores) {
-              when(memblock_pf_recv_nodes(i).get.in.head._1.addr_valid) {
-                l3_pf_sender_opt.get.out.head._1.addr := memblock_pf_recv_nodes(i).get.in.head._1.addr
-                l3_pf_sender_opt.get.out.head._1.l2_pf_en := memblock_pf_recv_nodes(i).get.in.head._1.l2_pf_en
-              }
-            }
-          case None =>
-        }
         l3.module.io.debugTopDown.robHeadPaddr := core_with_l2.map(_.module.io.debugTopDown.robHeadPaddr)
         core_with_l2.zip(l3.module.io.debugTopDown.addrMatch).foreach { case (tile, l3Match) => tile.module.io.debugTopDown.l3MissMatch := l3Match }
       case None => core_with_l2.foreach(_.module.io.debugTopDown.l3MissMatch := false.B)

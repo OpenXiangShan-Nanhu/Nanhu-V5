@@ -241,9 +241,7 @@ class MemBlockInlined()(implicit p: Parameters) extends LazyModule
   val l2_pf_sender_opt = coreParams.prefetcher.map(_ =>
     BundleBridgeSource(() => new PrefetchRecv)
   )
-  val l3_pf_sender_opt = if (L3notEmpty && !p(EnableCHI)) coreParams.prefetcher.map(_ =>
-    BundleBridgeSource(() => new PrefetchRecv)
-  ) else None
+  val l3_pf_sender_opt = None
   val cmo_sender  = if (HasCMO && !p(EnableCHI)) Some(BundleBridgeSource(() => DecoupledIO(new CMOReq))) else None
   val cmo_reciver = if (HasCMO && !p(EnableCHI)) Some(BundleBridgeSink(Some(() => DecoupledIO(new CMOResp)))) else None
   val frontendBridge = LazyModule(new FrontendBridge)
@@ -615,18 +613,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       table.log(l2_trace, l1_pf_to_l2.valid, "StreamPrefetchTrace", clock, reset)
       table.log(l2_trace, !l1_pf_to_l2.valid && sms_pf_to_l2.valid, "L2PrefetchTrace", clock, reset)
 
-      val l1_pf_to_l3 = ValidIODelay(l1_pf.io.l3_req, 4)
-      outer.l3_pf_sender_opt.foreach(_.out.head._1.addr_valid := l1_pf_to_l3.valid)
-      outer.l3_pf_sender_opt.foreach(_.out.head._1.addr := l1_pf_to_l3.bits)
-      outer.l3_pf_sender_opt.foreach(_.out.head._1.l2_pf_en := RegNextN(io.ooo_to_mem.csrCtrl.l2_pf_enable, 4, Some(true.B)))
-
-      val l3_trace = Wire(new LoadPfDbBundle)
-      l3_trace.paddr := outer.l3_pf_sender_opt.map(_.out.head._1.addr).getOrElse(0.U)
-      val l3_table = ChiselDB.createTable(s"L3PrefetchTrace$hartId", new LoadPfDbBundle, basicDB = false)
-      l3_table.log(l3_trace, l1_pf_to_l3.valid, "StreamPrefetchTrace", clock, reset)
-
       XSPerfAccumulate("prefetch_fire_l2", outer.l2_pf_sender_opt.get.out.head._1.addr_valid)
-      XSPerfAccumulate("prefetch_fire_l3", outer.l3_pf_sender_opt.map(_.out.head._1.addr_valid).getOrElse(false.B))
       XSPerfAccumulate("l1pf_fire_l2", l1_pf_to_l2.valid)
       XSPerfAccumulate("sms_fire_l2", !l1_pf_to_l2.valid && sms_pf_to_l2.valid)
       XSPerfAccumulate("sms_block_by_l1pf", l1_pf_to_l2.valid && sms_pf_to_l2.valid)

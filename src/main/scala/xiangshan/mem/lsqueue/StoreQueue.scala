@@ -1361,7 +1361,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
 
   if(env.EnableDifftest){
     io.diffSQInfoIO.get.entry.zipWithIndex.foreach({case (entry, i) => {
-        entry.valid := committed(i) && !uncache(i) && !hasException(i) && !LSUOpType.isCboAll(uop(i).fuOpType)
+        entry.valid := allocated(i) && committed(i) && !uncache(i) && !hasException(i) && !LSUOpType.isCboAll(uop(i).fuOpType)
         entry.addr := debug_paddr(i)
         entry.data := debug_data(i) //has aligned to VLEN/8
         entry.mask := debug_mask(i) //has aligned to VLEN/8

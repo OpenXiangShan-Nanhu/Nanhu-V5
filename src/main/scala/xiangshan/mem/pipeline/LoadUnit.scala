@@ -1377,7 +1377,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s3_out.bits.uop.fpWen       := s3_in.uop.fpWen && !s3_exception
   s3_out.bits.uop.exceptionVec(loadAccessFault) := s3_in.uop.exceptionVec(loadAccessFault) && s3_vecActive
   s3_out.bits.uop.flushPipe   := false.B
-  s3_out.bits.uop.replayInst  := s3_rep_frm_fetch || s3_flushPipe
+  s3_out.bits.uop.replayInst  := s3_rep_frm_fetch //Attention:  DO NOT add s3_ldld_rep_inst, this will cause stuck, see NHV5-1453
   s3_out.bits.data            := s3_in.data
   s3_out.bits.isFromLoadUnit  := true.B
   s3_out.bits.debug.isMMIO    := RegEnable(s2_deviceTypeRegion, false.B, s2_fire)

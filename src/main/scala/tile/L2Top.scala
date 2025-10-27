@@ -36,6 +36,7 @@ import xs.utils.perf.{DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey
 import xs.utils.tl._
 import xs.utils.cache.common._
 import xs.utils.debug.{HardwareAssertion, HardwareAssertionKey, HwaParams}
+import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.DontTouch
 import xs.utils.sram._
 import xs.utils.cache.EnableCHI

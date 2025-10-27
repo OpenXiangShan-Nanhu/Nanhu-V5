@@ -172,7 +172,7 @@ case class XSCoreParameters
   IntRegCacheSize: Int = 16,
   MemRegCacheSize: Int = 12,
   EnableMiniConfig: Boolean = false,
-  prefetcher: Option[PrefetcherParams] = Some(SMSParams()),
+  prefetcher: Option[PrefetcherParams] = None,
   IfuRedirectNum: Int = 1,
   LoadPipelineWidth: Int = 2,
   StorePipelineWidth: Int = 1,

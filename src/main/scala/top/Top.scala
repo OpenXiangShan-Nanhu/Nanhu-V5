@@ -111,13 +111,13 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
   val nmi = InModuleBody(nmiIntNode.makeIOs())
 
   for (i <- 0 until NumCores) {
-    core_with_l2(i).clint_int_node := misc.clint.intnode
-    core_with_l2(i).plic_int_node :*= misc.plic.intnode
-    core_with_l2(i).debug_int_node := misc.debugModule.debug.dmOuter.dmOuter.intnode
-    core_with_l2(i).nmi_int_node := nmiIntNode
-    misc.plic.intnode := IntBuffer() := core_with_l2(i).beu_int_source
-    misc.peripheral_ports.get(i) := core_with_l2(i).tl_uncache
-    core_with_l2(i).memory_port.foreach(port => (misc.core_to_l3_ports.get)(i) :=* port)
+    core_with_l2(i).memBlock.clint_int_sink := misc.clint.intnode
+    core_with_l2(i).memBlock.plic_int_sink :*= misc.plic.intnode
+    core_with_l2(i).memBlock.debug_int_sink := misc.debugModule.debug.dmOuter.dmOuter.intnode
+    core_with_l2(i).memBlock.nmi_int_sink := nmiIntNode
+//    misc.plic.intnode := IntBuffer() := core_with_l2(i).beu_int_source
+    misc.peripheral_ports.get(i) := core_with_l2(i).mmio_port
+    misc.core_to_l3_ports.get(i) :=* core_with_l2(i).memory_port
   }
 
   val core_rst_nodes = core_with_l2.map(_ => BundleBridgeSource(() => Reset()))
@@ -189,7 +189,7 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
         })
       })
     })
-
+    l3cacheOpt.get.module.io := DontCare
     val reset_sync = withClockAndReset(io.clock, io.reset) { ResetGen(2, None) }
     val jtag_reset_sync = withClockAndReset(io.systemjtag.jtag.TCK, io.systemjtag.reset) { ResetGen(2, None) }
 
@@ -214,6 +214,7 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
 
 
     for ((core, i) <- core_with_l2.zipWithIndex) {
+      core.module.io := DontCare
       core.module.io.hartId := i.U
       core.module.io.msiInfo := msiInfo
       core.module.io.clintTime := misc.module.clintTime
@@ -227,20 +228,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
 
     for(node <- core_rst_nodes){
       node.out.head._1 := false.B.asAsyncReset
-    }
-
-    l3cacheOpt match {
-      case Some(l3) =>
-        l3.module.io.debugTopDown.robHeadPaddr := core_with_l2.map(_.module.io.debugTopDown.robHeadPaddr)
-        core_with_l2.zip(l3.module.io.debugTopDown.addrMatch).foreach { case (tile, l3Match) => tile.module.io.debugTopDown.l3MissMatch := l3Match }
-      case None => core_with_l2.foreach(_.module.io.debugTopDown.l3MissMatch := false.B)
-    }
-
-    core_with_l2.foreach { case tile =>
-      tile.module.io.nodeID.foreach { case nodeID =>
-        nodeID := DontCare
-        dontTouch(nodeID)
-      }
     }
 
     misc.module.debug_module_io.resetCtrl.hartIsInReset := core_with_l2.map(_.module.io.hartIsInReset)
@@ -289,21 +276,16 @@ object TopMain extends App {
   Constantin.init(enableConstantin && !envInFPGA)
   ChiselDB.init(enableChiselDB && !envInFPGA)
 
-  if (config(SoCParamsKey).UseXSNoCDiffTop) {
-    Generator.execute(firrtlOpts, DisableMonitors(p => new XSNoCDiffTop()(p))(config), firtoolOpts)
-  } else {
-    val soc = if (config(SoCParamsKey).UseXSNoCTop)
-      DisableMonitors(p => LazyModule(new XSNoCTop()(p)))(config)
-    else
-      DisableMonitors(p => LazyModule(new XSTop()(p)))(config)
 
-    Generator.execute(firrtlOpts, soc.module, firtoolOpts)
+  val soc = DisableMonitors(p => LazyModule(new XSTop()(p)))(config)
 
-    // generate difftest bundles (w/o DifftestTopIO)
-    if (enableDifftest) {
-      DifftestModule.finish("XiangShan", false, Seq())
-    }
+  Generator.execute(firrtlOpts, soc.module, firtoolOpts)
+
+  // generate difftest bundles (w/o DifftestTopIO)
+  if (enableDifftest) {
+    DifftestModule.finish("XiangShan", false, Seq())
   }
+
 
   // FileRegisters.add("dts", soc.dts)
   // FileRegisters.add("graphml", soc.graphML)

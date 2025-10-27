@@ -21,6 +21,7 @@ import chisel3.util.{Valid, ValidIO}
 import coupledL2.tl2chi.PortIO
 import device.MsiInfoBundle
 import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config.Parameters
 import system.HasSoCParameter
 import xiangshan.backend.trace.TraceCoreInterface
@@ -33,49 +34,28 @@ class XSTile()(implicit p: Parameters) extends LazyModule
 {
   override def shouldBeInlined: Boolean = false
   val core = LazyModule(new XSCore())
-  val l2top = LazyModule(new L2Top())
+//  val l2top = LazyModule(new L2Top())
 
-  val enableL2 = true // p(L2ParamKey).isDefined
+  val enableL2 = false // p(L2ParamKey).isDefined
   // =========== Public Ports ============
   val memBlock = core.memBlock.inner
-  val memory_port = if (enableCHI && enableL2) None else Some(l2top.inner.memory_port.get)
-  val tl_uncache = l2top.inner.mmio_port
-  val beu_int_source = l2top.inner.beu.intNode
   val core_reset_sink = BundleBridgeSink(Some(() => Reset()))
-  val clint_int_node = l2top.inner.clint_int_node
-  val plic_int_node = l2top.inner.plic_int_node
-  val debug_int_node = l2top.inner.debug_int_node
-  val nmi_int_node = l2top.inner.nmi_int_node
-  memBlock.clint_int_sink := clint_int_node
-  memBlock.plic_int_sink :*= plic_int_node
-  memBlock.debug_int_sink := debug_int_node
-  memBlock.nmi_int_sink := nmi_int_node
 
-  // =========== Components' Connection ============
-  // L1 to l1_xbar
-  coreParams.dcacheParametersOpt.map { _ =>
-    l2top.inner.misc_l2_pmu := l2top.inner.l1d_logger := memBlock.dcache_port :=
-      memBlock.l1d_to_l2_buffer.node := memBlock.dcache.clientNode
-  }
+  val mmio_xbar = TLXbar()
+  val mmio_port = TLIdentityNode() // to L3
 
-  l2top.inner.misc_l2_pmu := l2top.inner.l1i_logger := memBlock.frontendBridge.icache_node
-  if (!coreParams.softPTW) {
-    l2top.inner.misc_l2_pmu := l2top.inner.ptw_logger := l2top.inner.ptw_to_l2_buffer.node := memBlock.ptw_to_l2_buffer.node
-  }
+  val memory_xbar = TLXbar()
+  val memory_port = TLIdentityNode() // to L3
 
-  // L2 Prefetch
-  l2top.inner.l2cache match {
-    case Some(l2) =>
-      l2.pf_recv_node.foreach(recv => {
-        println("Connecting L1 prefetcher to L2!")
-        recv := memBlock.l2_pf_sender_opt.get
-      })
-    case None =>
-  }
 
+  memory_xbar := TLBuffer.chainNode(2) := memBlock.frontendBridge.icache_node
+  memory_xbar := TLBuffer.chainNode(2) := memBlock.dcache.clientNode
+  memory_xbar := TLBuffer.chainNode(2) := memBlock.ptw_to_l2_buffer.node
+  memory_port := TLBuffer() := memory_xbar
   // mmio
-  l2top.inner.i_mmio_port := l2top.inner.i_mmio_buffer.node := memBlock.frontendBridge.instr_uncache_node
-  l2top.inner.d_mmio_port := memBlock.uncache.clientNode
+  mmio_xbar := TLBuffer.chainNode(2) := memBlock.frontendBridge.instr_uncache_node
+  mmio_xbar := TLBuffer.chainNode(2) := memBlock.uncache.clientNode
+  mmio_port := TLBuffer() := mmio_xbar
 
   // =========== IO Connection ============
   class XSTileImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
@@ -86,12 +66,6 @@ class XSTile()(implicit p: Parameters) extends LazyModule
       val cpu_halt = Output(Bool())
       val hartIsInReset = Output(Bool())
       val traceCoreInterface = new TraceCoreInterface
-      val debugTopDown = new Bundle {
-        val robHeadPaddr = Valid(UInt(PAddrBits.W))
-        val l3MissMatch = Input(Bool())
-      }
-      val chi = if (enableCHI) Some(new PortIO) else None
-      val nodeID = if (enableCHI) Some(Input(UInt(NodeIDWidth.W))) else None
       val clintTime = Input(ValidIO(UInt(64.W)))
       val dft = new Bundle() {
         val func  = Option.when(hasMbist)(Input(new SramBroadcastBundle))
@@ -103,7 +77,6 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     dontTouch(io.hartId)
     dontTouch(io.msiInfo)
     dontTouch(io.reset_vector)
-    if (!io.chi.isEmpty) { dontTouch(io.chi.get) }
 
     val core_soft_rst = core_reset_sink.in.head._1 // unused
 
@@ -111,74 +84,39 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     core.module.io.power.wfiCtrRst := false.B
     core.module.io.power.flushSb := false.B
 
-    l2top.module.io.hartId.fromTile := io.hartId
-    core.module.io.hartId := l2top.module.io.hartId.toCore
-    core.module.io.reset_vector := l2top.module.io.reset_vector.toCore
+    core.module.io.hartId := io.hartId
+    core.module.io.reset_vector := io.reset_vector
     core.module.io.msiInfo := io.msiInfo
     core.module.io.clintTime := io.clintTime
-    l2top.module.io.reset_vector.fromTile := io.reset_vector
-    l2top.module.io.cpu_halt.fromCore := core.module.io.cpu_halt
-    io.cpu_halt := l2top.module.io.cpu_halt.toTile
-    // l2top.module.dft_reset := dft_reset
-    // core.module.dft_reset := l2top.module.dft_reset_out
-    //core.module.dft_reset := dft_reset
+    io.cpu_halt := core.module.io.cpu_halt
 
-    l2top.module.io.hartIsInReset.resetInFrontend := core.module.io.resetInFrontend
-    io.hartIsInReset := l2top.module.io.hartIsInReset.toTile
+    io.hartIsInReset := core.module.io.resetInFrontend
     io.traceCoreInterface <> core.module.io.traceCoreInterface
 
-    l2top.module.io.beu_errors.icache <> core.module.io.beu_errors.icache
-    l2top.module.io.beu_errors.dcache <> core.module.io.beu_errors.dcache
+//    l2top.module.io.beu_errors.icache <> core.module.io.beu_errors.icache
+//    l2top.module.io.beu_errors.dcache <> core.module.io.beu_errors.dcache
     //val dft = if (hasMbist) Some(IO(Input(new SramBroadcastBundle))) else None
     if (hasMbist) {
-      l2top.module.io.dftIn := io.dft
-      core.module.io.dft := l2top.module.io.dftOut
-    }
-    if (enableL2) {
-      // TODO: add ECC interface of L2
-
-
-      l2top.module.io.pfCtrlFromCore := core.module.io.l2PfCtrl
-      l2top.module.io.beu_errors.l2 <> 0.U.asTypeOf(l2top.module.io.beu_errors.l2)
-      core.module.io.l2_hint.bits.sourceId := l2top.module.io.l2_hint.bits.sourceId
-      core.module.io.l2_hint.bits.isKeyword := l2top.module.io.l2_hint.bits.isKeyword
-      core.module.io.l2_hint.valid := l2top.module.io.l2_hint.valid
-
-      core.module.io.l2PfqBusy := false.B
-      core.module.io.debugTopDown.l2MissMatch := l2top.module.io.debugTopDown.l2MissMatch
-      l2top.module.io.debugTopDown.robHeadPaddr := core.module.io.debugTopDown.robHeadPaddr
-      l2top.module.io.debugTopDown.robTrueCommit := core.module.io.debugTopDown.robTrueCommit
-      l2top.module.io.l2_pmp_resp := core.module.io.l2_pmp_resp
-      core.module.io.l2_tlb_req <> l2top.module.io.l2_tlb_req
-
-      core.module.io.perfEvents <> l2top.module.io.perfEvents
-    } else {
-
-      l2top.module.io.beu_errors.l2 <> 0.U.asTypeOf(l2top.module.io.beu_errors.l2)
-      core.module.io.l2_hint.bits.sourceId := l2top.module.io.l2_hint.bits.sourceId
-      core.module.io.l2_hint.bits.isKeyword := l2top.module.io.l2_hint.bits.isKeyword
-      core.module.io.l2_hint.valid := l2top.module.io.l2_hint.valid
-
-      core.module.io.l2PfqBusy := false.B
-      core.module.io.debugTopDown.l2MissMatch := false.B
-
-      core.module.io.l2_tlb_req.req.valid := false.B
-      core.module.io.l2_tlb_req.req.bits := DontCare
-      core.module.io.l2_tlb_req.req_kill := DontCare
-      core.module.io.l2_tlb_req.resp.ready := true.B
-
-      core.module.io.perfEvents <> DontCare
+      core.module.io.dft := io.dft
     }
 
-    io.debugTopDown.robHeadPaddr := core.module.io.debugTopDown.robHeadPaddr
-    core.module.io.debugTopDown.l3MissMatch := io.debugTopDown.l3MissMatch
 
-    io.chi.foreach(_ <> l2top.module.io.chi.get)
-    l2top.module.io.nodeID.foreach(_ := io.nodeID.get)
+    core.module.io.l2_hint.bits.sourceId := false.B
+    core.module.io.l2_hint.bits.isKeyword := false.B
+    core.module.io.l2_hint.valid := false.B
 
-    if (debugOpts.ResetGen && enableL2) {
-      core.module.reset := l2top.module.reset_core
-    }
+    core.module.io.l2PfqBusy := false.B
+    core.module.io.debugTopDown.l2MissMatch := false.B
+
+    core.module.io.l2_tlb_req.req.valid := false.B
+    core.module.io.l2_tlb_req.req.bits := DontCare
+    core.module.io.l2_tlb_req.req_kill := DontCare
+    core.module.io.l2_tlb_req.resp.ready := true.B
+
+    core.module.io.perfEvents <> DontCare
+
+    core.module.io.debugTopDown.l3MissMatch := false.B
+
     private val sramCtrl = SramHelper.genSramCtrlBundleTop()
     sramCtrl := io.sram_ctrl
   }

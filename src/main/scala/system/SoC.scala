@@ -33,7 +33,6 @@ import top.BusPerfMonitor
 import xiangshan.backend.fu.{PMAConst}
 import xiangshan.{XSTileKey,PMParameKey}
 
-import coupledL2.tl2chi.CHIIssue
 import xs.utils.cache.EnableCHI
 
 import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
@@ -83,7 +82,6 @@ trait HasSoCParameter {
   val debugOpts = p(DebugOptionsKey)
   val tiles = p(XSTileKey)
   val enableCHI = p(EnableCHI)
-  val issue = p(CHIIssue)
 
   val NumCores = tiles.size
   val EnableILA = soc.EnableILA

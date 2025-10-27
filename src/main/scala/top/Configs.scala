@@ -33,8 +33,6 @@ import xiangshan.cache.DCacheParameters
 import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
 import device.{EnableJtag, XSDebugModuleParams}
 
-import coupledL2._
-import coupledL2.prefetch._
 import xiangshan.frontend.icache.ICacheParameters
 import xs.utils.cache.{HCCacheParameters, CacheCtrl}
 import xs.utils.cache.common._
@@ -43,7 +41,6 @@ import xs.utils.cache.prefetch.{TPParameters, BOPParameters, L3PrefetchReceiverP
 import xs.utils.cache.{L2Param, L1Param, EnableCHI}
 import xiangshan.backend.regfile.V0PregParams
 import xiangshan.backend.regfile.VlPregParams
-import coupledL2.tl2chi.DecoupledCHI
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64
@@ -124,9 +121,7 @@ class WithNKBL2
       )),
       reqField = Seq(utility.ReqSourceField()),
       echoField = Seq(DirtyField()),
-      prefetch = Seq(BOPParameters()) ++
-        (if (tp) Seq(TPParameters()) else Nil) ++
-        (if (core.prefetcher.nonEmpty) Seq(PrefetchReceiverParams()) else Nil),
+      prefetch = Seq(),
       enablePerf = !site(DebugOptionsKey).FPGAPlatform && site(DebugOptionsKey).EnablePerfDebug,
       enableRollingDB = site(DebugOptionsKey).EnableRollingDB,
       enableMonitor = site(DebugOptionsKey).AlwaysBasicDB,
@@ -206,9 +201,7 @@ class NactNocConfig(n: Int = 1) extends Config(
     case SoCParamsKey => up(SoCParamsKey).copy(UseXSNoCTop = true)
   })
   ++ new WithCHI
-  ++ (new WithNKBL2(512, inclusive = true, banks = 2, ways = 8, tp = false)).alter((site, here, up) => {
-    case DecoupledCHI => false
-  })
+  ++ (new WithNKBL2(512, inclusive = true, banks = 2, ways = 8, tp = false))
   ++ new WithNKBL1I(64, ways = 4)
   ++ new WithNKBL1D(64, ways = 4)
   ++ new BaseConfig(n)

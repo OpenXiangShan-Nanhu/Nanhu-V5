@@ -151,7 +151,7 @@ test-jar:
 $(TOP_V): $(SCALA_FILE)
 	mkdir -p $(@D)
 	$(TIME_CMD) mill -i xiangshan.runMain $(FPGATOP)   \
-		--target-dir $(@D) --config $(CONFIG) --issue $(ISSUE) $(FPGA_MEM_ARGS)		\
+		--target-dir $(@D) --config $(CONFIG) $(FPGA_MEM_ARGS)		\
 		--num-cores $(NUM_CORES) $(RELEASE_ARGS) --full-stacktrace
 	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
 	@git log -n 1 >> .__head__

@@ -7,9 +7,6 @@
 [submodule "ready-to-run"]
 	path = ready-to-run
 	url = https://github.com/OpenXiangShan-Nanhu/ready-to-run
-[submodule "openLLC"]
-	path = openLLC
-	url = https://github.com/OpenXiangShan-Nanhu/OpenLLC.git
 [submodule "src/main/resources/aia"]
 	path = src/main/resources/aia
 	url = https://github.com/OpenXiangShan/OpenAIA.git
@@ -19,9 +16,6 @@
 [submodule "xs-utils"]
 	path = xs-utils
 	url = https://github.com/OpenXiangShan-Nanhu/xs-utils.git
-[submodule "coupledL2"]
-	path = coupledL2
-	url = https://github.com/OpenXiangShan-Nanhu/CoupledL2.git
 [submodule "huancun"]
 	path = huancun
 	url = https://github.com/OpenXiangShan-Nanhu/HuanCun.git

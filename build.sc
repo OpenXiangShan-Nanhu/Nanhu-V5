@@ -22,7 +22,6 @@ import $file.`rocket-chip`.dependencies.cde.common
 import $file.`rocket-chip`.dependencies.hardfloat.common
 import $file.`rocket-chip`.dependencies.diplomacy.common
 import $file.huancun.common
-import $file.openLLC.common
 
 /* for publishVersion */
 import $ivy.`de.tototec::de.tobiasroeser.mill.vcs.version::0.4.0`
@@ -164,25 +163,6 @@ object huancun extends millbuild.huancun.common.HuanCunModule with HasChisel {
 
 }
 
-object coupledL2 extends HasChisel {
-
-  override def millSourcePath = os.pwd / "coupledL2"
-
-  override def moduleDeps = super.moduleDeps ++ Seq(rocketchip, xsutils, huancun, utility)
-
-}
-
-object openLLC extends millbuild.openLLC.common.OpenLLCModule with HasChisel {
-
-  override def millSourcePath = os.pwd / "openLLC"
-
-  def coupledL2Module: ScalaModule = coupledL2
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
-}
-
 object difftest extends HasChisel {
 
   override def millSourcePath = os.pwd / "difftest"
@@ -221,10 +201,6 @@ trait XiangShanModule extends ScalaModule {
 
   def huancunModule: ScalaModule
 
-  def coupledL2Module: ScalaModule
-
-  def openLLCModule: ScalaModule
-
   def fudianModule: ScalaModule
 
   def utilityModule: ScalaModule
@@ -239,8 +215,6 @@ trait XiangShanModule extends ScalaModule {
     rocketModule,
     difftestModule,
     huancunModule,
-    coupledL2Module,
-    openLLCModule,
     yunsuanModule,
     fudianModule,
     utilityModule,
@@ -263,11 +237,7 @@ object xiangshan extends XiangShanModule with HasChisel {
   def difftestModule = difftest
 
   def huancunModule = huancun
-
-  def coupledL2Module = coupledL2
-
-  def openLLCModule = openLLC
-
+  
   def fudianModule = fudian
 
   def utilityModule = utility

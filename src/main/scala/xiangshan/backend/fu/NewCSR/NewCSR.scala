@@ -1466,6 +1466,7 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   if (env.EnableHWMoniter){
     io.csrMon.foreach{ csrReg =>
+      csrReg.privMode := PRVM
       csrReg.mstatus := mstatus.rdata.asUInt
       csrReg.mcause  := mcause.rdata.asUInt
       csrReg.mepc    := mepc.rdata.asUInt

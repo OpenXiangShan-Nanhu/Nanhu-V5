@@ -1623,6 +1623,15 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       rob.commitIsMMIO.zipWithIndex.foreach { case (cmtMMIO, i) =>
         cmtMMIO := commitInfo(i).debug_isMMIO.getOrElse(false.B)
       }
+      rob.commitInterruptSafe.zipWithIndex.foreach { case (cmtIntrSafe, i) =>
+        cmtIntrSafe := commitInfo(i).interrupt_safe
+      }
+      rob.commitNeedFlush.zipWithIndex.foreach { case (cmtFlush, i) =>
+        cmtFlush := commitInfo(i).needFlush
+      }
+      rob.commitRob.zipWithIndex.foreach { case (cmtRob, i) =>
+        cmtRob := deqPtrVec(i)
+      }
       rob.redirectValid := io.redirect.valid
       rob.redirectPc    := io.redirect.bits.cfiUpdate.pc
       rob.redirectLevel := io.redirect.bits.level

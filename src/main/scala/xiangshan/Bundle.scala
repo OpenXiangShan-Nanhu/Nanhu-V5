@@ -35,6 +35,7 @@ import xiangshan.cache.HasDCacheParameters
 import xiangshan.backend.CtrlToFtqIO
 import xiangshan.backend.fu.NewCSR.{Mcontrol6, Tdata1Bundle, Tdata2Bundle}
 import xiangshan.backend.rob.RobBundles.RobCommitEntryBundle
+import xiangshan.backend.fu.NewCSR.CSRDefines.PrivMode
 
 class ValidUndirectioned[T <: Data](gen: T) extends Bundle {
   val valid = Bool()
@@ -806,6 +807,9 @@ class RobHWMonitor(implicit p: Parameters) extends XSBundle {
   val commitInstr = Vec(CommitWidth, UInt(32.W))
   val commitPC    = Vec(CommitWidth, UInt(VAddrBits.W))
   val commitIsMMIO= Vec(CommitWidth, Bool())
+  val commitInterruptSafe = Vec(CommitWidth, Bool())
+  val commitNeedFlush = Vec(CommitWidth, Bool())
+  val commitRob = Vec(CommitWidth, new RobPtr)
 
   val redirectValid = Bool()
   val redirectPc    = UInt(VAddrBits.W)
@@ -819,6 +823,7 @@ class ExcpHWMonitor(implicit p: Parameters) extends XSBundle {
   val excepIsInterrupt = Bool()
 }
 class CSRHWMonitor(implicit p: Parameters) extends XSBundle {
+  val privMode = PrivMode(1,0)
   val mstatus = UInt(XLEN.W)
   val mcause  = UInt(XLEN.W)
   val mepc    = UInt(XLEN.W)

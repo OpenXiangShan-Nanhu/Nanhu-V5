@@ -152,11 +152,6 @@ object difftest extends HasChisel {
 
 }
 
-object fudian extends HasChisel {
-
-  override def millSourcePath = os.pwd / "fudian"
-
-}
 
 object macros extends ScalaModule {
 
@@ -176,8 +171,6 @@ trait XiangShanModule extends ScalaModule {
 
   def difftestModule: ScalaModule
 
-  def fudianModule: ScalaModule
-
   def xsutilsModule: ScalaModule
 
   def yunsuanModule: ScalaModule
@@ -188,7 +181,6 @@ trait XiangShanModule extends ScalaModule {
     rocketModule,
     difftestModule,
     yunsuanModule,
-    fudianModule,
     xsutilsModule,
     macrosModule,
   )
@@ -206,8 +198,6 @@ object xiangshan extends XiangShanModule with HasChisel {
   def rocketModule = rocketchip
 
   def difftestModule = difftest
-
-  def fudianModule = fudian
 
   def xsutilsModule = xsutils
 

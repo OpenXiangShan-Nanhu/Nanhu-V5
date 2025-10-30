@@ -22,8 +22,7 @@ package xiangshan.backend.fu.fpu
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xs.utils.{SignExt, ZeroExt}
-import xiangshan.backend.fu.{FuConfig, FuncUnit, PipedFuncUnit}
+import xiangshan.backend.fu.{FuConfig, PipedFuncUnit}
 import xiangshan.backend.fu.vector.Bundles.VSew
 import xiangshan.IF2VectorType
 

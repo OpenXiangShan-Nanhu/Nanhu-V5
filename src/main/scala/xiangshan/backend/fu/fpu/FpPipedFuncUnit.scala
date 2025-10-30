@@ -2,7 +2,6 @@ package xiangshan.backend.fu.fpu
 
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
-import chisel3.util._
 import xiangshan._
 import xiangshan.backend.fu.{FuConfig, FuncUnit, HasPipelineReg}
 

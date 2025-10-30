@@ -18,12 +18,10 @@
 // https://github.com/OpenXiangShan/XS-Verilog-Library/tree/main/int_div_radix_4_v1
 // Email of original author: hyf_sysu@qq.com
 
-package fudian
+package xiangshan.backend.fu.fpu.fudian
 
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.decode._
-import fudian.utils.CLZ
 
 object mLookupTable {
   val minus_m = Seq(
@@ -120,16 +118,6 @@ class FDIVSpecialIO extends Bundle {
   val in_ready, out_valid = Output(Bool())
   val isSqrt = Input(Bool())
   val kill = Input(Bool())
-}
-
-
-
-object SignExt {
-  def apply(a: UInt, len: Int) = {
-    val aLen = a.getWidth
-    val signBit = a(aLen-1)
-    if (aLen >= len) a(len-1,0) else Cat(Fill(len - aLen, signBit), a)
-  }
 }
 
 class FDIVIO(val expWidth: Int, val precision: Int) extends Bundle {
@@ -663,25 +651,5 @@ object OTFC {
     ))
     (quotNext(len - 1, 0), quotM1Next(len - 1, 0))
   }
-}
-
-abstract class CarrySaveAdderMToN(m: Int, n: Int)(len: Int) extends Module{
-  val io = IO(new Bundle() {
-    val in = Input(Vec(m, UInt(len.W)))
-    val out = Output(Vec(n, UInt(len.W)))
-  })
-}
-
-class CSA3_2(len: Int) extends CarrySaveAdderMToN(3, 2)(len){
-  val temp = Wire(Vec(len, UInt(2.W)))
-  for((t, i) <- temp.zipWithIndex){
-    val (a, b, cin) = (io.in(0)(i), io.in(1)(i), io.in(2)(i))
-    val a_xor_b = a ^ b
-    val a_and_b = a & b
-    val sum = a_xor_b ^ cin
-    val cout = a_and_b | (a_xor_b & cin)
-    t := Cat(cout, sum)
-  }
-  io.out.zipWithIndex.foreach({case(x, i) => x := Cat(temp.reverse map(_(i)))})
 }
 

@@ -1,8 +1,7 @@
-package fudian
+package xiangshan.backend.fu.fpu.fudian
 
 import chisel3._
 import chisel3.util._
-import fudian.utils._
 
 class FarPath(val expWidth: Int, val precision: Int, val outPc: Int)
     extends Module {

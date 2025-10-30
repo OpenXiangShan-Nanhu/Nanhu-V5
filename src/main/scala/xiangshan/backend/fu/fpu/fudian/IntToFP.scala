@@ -1,8 +1,7 @@
-package fudian
+package xiangshan.backend.fu.fpu.fudian
 
 import chisel3._
 import chisel3.util._
-import fudian.utils.{CLZ, LZA}
 
 class IntToFP_prenorm_in extends Bundle {
   val int = Input(UInt(64.W))

@@ -1,8 +1,7 @@
-package fudian
+package xiangshan.backend.fu.fpu.fudian
 
 import chisel3._
 import chisel3.util._
-import fudian.utils.{CLZ, Multiplier}
 
 class FMULToFADD_fflags extends Bundle {
   val isNaN = Bool()

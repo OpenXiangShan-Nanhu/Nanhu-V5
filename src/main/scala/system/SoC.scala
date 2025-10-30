@@ -143,10 +143,10 @@ class ILABundle extends Bundle {}
 
 
 abstract class BaseSoC()(implicit p: Parameters) extends LazyModule with HasSoCParameter with HasPeripheralRanges {
-  val bankedNode = Option.when(!enableCHI)(BankBinder(L3NBanks, L3BlockSize))
-  val peripheralXbar = Option.when(!enableCHI)(TLXbar())
+  val memNode = TLTempNode()
+  val peripheralXbar = TLXbar()
   val l3_xbar = Option.when(!enableCHI)(TLXbar())
-  val l3_banked_xbar = Option.when(!enableCHI)(TLXbar())
+  val l3_banked_xbar = TLXbar()
 }
 
 // We adapt the following three traits from rocket-chip.
@@ -213,21 +213,16 @@ trait HaveAXI4MemPort {
   ))
 
   val mem_xbar = TLXbar()
-  val l3_mem_pmu = BusPerfMonitor(name = "L3_Mem", enable = !debugOpts.FPGAPlatform, stat_latency = true)
   val axi4mem_node = AXI4IdentityNode()
 
-  mem_xbar :=*
+  mem_xbar :=
     TLBuffer.chainNode(2) :=
-    TLCacheCork() :=
-    l3_mem_pmu :=
-    TLClientsMerger() :=
-    TLXbar() :=*
-    bankedNode.get
+    memNode
 
   mem_xbar :=
     TLWidthWidget(8) :=
     TLBuffer.chainNode(3, name = Some("PeripheralXbar_to_MemXbar_buffer")) :=
-    peripheralXbar.get
+    peripheralXbar
 
   axi4mem_node :=
     TLToAXI4() :=
@@ -289,7 +284,7 @@ trait HaveAXI4PeripheralPort { this: BaseSoC =>
     AXI4Deinterleaver(8) :=
     TLToAXI4() :=
     TLBuffer.chainNode(3) :=
-    peripheralXbar.get
+    peripheralXbar
 
   val peripheral = InModuleBody {
     peripheralNode.makeIOs()
@@ -303,43 +298,10 @@ class MemMisc()(implicit p: Parameters) extends BaseSoC
   with HaveAXI4PeripheralPort
 {
 
-  val peripheral_ports = Option.when(!enableCHI)(Array.fill(NumCores) { TLTempNode() })
-  val core_to_l3_ports = Option.when(!enableCHI)(Array.fill(NumCores) { TLTempNode() })
-
-  val l3_in = TLTempNode()
-  val l3_out = TLTempNode()
-
-
-  if (l3_banked_xbar.isDefined) {
-    l3_in :*= TLEdgeBuffer(_ => true, Some("L3_in_buffer")) :*= l3_banked_xbar.get
-    l3_banked_xbar.get := TLBuffer.chainNode(2) := l3_xbar.get
-  }
-  bankedNode match {
-    case Some(bankBinder) =>
-      bankBinder :*= TLLogger("MEM_L3", !debugOpts.FPGAPlatform && debugOpts.AlwaysBasicDB) :*= l3_out
-    case None =>
-  }
-
-  if(soc.L3CacheParamsOpt.isEmpty){
-    l3_out :*= l3_in
-  }
-
-  for (port <- peripheral_ports.get) {
-    peripheralXbar.get := TLBuffer.chainNode(2, Some("L2_to_L3_peripheral_buffer")) := port
-  }
-
-
-  core_to_l3_ports.foreach { case _ =>
-    for ((core_out, i) <- core_to_l3_ports.get.zipWithIndex){
-      l3_banked_xbar.get :=*
-        TLLogger(s"L3_L2_$i", !debugOpts.FPGAPlatform && debugOpts.AlwaysBasicDB) :=*
-        TLBuffer() :=
-        core_out
-    }
-  }
+  memNode := l3_banked_xbar := TLBuffer.chainNode(2) := l3_xbar.get
 
   val clint = LazyModule(new CLINT(CLINTParams(soc.CLINTRange.base), 8))
-  clint.node := peripheralXbar.get
+  clint.node := peripheralXbar
 
   class IntSourceNodeToModule(val num: Int)(implicit p: Parameters) extends LazyModule {
     val sourceNode = IntSourceNode(IntSourcePortSimple(num, ports = 1, sources = 1))
@@ -354,7 +316,7 @@ class MemMisc()(implicit p: Parameters) extends BaseSoC
   val plicSource = LazyModule(new IntSourceNodeToModule(NrExtIntr))
 
   plic.intnode := plicSource.sourceNode
-  plic.node := peripheralXbar.get
+  plic.node := peripheralXbar
 
   val pll_node = TLRegisterNode(
     address = Seq(soc.PLLRange),
@@ -362,16 +324,16 @@ class MemMisc()(implicit p: Parameters) extends BaseSoC
     beatBytes = 8,
     concurrency = 1
   )
-  pll_node := peripheralXbar.get
+  pll_node := peripheralXbar
 
   val debugModule = LazyModule(new DebugModule(NumCores)(p))
-  debugModule.debug.node := peripheralXbar.get
+  debugModule.debug.node := peripheralXbar
   debugModule.debug.dmInner.dmInner.sb2tlOpt.foreach { sb2tl  =>
     l3_xbar.get := TLBuffer() := sb2tl.node
   }
 
   val pma = LazyModule(new TLPMA)
-  pma.node := TLBuffer.chainNode(4) := peripheralXbar.get
+  pma.node := TLBuffer.chainNode(4) := peripheralXbar
 
   class SoCMiscImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
 

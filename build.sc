@@ -21,7 +21,6 @@ import $file.`rocket-chip`.common
 import $file.`rocket-chip`.dependencies.cde.common
 import $file.`rocket-chip`.dependencies.hardfloat.common
 import $file.`rocket-chip`.dependencies.diplomacy.common
-import $file.huancun.common
 
 /* for publishVersion */
 import $ivy.`de.tototec::de.tobiasroeser.mill.vcs.version::0.4.0`
@@ -125,16 +124,6 @@ object rocketchip
   }
 }
 
-object utility extends HasChisel {
-
-  override def millSourcePath = os.pwd / "utility"
-
-  override def moduleDeps = super.moduleDeps ++ Seq(
-    rocketchip
-  )
-
-}
-
 object xsutils extends HasChisel {
 
   override def millSourcePath = os.pwd / "xs-utils"
@@ -148,18 +137,6 @@ object xsutils extends HasChisel {
 object yunsuan extends HasChisel {
 
   override def millSourcePath = os.pwd / "YunSuan"
-
-}
-
-object huancun extends millbuild.huancun.common.HuanCunModule with HasChisel {
-
-  override def millSourcePath = os.pwd / "huancun"
-
-  def rocketModule: ScalaModule = rocketchip
-
-  def utilityModule: ScalaModule = utility
-
-  def xsutilsModule: ScalaModule = xsutils
 
 }
 
@@ -199,11 +176,7 @@ trait XiangShanModule extends ScalaModule {
 
   def difftestModule: ScalaModule
 
-  def huancunModule: ScalaModule
-
   def fudianModule: ScalaModule
-
-  def utilityModule: ScalaModule
 
   def xsutilsModule: ScalaModule
 
@@ -214,10 +187,8 @@ trait XiangShanModule extends ScalaModule {
   override def moduleDeps = super.moduleDeps ++ Seq(
     rocketModule,
     difftestModule,
-    huancunModule,
     yunsuanModule,
     fudianModule,
-    utilityModule,
     xsutilsModule,
     macrosModule,
   )
@@ -236,11 +207,7 @@ object xiangshan extends XiangShanModule with HasChisel {
 
   def difftestModule = difftest
 
-  def huancunModule = huancun
-  
   def fudianModule = fudian
-
-  def utilityModule = utility
 
   def xsutilsModule = xsutils
 

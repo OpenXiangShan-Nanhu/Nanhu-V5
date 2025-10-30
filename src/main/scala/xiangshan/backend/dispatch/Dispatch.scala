@@ -43,8 +43,6 @@ case class DispatchParameters
 )
 
 class CoreDispatchTopDownIO extends Bundle {
-  val l2MissMatch = Input(Bool())
-  val l3MissMatch = Input(Bool())
   val fromMem = Flipped(new MemCoreTopDownIO)
 }
 
@@ -515,18 +513,14 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   val vioReplay = io.debugTopDown.fromCore.fromMem.robHeadLoadVio
   val mshrReplay = io.debugTopDown.fromCore.fromMem.robHeadLoadMSHR
   val l1Miss = io.debugTopDown.fromCore.fromMem.robHeadMissInDCache
-  val l2Miss = io.debugTopDown.fromCore.l2MissMatch
-  val l3Miss = io.debugTopDown.fromCore.l3MissMatch
 
-  val ldReason = Mux(l3Miss, TopDownCounters.LoadMemStall.id.U,
-  Mux(l2Miss, TopDownCounters.LoadL3Stall.id.U,
-  Mux(l1Miss, TopDownCounters.LoadL2Stall.id.U,
+  val ldReason = Mux(l1Miss, TopDownCounters.LoadL2Stall.id.U,
   Mux(notIssue, TopDownCounters.MemNotReadyStall.id.U,
   Mux(tlbMiss, TopDownCounters.LoadTLBStall.id.U,
   Mux(tlbReplay, TopDownCounters.LoadTLBStall.id.U,
   Mux(mshrReplay, TopDownCounters.LoadMSHRReplayStall.id.U,
   Mux(vioReplay, TopDownCounters.LoadVioReplayStall.id.U,
-  TopDownCounters.LoadL1Stall.id.U))))))))
+  TopDownCounters.LoadL1Stall.id.U))))))
 
   val decodeReason = RegNextN(io.stallReason.reason, 2)
   val renameReason = RegNext(io.stallReason.reason)

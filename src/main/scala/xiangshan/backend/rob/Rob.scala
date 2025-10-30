@@ -105,12 +105,6 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       val logicPhyRegMap = Vec(RabCommitWidth, ValidIO(new RegWriteFromRab))
       val excpInfo = ValidIO(new VecExcpInfo)
     })
-
-    val power = new Bundle {
-      val wfiCtrRst = Input(Bool())
-      val timeout = Output(Bool())
-    }
-
     val debug_ls = Flipped(new DebugLSIO)
     val debugRobHead = Output(new DynInst)
     val debugEnqLsq = Input(new LsqEnqIO)
@@ -399,10 +393,6 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   }.elsewhen(!hasWFI && RegNext(hasWFI)) {
     wfi_cycles := 0.U
   }
-  when(io.power.wfiCtrRst){
-    wfi_cycles := 0.U
-  }
-  io.power.timeout := wfi_cycles(19)
 
   val wfi_timeout = wfi_cycles.andR
   when(RegNext(RegNext(io.csr.wfiEvent)) || io.flushOut.valid || wfi_timeout) {

@@ -23,25 +23,19 @@ import chisel3.experimental.dataview._
 import difftest.DifftestModule
 import xiangshan._
 import utils._
-import huancun.HuanCun
 import xs.utils._
 import system._
 import device._
-import chisel3.stage.ChiselGeneratorAnnotation
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.resources.{DTS, JSON}
-import freechips.rocketchip.tile._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.jtag.JTAGIO
 import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
-import xs.utils.cache.common._
 import xs.utils.perf.{DebugOptions, DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey}
-import xs.utils.cache.common.PrefetchRecv
-import xs.utils.cache.{HCCacheParameters, HCCacheParamsKey}
 import xs.utils.sram.{SramCtrlBundle, SramHelper}
 
 abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
@@ -51,6 +45,74 @@ abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
   lazy val dts = DTS(bindingTree)
   lazy val json = JSON(bindingTree)
 }
+
+class TLCtoTLUL(implicit p: Parameters) extends LazyModule {
+  val node = TLAdapterNode(
+//    clientFn  = { cp => cp.copy(clients = cp.clients.map(_.copy(supportsProbe = TransferSizes.none))) },
+    clientFn  = { cp => cp },
+    managerFn = { mp => mp.copy(
+      managers = mp.managers.map(_.copy(
+      supportsAcquireT = TransferSizes(64, 64),  // Manager不支持AcquireT
+      supportsAcquireB = TransferSizes(64, 64),  // Manager不支持AcquireB
+      supportsArithmetic = TransferSizes(1, 64),
+      supportsLogical = TransferSizes(1, 64),
+      supportsGet = TransferSizes(1, 64),
+      supportsPutFull = TransferSizes(1, 64),
+      supportsPutPartial = TransferSizes(1, 64),
+      supportsHint  = TransferSizes(1, 64)
+      )),
+      beatBytes = 32,
+      minLatency = 2,
+      endSinkId = 256
+    )}
+  )
+  lazy val module = new LazyModuleImp(this) {
+    val (in, edgeIn) = node.in.head // TL-C 输入（A/B/C/E）
+    val (out, edgeOut) = node.out.head // TL-UL 输出（A/D）
+
+    val aChn = in.a.bits
+    aChn.opcode := TLMessages.Get
+
+    val cChn = WireInit(0.U.asTypeOf(in.a.bits))
+    for((name, d) <- in.c.bits.elements){
+      cChn.elements(name) := d
+    }
+    cChn.opcode := TLMessages.PutFullData
+    cChn.param := DontCare
+    cChn.mask := (-1).S.asUInt
+
+    
+    // 输出A通道选择
+    out.a.bits := Mux(in.c.valid,cChn,aChn)
+    out.a.valid := in.a.valid || in.c.valid
+    
+    // 输入端口ready信号
+    in.a.ready := out.a.ready
+    in.c.ready := out.a.ready
+    
+    // ----------------------------
+    // B 通道：TL-UL不支持B通道
+    // ----------------------------
+    in.b.valid := false.B
+    in.b.bits := DontCare
+    
+    // ----------------------------
+    // D 通道：透传响应
+    // ----------------------------
+    in.d.bits := out.d.bits
+    in.d.bits.opcode := Mux(out.d.bits.opcode === TLMessages.AccessAckData, TLMessages.GrantData, 
+      Mux(out.d.bits.opcode === TLMessages.AccessAck, TLMessages.ReleaseAck, out.d.bits.opcode))
+    in.d.valid := out.d.valid
+    out.d.ready := in.d.ready
+    
+    // ----------------------------
+    // E 通道：TL-UL无E通道
+    // ----------------------------
+    in.e.ready := true.B
+    out.e.valid := false.B
+  }
+}
+
 
 class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
 {
@@ -75,24 +137,25 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     }
     if (!enableCHI) {
       bindManagers(misc.l3_xbar.get.asInstanceOf[TLNexusNode])
-      bindManagers(misc.peripheralXbar.get.asInstanceOf[TLNexusNode])
+      bindManagers(misc.peripheralXbar.asInstanceOf[TLNexusNode])
     }
   }
 
   println(s"FPGASoC cores: $NumCores banks: $L3NBanks block size: $L3BlockSize bus size: $L3OuterBusWidth")
 
-  private val core = LazyModule(new XSCore()(p.alterPartial({
+  val core = LazyModule(new XSCore()(p.alterPartial({
     case XSCoreParamsKey => tiles.head
   })))
   private val memBlock = core.memBlock.inner
   private val cacheXBar = LazyModule(new TLXbar)
   private val mmioXBar = LazyModule(new TLXbar)
+  private val tlCvt = LazyModule(new TLCtoTLUL)
 
   val nmiIntNode = IntSourceNode(IntSourcePortSimple(1, NumCores, (new NonmaskableInterruptIO).elements.size))
   val nmi = InModuleBody(nmiIntNode.makeIOs())
 
   cacheXBar.node := TLBuffer.chainNode(2) := memBlock.frontendBridge.icache_node
-  cacheXBar.node := TLBuffer.chainNode(2) := memBlock.dcache.clientNode
+  cacheXBar.node := TLBuffer.chainNode(2) := tlCvt.node := memBlock.dcache.clientNode
   cacheXBar.node := TLBuffer.chainNode(2) := memBlock.ptw_to_l2_buffer.node
 
   mmioXBar.node := TLBuffer.chainNode(2) := memBlock.frontendBridge.instr_uncache_node
@@ -103,30 +166,8 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
   memBlock.debug_int_sink := misc.debugModule.debug.dmOuter.dmOuter.intnode
   memBlock.nmi_int_sink := nmiIntNode
 
-  misc.peripheral_ports.get.head := mmioXBar.node
-  misc.core_to_l3_ports.get.head :=* cacheXBar.node
-
-
-  val l3cacheOpt = soc.L3CacheParamsOpt.map(l3param =>
-    LazyModule(new HuanCun()(new Config((_, _, _) => {
-      case HCCacheParamsKey => l3param.copy(
-        hartIds = tiles.map(_.HartId),
-        FPGAPlatform = debugOpts.FPGAPlatform
-      )
-      case MaxHartIdBits => p(MaxHartIdBits)
-      case LogUtilsOptionsKey => p(LogUtilsOptionsKey)
-      case PerfCounterOptionsKey => p(PerfCounterOptionsKey)
-    })))
-  )
-
-  l3cacheOpt match {
-    case Some(l3) =>
-      misc.l3_out :*= l3.node :*= misc.l3_banked_xbar.get
-    case None =>
-  }
-
-
-
+  misc.peripheralXbar := TLBuffer() := mmioXBar.node
+  misc.l3_banked_xbar := TLBuffer() := cacheXBar.node
 
   class XSTopImp(wrapper: LazyModule) extends LazyRawModuleImp(wrapper) {
     override def provideImplicitClockToLazyChildren = true
@@ -190,7 +231,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
         })
       }
     })
-    l3cacheOpt.get.module.io := DontCare
     val reset_sync = withClockAndReset(io.clock, io.reset) { ResetGen(2, None) }
     val jtag_reset_sync = withClockAndReset(io.systemjtag.jtag.TCK, io.systemjtag.reset) { ResetGen(2, None) }
 
@@ -223,14 +263,6 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     core.module.io.reset_vector := io.riscv_rst_vec
     dontTouch(core.module.io.dft) := 0.U.asTypeOf(core.module.io.dft)
 
-
-
-
-    private val sramCtrl = SramHelper.genSramCtrlBundleTop()
-    sramCtrl := DontCare
-
-
-
     misc.module.debug_module_io.resetCtrl.hartIsInReset.foreach( _ :=core.module.io.resetInFrontend )
     misc.module.debug_module_io.clock := io.clock
     misc.module.debug_module_io.reset := reset_sync
@@ -251,11 +283,11 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
     withClockAndReset(io.clock, reset_sync) {
       // Modules are reset one by one
       // reset ----> SYNC --> {SoCMisc, L3 Cache, Cores}
-      val resetChain = Seq(Seq(misc.module) ++ l3cacheOpt.map(_.module))
+      val resetChain = Seq(Seq(misc.module))
       ResetGen(resetChain, reset_sync, None, !debugOpts.ResetGen)
       // Ensure that cores could be reset when DM disable `hartReset` or l3cacheOpt.isEmpty.
       val dmResetReqVec = misc.module.debug_module_io.resetCtrl.hartResetReq.getOrElse(0.U.asTypeOf(Vec(1, Bool())))
-      val syncResetCores = if(l3cacheOpt.nonEmpty) l3cacheOpt.map(_.module).get.reset.asBool else misc.module.reset.asBool
+      val syncResetCores = misc.module.reset.asBool
       ResetGen(Seq(Seq(core.module)), (syncResetCores || dmResetReqVec.head).asAsyncReset, None, !debugOpts.ResetGen)
     }
 

@@ -10,15 +10,9 @@
 [submodule "src/main/resources/aia"]
 	path = src/main/resources/aia
 	url = https://github.com/OpenXiangShan/OpenAIA.git
-[submodule "utility"]
-	path = utility
-	url = https://github.com/guanmingxing/Utility.git
 [submodule "xs-utils"]
 	path = xs-utils
 	url = https://github.com/OpenXiangShan-Nanhu/xs-utils.git
-[submodule "huancun"]
-	path = huancun
-	url = https://github.com/OpenXiangShan-Nanhu/HuanCun.git
 [submodule "YunSuan"]
 	path = YunSuan
 	url = https://github.com/OpenXiangShan-Nanhu/YunSuan.git

@@ -35,7 +35,7 @@ MEM_GEN = ./scripts/vlsi_mem_gen
 MEM_GEN_SEP = ./scripts/gen_sep_mem.sh
 ABS_WORK_DIR := $(shell pwd)
 
-CONFIG ?= NanhuV5_3Config
+CONFIG ?= RtsConfig
 NUM_CORES ?= 1
 ISSUE ?= E.b
 
@@ -153,7 +153,7 @@ $(TOP_V): $(SCALA_FILE)
 	$(TIME_CMD) mill -i xiangshan.runMain $(FPGATOP)   \
 		--target-dir $(@D) --config $(CONFIG) $(FPGA_MEM_ARGS)		\
 		--num-cores $(NUM_CORES) $(RELEASE_ARGS) --full-stacktrace
-	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
+# 	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
 	@git log -n 1 >> .__head__
 	@git diff >> .__diff__
 	@sed -i 's/^/\/\// ' .__head__
@@ -169,9 +169,9 @@ $(SIM_TOP_V): $(SCALA_FILE) $(TEST_FILE)
 	@echo -e "\n[mill] Generating Verilog files..." > $(TIMELOG)
 	@date -R | tee -a $(TIMELOG)
 	$(TIME_CMD) mill -i xiangshan.test.runMain $(SIMTOP)    \
-		--target-dir $(@D) --config $(CONFIG) --issue $(ISSUE) $(SIM_MEM_ARGS)		\
+		--target-dir $(@D) --config $(CONFIG) $(SIM_MEM_ARGS)		\
 		--num-cores $(NUM_CORES) $(SIM_ARGS) --full-stacktrace
-	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
+# 	$(MEM_GEN_SEP) "$(MEM_GEN)" "$@.conf" "$(@D)"
 	@git log -n 1 >> .__head__
 	@git diff >> .__diff__
 	@sed -i 's/^/\/\// ' .__head__

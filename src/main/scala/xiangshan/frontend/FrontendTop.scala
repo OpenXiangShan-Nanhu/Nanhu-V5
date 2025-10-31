@@ -18,9 +18,10 @@ package xiangshan.frontend
 
 import chisel3._
 import freechips.rocketchip.tilelink.{TLManagerNode, TLSlavePortParameters, TLSlaveParameters, TLBuffer}
-import freechips.rocketchip.diplomacy.{LazyModuleImp, LazyModule, RegionType, TransferSizes, AddressSet}
+import freechips.rocketchip.diplomacy.{RegionType, TransferSizes, AddressSet}
 import org.chipsalliance.cde.config.Parameters
 import org.chipsalliance.diplomacy.DisableMonitors
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import top.{ArgParser, Generator}
 import xiangshan.{HasXSParameter, XSCoreParamsKey, XSTileKey}
 

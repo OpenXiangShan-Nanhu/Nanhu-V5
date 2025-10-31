@@ -28,7 +28,7 @@ import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.sram._
 import xs.utils.mbist.MbistPipeline
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink._
 
 /* ptw cache caches the page table of all the three layers

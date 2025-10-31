@@ -24,8 +24,7 @@ def defaultVersions = Map(
   "scalatest"     -> "3.2.7",
   "chisel"        -> "6.7.0",
   "chisel-plugin" -> "6.7.0",
-  "chiseltest"    -> "6.0.0",
-  "llvm-firtool"  -> "1.62.1"
+  "chiseltest"    -> "6.0.0"
 )
 
 def getVersion(dep: String, org: String = "org.chipsalliance", cross: Boolean = false) = {
@@ -40,7 +39,8 @@ def getVersion(dep: String, org: String = "org.chipsalliance", cross: Boolean = 
 trait CommonModule extends ScalaModule {
   override def scalaVersion = defaultVersions("scala")
   override def scalacPluginIvyDeps = Agg(getVersion("chisel-plugin", cross = true))
-  override def scalacOptions = super.scalacOptions() ++ Agg("-Ymacro-annotations", "-Ytasty-reader")
+  override def scalacOptions = super.scalacOptions() ++
+    Agg("-language:reflectiveCalls", "-Ymacro-annotations", "-Ytasty-reader")
   override def ivyDeps = super.ivyDeps() ++ Agg(
     getVersion("chisel"),
     getVersion("chiseltest", "edu.berkeley.cs"),

@@ -19,8 +19,8 @@ package xiangshan.backend
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.{BundleBridgeSource, BufferParams}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.interrupts.{IntSinkNode, IntSinkPortSimple}
 import freechips.rocketchip.tile.HasFPUParameters
 import freechips.rocketchip.tilelink._
@@ -43,13 +43,11 @@ import xiangshan.mem.prefetch.{BasePrefecher, L1Prefetcher, SMSParams, SMSPrefet
 import xiangshan.backend.datapath.NewPipelineConnect
 import xiangshan.mem.skidBufferConnect
 import xs.utils._
-import xs.utils.cache.common._
-import xs.utils.mbist.{MbistInterface, MbistPipeline}
-import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.mbist.MbistPipeline
+import xs.utils.sram.SramBroadcastBundle
 import xs.utils.perf.{HasPerfEvents, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
-import xs.utils.cache.common.{PrefetchRecv, CMOResp, CMOReq}
-import xs.utils.cache.EnableCHI
+import xs.utils.cache.common.PrefetchRecv
 
 trait HasMemBlockParameters extends HasXSParameter {
   // number of memory units

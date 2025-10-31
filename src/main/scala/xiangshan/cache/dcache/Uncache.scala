@@ -19,12 +19,12 @@ package xiangshan.cache
 import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import utils._
-import xs.utils._
 import xs.utils.perf._
 import xiangshan._
-import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, TransferSizes}
-import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
+import freechips.rocketchip.diplomacy.IdRange
+import freechips.rocketchip.tilelink.{TLBundleA, TLClientNode, TLMasterParameters, TLMasterPortParameters}
 import difftest._
 import xs.utils.cache.{DeviceType, DeviceTypeField}
 

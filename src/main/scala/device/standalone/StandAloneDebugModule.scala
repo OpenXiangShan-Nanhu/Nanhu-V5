@@ -17,19 +17,14 @@
 package device.standalone
 
 import chisel3._
-import chisel3.util._
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.AddressSet
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, InModuleBody}
 import freechips.rocketchip.devices.debug.DebugModuleKey
-import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util.AsyncResetSynchronizerShiftReg
-import device.XSDebugModuleParams
-import system.SoCParamsKey
-import xiangshan.XSCoreParamsKey
-import xiangshan.XSTileKey
 import device.DebugModule
-import xs.utils.{IntBuffer, RegNextN}
+import xs.utils.IntBuffer
 
 class StandAloneDebugModule (
   useTL: Boolean = false,

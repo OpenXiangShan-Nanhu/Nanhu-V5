@@ -4,7 +4,7 @@
 // import chisel3._
 // import chisel3.util._
 // import chisel3.util.experimental.decode._
-// import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+// import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 // import xs.utils.{Constantin, PriorityMuxDefault, SelectOne}
 // import xs.utils.perf.{XSPerfAccumulate}
 // import xiangshan._

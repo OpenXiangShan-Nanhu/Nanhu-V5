@@ -22,7 +22,7 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import difftest._
 import difftest.gateway._
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
 import utils._

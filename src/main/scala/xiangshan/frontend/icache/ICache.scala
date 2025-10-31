@@ -19,11 +19,12 @@ package  xiangshan.frontend.icache
 
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.IdRange
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.BundleFieldBase
 import xs.utils.cache.common.PrefetchField
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.tl._

@@ -19,12 +19,12 @@ package xiangshan.cache
 import chisel3._
 import chisel3.experimental.ExtModule
 import chisel3.util._
-import freechips.rocketchip.diplomacy.{IdRange, LazyModule, TransferSizes}
+import freechips.rocketchip.diplomacy.{IdRange, TransferSizes}
 import freechips.rocketchip.tilelink.{TLBundleD, _}
 import freechips.rocketchip.util.BundleFieldBase
 import xs.utils.cache.common._
 import org.chipsalliance.cde.config.Parameters
-import org.chipsalliance.diplomacy.lazymodule.LazyModuleImp
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xiangshan._
 import xiangshan.backend.rob.RobDebugRollingIO
 import xiangshan.cache.wpu._

@@ -24,7 +24,8 @@ import chisel3.experimental.dataview._
 import device.{AXI4MemorySlave, SimJTAG}
 import difftest._
 import freechips.rocketchip.amba.axi4.AXI4Bundle
-import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
+import org.chipsalliance.diplomacy.DisableMonitors
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 import xs.utils.{ChiselDB, Constantin, FileRegisters, GTimer}
 import xs.utils.perf.DebugOptionsKey
 import system.SoCParamsKey

@@ -20,7 +20,8 @@ import chisel3._
 import chisel3.util._
 import difftest.common.DifftestMem
 import freechips.rocketchip.amba.axi4.AXI4SlaveNode
-import freechips.rocketchip.diplomacy.{AddressSet, LazyModule}
+import freechips.rocketchip.diplomacy.AddressSet
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 import org.chipsalliance.cde.config.Parameters
 
 class AXI4RAM

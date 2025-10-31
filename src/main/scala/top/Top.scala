@@ -27,11 +27,14 @@ import xs.utils._
 import system._
 import device._
 import org.chipsalliance.cde.config._
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.TransferSizes
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule, LazyModuleImp, LazyRawModuleImp}
+import org.chipsalliance.diplomacy.DisableMonitors
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.jtag.JTAGIO
+import freechips.rocketchip.resources.BindingScope
 import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
 import xs.utils.perf.DebugOptionsKey

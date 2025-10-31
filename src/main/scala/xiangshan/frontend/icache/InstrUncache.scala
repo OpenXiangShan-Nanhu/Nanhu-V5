@@ -20,7 +20,8 @@ import chisel3._
 import chisel3.util._
 import utils._
 import org.chipsalliance.cde.config.Parameters
-import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.IdRange
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.{TLArbiter, TLBundleA, TLBundleD, TLClientNode, TLEdgeOut, TLMasterParameters, TLMasterPortParameters}
 import xs.utils.cache.{DeviceType, DeviceTypeField}
 import xiangshan._

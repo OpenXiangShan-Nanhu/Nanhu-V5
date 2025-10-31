@@ -21,19 +21,16 @@ import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
 import device.MsiInfoBundle
-import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.bundlebridge.BundleBridgeSource
 import freechips.rocketchip.tile.HasFPUParameters
-import xiangshan.XSL1BusErrors
 import xs.utils._
 import xs.utils.perf._
 import xs.utils.sram.{SramBroadcastBundle, SramHelper}
 import xs.utils.mbist.MbistInterface
 import xiangshan.backend._
-import xiangshan.backend.fu.PMPRespBundle
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend._
-import xiangshan.cache.mmu.TlbRequestIO
-import xs.utils.cache.common.PrefetchCtrlFromCore
 
 abstract class XSModule(implicit val p: Parameters) extends Module
   with HasXSParameter

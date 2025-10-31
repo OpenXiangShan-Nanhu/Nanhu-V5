@@ -17,11 +17,12 @@
 package device.standalone
 
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.{annotate, ChiselAnnotation}
 import chisel3.experimental.dataview._
-import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.diplomacy.{AddressSet, RegionType, TransferSizes, IdRange}
 import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.DisableMonitors
+import org.chipsalliance.diplomacy.lazymodule.{InModuleBody, LazyModule, LazyModuleImp, LazyRawModuleImp, LazyModuleImpLike}
 import freechips.rocketchip.devices.debug.DebugModuleKey
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.amba.axi4._

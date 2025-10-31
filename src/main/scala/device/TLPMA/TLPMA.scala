@@ -1,14 +1,13 @@
 package device
 
-import freechips.rocketchip.diplomacy.{AddressSet, LazyModule, LazyModuleImp, SimpleDevice}
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import xiangshan._
-import utils._
-import xs.utils._
+import freechips.rocketchip.diplomacy.AddressSet
+import freechips.rocketchip.resources.SimpleDevice
 import freechips.rocketchip.regmapper.RegFieldGroup
 import freechips.rocketchip.tilelink.TLRegisterNode
+import org.chipsalliance.cde.config.Parameters
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xiangshan.backend.fu.{MMPMAMethod, PMAConst, PMPChecker, PMPReqBundle, PMPRespBundle}
 
 class TLPMAIO(implicit val p: Parameters) extends Bundle with PMAConst {

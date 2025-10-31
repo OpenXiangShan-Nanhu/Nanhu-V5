@@ -4,7 +4,7 @@ import scala.collection.Seq
 import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
 import xs.utils._
 import xs.utils.perf._
 import utils.OptionWrapper

@@ -17,10 +17,11 @@
 package device
 
 import chisel3._
-import chisel3.util._
 import freechips.rocketchip.tilelink._
 import org.chipsalliance.cde.config._
-import freechips.rocketchip.diplomacy._
+import org.chipsalliance.diplomacy.lazymodule.{LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.AddressSet
+import freechips.rocketchip.resources.SimpleDevice
 import freechips.rocketchip.regmapper.RegField
 import utils.HasTLDump
 import xs.utils.perf.XSDebug

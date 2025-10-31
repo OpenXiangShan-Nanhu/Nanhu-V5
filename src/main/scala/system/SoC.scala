@@ -29,13 +29,10 @@ import freechips.rocketchip.regmapper.{RegField, RegFieldDesc, RegFieldGroup}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.AsyncQueueParams
 
-import top.BusPerfMonitor
-import xiangshan.backend.fu.{PMAConst}
+import xiangshan.backend.fu.PMAConst
 import xiangshan.{XSTileKey,PMParameKey}
 
-import xs.utils.cache.EnableCHI
-
-import xs.utils.tl.{ReqSourceKey, TLClientsMerger, TLEdgeBuffer, TLLogger}
+import xs.utils.tl.ReqSourceKey
 import xs.utils.perf.DebugOptionsKey
 import xs.utils.cache.HCCacheParameters
 
@@ -67,11 +64,8 @@ case class SoCParameters
   EnableCHIAsyncBridge: Option[AsyncQueueParams] = Some(AsyncQueueParams(depth = 16, sync = 3, safe = false)),
   EnableClintAsyncBridge: Option[AsyncQueueParams] = Some(AsyncQueueParams(depth = 1, sync = 3, safe = false))
 ){
-  // L3 configurations
-  val L3InnerBusWidth = 256
-  val L3BlockSize = 64
-  // on chip network configurations
-  val L3OuterBusWidth = 256
+  val BusWidth = 256
+  val BlockSize = 64
   val UARTLiteRange = AddressSet(0x40600000, if (UARTLiteForDTS) 0x3f else 0xf)
 }
 
@@ -81,7 +75,6 @@ trait HasSoCParameter {
   val soc = p(SoCParamsKey)
   val debugOpts = p(DebugOptionsKey)
   val tiles = p(XSTileKey)
-  val enableCHI = p(EnableCHI)
 
   val NumCores = tiles.size
   val EnableILA = soc.EnableILA
@@ -96,23 +89,10 @@ trait HasSoCParameter {
   val TraceIretireWidthCompressed = log2Up(tiles.head.RenameWidth * tiles.head.CommitWidth * 2)
   val TraceIlastsizeWidth         = tiles.head.traceParams.IlastsizeWidth
 
-  // L3 configurations
-  val L3InnerBusWidth = soc.L3InnerBusWidth
-  val L3BlockSize = soc.L3BlockSize
-  val L3NBanks = soc.L3NBanks
-
-  // on chip network configurations
-  val L3OuterBusWidth = soc.L3OuterBusWidth
-
+  val BusWidth = soc.BusWidth
+  val BlockSize = soc.BlockSize
   val NrExtIntr = soc.extIntrs
-
-  val SetIpNumValidSize = soc.NumHart * soc.NumIRFiles
-
   val NumIRSrc = soc.NumIRSrc
-
-  val EnableCHIAsyncBridge = if (enableCHI && soc.EnableCHIAsyncBridge.isDefined)
-    soc.EnableCHIAsyncBridge else None
-  val EnableClintAsyncBridge = soc.EnableClintAsyncBridge
 }
 
 trait HasPeripheralRanges {
@@ -139,13 +119,10 @@ trait HasPeripheralRanges {
   }
 }
 
-class ILABundle extends Bundle {}
-
-
 abstract class BaseSoC()(implicit p: Parameters) extends LazyModule with HasSoCParameter with HasPeripheralRanges {
   val memNode = TLTempNode()
   val peripheralXbar = TLXbar()
-  val l3_xbar = Option.when(!enableCHI)(TLXbar())
+  val l3_xbar = TLXbar()
   val l3_banked_xbar = TLXbar()
 }
 
@@ -163,26 +140,25 @@ trait HaveSlaveAXI4Port {
     ))
   )))
 
-  if (l3_xbar.isDefined) {
-    val errorDevice = LazyModule(new TLError(
-      params = DevNullParams(
-        address = Seq(AddressSet(0x0, 0x7fffffffL)),
-        maxAtomic = 8,
-        maxTransfer = 64),
-      beatBytes = L3InnerBusWidth / 8
-    ))
-    errorDevice.node :=
-      l3_xbar.get :=
-      TLFIFOFixer() :=
-      TLWidthWidget(32) :=
-      AXI4ToTL() :=
-      AXI4UserYanker(Some(1)) :=
-      AXI4Fragmenter() :=
-      AXI4Buffer() :=
-      AXI4Buffer() :=
-      AXI4IdIndexer(1) :=
-      l3FrontendAXI4Node
-  }
+  val errorDevice = LazyModule(new TLError(
+    params = DevNullParams(
+      address = Seq(AddressSet(0x0, 0x7fffffffL)),
+      maxAtomic = 8,
+      maxTransfer = 64),
+    beatBytes = BusWidth / 8
+  ))
+  errorDevice.node :=
+    l3_xbar :=
+    TLFIFOFixer() :=
+    TLWidthWidget(32) :=
+    AXI4ToTL() :=
+    AXI4UserYanker(Some(1)) :=
+    AXI4Fragmenter() :=
+    AXI4Buffer() :=
+    AXI4Buffer() :=
+    AXI4IdIndexer(1) :=
+    l3FrontendAXI4Node
+
 
   val dma = InModuleBody {
     l3FrontendAXI4Node.makeIOs()
@@ -201,13 +177,13 @@ trait HaveAXI4MemPort {
           address = memRange,
           regionType = RegionType.UNCACHED,
           executable = true,
-          supportsRead = TransferSizes(1, L3BlockSize),
-          supportsWrite = TransferSizes(1, L3BlockSize),
+          supportsRead = TransferSizes(1, BlockSize),
+          supportsWrite = TransferSizes(1, BlockSize),
           interleavedId = Some(0),
           resources = device.reg("mem")
         )
       ),
-      beatBytes = L3OuterBusWidth / 8,
+      beatBytes = BusWidth / 8,
       requestKeys = if (debugOpts.FPGAPlatform) Seq() else Seq(ReqSourceKey),
     )
   ))
@@ -227,7 +203,7 @@ trait HaveAXI4MemPort {
   axi4mem_node :=
     TLToAXI4() :=
     TLSourceShrinker(64) :=
-    TLWidthWidget(L3OuterBusWidth / 8) :=
+    TLWidthWidget(BusWidth / 8) :=
     TLBuffer.chainNode(2) :=
     mem_xbar
 
@@ -237,7 +213,7 @@ trait HaveAXI4MemPort {
     AXI4Buffer() :=
     AXI4IdIndexer(idBits = 14) :=
     AXI4UserYanker() :=
-    AXI4Deinterleaver(L3BlockSize) :=
+    AXI4Deinterleaver(BlockSize) :=
     axi4mem_node
 
   val memory = InModuleBody {
@@ -266,7 +242,6 @@ trait HaveAXI4PeripheralPort { this: BaseSoC =>
   )))
 
   val axi4peripheral_node = AXI4IdentityNode()
-  val error_xbar = Option.when(enableCHI)(TLXbar())
 
   peripheralNode :=
     AXI4UserYanker() :=
@@ -276,7 +251,6 @@ trait HaveAXI4PeripheralPort { this: BaseSoC =>
     AXI4Buffer() :=
     AXI4Buffer() :=
     AXI4UserYanker() :=
-    // AXI4Deinterleaver(8) :=
     axi4peripheral_node
 
 
@@ -292,13 +266,14 @@ trait HaveAXI4PeripheralPort { this: BaseSoC =>
 
 }
 
-class MemMisc()(implicit p: Parameters) extends BaseSoC
+class SoCMisc()(implicit p: Parameters) extends BaseSoC
   with HaveAXI4MemPort
   with PMAConst
   with HaveAXI4PeripheralPort
+  with HaveSlaveAXI4Port
 {
 
-  memNode := l3_banked_xbar := TLBuffer.chainNode(2) := l3_xbar.get
+  memNode := l3_banked_xbar := TLBuffer.chainNode(2) := l3_xbar
 
   val clint = LazyModule(new CLINT(CLINTParams(soc.CLINTRange.base), 8))
   clint.node := peripheralXbar
@@ -329,7 +304,7 @@ class MemMisc()(implicit p: Parameters) extends BaseSoC
   val debugModule = LazyModule(new DebugModule(NumCores)(p))
   debugModule.debug.node := peripheralXbar
   debugModule.debug.dmInner.dmInner.sb2tlOpt.foreach { sb2tl  =>
-    l3_xbar.get := TLBuffer() := sb2tl.node
+    l3_xbar := TLBuffer() := sb2tl.node
   }
 
   val pma = LazyModule(new TLPMA)
@@ -387,7 +362,3 @@ class MemMisc()(implicit p: Parameters) extends BaseSoC
 
   lazy val module = new SoCMiscImp(this)
 }
-
-class SoCMisc()(implicit p: Parameters) extends MemMisc
-  with HaveSlaveAXI4Port
-

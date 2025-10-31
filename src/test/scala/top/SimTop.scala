@@ -25,7 +25,6 @@ import device.{AXI4MemorySlave, SimJTAG}
 import difftest._
 import freechips.rocketchip.amba.axi4.AXI4Bundle
 import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
-import freechips.rocketchip.util.HeterogeneousBag
 import xs.utils.{ChiselDB, Constantin, FileRegisters, GTimer}
 import xs.utils.perf.DebugOptionsKey
 import system.SoCParamsKey
@@ -39,9 +38,7 @@ class SimTop(implicit p: Parameters) extends Module {
   // so that we can re-use this SimTop for any generated Verilog RTL.
   dontTouch(soc.io)
 
-  if (!l_soc.module.dma.isEmpty) {
-    l_soc.module.dma.get <> WireDefault(0.U.asTypeOf(l_soc.module.dma.get))
-  }
+  l_soc.module.dma <> WireDefault(0.U.asTypeOf(l_soc.module.dma))
 
   val l_simMMIO = LazyModule(new SimMMIO(l_soc.misc.peripheralNode.in.head._2)(p.alter((site, here, up) => {
     case SoCParamsKey => up(SoCParamsKey).copy(UARTLiteForDTS = false)

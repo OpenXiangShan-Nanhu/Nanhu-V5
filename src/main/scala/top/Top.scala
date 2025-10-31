@@ -28,32 +28,23 @@ import system._
 import device._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.resources.{DTS, JSON}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.interrupts._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.jtag.JTAGIO
 import chisel3.experimental.{ChiselAnnotation, annotate}
 import sifive.enterprise.firrtl.NestedPrefixModulesAnnotation
-import xs.utils.perf.{DebugOptions, DebugOptionsKey, LogUtilsOptionsKey, PerfCounterOptionsKey}
-import xs.utils.sram.{SramCtrlBundle, SramHelper}
+import xs.utils.perf.DebugOptionsKey
 
-abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule
-  with BindingScope
-{
-  // val misc = LazyModule(new SoCMisc())
-  lazy val dts = DTS(bindingTree)
-  lazy val json = JSON(bindingTree)
-}
+abstract class BaseXSSoc()(implicit p: Parameters) extends LazyModule with BindingScope {}
 
 class TLCtoTLUL(implicit p: Parameters) extends LazyModule {
   val node = TLAdapterNode(
-//    clientFn  = { cp => cp.copy(clients = cp.clients.map(_.copy(supportsProbe = TransferSizes.none))) },
     clientFn  = { cp => cp },
     managerFn = { mp => mp.copy(
       managers = mp.managers.map(_.copy(
-      supportsAcquireT = TransferSizes(64, 64),  // Manager不支持AcquireT
-      supportsAcquireB = TransferSizes(64, 64),  // Manager不支持AcquireB
+      supportsAcquireT = TransferSizes(64, 64),
+      supportsAcquireB = TransferSizes(64, 64),
       supportsArithmetic = TransferSizes(1, 64),
       supportsLogical = TransferSizes(1, 64),
       supportsGet = TransferSizes(1, 64),
@@ -67,8 +58,8 @@ class TLCtoTLUL(implicit p: Parameters) extends LazyModule {
     )}
   )
   lazy val module = new LazyModuleImp(this) {
-    val (in, edgeIn) = node.in.head // TL-C 输入（A/B/C/E）
-    val (out, edgeOut) = node.out.head // TL-UL 输出（A/D）
+    val (in, _) = node.in.head
+    val (out, _) = node.out.head
 
     val aChn = in.a.bits
     aChn.opcode := TLMessages.Get
@@ -81,72 +72,36 @@ class TLCtoTLUL(implicit p: Parameters) extends LazyModule {
     cChn.param := DontCare
     cChn.mask := (-1).S.asUInt
 
-    
-    // 输出A通道选择
+    // A channel
     out.a.bits := Mux(in.c.valid,cChn,aChn)
     out.a.valid := in.a.valid || in.c.valid
     
-    // 输入端口ready信号
     in.a.ready := out.a.ready
     in.c.ready := out.a.ready
     
-    // ----------------------------
-    // B 通道：TL-UL不支持B通道
-    // ----------------------------
+    // B channel
     in.b.valid := false.B
     in.b.bits := DontCare
     
-    // ----------------------------
-    // D 通道：透传响应
-    // ----------------------------
+    // D channel
     in.d.bits := out.d.bits
     in.d.bits.opcode := Mux(out.d.bits.opcode === TLMessages.AccessAckData, TLMessages.GrantData, 
       Mux(out.d.bits.opcode === TLMessages.AccessAck, TLMessages.ReleaseAck, out.d.bits.opcode))
     in.d.valid := out.d.valid
     out.d.ready := in.d.ready
-    
-    // ----------------------------
-    // E 通道：TL-UL无E通道
-    // ----------------------------
+
+    // E channel
     in.e.ready := true.B
     out.e.valid := false.B
   }
 }
 
 
-class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
-{
-  val nocMisc = if (enableCHI) Some(LazyModule(new MemMisc())) else None
-  val socMisc = if (!enableCHI) Some(LazyModule(new SoCMisc())) else None
-  val misc: MemMisc = if (enableCHI) nocMisc.get else socMisc.get
-
-  ResourceBinding {
-    val width = ResourceInt(2)
-    val model = "xiangshan," + os.read(os.resource / "publishVersion")
-    val compatible = "freechips,rocketchip-unknown"
-    Resource(ResourceAnchors.root, "model").bind(ResourceString(model))
-    Resource(ResourceAnchors.root, "compat").bind(ResourceString(compatible + "-dev"))
-    Resource(ResourceAnchors.soc, "compat").bind(ResourceString(compatible + "-soc"))
-    Resource(ResourceAnchors.root, "width").bind(width)
-    Resource(ResourceAnchors.soc, "width").bind(width)
-    Resource(ResourceAnchors.cpus, "width").bind(ResourceInt(1))
-    def bindManagers(xbar: TLNexusNode) = {
-      ManagerUnification(xbar.edges.in.head.manager.managers).foreach{ manager =>
-        manager.resources.foreach(r => r.bind(manager.toResource))
-      }
-    }
-    if (!enableCHI) {
-      bindManagers(misc.l3_xbar.get.asInstanceOf[TLNexusNode])
-      bindManagers(misc.peripheralXbar.asInstanceOf[TLNexusNode])
-    }
-  }
-
-  println(s"FPGASoC cores: $NumCores banks: $L3NBanks block size: $L3BlockSize bus size: $L3OuterBusWidth")
-
+class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter {
+  val misc = LazyModule(new SoCMisc())
   val core = LazyModule(new XSCore()(p.alterPartial({
     case XSCoreParamsKey => tiles.head
   })))
-  private val memBlock = core.memBlock.inner
   private val cacheXBar = LazyModule(new TLXbar)
   private val mmioXBar = LazyModule(new TLXbar)
   private val tlCvt = LazyModule(new TLCtoTLUL)
@@ -154,6 +109,7 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
   val nmiIntNode = IntSourceNode(IntSourcePortSimple(1, NumCores, (new NonmaskableInterruptIO).elements.size))
   val nmi = InModuleBody(nmiIntNode.makeIOs())
 
+  private val memBlock = core.memBlock.inner
   cacheXBar.node := TLBuffer.chainNode(2) := memBlock.frontendBridge.icache_node
   cacheXBar.node := TLBuffer.chainNode(2) := tlCvt.node := memBlock.dcache.clientNode
   cacheXBar.node := TLBuffer.chainNode(2) := memBlock.ptw_to_l2_buffer.node
@@ -177,22 +133,13 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
         def toFirrtl = NestedPrefixModulesAnnotation(mod, prefix, true)
       })
     }
-    FileRegisters.add("dts", dts)
     FileRegisters.add("graphml", graphML)
-    FileRegisters.add("json", json)
-    FileRegisters.add("plusArgs", freechips.rocketchip.util.PlusArgArtefacts.serialize_cHeader())
 
-    val dma = socMisc.map(m => IO(Flipped(new VerilogAXI4Record(m.dma.elts.head.params))))
+    val dma = IO(Flipped(new VerilogAXI4Record(misc.dma.elts.head.params)))
     val peripheral = IO(new VerilogAXI4Record(misc.peripheral.elts.head.params))
     val memory = IO(new VerilogAXI4Record(misc.memory.elts.head.params))
 
-    socMisc match {
-      case Some(m) =>
-        m.dma.elements.head._2 <> dma.get.viewAs[AXI4Bundle]
-        dontTouch(dma.get)
-      case None =>
-    }
-
+    misc.dma.elements.head._2 <> dma.viewAs[AXI4Bundle]
     memory.viewAs[AXI4Bundle] <> misc.memory.elements.head._2
     peripheral.viewAs[AXI4Bundle] <> misc.peripheral.elements.head._2
 
@@ -312,15 +259,9 @@ object TopMain extends App {
 
   Generator.execute(firrtlOpts, soc.module, firtoolOpts)
 
-  // generate difftest bundles (w/o DifftestTopIO)
   if (enableDifftest) {
     DifftestModule.finish("XiangShan", false, Seq())
   }
 
-
-  // FileRegisters.add("dts", soc.dts)
-  // FileRegisters.add("graphml", soc.graphML)
-  // FileRegisters.add("json", soc.json)
-  // FileRegisters.add("plusArgs", freechips.rocketchip.util.PlusArgArtefacts.serialize_cHeader())
   FileRegisters.write(fileDir = "./build", filePrefix = "XSTop.")
 }

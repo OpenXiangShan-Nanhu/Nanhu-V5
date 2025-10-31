@@ -16,3 +16,15 @@
 [submodule "YunSuan"]
 	path = YunSuan
 	url = https://github.com/OpenXiangShan-Nanhu/YunSuan.git
+[submodule "dependencies/xs-utils"]
+	path = dependencies/xs-utils
+	url = https://github.com/OpenXiangShan-Nanhu/xs-utils.git
+[submodule "dependencies/rocket-chip"]
+	path = dependencies/rocket-chip
+	url = https://github.com/OpenXiangShan-Nanhu/rocket-chip.git
+[submodule "dependencies/difftest"]
+	path = dependencies/difftest
+	url = https://github.com/OpenXiangShan-Nanhu/difftest.git
+[submodule "dependencies/YunSuan"]
+	path = dependencies/YunSuan
+	url = https://github.com/OpenXiangShan-Nanhu/YunSuan.git

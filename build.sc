@@ -17,10 +17,10 @@
 
 import mill._
 import scalalib._
-import $file.`rocket-chip`.common
-import $file.`rocket-chip`.dependencies.cde.common
-import $file.`rocket-chip`.dependencies.hardfloat.common
-import $file.`rocket-chip`.dependencies.diplomacy.common
+import $file.dependencies.`rocket-chip`.common
+import $file.dependencies.`rocket-chip`.dependencies.cde.common
+import $file.dependencies.`rocket-chip`.dependencies.hardfloat.common
+import $file.dependencies.`rocket-chip`.dependencies.diplomacy.common
 
 /* for publishVersion */
 import $ivy.`de.tototec::de.tobiasroeser.mill.vcs.version::0.4.0`
@@ -59,11 +59,11 @@ trait HasChisel extends SbtModule {
 }
 
 object rocketchip
-  extends millbuild.`rocket-chip`.common.RocketChipModule
+  extends millbuild.dependencies.`rocket-chip`.common.RocketChipModule
     with HasChisel {
   def scalaVersion: T[String] = T(defaultScalaVersion)
 
-  override def millSourcePath = os.pwd / "rocket-chip"
+  override def millSourcePath = os.pwd / "dependencies" / "rocket-chip"
 
   def macrosModule = macros
 
@@ -82,7 +82,7 @@ object rocketchip
   object macros extends Macros
 
   trait Macros
-    extends millbuild.`rocket-chip`.common.MacrosModule
+    extends millbuild.dependencies.`rocket-chip`.common.MacrosModule
       with SbtModule {
 
     def scalaVersion: T[String] = T(defaultScalaVersion)
@@ -91,24 +91,24 @@ object rocketchip
   }
 
   object hardfloat
-    extends millbuild.`rocket-chip`.dependencies.hardfloat.common.HardfloatModule with HasChisel {
+    extends millbuild.dependencies.`rocket-chip`.dependencies.hardfloat.common.HardfloatModule with HasChisel {
 
     def scalaVersion: T[String] = T(defaultScalaVersion)
 
-    override def millSourcePath = os.pwd / "rocket-chip" / "dependencies" / "hardfloat" / "hardfloat"
+    override def millSourcePath = os.pwd / "dependencies" / "rocket-chip" / "dependencies" / "hardfloat" / "hardfloat"
 
   }
 
   object cde
-    extends millbuild.`rocket-chip`.dependencies.cde.common.CDEModule with ScalaModule {
+    extends millbuild.dependencies.`rocket-chip`.dependencies.cde.common.CDEModule with ScalaModule {
 
     def scalaVersion: T[String] = T(defaultScalaVersion)
 
-    override def millSourcePath = os.pwd / "rocket-chip" / "dependencies" / "cde" / "cde"
+    override def millSourcePath = os.pwd / "dependencies" / "rocket-chip" / "dependencies" / "cde" / "cde"
   }
 
   object diplomacy
-    extends millbuild.`rocket-chip`.dependencies.diplomacy.common.DiplomacyModule {
+    extends millbuild.dependencies.`rocket-chip`.dependencies.diplomacy.common.DiplomacyModule {
 
     def scalaVersion: T[String] = T(defaultScalaVersion)
 
@@ -119,14 +119,14 @@ object rocketchip
 
     def cdeModule = cde
     def sourcecodeIvy = ivy"com.lihaoyi::sourcecode:0.3.1"
-    override def millSourcePath = os.pwd / "rocket-chip" / "dependencies" / "diplomacy" / "diplomacy"
+    override def millSourcePath = os.pwd / "dependencies" / "rocket-chip" / "dependencies" / "diplomacy" / "diplomacy"
 
   }
 }
 
 object xsutils extends HasChisel {
 
-  override def millSourcePath = os.pwd / "xs-utils"
+  override def millSourcePath = os.pwd / "dependencies" / "xs-utils"
 
   override def moduleDeps = super.moduleDeps ++ Seq(
     rocketchip
@@ -136,13 +136,13 @@ object xsutils extends HasChisel {
 
 object yunsuan extends HasChisel {
 
-  override def millSourcePath = os.pwd / "YunSuan"
+  override def millSourcePath = os.pwd / "dependencies" / "YunSuan"
 
 }
 
 object difftest extends HasChisel {
 
-  override def millSourcePath = os.pwd / "difftest"
+  override def millSourcePath = os.pwd / "dependencies" / "difftest"
 
   object test extends SbtModuleTests with TestModule.ScalaTest {
     override def sources = T.sources {
@@ -150,18 +150,6 @@ object difftest extends HasChisel {
     }
   }
 
-}
-
-
-object macros extends ScalaModule {
-
-  override def millSourcePath = os.pwd / "macros"
-
-  override def scalaVersion: T[String] = T(defaultScalaVersion)
-
-  override def ivyDeps = super.ivyDeps() ++ Agg(ivy"org.scala-lang:scala-reflect:${defaultScalaVersion}")
-
-  def scalaReflectIvy = ivy"org.scala-lang:scala-reflect:${defaultScalaVersion}"
 }
 
 // extends this trait to use XiangShan in other projects
@@ -175,14 +163,11 @@ trait XiangShanModule extends ScalaModule {
 
   def yunsuanModule: ScalaModule
 
-  def macrosModule: ScalaModule
-
   override def moduleDeps = super.moduleDeps ++ Seq(
     rocketModule,
     difftestModule,
     yunsuanModule,
     xsutilsModule,
-    macrosModule,
   )
 
   val resourcesPATH = os.pwd.toString() + "/src/main/resources"
@@ -202,8 +187,6 @@ object xiangshan extends XiangShanModule with HasChisel {
   def xsutilsModule = xsutils
 
   def yunsuanModule = yunsuan
-
-  def macrosModule = macros
 
   override def forkArgs = Seq("-Xmx40G", "-Xss256m")
 
@@ -252,11 +235,11 @@ object xiangshan extends XiangShanModule with HasChisel {
   val pwd = os.pwd
   def packDifftestResources(destDir: os.Path): Unit = {
     // package difftest source as resources, only git tracked files were collected
-    val difftest_srcs = os.proc("git", "ls-files").call(cwd = pwd / "difftest").out
+    val difftest_srcs = os.proc("git", "ls-files").call(cwd = pwd / "dependencies" / "difftest").out
                           .text().split("\n").filter(_.nonEmpty).toSeq
                           .map(os.RelPath(_))
     difftest_srcs.foreach { f =>
-      os.copy(pwd / "difftest" / f, destDir / "difftest-src" / f, createFolders = true)
+      os.copy(pwd / "dependencies" / "difftest" / f, destDir / "difftest-src" / f, createFolders = true)
     }
 
     // package ready-to-run binary as resources

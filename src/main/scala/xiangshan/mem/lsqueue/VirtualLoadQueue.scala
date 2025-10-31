@@ -426,6 +426,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
       when (!need_rep) {
       // update control flag
         addrvalid(loadWbIndex) := hasExceptions || !io.ldin(i).bits.tlbMiss || io.ldin(i).bits.isSWPrefetch
+        ignoreRARCheck(loadWbIndex) := hasExceptions
         datavalid(loadWbIndex) :=
           (if (EnableFastForward) {
               hasExceptions ||

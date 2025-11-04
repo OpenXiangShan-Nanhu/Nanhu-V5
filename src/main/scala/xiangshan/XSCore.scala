@@ -125,6 +125,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   frontend.io.tlbCsr <> backend.io.frontendTlbCsr
   frontend.io.csrCtrl <> backend.io.frontendCsrCtrl
   frontend.io.fencei <> backend.io.fenceio.fencei
+  frontend.io.mmuInfo <> memBlock.io.frontendMMUInfo
 
   backend.io.fromTop := memBlock.io.mem_to_ooo.topToBackendBypass
   backend.io.fromTop.externalInterrupt.nmi.nmi_31 := memBlock.io.mem_to_ooo.topToBackendBypass.externalInterrupt.nmi.nmi_31 || 
@@ -236,7 +237,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.ooo_to_mem.isStoreException       := backend.io.mem.isStoreException
   memBlock.io.ooo_to_mem.isVlsException         := backend.io.mem.isVlsException
 
-  memBlock.io.fetch_to_mem.itlb <> frontend.io.ptw
+//  memBlock.io.fetch_to_mem.itlb <> frontend.io.ptw
   memBlock.io.l2_hint.valid := io.l2_hint.valid
   memBlock.io.l2_hint.bits.sourceId := io.l2_hint.bits.sourceId
   memBlock.io.l2_tlb_req <> io.l2_tlb_req

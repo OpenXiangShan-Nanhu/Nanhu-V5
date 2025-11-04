@@ -27,7 +27,7 @@ import utils._
 import xiangshan.backend.decode.XDecode
 import xiangshan.backend.fu.FuType
 import xiangshan.backend.rob.RobPtr
-import xiangshan.mem.{LqPtr, SqPtr}
+import xiangshan.mem.{LoadReplayCauses, LqPtr, SqPtr}
 import xiangshan.backend.Bundles.{DynInst, UopIdx}
 import xiangshan.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
 import xiangshan.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
@@ -810,7 +810,7 @@ class RobHWMonitor(implicit p: Parameters) extends XSBundle {
   val commitInterruptSafe = Vec(CommitWidth, Bool())
   val commitNeedFlush = Vec(CommitWidth, Bool())
   val commitDeqRob = Vec(CommitWidth, new RobPtr)
-  val commitEnqRob = Vec(CommitWidth, new RobPtr)
+  val commitEnqRob = new RobPtr
 
   val redirectValid = Bool()
   val redirectPc    = UInt(VAddrBits.W)
@@ -840,8 +840,38 @@ class CSRHWMonitor(implicit p: Parameters) extends XSBundle {
   val sip     = UInt(XLEN.W)
   val stvec   = UInt(XLEN.W)
 }
-class HardwareMonitor(implicit p: Parameters) extends XSBundle {
+class BackendHWMonitor(implicit p: Parameters) extends XSBundle {
   val robMon = new RobHWMonitor
   val csrMon = new CSRHWMonitor
   val excpMon = new ExcpHWMonitor
 }
+
+class MBHWMonitor(implicit p: Parameters) extends XSBundle
+  with HasDCacheParameters{
+  val sbufferFull = Bool()
+  val L1MSHRInfoVec = Vec(cacheParams.nMissEntries, new DCacheStuckInfo)
+  val uncacheInfoVec = Vec(coreParams.UncacheBufferSize, new UnCacheStuckInfo)
+  val ldStuckInfo = new LQStuckInfo
+}
+
+class HardwareMonitor(implicit p: Parameters) extends XSBundle {
+  val baekendMon = new BackendHWMonitor
+  val memblockMon = new MBHWMonitor
+}
+
+
+class LQStuckInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
+  val valid = Bool()
+  val rob = new RobPtr
+  val lqPtr = new LqPtr
+  val cause = UInt(LoadReplayCauses.allCauses.W)
+  val morethanOne = Bool()
+}
+
+class DCacheStuckInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
+  val validVec = Bool()
+  val paddrVec = UInt(PAddrBits.W)
+}
+
+class UnCacheStuckInfo(implicit p: Parameters) extends DCacheStuckInfo
+

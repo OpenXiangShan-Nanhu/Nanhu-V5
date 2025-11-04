@@ -920,5 +920,5 @@ class BackendIO(implicit p: Parameters, params: BackendParams) extends XSBundle 
     val reset = Option.when(hasMbist)(Input(new DFTResetSignals()))
   }
   // HW monitor to XSTop
-  val hwMon = if(env.EnableHWMoniter) Some(Output(new HardwareMonitor)) else None
+  val hwMon = if(env.EnableHWMoniter) Some(Output(new BackendHWMonitor)) else None
 }

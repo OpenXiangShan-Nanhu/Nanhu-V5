@@ -250,6 +250,9 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     val replayQValidCount = Output(UInt(log2Up(LoadQueueReplaySize + 1).W))
 
     val debugTopDown = new LoadQueueTopDownIO
+
+    //stuckEntry
+    val stuckEntry = if(env.EnableHWMoniter) Some(Output(new LQStuckInfo)) else None
   })
 
   // val loadQueueRAR = Module(new LoadQueueRAR)  //  read-after-read violation
@@ -370,6 +373,10 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   loadQueueReplay.io.debugTopDown <> io.debugTopDown
 
   io.uncacheError := loadQueueReplay.io.uncacheError
+
+  if(env.EnableHWMoniter){
+    io.stuckEntry.get := loadQueueReplay.io.stuckEntry.get
+  }
 
   // virtualLoadQueue.io.lqFull replaces loadQueueRAR.io.lqFull
   val full_mask = Cat(virtualLoadQueue.io.lqFull, loadQueueRAW.io.lqFull, loadQueueReplay.io.lqFull)

@@ -275,7 +275,8 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.resetInFrontendBypass.fromFrontend := frontend.io.resetInFrontend
   io.resetInFrontend := memBlock.io.resetInFrontendBypass.toL2Top
   if(env.EnableHWMoniter){
-    io.hwMon.foreach(_ := backend.io.hwMon.getOrElse(0.U.asTypeOf(io.hwMon.get)))
+    io.hwMon.get.baekendMon := backend.io.hwMon.getOrElse(0.U.asTypeOf(new BackendHWMonitor))
+    io.hwMon.get.memblockMon := memBlock.io.monitorInfo.getOrElse(0.U.asTypeOf(new MBHWMonitor))
     dontTouch(io.hwMon.get)
   }
   val sramBroadcastBundleInst = io.dft.func.getOrElse(new SramBroadcastBundle())

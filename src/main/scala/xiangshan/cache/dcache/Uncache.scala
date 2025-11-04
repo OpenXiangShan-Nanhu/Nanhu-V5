@@ -39,6 +39,7 @@ class UncacheIO(implicit p: Parameters) extends DCacheBundle {
   val hartId = Input(UInt())
   val flush = Flipped(new UncacheFlushBundle)
   val lsq = Flipped(new UncacheWordIO)
+  val monitorInfo = if(env.EnableHWMoniter) Some(Output(Vec(UncacheBufferSize, new UnCacheStuckInfo))) else None
 }
 
 class Uncache()(implicit p: Parameters) extends LazyModule with HasXSParameter {
@@ -127,6 +128,13 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
     difftest.addr   := mem_acquire.bits.address >> log2Ceil(XLEN/8).U << log2Ceil(XLEN/8).U
     difftest.data   := mem_acquire.bits.data.asTypeOf(Vec(DataBytes, UInt(8.W)))
     difftest.mask   := mem_acquire.bits.mask
+  }
+
+  if(env.EnableHWMoniter){
+    for(i <- 0 until UncacheBufferSize){
+      io.monitorInfo.get(i).validVec := entries(i).io.entryInfo.valid
+      io.monitorInfo.get(i).paddrVec := entries(i).io.entryInfo.paddr
+    }
   }
 
 

@@ -235,6 +235,9 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       //mmioEntry
       val mmioEntry = ValidIO(new LqWriteBundle)
     }
+
+    //stuckEntry
+    val stuckEntry = if(env.EnableHWMoniter) Some(Output(new LQStuckInfo)) else None
   })
 
   println("LoadQueueReplay size: " + LoadQueueReplaySize)
@@ -877,6 +880,34 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     }
   }
   io.replayEntryInfo.mmioEntry <> uncacheBuffer.io.entryInfo.mmioEntry
+
+
+  if(env.EnableHWMoniter) {
+    //for stuck entry
+    val stuckVec = Wire(Vec(LoadQueueReplaySize, new Bundle(){
+      val valid = Bool()
+      val rob = new RobPtr
+      val lqPtr = new LqPtr
+      val cause = UInt(LoadReplayCauses.allCauses.W)
+    }))
+
+    for(i <- 0 until LoadQueueReplaySize){
+      when(io.rob.pendingld & io.rob.pendingPtr === uop(i).robIdx & allocated(i)) {
+        stuckVec(i).valid := true.B
+        stuckVec(i).rob := uop(i).robIdx
+        stuckVec(i).lqPtr := uop(i).lqIdx
+        stuckVec(i).cause := cause(i)
+      }. otherwise{
+        stuckVec(i) := 0.U.asTypeOf(stuckVec(i))
+      }
+    }
+
+    io.stuckEntry.get.morethanOne := PopCount(stuckVec.map(_.valid)) > 1.U
+    io.stuckEntry.get.valid := stuckVec.map(_.valid).reduce(_|_)
+    io.stuckEntry.get.rob := Mux1H(stuckVec.map(_.valid),stuckVec.map(_.rob))
+    io.stuckEntry.get.lqPtr := Mux1H(stuckVec.map(_.valid),stuckVec.map(_.lqPtr))
+    io.stuckEntry.get.cause := Mux1H(stuckVec.map(_.valid),stuckVec.map(_.cause))
+  }
 
 
 

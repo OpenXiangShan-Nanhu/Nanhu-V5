@@ -395,6 +395,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val debugTopDown = new DCacheTopDownIO
     val diffSQInfoIO = if (env.EnableDifftest) Some(Input(new SqInfoIO)) else None
     val diffSBInfoIO = if (env.EnableDifftest) Some(Input(new SbufferInfo)) else None
+    val monitorInfo = if (env.EnableHWMoniter) Some(Output(Vec(cfg.nMissEntries, new DCacheStuckInfo))) else None
   })
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
   val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
@@ -747,6 +748,13 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     dontTouch(storeMask)
     dontTouch(storeData)
 
+  }
+
+  if (env.EnableHWMoniter){
+    for(i <- 0 until cfg.nMissEntries){
+      io.monitorInfo.get(i).validVec := entries(i).io.req_addr.valid
+      io.monitorInfo.get(i).paddrVec := entries(i).io.req_addr.bits
+    }
   }
 
   // Perf count

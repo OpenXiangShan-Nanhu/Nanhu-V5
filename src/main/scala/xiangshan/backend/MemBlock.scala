@@ -349,6 +349,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     val inner_hc_perfEvents = Output(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val outer_hc_perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val memPredUpdate = Input(new MemPredUpdateReq)
+    val monitorInfo = if(env.EnableHWMoniter) Some(Output(new MBHWMonitor)) else None
 
     val power = new Bundle{
       val flushSb = Input(Bool())
@@ -1676,9 +1677,18 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   vSegmentUnit.io.fromCsrTrigger.triggerCanRaiseBpExp := triggerCanRaiseBpExp
   vSegmentUnit.io.fromCsrTrigger.debugMode := debugMode
 
-  val clk_tmp = RegInit(false.B)
-  clk_tmp := !clk_tmp
-  dontTouch(clk_tmp)
+
+  if(env.EnableHWMoniter){
+    val clk_tmp = RegInit(false.B)
+    clk_tmp := !clk_tmp
+
+    io.monitorInfo.get.ldStuckInfo := lsq.io.ldStuckInfo.getOrElse(0.U)
+    io.monitorInfo.get.sbufferFull := sbuffer.io.monitorInfo.getOrElse(0.U)
+    io.monitorInfo.get.L1MSHRInfoVec := dcache.io.monitorInfo.getOrElse(0.U)
+    io.monitorInfo.get.uncacheInfoVec := uncache.io.monitorInfo.getOrElse(0.U)
+
+    dontTouch(clk_tmp)
+  }
 
 
   // reset tree of MemBlock

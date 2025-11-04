@@ -821,6 +821,7 @@ class DCacheIO(implicit p: Parameters) extends DCacheBundle {
   val cmoOpReq = Flipped(DecoupledIO(new MissReq))
   // val cmoOpResp = DecoupledIO(new CMOResp)
   val cmofinish = Bool()
+  val monitorInfo = if (env.EnableHWMoniter) Some(Output(Vec(cfg.nMissEntries, new DCacheStuckInfo))) else None
 }
 
 private object ArbiterCtrl {
@@ -1535,6 +1536,10 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   if (env.EnableDifftest){
     missQueue.io.diffSBInfoIO.get := io.lsu.diffSBInfoIO.get
     missQueue.io.diffSQInfoIO.get := io.lsu.diffSQInfoIO.get
+  }
+
+  if(env.EnableHWMoniter){
+    io.monitorInfo.get := missQueue.io.monitorInfo.getOrElse(0.U.asTypeOf(missQueue.io.monitorInfo.get))
   }
 
   //----------------------------------------

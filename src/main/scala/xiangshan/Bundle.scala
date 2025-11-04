@@ -530,10 +530,6 @@ class TlbCsrBundle(implicit p: Parameters) extends XSBundle {
   val mPBMTE = Bool()
   val hPBMTE = Bool()
 
-  override def toPrintable: Printable = {
-    p"Satp mode:0x${Hexadecimal(satp.mode)} asid:0x${Hexadecimal(satp.asid)} ppn:0x${Hexadecimal(satp.ppn)} " +
-      p"Priv mxr:${priv.mxr} sum:${priv.sum} imode:${priv.imode} dmode:${priv.dmode}"
-  }
 }
 
 class SfenceBundle(implicit p: Parameters) extends XSBundle {

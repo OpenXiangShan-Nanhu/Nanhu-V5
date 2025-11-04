@@ -134,9 +134,9 @@ class PTW()(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
   val hptw_pageFault = RegInit(false.B)
   val hptw_accessFault = RegInit(false.B)
   val need_last_s2xlate = RegInit(false.B)
-  val stage1Hit = RegEnable(io.req.bits.stage1Hit, io.req.fire)
+  val stage1Hit = RegEnable(io.req.bits.stage1Hit, false.B, io.req.fire)
   val stage1 = RegEnable(io.req.bits.stage1, io.req.fire)
-  val hptw_resp_stage2 = Reg(Bool())
+  val hptw_resp_stage2 = RegInit(false.B)
 
   val ppn_af = Mux(enableS2xlate, Mux(onlyS1xlate, pte.isAf(), false.B), pte.isAf()) // In two-stage address translation, stage 1 ppn is a vpn for host, so don't need to check ppn_high
   val pte_valid = RegInit(false.B)  // avoid l1tlb pf from stage1 when gpf happens in the first s2xlate in PTW

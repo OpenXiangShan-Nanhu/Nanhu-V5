@@ -200,7 +200,8 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.outer_reset_vector := io.reset_vector
   memBlock.io.outer_hc_perfEvents := io.perfEvents
   // frontend -> memBlock
-  memBlock.io.inner_beu_errors_icache <> frontend.io.error.bits.toL1BusErrorUnitInfo(frontend.io.error.valid)
+  memBlock.io.inner_beu_errors_icache.ecc_error.valid := frontend.io.error.valid
+  memBlock.io.inner_beu_errors_icache.ecc_error.bits := frontend.io.error.bits.paddr
   memBlock.io.inner_l2_pf_enable := backend.io.csrCustomCtrl.l2_pf_enable
   memBlock.io.ooo_to_mem.backendToTopBypass := backend.io.toTop
   memBlock.io.ooo_to_mem.issueLda <> backend.io.mem.issueLda

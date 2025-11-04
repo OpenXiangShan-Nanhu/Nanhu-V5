@@ -63,7 +63,6 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
     val halt = Input(Bool())
     val reset_vector = Input(UInt(PAddrBits.W))
     val fencei = Input(Bool())
-    val ptw = new TlbPtwIO()
     val backend = new FrontendToCtrlIO
     val softPrefetch = Vec(backendParams.LduCnt, Flipped(Valid(new SoftIfetchPrefetchBundle)))
     val sfence = Input(new SfenceBundle)
@@ -77,6 +76,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
         val bpWrong = Output(UInt(XLEN.W))
       }
     }
+    val mmuInfo = new frontendMMUBundle
     val resetInFrontend = Output(Bool())
     val debugTopDown = new Bundle {
       val robHeadVaddr = Flipped(Valid(UInt(VAddrBits.W)))
@@ -122,39 +122,13 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   // pmp
   val PortNumber = ICacheParameters().PortNumber
 
-  class PMPWrapper extends XSModule {
-    val io = IO(new Bundle{
-      val distribute_csr = Input(new DistributedCSRIO())
-      val imode = Input(UInt(2.W))
-      val pmpIO = Vec(coreParams.ipmpPortNum, Flipped(new ICachePMPBundle))
-    })
-
-    val pmp = Module(new PMP())
-    val pmpChecker = Seq.fill(coreParams.ipmpPortNum)(Module(new PMPChecker(3, sameCycle = true)))
-    pmp.io.distribute_csr := io.distribute_csr
-    pmpChecker.zip(io.pmpIO).foreach{ case(checker, pmpio) =>
-      checker.io.apply(io.imode, pmp.io.pmp, pmp.io.pma, pmpio.req)
-      pmpio.resp := checker.io.resp
-    }
-  }
-  val pmpWrapper = Module(new PMPWrapper)
-  pmpWrapper.io.distribute_csr := csrCtrl.distribute_csr
-  pmpWrapper.io.imode := tlbCsr.priv.imode
-  pmpWrapper.io.pmpIO.zip(icache.io.pmp :+ ifu.io.pmp).foreach{ case(wrapper, pmpio) => wrapper <> pmpio }
-
-  val itlb = Module(new TLB(coreParams.itlbPortNum, nRespDups = 1,
-    Seq.fill(PortNumber)(false) ++ Seq(true), itlbParams))
-  itlb.io.requestor.take(PortNumber) zip icache.io.itlb foreach {case (a,b) => a <> b}
-  itlb.io.requestor.last <> ifu.io.iTLBInter // mmio may need re-tlb, blocked
-  itlb.io.hartId := io.hartId
-  itlb.io.base_connect(sfence, tlbCsr)
-  itlb.io.flushPipe.foreach(_ := icache.io.itlbFlushPipe)
-  itlb.io.redirect := DontCare // itlb has flushpipe, don't need redirect signal
-
-  val itlb_ptw = Wire(new VectorTlbPtwIO(coreParams.itlbPortNum))
-  itlb_ptw.connect(itlb.io.ptw)
-  val itlbRepeater1 = PTWFilter(itlbParams.fenceDelay, itlb_ptw, sfence, tlbCsr, l2tlbParams.ifilterSize)
-  val itlbRepeater2 = PTWRepeaterNB(passReady = false, itlbParams.fenceDelay, itlbRepeater1.io.ptw, io.ptw, sfence, tlbCsr)
+  io.mmuInfo.pmpIO.zip(icache.io.pmp :+ ifu.io.pmp).foreach{ case (wrapper, pmpio) => {
+    wrapper.req := pmpio.req
+    pmpio.resp := wrapper.resp
+  }}
+  io.mmuInfo.itlb.take(PortNumber) zip icache.io.itlb foreach{case (a,b) => a <> b}
+  io.mmuInfo.itlb.last <> ifu.io.iTLBInter
+  io.mmuInfo.itlbFlushPipe := icache.io.itlbFlushPipe
 
   icache.io.ftqPrefetch <> ftq.io.toPrefetch
   icache.io.softPrefetch <> io.softPrefetch
@@ -366,8 +340,6 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   io.error <> RegNext(RegNext(icache.io.error))
 
   icache.io.hartId := io.hartId
-
-  itlbRepeater1.io.debugTopDown.robHeadVaddr := io.debugTopDown.robHeadVaddr
 
   val frontendBubble = Mux(io.backend.canAccept, DecodeWidth.U - PopCount(ibuffer.io.out.map(_.valid)), 0.U)
   XSPerfAccumulate("FrontendBubble", frontendBubble)

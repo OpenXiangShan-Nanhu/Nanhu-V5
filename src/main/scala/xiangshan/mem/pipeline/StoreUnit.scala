@@ -286,7 +286,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   val s1_feedback = Wire(Valid(new RSFeedback))
   s1_feedback.valid                 := s1_valid & !s1_in.isHWPrefetch
   s1_feedback.bits.hit              := !s1_tlb_miss
-  s1_feedback.bits.flushState       := io.tlb.resp.bits.ptwBack
+  s1_feedback.bits.flushState       := false.B
   s1_feedback.bits.robIdx           := s1_out.uop.robIdx
   s1_feedback.bits.sourceType       := RSFeedbackType.tlbMiss
   s1_feedback.bits.dataInvalidSqIdx := DontCare
@@ -310,8 +310,6 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   s1_out.miss      := false.B
   s1_out.pbmt := s1_pbmt
   s1_out.nc := Pbmt.isNC(s1_pbmt)
-  // s1_out.pf := io.tlb.resp.bits.excp(0).pf.st
-  // s1_out.af := io.tlb.resp.bits.excp(0).af.st
   s1_out.tlbMiss   := s1_tlb_miss
   s1_out.isForVSnonLeafPTE := s1_isForVSnonLeafPTE
 
@@ -581,7 +579,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
 
   io.debug_ls := DontCare
   io.debug_ls.s1_robIdx := s1_in.uop.robIdx.value
-  io.debug_ls.s1_isTlbFirstMiss := io.tlb.resp.valid && io.tlb.resp.bits.miss && io.tlb.resp.bits.debug.isFirstIssue && !s1_in.isHWPrefetch
+  io.debug_ls.s1_isTlbFirstMiss := DontCare
 
   io.dcache := DontCare
   io.s1_prefetch_spec := DontCare

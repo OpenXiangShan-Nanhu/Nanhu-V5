@@ -877,7 +877,6 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   val s1_prf              = s1_in.isPrefetch
   val s1_hw_prf           = s1_in.isHWPrefetch
   val s1_sw_prf           = s1_prf && !s1_hw_prf
-  val s1_tlb_memidx       = io.tlb.resp.bits.memidx
 
   s1_vaddr_hi         := s1_in.vaddr(VAddrBits - 1, 6)
   s1_vaddr_lo         := s1_in.vaddr(5, 0)
@@ -885,11 +884,6 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s1_paddr_dup_lsu    := Mux(s1_in.tlbNoQuery, s1_in.paddr, io.tlb.resp.bits.paddr(0))
   s1_paddr_dup_dcache := Mux(s1_in.tlbNoQuery, s1_in.paddr, io.tlb.resp.bits.paddr(1))
   s1_gpaddr_dup_lsu   := Mux(s1_in.isFastReplay, s1_in.paddr, io.tlb.resp.bits.gpaddr(0))
-
-  when (s1_tlb_memidx.is_ld && io.tlb.resp.valid && !s1_tlb_miss && s1_tlb_memidx.idx === s1_in.uop.lqIdx.value) {
-    // printf("load idx = %d\n", s1_tlb_memidx.idx)
-    s1_out.uop.debugInfo.tlbRespTime := GTimer()
-  }
 
   io.tlb.req_kill   := s1_kill
   io.tlb.req.bits.pmp_addr := s1_in.paddr
@@ -950,7 +944,6 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   s1_out.gpaddr            := s1_gpaddr_dup_lsu
   s1_out.isForVSnonLeafPTE := Mux(s1_in.isFastReplay, s1_in.isForVSnonLeafPTE, io.tlb.resp.bits.isForVSnonLeafPTE)
   s1_out.tlbMiss           := s1_tlb_miss
-  s1_out.ptwBack           := Mux(s1_in.isFastReplay, s1_in.ptwBack, io.tlb.resp.bits.ptwBack)
   s1_out.rep_info.debug    := s1_in.uop.debugInfo
   s1_out.rep_info.nuke     := s1_nuke && !s1_prf
   s1_out.delayedLoadError  := false.B

@@ -1629,9 +1629,10 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       rob.commitNeedFlush.zipWithIndex.foreach { case (cmtFlush, i) =>
         cmtFlush := commitInfo(i).needFlush
       }
-      rob.commitRob.zipWithIndex.foreach { case (cmtRob, i) =>
-        cmtRob := deqPtrVec(i)
+      rob.commitDeqRob.zipWithIndex.foreach { case (cmtDeqRob, i) =>
+        cmtDeqRob := deqPtrVec(i)
       }
+      rob.commitEnqRob := enqPtrVec(0)
       rob.redirectValid := io.redirect.valid
       rob.redirectPc    := io.redirect.bits.cfiUpdate.pc
       rob.redirectLevel := io.redirect.bits.level

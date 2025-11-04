@@ -809,7 +809,8 @@ class RobHWMonitor(implicit p: Parameters) extends XSBundle {
   val commitIsMMIO= Vec(CommitWidth, Bool())
   val commitInterruptSafe = Vec(CommitWidth, Bool())
   val commitNeedFlush = Vec(CommitWidth, Bool())
-  val commitRob = Vec(CommitWidth, new RobPtr)
+  val commitDeqRob = Vec(CommitWidth, new RobPtr)
+  val commitEnqRob = Vec(CommitWidth, new RobPtr)
 
   val redirectValid = Bool()
   val redirectPc    = UInt(VAddrBits.W)

@@ -60,19 +60,6 @@ class ExuBlockImp(
     exus.map(_.io.instrAddrTransType.foreach(_ := csrio.instrAddrTransType))
   }
 
-  exeUnits.zip(io.out).zip(params.issueBlockParams).foreach{
-    case ((exes, out), param) => {
-      if(param.sharedVf) {
-        val wbMguName = "WbMgu_" + param.getExuName
-        val wbMgu = Module(new SharedVfWbMgu(param.exuBlockParams.head, wbMguName).suggestName(wbMguName))
-        wbMgu.io.ins.head <> exes.head.io.out
-        wbMgu.io.ins.last <> exes.last.io.out
-        out.head <> wbMgu.io.outs.head
-        out.last <> wbMgu.io.outs.last
-      }
-    }
-  }
-
   val aluFireSeq = exus.filter(_.wrapper.exuParams.fuConfigs.contains(AluCfg)).map(_.io.in.fire)
   for (i <- 0 until (aluFireSeq.size + 1)){
     XSPerfAccumulate(s"alu_fire_${i}_cnt", PopCount(aluFireSeq) === i.U)

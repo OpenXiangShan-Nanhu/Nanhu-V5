@@ -43,7 +43,7 @@ case class IssueBlockParams(
 
   def vfcvt64Cnt = exuBlockParams.count(exu => exu.hasVfcvt64)
 
-  require(!sharedVf || (sharedVf && (vfalu64Cnt != 0 || vfma64Cnt != 0 || vfdiv64Cnt != 0 || vfcvt64Cnt != 0)))
+  // require(!sharedVf || (sharedVf && (vfalu64Cnt != 0 || vfma64Cnt != 0 || vfdiv64Cnt != 0 || vfcvt64Cnt != 0)))
 
   /* 
     sharedVf && needSplit:  vf and fp can issue but only one fu

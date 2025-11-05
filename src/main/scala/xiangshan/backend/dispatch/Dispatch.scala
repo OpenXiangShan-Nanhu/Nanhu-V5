@@ -16,29 +16,27 @@
 
 package xiangshan.backend.dispatch
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
-import difftest._
-import utils._
+import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
-import xiangshan.ExceptionNO._
+import difftest._
 import xiangshan._
+import xiangshan.ExceptionNO._
 import xiangshan.backend.MemCoreTopDownIO
-import xiangshan.backend.rob.{RobDispatchTopDownIO, RobEnqIO, RobPtr}
-import xiangshan.mem.mdp._
 import xiangshan.backend.Bundles.DynInst
 import xiangshan.backend.fu.FuType
+import xiangshan.backend.rob.{RobDispatchTopDownIO, RobEnqIO, RobPtr}
+import xiangshan.mem.mdp._
 
 case class DispatchParameters
 (
   IntDqSize: Int,
-  FpDqSize: Int,
+  VfDqSize: Int,
   LsDqSize: Int,
   IntDqDeqWidth: Int,
-  FpDqDeqWidth: Int,
-  VecDqDeqWidth: Int,
+  VfDqDeqWidth: Int,
   LsDqDeqWidth: Int
 )
 
@@ -76,19 +74,13 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       val req = Vec(RenameWidth, ValidIO(new DynInst))
     }
     val intIQValidNumVec = Input(MixedVec(backendParams.genIntIQValidNumBundle))
-    // val fpIQValidNumVec = Input(MixedVec(backendParams.genFpIQValidNumBundle))
     val fromIntDQ = new Bundle {
       val intDQ0ValidDeq0Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
       val intDQ0ValidDeq1Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
       val intDQ1ValidDeq0Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
       val intDQ1ValidDeq1Num = Input(UInt(dpParams.IntDqSize.U.getWidth.W))
     }
-    // val toFpDq = new Bundle {
-    //   val canAccept = Input(Bool())
-    //   val needAlloc = Vec(RenameWidth, Output(Bool()))
-    //   val req = Vec(RenameWidth, ValidIO(new DynInst))
-    // }
-    val toVecDq = new Bundle {
+    val toVfDq = new Bundle {
       val canAccept_fanout = Vec(fanoutNum, Input(Bool()))
       val canAccept = Input(Bool())
       val needAlloc = Vec(RenameWidth, Output(Bool()))
@@ -117,7 +109,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     val cmoFinish = Input(Bool())
     val dispatchIsInBlock = Output(Bool())
 
-    def toDq = Seq(toIntDq, toVecDq, toLsDq)
+    def toDq = Seq(toIntDq, toVfDq, toLsDq)
   })
 
   /**
@@ -191,17 +183,17 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     // cover auipc (a fake branch)
     (!req.bits.preDecodeInfo.notCFI || FuType.isJump(req.bits.fuType)) && req.valid
   ))
-  val isFp = VecInit(io.fromRename(0).map(req => FuType.isFArith(req.bits.fuType) && req.valid))
+  val isFp      = VecInit(io.fromRename(0).map(req => FuType.isFArith(req.bits.fuType) && req.valid))
   val isVec     = VecInit(io.fromRename(0).map(req => (FuType.isVArith (req.bits.fuType) ||
-                                                  FuType.isVsetRvfWvf(req.bits.fuType)) && req.valid))
-  val isMem    = VecInit(io.fromRename(0).map(req => (FuType.isMem(req.bits.fuType) ||
-                                                  FuType.isVls (req.bits.fuType)) && req.valid))
-  val isLs     = VecInit(io.fromRename(0).map(req => FuType.isLoadStore(req.bits.fuType) && req.valid))
-  val isVls    = VecInit(io.fromRename(0).map(req => FuType.isVls (req.bits.fuType) && req.valid))
-  val isStore  = VecInit(io.fromRename(0).map(req => FuType.isStore(req.bits.fuType) && req.valid))
-  val isVStore = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType) && req.valid))
-  val isAMO    = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType) && req.valid))
-  val isCmo = VecInit(io.fromRename(0).map(req => req.valid && (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
+                                                        FuType.isVsetRvfWvf(req.bits.fuType)) && req.valid))
+  val isMem     = VecInit(io.fromRename(0).map(req => (FuType.isMem(req.bits.fuType) ||
+                                                        FuType.isVls (req.bits.fuType)) && req.valid))
+  val isLs      = VecInit(io.fromRename(0).map(req => FuType.isLoadStore(req.bits.fuType) && req.valid))
+  val isVls     = VecInit(io.fromRename(0).map(req => FuType.isVls (req.bits.fuType) && req.valid))
+  val isStore   = VecInit(io.fromRename(0).map(req => FuType.isStore(req.bits.fuType) && req.valid))
+  val isVStore  = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType) && req.valid))
+  val isAMO     = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType) && req.valid))
+  val isCmo     = VecInit(io.fromRename(0).map(req => req.valid && (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
   val isBlockBackward  = VecInit(io.fromRename(0).map(x => x.valid && x.bits.blockBackward))
   val isWaitForward    = VecInit(io.fromRename(0).map(x => x.valid && x.bits.waitForward))
   
@@ -292,7 +284,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     *   only set valid when all of them provides enough entries
     */
   val toIntDqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept
-  val allResourceReady = io.enqRob.canAccept && toIntDqCanAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
+  val allResourceReady = io.enqRob.canAccept && toIntDqCanAccept && io.toVfDq.canAccept && io.toLsDq.canAccept
 
   // Instructions should enter dispatch queues in order.
   // blockedByWaitForward: this instruction is blocked by itself (based on waitForward)
@@ -333,7 +325,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   //cmo hardware fence state
 
   private val currentCycleNeedBlock = currentCycleNeedBlockVec.reduce(_ || _)
-  private val allDqReady = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
+  private val allDqReady = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVfDq.canAccept && io.toLsDq.canAccept
   private val blockStartCnt = RegInit(blockWindow.U(log2Ceil(blockWindow).W))
   private val blockEndCnt = RegInit(blockWindow.U(log2Ceil(blockWindow).W))
 
@@ -399,14 +391,14 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   //   dispatch.io.recv <- dispatch.io.fromRename.valid <- rename.io.out.valid <- rename.io.out.ready <- dispatch.io.recv
   // val dqCanAccept = !((isOnlyDq0.asUInt.orR && !io.toIntDq0.canAccept) || (isOnlyDq1.asUInt.orR && !io.toIntDq1.canAccept) ||
   //   (isBothDq01.asUInt.orR && !io.toIntDq0.canAccept && !io.toIntDq1.canAccept) ||
-  //   (isFp.asUInt.orR && !io.toVecDq.canAccept) || (isLs.asUInt.orR && !io.toLsDq.canAccept))
+  //   (isFp.asUInt.orR && !io.toVfDq.canAccept) || (isLs.asUInt.orR && !io.toLsDq.canAccept))
 
   // Todo: use decode2dispatch bypass infos to loose `can accept` condition
-  val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept
-  val dqCanAccept_toRob = io.toIntDq.canAccept_fanout(0) && io.toIntDq1.canAccept_fanout(0) && io.toVecDq.canAccept_fanout(0) && io.toLsDq.canAccept_fanout(0)
-  val dqCanAccept_tointDq = io.toIntDq.canAccept_fanout(1) && io.toIntDq1.canAccept_fanout(1) && io.toVecDq.canAccept_fanout(1) && io.toLsDq.canAccept_fanout(1)
-  val dqCanAccept_tovecDq = io.toIntDq.canAccept_fanout(2) && io.toIntDq1.canAccept_fanout(2) && io.toVecDq.canAccept_fanout(2) && io.toLsDq.canAccept_fanout(2)
-  val dqCanAccept_tolsDq = io.toIntDq.canAccept_fanout(3) && io.toIntDq1.canAccept_fanout(3) && io.toVecDq.canAccept_fanout(3) && io.toLsDq.canAccept_fanout(3)
+  val dqCanAccept = io.toIntDq.canAccept && io.toIntDq1.canAccept && io.toVfDq.canAccept && io.toLsDq.canAccept
+  val dqCanAccept_toRob = io.toIntDq.canAccept_fanout(0) && io.toIntDq1.canAccept_fanout(0) && io.toVfDq.canAccept_fanout(0) && io.toLsDq.canAccept_fanout(0)
+  val dqCanAccept_tointDq = io.toIntDq.canAccept_fanout(1) && io.toIntDq1.canAccept_fanout(1) && io.toVfDq.canAccept_fanout(1) && io.toLsDq.canAccept_fanout(1)
+  val dqCanAccept_toVfDq = io.toIntDq.canAccept_fanout(2) && io.toIntDq1.canAccept_fanout(2) && io.toVfDq.canAccept_fanout(2) && io.toLsDq.canAccept_fanout(2)
+  val dqCanAccept_tolsDq = io.toIntDq.canAccept_fanout(3) && io.toIntDq1.canAccept_fanout(3) && io.toVfDq.canAccept_fanout(3) && io.toLsDq.canAccept_fanout(3)
 
   // input for ROB, LSQ, Dispatch Queue
   for (i <- 0 until RenameWidth) {
@@ -434,10 +426,10 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       canEnterDpq && dqCanAccept_tointDq && (cmoBlockState === s_idle || (cmoBlockState === s_cmoBlock && !previousHasLs(i)))
     io.toIntDq1.req(i).bits := updatedUop(1)(i)
 
-    io.toVecDq.needAlloc(i)  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i))
-    io.toVecDq.req(i).valid  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i)) && canEnterDpq && dqCanAccept_tovecDq && 
+    io.toVfDq.needAlloc(i)  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i))
+    io.toVfDq.req(i).valid  := io.fromRename(1)(i).valid && (isVec(i) || isFp(i)) && canEnterDpq && dqCanAccept_toVfDq && 
       (cmoBlockState === s_idle || (cmoBlockState === s_cmoBlock && !previousHasLs(i)))
-    io.toVecDq.req(i).bits   := updatedUop(1)(i)
+    io.toVfDq.req(i).bits   := updatedUop(1)(i)
 
     io.toLsDq.needAlloc(i)  := io.fromRename(1)(i).valid && isMem(i)
     io.toLsDq.req(i).valid  := io.fromRename(1)(i).valid && isMem(i) &&
@@ -449,7 +441,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
 
     XSDebug(io.toIntDq.req(i).valid, p"pc 0x${Hexadecimal(io.toIntDq.req(i).bits.pc)} int index $i\n")
     XSDebug(io.toIntDq1.req(i).valid, p"pc 0x${Hexadecimal(io.toIntDq1.req(i).bits.pc)} int index $i\n")
-    XSDebug(io.toVecDq.req(i).valid , p"pc 0x${Hexadecimal(io.toVecDq.req(i).bits.pc )} fp  index $i\n")
+    XSDebug(io.toVfDq.req(i).valid , p"pc 0x${Hexadecimal(io.toVfDq.req(i).bits.pc )} fp  index $i\n")
     XSDebug(io.toLsDq.req(i).valid , p"pc 0x${Hexadecimal(io.toLsDq.req(i).bits.pc )} ls  index $i\n")
   }
 
@@ -487,17 +479,17 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   io.dispatchIsInBlock := cmoBlockState === s_cmoBlock && !(io.cmoFinish && (blockStartCnt === 0.U) && (blockEndCnt === 0.U))
   val renameFireCnt = PopCount(io.fromRename(3).map(_.fire))
   val enqFireCnt = PopCount(io.toIntDq.req.map(_.valid && io.toIntDq.canAccept)) +
-    PopCount(io.toVecDq.req.map(_.valid && io.toVecDq.canAccept)) +
+    PopCount(io.toVfDq.req.map(_.valid && io.toVfDq.canAccept)) +
     PopCount(io.toLsDq.req.map(_.valid && io.toLsDq.canAccept))
   dontTouch(renameFireCnt)
   dontTouch(enqFireCnt)
   XSError(enqFireCnt > renameFireCnt, "enqFireCnt should not be greater than renameFireCnt\n")
 
   val stall_rob = hasValidInstr && !io.enqRob.canAccept && dqCanAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
-  val stall_int_dq = hasValidInstr && io.enqRob.canAccept && !toIntDqCanAccept && io.toVecDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
-  val stall_int_dq0 = hasValidInstr && io.enqRob.canAccept && !io.toIntDq.canAccept && io.toVecDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
-  val stall_fp_dq = hasValidInstr && io.enqRob.canAccept && toIntDqCanAccept && !io.toVecDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
-  val stall_ls_dq = hasValidInstr && io.enqRob.canAccept && toIntDqCanAccept && io.toVecDq.canAccept && !io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
+  val stall_int_dq = hasValidInstr && io.enqRob.canAccept && !toIntDqCanAccept && io.toVfDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
+  val stall_int_dq0 = hasValidInstr && io.enqRob.canAccept && !io.toIntDq.canAccept && io.toVfDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
+  val stall_fp_dq = hasValidInstr && io.enqRob.canAccept && toIntDqCanAccept && !io.toVfDq.canAccept && io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
+  val stall_ls_dq = hasValidInstr && io.enqRob.canAccept && toIntDqCanAccept && io.toVfDq.canAccept && !io.toLsDq.canAccept && (cmoBlockState === s_idle || cmoBlockState === s_cmoBlock && !hasMem)
 
   XSPerfAccumulate("in_valid_count", PopCount(io.fromRename(3).map(_.valid)))
   XSPerfAccumulate("in_fire_count", PopCount(io.fromRename(3).map(_.fire)))
@@ -553,7 +545,7 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
       (in =/= OtherCoreStall.id.U && in =/= NoStall.id.U ) -> in                    ,
       // dispatch queue stall
       (!toIntDqCanAccept && !headIsInt && !io.robFull) -> IntDqStall.id.U       ,
-      (!io.toVecDq.canAccept  && !headIsFp  && !io.robFull) -> FpDqStall.id.U        ,
+      (!io.toVfDq.canAccept  && !headIsFp  && !io.robFull) -> FpDqStall.id.U        ,
       (!io.toLsDq.canAccept  && !headIsLs  && !robLsFull ) -> LsDqStall.id.U        ,
       // rob stall
       (headIsAmo                                         ) -> AtomicStall.id.U      ,

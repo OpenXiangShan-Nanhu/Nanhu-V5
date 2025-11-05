@@ -50,11 +50,7 @@ class RfWritePortWithConfig(pregParams: PregParams) extends Bundle {
   val intWen = Input(Bool())
   val fpWen = Input(Bool())
   val vecWen = Input(Bool())
-  val vfWenH = Input(Bool())
-  val vfWenL = Input(Bool())
   val v0Wen = Input(Bool())
-  val v0WenH = Input(Bool())
-  val v0WenL = Input(Bool())
   val vlWen = Input(Bool())
 }
 
@@ -264,8 +260,6 @@ object VfRegFile {
     raddr        : Seq[UInt],
     rdata        : Vec[UInt],
     wen          : Seq[Seq[Bool]],
-    wenH         : Seq[Seq[Bool]],
-    wenL         : Seq[Seq[Bool]],
     waddr        : Seq[Seq[UInt]],
     wdata        : Seq[UInt],
     vecdebugReadAddr: Option[Seq[UInt]],
@@ -274,118 +268,10 @@ object VfRegFile {
     fpdebugReadData: Option[Vec[UInt]],
     withReset    : Boolean = false,
   )(implicit p: Parameters): Unit = {
-    require(splitNum >= 1, "splitNum should be no less than 1")
+    require(splitNum == 1, "splitNum should be no less than 1")
     require(splitNum == wen.length, "splitNum should be equal to length of wen vec")
-    if (splitNum == 1) {
-      Regfile(
-        name, numEntries, raddr, rdata, wen.head, waddr.head, wdata,
-        hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugReadData, fpdebugReadAddr, fpdebugReadData)
-    } else {
-      val dataWidth = 64
-      val numReadPorts = raddr.length
-      require(splitNum > 1 && wdata.head.getWidth == dataWidth * splitNum)
-      val wdataVec = Wire(Vec(splitNum, Vec(wdata.length, UInt(dataWidth.W))))
-      val rdataVec = Wire(Vec(splitNum, Vec(raddr.length, UInt(dataWidth.W))))
-      val vecdebugRDataVec: Option[Vec[Vec[UInt]]] = vecdebugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
-      val fpdebugRDataVec: Option[Vec[Vec[UInt]]] = fpdebugReadData.map(x => Wire(Vec(splitNum, Vec(x.length, UInt(dataWidth.W)))))
-      for (i <- 0 until splitNum) {
-        wdataVec(i) := wdata.map(_ ((i + 1) * dataWidth - 1, i * dataWidth))
-        wdataVec(i).zipWithIndex.foreach {
-          case (data, idx) => {
-            data := Mux(wenH(i)(idx) && wenL(i)(idx), wdata(idx)((i+1)*64-1, i*64), wdata(idx)(63, 0))
-          }
-        }
-        if(i == 0) {
-          val realWen = (wen(i).asUInt & wenL(i).asUInt).asBools
-          Regfile(
-            name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr(i), wdataVec(i),
-            hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
-          )
-        } else if(i == 1) {
-          // val realWen = (wen(i).asUInt & wenH(i).asUInt).asBools
-          // Regfile(
-          //   name + s"Part${i}", numEntries, raddr, rdataVec(i), realWen, waddr(i), wdataVec(i),
-          //   hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(i)), fpdebugReadAddr, fpdebugRDataVec.map(_(i))
-          // )
-          rdataVec(i).foreach(_ := 0.U)
-          if(vecdebugReadData.nonEmpty) {
-            vecdebugRDataVec.get(i).foreach(_ := 0.U)
-          }
-          if(fpdebugReadData.nonEmpty) {
-            fpdebugRDataVec.get(i).foreach(_ := 0.U)
-          }
-        }
-      }
-      for (i <- 0 until rdata.length) {
-        rdata(i) := Cat(rdataVec.map(_ (i)).reverse)
-      }
-      if (vecdebugReadData.nonEmpty) {
-        for (i <- 0 until vecdebugReadData.get.length) {
-          vecdebugReadData.get(i) := Cat(vecdebugRDataVec.get.map(_ (i)).reverse)
-        }
-        for (i <- 0 until fpdebugReadData.get.length) {
-          fpdebugReadData.get(i) := Cat(fpdebugRDataVec.get.map(_ (i)).reverse)
-        }
-      }
-    }
-  }
-}
-
-
-object VfRegFile128 {
-  def apply(
-    name            : String,
-    numEntries      : Int,
-    raddr_h         : Seq[UInt],
-    rdata_h         : Vec[UInt],
-    raddr_l         : Seq[UInt],
-    rdata_l         : Vec[UInt],
-    wen_h           : Seq[Bool],
-    waddr_h         : Seq[UInt],
-    wdata_h         : Seq[UInt],
-    wen_l           : Seq[Bool],
-    waddr_l         : Seq[UInt],
-    wdata_l         : Seq[UInt],
-    vecdebugReadAddr: Option[Seq[UInt]],
-    vecdebugReadData: Option[Vec[UInt]],
-    fpdebugReadAddr : Option[Seq[UInt]],
-    fpdebugReadData : Option[Vec[UInt]],
-    withReset       : Boolean = false,
-  )(implicit p: Parameters): Unit = {
-    val dataWidth = 64
-    val wdataVec_h = Wire(Vec(wdata_h.length, UInt(dataWidth.W)))
-    val rdataVec_h = Wire(Vec(raddr_h.length, UInt(dataWidth.W)))
-    val wdataVec_l = Wire(Vec(wdata_l.length, UInt(dataWidth.W)))
-    val rdataVec_l = Wire(Vec(raddr_l.length, UInt(dataWidth.W)))
-    val vecdebugRDataVec: Option[Vec[Vec[UInt]]] = vecdebugReadData.map(x => Wire(Vec(2, Vec(x.length, UInt(dataWidth.W)))))
-    val fpdebugRDataVec: Option[Vec[Vec[UInt]]] = fpdebugReadData.map(x => Wire(Vec(2, Vec(x.length, UInt(dataWidth.W)))))
-    wdataVec_h := wdata_h.map(_(63, 0))
     Regfile(
-      name + s"_high", numEntries, raddr_h, rdataVec_h, wen_h, waddr_h, wdataVec_h,
-      hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(1)), fpdebugReadAddr, fpdebugRDataVec.map(_(1))
-    )
-
-    wdataVec_l := wdata_l.map(_(63, 0))
-    Regfile(
-      name + s"_low", numEntries, raddr_l, rdataVec_l, wen_l, waddr_l, wdataVec_l,
-      hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugRDataVec.map(_(0)), fpdebugReadAddr, fpdebugRDataVec.map(_(0))
-    )
-
-    for (i <- 0 until rdata_h.length) {
-      rdata_h(i) := rdataVec_h(i)
-    }
-
-    for (i <- 0 until rdata_l.length) {
-      rdata_l(i) := rdataVec_l(i)
-    }
-
-    if (vecdebugReadData.nonEmpty) {
-      for (i <- 0 until vecdebugReadData.get.length) {
-        vecdebugReadData.get(i) := Cat(vecdebugRDataVec.get.map(_ (i)).reverse)
-      }
-      for (i <- 0 until fpdebugReadData.get.length) {
-        fpdebugReadData.get(i) := Cat(fpdebugRDataVec.get.map(_ (i)).reverse)
-      }
-    }
+      name, numEntries, raddr, rdata, wen.head, waddr.head, wdata,
+      hasZero = false, withReset, bankNum = 1, vecdebugReadAddr, vecdebugReadData, fpdebugReadAddr, fpdebugReadData)
   }
 }

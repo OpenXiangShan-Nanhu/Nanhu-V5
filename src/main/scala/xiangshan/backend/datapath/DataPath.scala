@@ -179,8 +179,6 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val v0RFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
   private val vlRFReadReq: Seq3[ValidIO[RfReadPortWithConfig]] = fromIQ.map(x => x.map(xx => xx.bits.getRfReadValidBundle(xx.valid)).toSeq).toSeq
 
-  private val vfRFReadNeedSplit: Seq[Bool] = fromIQ.zip(iqBlkParams).map(x => x._1.last.valid && (x._1.last.bits.common.vfWenH.getOrElse(false.B) || x._1.last.bits.common.vfWenH.getOrElse(false.B)) && x._2.sharedVf.B)
-
   private val allDataSources: Seq[Seq[Vec[DataSource]]] = fromIQ.map(x => x.map(xx => xx.bits.common.dataSources).toSeq)
   private val allNumRegSrcs: Seq[Seq[Int]] = fromIQ.map(x => x.map(xx => xx.bits.exuParams.numRegSrc).toSeq)
 
@@ -199,17 +197,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     }
   }
 
-  val vfRfNeednotArb: Seq2[Bool] = fromIQ.map(x => x.map(xx => xx.valid &&
-                                                                xx.bits.common.vecWen.getOrElse(false.B) &&
-                                                                xx.bits.common.vfWenH.getOrElse(false.B) &&
-                                                                !xx.bits.common.vfWenL.getOrElse(false.B) &&
-                                                                xx.bits.exuParams.isSharedVf.B))
-  vfRFReadArbiter.io.in.zip(vfRFReadReq).zip(vfRfNeednotArb).zipWithIndex.foreach { case (((arbInSeq2, inRFReadReqSeq2), ignoreArb2), iqIdx) =>
-    arbInSeq2.zip(inRFReadReqSeq2).zip(ignoreArb2).zipWithIndex.foreach { case (((arbInSeq, inRFReadReqSeq), ignoreArb), exuIdx) =>
+  vfRFReadArbiter.io.in.zip(vfRFReadReq).zipWithIndex.foreach { case ((arbInSeq2, inRFReadReqSeq2), iqIdx) =>
+    arbInSeq2.zip(inRFReadReqSeq2).zipWithIndex.foreach { case ((arbInSeq, inRFReadReqSeq), exuIdx) =>
       val srcIndices: Seq[Int] = VecRegSrcDataSet.flatMap(data => fromIQ(iqIdx)(exuIdx).bits.exuParams.getRfReadSrcIdx(data)).toSeq.sorted
       for (srcIdx <- 0 until fromIQ(iqIdx)(exuIdx).bits.exuParams.numRegSrc) {
         if (srcIndices.contains(srcIdx) && inRFReadReqSeq.isDefinedAt(srcIdx)) {
-          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg && !ignoreArb
+          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg
           arbInSeq(srcIdx).bits.addr := inRFReadReqSeq(srcIdx).bits.addr
         } else {
           arbInSeq(srcIdx).valid := false.B
@@ -219,12 +212,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     }
   }
 
-  v0RFReadArbiter.io.in.zip(v0RFReadReq).zip(vfRfNeednotArb).zipWithIndex.foreach { case (((arbInSeq2, inRFReadReqSeq2), ignoreArb2), iqIdx) =>
-    arbInSeq2.zip(inRFReadReqSeq2).zip(ignoreArb2).zipWithIndex.foreach { case (((arbInSeq, inRFReadReqSeq), ignoreArb), exuIdx) =>
+  v0RFReadArbiter.io.in.zip(v0RFReadReq).zipWithIndex.foreach { case ((arbInSeq2, inRFReadReqSeq2), iqIdx) =>
+    arbInSeq2.zip(inRFReadReqSeq2).zipWithIndex.foreach { case ((arbInSeq, inRFReadReqSeq), exuIdx) =>
       val srcIndices: Seq[Int] = V0RegSrcDataSet.flatMap(data => fromIQ(iqIdx)(exuIdx).bits.exuParams.getRfReadSrcIdx(data)).toSeq.sorted
       for (srcIdx <- 0 until fromIQ(iqIdx)(exuIdx).bits.exuParams.numRegSrc) {
         if (srcIndices.contains(srcIdx) && inRFReadReqSeq.isDefinedAt(srcIdx)) {
-          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg && !ignoreArb
+          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg
           arbInSeq(srcIdx).bits.addr := inRFReadReqSeq(srcIdx).bits.addr
         } else {
           arbInSeq(srcIdx).valid := false.B
@@ -234,12 +227,12 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     }
   }
 
-  vlRFReadArbiter.io.in.zip(vlRFReadReq).zip(vfRfNeednotArb).zipWithIndex.foreach { case (((arbInSeq2, inRFReadReqSeq2), ignoreArb2), iqIdx) =>
-    arbInSeq2.zip(inRFReadReqSeq2).zip(ignoreArb2).zipWithIndex.foreach { case (((arbInSeq, inRFReadReqSeq), ignoreArb), exuIdx) =>
+  vlRFReadArbiter.io.in.zip(vlRFReadReq).zipWithIndex.foreach { case ((arbInSeq2, inRFReadReqSeq2), iqIdx) =>
+    arbInSeq2.zip(inRFReadReqSeq2).zipWithIndex.foreach { case ((arbInSeq, inRFReadReqSeq), exuIdx) =>
       val srcIndices: Seq[Int] = VlRegSrcDataSet.flatMap(data => fromIQ(iqIdx)(exuIdx).bits.exuParams.getRfReadSrcIdx(data)).toSeq.sorted
       for (srcIdx <- 0 until fromIQ(iqIdx)(exuIdx).bits.exuParams.numRegSrc) {
         if (srcIndices.contains(srcIdx) && inRFReadReqSeq.isDefinedAt(srcIdx)) {
-          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg && !ignoreArb
+          arbInSeq(srcIdx).valid := inRFReadReqSeq(srcIdx).valid && allDataSources(iqIdx)(exuIdx)(srcIdx).readReg
           arbInSeq(srcIdx).bits.addr := inRFReadReqSeq(srcIdx).bits.addr
         } else {
           arbInSeq(srcIdx).valid := false.B
@@ -296,21 +289,17 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val intRfWaddr = Wire(Vec(io.fromIntWb.length, UInt(intSchdParams.pregIdxWidth.W)))
   private val intRfWdata = Wire(Vec(io.fromIntWb.length, UInt(intSchdParams.rfDataWidth.W)))
 
-  private val vfRfSplitNum = VLEN / XLEN
+  private val vfRfSplitNum = 1 // VLEN / XLEN
   private val vfRfRaddr = Wire(Vec(params.numPregRd(params.vfPregParams), UInt(vfSchdParams.pregIdxWidth.W)))
   private val vfRfRdata = Wire(Vec(params.numPregRd(params.vfPregParams), UInt(vfSchdParams.rfDataWidth.W)))
   private val vfRfWen = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
-  private val vfRfWenH = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
-  private val vfRfWenL = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
   private val vfRfWaddr = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W))))
   private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
 
-  private val v0RfSplitNum = VLEN / XLEN
+  private val v0RfSplitNum = 1 // VLEN / XLEN
   private val v0RfRaddr = Wire(Vec(params.numPregRd(params.v0PregParams), UInt(log2Up(V0PhyRegs).W)))
   private val v0RfRdata = Wire(Vec(params.numPregRd(params.v0PregParams), UInt(V0Data().dataWidth.W)))
   private val v0RfWen = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
-  private val v0RfWenH = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
-  private val v0RfWenL = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, Bool())))
   private val v0RfWaddr = Wire(Vec(v0RfSplitNum, Vec(io.fromV0Wb.length, UInt(log2Up(V0PhyRegs).W))))
   private val v0RfWdata = Wire(Vec(io.fromV0Wb.length, UInt(V0Data().dataWidth.W)))
 
@@ -375,19 +364,20 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     debugReadData = intDiffRead.map(_._2)
   )
 
-  VfRegFile("VfRegFile", vfSchdParams.numPregs, vfRfSplitNum, vfRfRaddr, vfRfRdata, vfRfWen, vfRfWenH, vfRfWenL, vfRfWaddr, vfRfWdata,
+  VfRegFile("VfRegFile", vfSchdParams.numPregs, vfRfSplitNum, vfRfRaddr, vfRfRdata, vfRfWen, vfRfWaddr, vfRfWdata,
     vecdebugReadAddr = vfDiffRead.map(_._1),
     vecdebugReadData = vfDiffRead.map(_._2),
     fpdebugReadAddr = fpDiffRead.map(_._1),
     fpdebugReadData = fpDiffRead.map(_._2)
   )
 
-  VfRegFile("V0RegFile", V0PhyRegs, v0RfSplitNum, v0RfRaddr, v0RfRdata, v0RfWen, v0RfWenH, v0RfWenL, v0RfWaddr, v0RfWdata,
+  VfRegFile("V0RegFile", V0PhyRegs, v0RfSplitNum, v0RfRaddr, v0RfRdata, v0RfWen, v0RfWaddr, v0RfWdata,
     vecdebugReadAddr = v0DiffRead.map(_._1),
     vecdebugReadData = v0DiffRead.map(_._2),
     fpdebugReadAddr = v0DiffRead.map(_._1),
     fpdebugReadData = v0DiffRead.map(_._2)
   )
+  
   FpRegFile("VlRegFile", VlPhyRegs, vlRfRaddr, vlRfRdata, vlRfWen, vlRfWaddr, vlRfWdata,
     bankNum = 1,
     isVlRegfile = true,
@@ -421,10 +411,6 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   
   vfRfWen.zip(vfRfWen_dup).foreach { case (wenSink, wenSource) => wenSink := wenSource }
 
-  // vfRfWenH.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenH))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
-  vfRfWenH.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenH))).foreach { case (wenSink, wenSource) => wenSink := false.B })
-  vfRfWenL.foreach(_.zip(io.fromVfWb.map(x => RegNext(x.vfWenL))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
-
   for (portIdx <- vfRfRaddr.indices) {
     if (vfRFReadArbiter.io.out.isDefinedAt(portIdx))
       vfRfRaddr(portIdx) := vfRFReadArbiter.io.out(portIdx).bits.addr
@@ -435,8 +421,6 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   v0RfWaddr.foreach(_ := io.fromV0Wb.map(x => RegEnable(x.addr, x.wen)).toSeq)
   v0RfWdata := io.fromV0Wb.map(x => RegEnable(x.data, x.wen)).toSeq
   v0RfWen.foreach(_.zip(io.fromV0Wb.map(x => RegNext(x.wen))).foreach { case (wenSink, wenSource) => wenSink := wenSource } )
-  v0RfWenH.foreach(_.zip(io.fromV0Wb.map(x => RegNext(x.v0WenH))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
-  v0RfWenL.foreach(_.zip(io.fromV0Wb.map(x => RegNext(x.v0WenL))).foreach { case (wenSink, wenSource) => wenSink := wenSource })
 
   for (portIdx <- v0RfRaddr.indices) {
     if (v0RFReadArbiter.io.out.isDefinedAt(portIdx))

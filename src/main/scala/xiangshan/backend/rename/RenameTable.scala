@@ -16,9 +16,9 @@
 
 package xiangshan.backend.rename
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
+import org.chipsalliance.cde.config.Parameters
 import xs.utils.{HasCircularQueuePtrHelper, ParallelPriorityMux, GatedValidRegNext, GatedRegNext}
 import xs.utils.perf.{XSError}
 import xiangshan._
@@ -27,6 +27,8 @@ abstract class RegType
 case object Reg_I extends RegType
 case object Reg_F extends RegType
 case object Reg_V extends RegType
+// TODO: use vf register type
+// case object Reg_VF extends RegType
 case object Reg_V0 extends RegType
 case object Reg_Vl extends RegType
 

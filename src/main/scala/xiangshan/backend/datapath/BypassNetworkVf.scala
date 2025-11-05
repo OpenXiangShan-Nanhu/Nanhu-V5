@@ -82,18 +82,13 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
   io.toVfExu.flatten.zip(og2Uop).zip(io.fromDataPath.uop.flatten).zip(io.fromDataPath.imm).zipWithIndex.foreach {
     case ((((exuIn, og2), uop), immInfo), idx) => {
       exuIn.bits := og2
-      val isSharedVf = FuType.FuTypeOrR(og2.fuType, FuType.sharedVf)
-      val needReadHi = isSharedVf && ((og2.vecWen.getOrElse(false.B) &&
-                        og2.vfWenH.getOrElse(false.B) && !og2.vfWenL.getOrElse(false.B)) ||
-                        (og2.v0Wen.getOrElse(false.B) && og2.v0WenH.getOrElse(false.B) &&
-                        !og2.v0WenL.getOrElse(false.B)))
-      val isWidenF_VV = isSharedVf && og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+      val isWidenF_VV = og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
                         og2.fuType =/= FuType.f2v.id.U && og2.fuType =/= FuType.i2v.id.U &&
                         !(og2.fuType === FuType.vfalu.id.U && og2.fuOpType(6))
-      val isWidenF_WV = isSharedVf && og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+      val isWidenF_WV = og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
                         og2.fuType =/= FuType.f2v.id.U && og2.fuType =/= FuType.i2v.id.U &&
                         !(og2.fuType === FuType.vfalu.id.U && !og2.fuOpType(6))
-      val isWidenF_REDOSUM = isSharedVf && og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
+      val isWidenF_REDOSUM = og2.vpu.getOrElse(0.U.asTypeOf(new VPUCtrlSignals)).isWiden &&
                             og2.fuType === FuType.vfalu.id.U && og2.fuOpType === VfaluType.vfwredosum
       exuIn.bits.src.zipWithIndex.foreach { case (src, srcIdx) =>
         val imm = ImmExtractor(
@@ -126,41 +121,8 @@ class BypassNetworkVf(implicit p: Parameters, params: BackendParams) extends XSM
             readRegOH      -> RegNext(uop.bits.src(srcIdx)),
             readImm        -> RegNext(imm)
           )
-        ) 
-        if(srcIdx == 0) {
-          when(isWidenF_REDOSUM) {
-            src := srcData
-          }.elsewhen(isWidenF_VV || isWidenF_WV) {
-            val widenDataHi = srcData(127, 96) ## srcData(63, 32)
-            val widenDataLo = srcData(95, 64) ## srcData(31, 0)
-            src := Mux(needReadHi, widenDataHi, widenDataLo)
-          }.elsewhen(isSharedVf) {
-            src := Mux(needReadHi, srcData(127, 64), srcData)
-          }.otherwise {
-            src := srcData
-          }
-        } else if(srcIdx == 1) {
-          when(isWidenF_REDOSUM) {
-            src := srcData
-          }.elsewhen(isWidenF_VV) {
-            val widenDataHi = srcData(127, 96) ## srcData(63, 32)
-            val widenDataLo = srcData(95, 64) ## srcData(31, 0)
-            src := Mux(needReadHi, widenDataHi, widenDataLo)
-          }.elsewhen(isSharedVf) {
-            src := Mux(needReadHi, srcData(127, 64), srcData)
-          }.otherwise {
-            src := srcData
-          }
-        } else if(srcIdx == 2) {
-          when(isSharedVf) {
-            src := Mux(needReadHi, srcData(127, 64), srcData)
-          }.otherwise {
-            src := srcData
-          }
-          
-        } else {
-          src := srcData
-        }
+        )
+        src := srcData
       }
     }
   }

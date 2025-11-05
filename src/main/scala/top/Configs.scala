@@ -95,11 +95,10 @@ class MinimalConfig(n: Int = 1) extends Config(
         StoreBufferThreshold = 3,
         dpParams = DispatchParameters(
           IntDqSize = 12,
-          FpDqSize = 12,
+          VfDqSize = 12,
           LsDqSize = 12,
           IntDqDeqWidth = 8,
-          FpDqDeqWidth = 6,
-          VecDqDeqWidth = 6,
+          VfDqDeqWidth = 6,
           LsDqDeqWidth = 6
         ),
         intPreg = IntPregParams(
@@ -493,11 +492,10 @@ class NactMiniConfig(n: Int = 1)extends Config(
         EnableMiniConfig = true,
         dpParams = DispatchParameters(
           IntDqSize = 8,
-          FpDqSize = 8,
+          VfDqSize = 8,
           LsDqSize = 8,
           IntDqDeqWidth = 8,
-          FpDqDeqWidth = 6,
-          VecDqDeqWidth = 6,
+          VfDqDeqWidth = 6,
           LsDqDeqWidth = 6
         ),
         //Memblock

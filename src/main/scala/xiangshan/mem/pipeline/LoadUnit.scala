@@ -196,6 +196,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     // perf
     val debug_ls         = Output(new DebugLsInfoBundle)
     val lsTopdownInfo    = Output(new LsTopdownInfo)
+    val hwMonitor = if(env.EnableHWMoniter) Some(Output(new LduDCacheReplayInfo)) else None
   })
 
   val s1_ready, s2_ready, s3_ready = WireInit(false.B)
@@ -1611,6 +1612,13 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.lsTopdownInfo.s2.paddr_bits      := s2_in.paddr
   io.lsTopdownInfo.s2.first_real_miss := io.dcache.resp.bits.real_miss
   io.lsTopdownInfo.s2.cache_miss_en   := s2_fire && s2_in.hasROBEntry && !s2_in.tlbMiss && !s2_in.missDbUpdated
+
+  if(env.EnableHWMoniter){
+    io.hwMonitor.get.valid := s2_valid
+    io.hwMonitor.get.s2_mq_nack := s2_mq_nack
+    io.hwMonitor.get.s2_fwd_frm_d_chan_or_mshr := s2_fwd_frm_d_chan_or_mshr
+    io.hwMonitor.get.s2_full_fwd := s2_full_fwd
+  }
 
   // perf cnt
   XSPerfAccumulate("s0_in_valid",                  io.ldin.valid)

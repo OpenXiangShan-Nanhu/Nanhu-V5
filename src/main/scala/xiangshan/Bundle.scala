@@ -22,12 +22,13 @@ import chisel3.util.BitPat.bitPatToUInt
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import freechips.rocketchip.tile.BusErrors
+import freechips.rocketchip.tilelink.ClientMetadata
 import xs.utils._
 import utils._
 import xiangshan.backend.decode.XDecode
 import xiangshan.backend.fu.FuType
 import xiangshan.backend.rob.RobPtr
-import xiangshan.mem.{LoadReplayCauses, LqPtr, SqPtr}
+import xiangshan.mem.{HasSbufferConst, LoadReplayCauses, LqPtr, SbufferEntryState, SqPtr}
 import xiangshan.backend.Bundles.{DynInst, UopIdx}
 import xiangshan.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
 import xiangshan.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
@@ -848,10 +849,17 @@ class BackendHWMonitor(implicit p: Parameters) extends XSBundle {
 
 class MBHWMonitor(implicit p: Parameters) extends XSBundle
   with HasDCacheParameters{
-  val sbufferFull = Bool()
-  val L1MSHRInfoVec = Vec(cacheParams.nMissEntries, new DCacheStuckInfo)
+  val DCacheInfoVec = new DCacheStuckInfo
   val uncacheInfoVec = Vec(coreParams.UncacheBufferSize, new UnCacheStuckInfo)
-  val ldStuckInfo = new LQStuckInfo
+  val lqStuckInfo = new LQStuckInfo
+  val ldu = Vec(LoadPipelineWidth ,new LduDCacheReplayInfo)
+  val sb = new SbufferStuckInfo
+}
+
+class SbufferStuckInfo(implicit p: Parameters) extends XSBundle with HasSbufferConst{
+  val stateVec = Vec(StoreBufferSize, new SbufferEntryState)
+  val ptag = Vec(StoreBufferSize, UInt(PTagWidth.W))
+  val vtag = Vec(StoreBufferSize, UInt(VTagWidth.W))
 }
 
 class HardwareMonitor(implicit p: Parameters) extends XSBundle {
@@ -866,12 +874,63 @@ class LQStuckInfo(implicit p: Parameters) extends XSBundle with HasDCacheParamet
   val lqPtr = new LqPtr
   val cause = UInt(LoadReplayCauses.allCauses.W)
   val morethanOne = Bool()
+
+  val replayInfo = Vec(LoadPipelineWidth, new Bundle {
+    val valid = Bool()
+    val vaddr = UInt(VAddrBits.W)
+    val paddr = UInt(PAddrBits.W)
+    val rob = new RobPtr()
+  })
+
+  val entryInfo = Vec(LoadQueueReplaySize, new Bundle {
+    val valid = Bool()
+    val cause = UInt(LoadReplayCauses.allCauses.W)
+    val rob = new RobPtr
+  })
+
 }
 
 class DCacheStuckInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
-  val validVec = Bool()
-  val paddrVec = UInt(PAddrBits.W)
+  val mshr = new Bundle {
+    val validVec = Vec(cfg.nMissEntries, Bool())
+    val paddrVec = Vec(cfg.nMissEntries, UInt(PAddrBits.W))
+  }
+
+  val mshrArbiter = Vec(4, new MSHREnqInfo)
+  val loadPipe = Vec(LoadPipelineWidth, new LoadPipeDCacheReplayInfo)
 }
 
-class UnCacheStuckInfo(implicit p: Parameters) extends DCacheStuckInfo
+class LduDCacheReplayInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
+  val valid = Bool()
+  val s2_mq_nack = Bool()
+  val s2_fwd_frm_d_chan_or_mshr = Bool()
+  val s2_full_fwd = Bool()
+}
+
+
+class LoadPipeDCacheReplayInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
+  val s2_valid = Bool()
+  val miss = Bool()
+  val s2_miss_req_fire = Bool()
+  val s2_nack_no_mshr = Bool()
+  val mq_enq_cancel = Bool()
+  val wbq_block_miss_req = Bool()
+}
+
+
+class MSHREnqInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
+  val valid = Bool()
+  val addr = UInt(PAddrBits.W)
+  val vaddr = UInt(VAddrBits.W)
+  val source = UInt(sourceTypeWidth.W)
+  val cmd = UInt(M_SZ.W)
+  val req_coh = new ClientMetadata
+  val lqIdx = new LqPtr
+  val cancel = Bool()
+}
+
+class UnCacheStuckInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
+  val valid = Bool()
+  val paddr = UInt(PAddrBits.W)
+}
 

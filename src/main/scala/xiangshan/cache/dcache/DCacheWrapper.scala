@@ -821,7 +821,7 @@ class DCacheIO(implicit p: Parameters) extends DCacheBundle {
   val cmoOpReq = Flipped(DecoupledIO(new MissReq))
   // val cmoOpResp = DecoupledIO(new CMOResp)
   val cmofinish = Bool()
-  val monitorInfo = if (env.EnableHWMoniter) Some(Output(Vec(cfg.nMissEntries, new DCacheStuckInfo))) else None
+  val monitorInfo = if (env.EnableHWMoniter) Some(Output(new DCacheStuckInfo)) else None
 }
 
 private object ArbiterCtrl {
@@ -1539,7 +1539,25 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   }
 
   if(env.EnableHWMoniter){
-    io.monitorInfo.get := missQueue.io.monitorInfo.getOrElse(0.U.asTypeOf(missQueue.io.monitorInfo.get))
+    val info = io.monitorInfo.get
+    info.mshr.validVec := missQueue.io.monitorInfo.validVec
+    info.mshr.paddrVec := missQueue.io.monitorInfo.paddrVec
+
+    info.loadPipe.zip(ldu.map(_.io.stuckInfo)).foreach({case(info,ldu) =>
+      info := ldu.getOrElse(0.U.asTypeOf(info))
+    })
+
+    info.mshrArbiter.zip(missReqArb.io.in).foreach({case (info,req) =>
+      info.valid := req.valid
+      info.addr := req.bits.addr
+      info.vaddr := req.bits.vaddr
+      info.source := req.bits.source
+      info.cmd := req.bits.cmd
+      info.req_coh := req.bits.req_coh
+      info.lqIdx := req.bits.lqIdx
+      info.cancel := req.bits.cancel
+    })
+
   }
 
   //----------------------------------------

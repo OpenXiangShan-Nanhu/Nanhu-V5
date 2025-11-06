@@ -23,7 +23,7 @@ import freechips.rocketchip.tilelink.{ClientMetadata, ClientStates}
 import xs.utils._
 import xs.utils.{ChiselDB, OneHot, ParallelMux, ParallelORR, ParallelPriorityMux}
 import xs.utils.perf.{HasPerfEvents, XSDebug, XSPerfAccumulate}
-import xiangshan.{L1CacheErrorInfo, XSCoreParamsKey}
+import xiangshan.{L1CacheErrorInfo, LoadPipeDCacheReplayInfo, XSCoreParamsKey}
 import xiangshan.cache.wpu._
 import xiangshan.mem.HasL1PrefetchSourceParameter
 import xiangshan.mem.prefetch._
@@ -108,6 +108,8 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
 
     // miss queue cancel the miss request
     val mq_enq_cancel = Input(Bool())
+
+    val stuckInfo = if(env.EnableHWMoniter) Some(Output(new LoadPipeDCacheReplayInfo)) else None
   })
 
   val s1_ready = Wire(Bool())
@@ -553,6 +555,17 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
 
   XSPerfAccumulate("s3_pf_hit", s3_clear_pf_flag_en)
   XSPerfAccumulate("s3_pf_hit_filter", s3_clear_pf_flag_en && !io.counter_filter_query.resp)
+
+
+  if(env.EnableHWMoniter){
+    val info = io.stuckInfo.get
+    info.s2_valid := s2_valid
+    info.miss := real_miss
+    info.s2_miss_req_fire := s2_miss_req_fire
+    info.s2_nack_no_mshr := s2_nack_no_mshr
+    info.mq_enq_cancel := io.mq_enq_cancel
+    info.wbq_block_miss_req := io.wbq_block_miss_req
+  }
 
   // --------------------------------------------------------------------------------
   // Debug logging functions

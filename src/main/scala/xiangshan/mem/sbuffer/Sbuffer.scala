@@ -220,7 +220,7 @@ class Sbuffer(implicit p: Parameters)
     val force_write = Input(Bool())
     val diffStoreEventCount = if (env.EnableDifftest) Some(Output(UInt(64.W))) else None
     val diffSBInfo = if (env.EnableDifftest) Some(Output(new SbufferInfo)) else None
-    val monitorInfo = if(env.EnableHWMoniter) Some(Output(Bool())) else None
+    val monitorInfo = if(env.EnableHWMoniter) Some(Output(new SbufferStuckInfo)) else None
   })
 
   val dataModule = Module(new SbufferData)
@@ -1053,7 +1053,12 @@ class Sbuffer(implicit p: Parameters)
   }
 
   if(env.EnableHWMoniter){
-    io.monitorInfo.get := PopCount(VecInit(stateVec.map(s => !s.isInvalid())).asUInt) === StoreBufferSize.U
+    for(i <- 0 until StoreBufferSize){
+      val info = io.monitorInfo.get
+      info.stateVec(i) := stateVec(i)
+      info.ptag(i) := ptag(i)
+      info.vtag(i) := vtag(i)
+    }
   }
 
   val perf_valid_entry_count = RegNext(PopCount(VecInit(stateVec.map(s => !s.isInvalid())).asUInt))

@@ -132,8 +132,8 @@ class UncacheImp(outer: Uncache)extends LazyModuleImp(outer)
 
   if(env.EnableHWMoniter){
     for(i <- 0 until UncacheBufferSize){
-      io.monitorInfo.get(i).validVec := entries(i).io.entryInfo.valid
-      io.monitorInfo.get(i).paddrVec := entries(i).io.entryInfo.paddr
+      io.monitorInfo.get(i).valid := entries(i).io.entryInfo.valid
+      io.monitorInfo.get(i).paddr := entries(i).io.entryInfo.paddr
     }
   }
 

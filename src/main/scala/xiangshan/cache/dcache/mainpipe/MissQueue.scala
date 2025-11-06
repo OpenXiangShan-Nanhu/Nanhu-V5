@@ -16,7 +16,7 @@
 
 package xiangshan.cache
 
-import chisel3._
+import chisel3.{Bundle, _}
 import chisel3.util._
 import difftest._
 import freechips.rocketchip.tilelink._
@@ -395,7 +395,10 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val debugTopDown = new DCacheTopDownIO
     val diffSQInfoIO = if (env.EnableDifftest) Some(Input(new SqInfoIO)) else None
     val diffSBInfoIO = if (env.EnableDifftest) Some(Input(new SbufferInfo)) else None
-    val monitorInfo = if (env.EnableHWMoniter) Some(Output(Vec(cfg.nMissEntries, new DCacheStuckInfo))) else None
+    val monitorInfo = Output(new Bundle {
+      val validVec = Vec(cfg.nMissEntries, Bool())
+      val paddrVec = Vec(cfg.nMissEntries, UInt(PAddrBits.W))
+    })
   })
   val entries = Seq.fill(cfg.nMissEntries)(Module(new MissEntry(edge, reqNum)))
   val dataBuffer = Module(new DataBuffer(MissqDataBufferDepth))
@@ -752,8 +755,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   if (env.EnableHWMoniter){
     for(i <- 0 until cfg.nMissEntries){
-      io.monitorInfo.get(i).validVec := entries(i).io.req_addr.valid
-      io.monitorInfo.get(i).paddrVec := entries(i).io.req_addr.bits
+      io.monitorInfo.validVec(i) := entries(i).io.req_addr.valid
+      io.monitorInfo.paddrVec(i) := entries(i).io.req_addr.bits
     }
   }
 

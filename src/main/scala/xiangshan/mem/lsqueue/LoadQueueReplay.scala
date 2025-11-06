@@ -907,6 +907,20 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     io.stuckEntry.get.rob := Mux1H(stuckVec.map(_.valid),stuckVec.map(_.rob))
     io.stuckEntry.get.lqPtr := Mux1H(stuckVec.map(_.valid),stuckVec.map(_.lqPtr))
     io.stuckEntry.get.cause := Mux1H(stuckVec.map(_.valid),stuckVec.map(_.cause))
+
+    io.stuckEntry.get.replayInfo.zip(io.replay).foreach({ case (info, replay) =>
+      info.valid := replay.valid
+      info.paddr := replay.bits.paddr
+      info.vaddr := replay.bits.vaddr
+      info.rob := replay.bits.uop.robIdx
+    })
+
+    for(i <- 0 until LoadQueueReplaySize){
+      val info = io.stuckEntry.get.entryInfo(i)
+      info.valid := allocated(i)
+      info.cause := allocated(i)
+      info.rob := uop(i).robIdx
+    }
   }
 
 

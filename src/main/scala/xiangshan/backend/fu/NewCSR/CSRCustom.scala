@@ -79,8 +79,13 @@ class SmblockctlBundle extends CSRBundle {
 }
 
 class SrnctlBundle extends CSRBundle {
+  val STUCK_BIT = StuckValue(10, 3).withReset(StuckValue.initValue) // Stuck cycle threshold
   val WFI_ENABLE     = RW(2).withReset(true.B)
   val FUSION_ENABLE  = RW(0).withReset(true.B)
+}
+
+object StuckValue extends CSREnum with RWApply {
+  val initValue = Value(16.U)
 }
 
 class SfetchctlBundle extends CSRBundle {

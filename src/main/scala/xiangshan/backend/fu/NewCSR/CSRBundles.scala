@@ -201,5 +201,7 @@ object CSRBundles {
     // Rename
     val fusion_enable = Output(Bool())
     val wfi_enable = Output(Bool())
+    // Rob
+    val stuck_value = Output(UInt(5.W))
   }
 }

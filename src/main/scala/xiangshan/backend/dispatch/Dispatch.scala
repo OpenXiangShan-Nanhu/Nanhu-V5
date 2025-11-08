@@ -117,9 +117,17 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
     val cmoFinish = Input(Bool())
     val dispatchIsInBlock = Output(Bool())
 
+    val robHasStuck = Input(Bool())
     def toDq = Seq(toIntDq, toVecDq, toLsDq)
   })
 
+
+  val robStuckState = RegInit(false.B)
+  when(io.robHasStuck) {
+    robStuckState := true.B
+  }.otherwise {
+    robStuckState := false.B
+  }
   /**
     * Part 1: choose the target dispatch queue and the corresponding write ports
     */
@@ -202,8 +210,8 @@ class Dispatch(implicit p: Parameters) extends XSModule with HasPerfEvents {
   val isVStore = VecInit(io.fromRename(0).map(req => FuType.isVStore(req.bits.fuType) && req.valid))
   val isAMO    = VecInit(io.fromRename(0).map(req => FuType.isAMO(req.bits.fuType) && req.valid))
   val isCmo = VecInit(io.fromRename(0).map(req => req.valid && (LSUOpType.isCboAll(req.bits.fuOpType) && FuType.isStore(req.bits.fuType))))
-  val isBlockBackward  = VecInit(io.fromRename(0).map(x => x.valid && x.bits.blockBackward))
-  val isWaitForward    = VecInit(io.fromRename(0).map(x => x.valid && x.bits.waitForward))
+  val isBlockBackward  = VecInit(io.fromRename(0).map(x => (x.valid && x.bits.blockBackward) || robStuckState))
+  val isWaitForward    = VecInit(io.fromRename(0).map(x => (x.valid && x.bits.waitForward) || robStuckState))
   
   // Singlestep should only commit one machine instruction after dret, and then hart enter debugMode according to singlestep exception.
   val s_holdRobidx :: s_updateRobidx :: Nil = Enum(2)

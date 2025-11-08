@@ -295,8 +295,8 @@ class CtrlBlockImp(
   val s5_trapTargetIPF = Mux(s3_csrIsTrap, s3_trapTargetFromCsr.raiseIPF, false.B)
   val s5_trapTargetIGPF = Mux(s3_csrIsTrap, s3_trapTargetFromCsr.raiseIGPF, false.B)
   when (s4_flushFromRobValid) {
-    io.frontend.toFtq.redirect.bits.level := RedirectLevel.flush
-    io.frontend.toFtq.redirect.bits.isException := true.B
+    // io.frontend.toFtq.redirect.bits.level := RedirectLevel.flush
+    // io.frontend.toFtq.redirect.bits.isException := true.B
     io.frontend.toFtq.redirect.bits.cfiUpdate.target := RegEnable(flushTarget, s3_flushFromRobValidAhead)
     io.frontend.toFtq.redirect.bits.cfiUpdate.backendIAF := RegEnable(s5_trapTargetIAF, s3_flushFromRobValidAhead)
     io.frontend.toFtq.redirect.bits.cfiUpdate.backendIPF := RegEnable(s5_trapTargetIPF, s3_flushFromRobValidAhead)
@@ -515,6 +515,7 @@ class CtrlBlockImp(
   rename.io.redirect := s1_s3_redirect
   rename.io.rabCommits := rob.io.rabCommits
   rename.io.singleStep := GatedValidRegNext(io.csrCtrl.singlestep)
+  rename.io.robhasStuck := rob.io.robHasStuck
 //  rename.io.waittable := (memCtrl.io.waitTable2Rename zip decode.io.out).map{ case(waittable2rename, decodeOut) =>
 //    RegEnable(waittable2rename, decodeOut.fire)
 //  }
@@ -574,6 +575,7 @@ class CtrlBlockImp(
   dispatch.io.robFull := rob.io.robFull
   dispatch.io.singleStep := GatedValidRegNext(io.csrCtrl.singlestep)
   dispatch.io.cmoFinish := io.cmoFinish && !io.sqHasCmo && !rob.io.robHasCmo
+  dispatch.io.robHasStuck := rob.io.robHasStuck
 
   intDq0.io.enq <> dispatch.io.toIntDq
   intDq0.io.redirect <> s2_s4_redirect_dup_toDq
@@ -612,6 +614,7 @@ class CtrlBlockImp(
   // When wfi is disabled, it will not block ROB commit.
   rob.io.csr.wfiEvent := io.robio.csr.wfiEvent
   rob.io.wfi_enable := decode.io.csrCtrl.wfi_enable
+  rob.io.stuck_time := decode.io.csrCtrl.stuck_value
 
   io.toTop.cpuHalt := RegNextN(rob.io.cpu_halt, 5, Some(false.B))
   io.power.timeout := RegNextN(rob.io.power.timeout, 5, Some(false.B))

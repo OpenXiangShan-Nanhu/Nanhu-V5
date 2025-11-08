@@ -126,6 +126,9 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
     val robMon = if(env.EnableHWMoniter) Some(Output(new RobHWMonitor)) else None
 
     val robHasCmo = Output(Bool())
+
+    val stuck_time = Input(UInt(5.W))
+    val robHasStuck = Output(Bool())
   })
 
   val exuWBs: Seq[ValidIO[ExuOutput]] = io.exuWriteback.filter(!_.bits.params.hasStdFu).toSeq
@@ -409,6 +412,23 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
     hasWFI := false.B
   }
 
+  val stuck_cycle = RegInit(0.U(20.W))
+  val stuck_set_value = 1.U << io.stuck_time
+  when(io.commits.isCommit && io.commits.commitValid(0)) {
+    stuck_cycle := 0.U
+  }.elsewhen(stuck_cycle === stuck_set_value) {
+    stuck_cycle := stuck_cycle
+  }.otherwise {
+    stuck_cycle := stuck_cycle + 1.U
+  }
+
+  val robStuckFlush = RegInit(false.B)
+  when(!RegNext(io.robHasStuck) && io.robHasStuck) {
+    robStuckFlush := true.B
+  }.otherwise {
+    robStuckFlush := false.B
+  }
+
   for (i <- 0 until RenameWidth) {
     // we don't check whether io.redirect is valid here since redirect has higher priority
     when(canEnqueue(i)) {
@@ -561,7 +581,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val deqHasFlushed = RegInit(false.B)
   val intrBitSetReg = RegNext(io.csr.intrBitSet)
   val intrEnable = intrBitSetReg && !hasWaitForward && deqPtrEntry.interrupt_safe && !deqHasFlushed
-  val deqNeedFlush = deqPtrEntry.needFlush && deqPtrEntry.commit_v && deqPtrEntry.commit_w
+  val deqNeedFlush = (deqPtrEntry.needFlush) && deqPtrEntry.commit_v && deqPtrEntry.commit_w
   val deqHitExceptionGenState = exceptionDataRead.valid && exceptionDataRead.bits.robIdx === deqPtr
   val deqNeedFlushAndHitExceptionGenState = deqNeedFlush && deqHitExceptionGenState
   val exceptionGenStateIsException = exceptionDataRead.bits.exceptionVec.asUInt.orR || exceptionDataRead.bits.singleStep || TriggerAction.isDmode(exceptionDataRead.bits.trigger)
@@ -603,14 +623,18 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   // Block any redirect or commit at the next cycle.
   val lastCycleFlush = RegNext(io.flushOut.valid)
 
-  io.flushOut.valid := (state === s_idle) && deqPtrEntryValid && (intrEnable || deqHasException && (!deqIsVlsException || deqVlsCanCommit) || isFlushPipe) && !lastCycleFlush
+  val deqHasWb = exuWBs.map(writeback => writeback.valid && writeback.bits.robIdx === deqPtr).reduce(_ || _)
+  io.robHasStuck := stuck_cycle === stuck_set_value && !hasWFI && deqDispatchData.valid && deqDispatchData.uopNum =/= 0.U && !deqHasWb && CommitType.isLoadStore(deqDispatchData.commitType)
+
+  io.flushOut.valid := (state === s_idle) && deqPtrEntryValid && (intrEnable || deqHasException && (!deqIsVlsException || deqVlsCanCommit) || isFlushPipe || robStuckFlush) && !lastCycleFlush
   io.flushOut.bits := DontCare
   io.flushOut.bits.isRVC := deqDispatchData.isRVC
   io.flushOut.bits.robIdx := Mux(needModifyFtqIdxOffset, firstVInstrRobIdx, deqPtr)
   io.flushOut.bits.ftqIdx := Mux(needModifyFtqIdxOffset, firstVInstrFtqPtr, deqDispatchData.ftqIdx)
   io.flushOut.bits.ftqOffset := Mux(needModifyFtqIdxOffset, firstVInstrFtqOffset, deqDispatchData.ftqOffset)
   io.flushOut.bits.level := Mux(deqHasReplayInst || intrEnable || deqHasException || needModifyFtqIdxOffset, RedirectLevel.flush, RedirectLevel.flushAfter) // TODO use this to implement "exception next"
-  io.flushOut.bits.interrupt := true.B
+  io.flushOut.bits.interrupt := intrEnable
+  io.flushOut.bits.isException := deqHasException
   XSPerfAccumulate("interrupt_num", io.flushOut.valid && intrEnable)
   XSPerfAccumulate("exception_num", io.flushOut.valid && deqHasException)
   XSPerfAccumulate("flush_pipe_num", io.flushOut.valid && isFlushPipe)
@@ -731,7 +755,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   val deqFlushBlock = deqFlushBlockCounter(0)
   val deqHasCommitted = io.commits.isCommit && io.commits.commitValid(0)
   val deqHitRedirectReg = RegNext(io.redirect.valid && io.redirect.bits.robIdx === deqPtr)
-  when(deqNeedFlush && deqHitRedirectReg){
+  when(deqNeedFlush && deqHitRedirectReg ){
     deqFlushBlockCounter := "b111".U
   }.otherwise{
     deqFlushBlockCounter := deqFlushBlockCounter >> 1.U
@@ -741,8 +765,17 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   }.elsewhen(deqNeedFlush && io.flushOut.valid && !io.flushOut.bits.flushItself()){
     deqHasFlushed := true.B
   }
+
+  val robStuckFlushBlockCounter = RegInit(0.U(3.W))
+  val robStuckFlushBlock = robStuckFlushBlockCounter(0)
+  when(robStuckFlush){
+    robStuckFlushBlockCounter := "b111".U
+  }.otherwise{
+    robStuckFlushBlockCounter := robStuckFlushBlockCounter >> 1.U
+  }
+
   val traceBlock = io.trace.blockCommit
-  val blockCommit = misPredBlock || lastCycleFlush || hasWFI || io.redirect.valid || (deqNeedFlush && !deqHasFlushed) || deqFlushBlock || traceBlock
+  val blockCommit = misPredBlock || lastCycleFlush || hasWFI || io.redirect.valid || (deqNeedFlush && !deqHasFlushed) || deqFlushBlock || traceBlock || robStuckFlushBlock || robStuckFlush
 
   io.commits.isWalk := state === s_walk
   io.commits.isCommit := state === s_idle && !blockCommit
@@ -759,7 +792,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   for (i <- 0 until CommitWidth) {
     // defaults: state === s_idle and instructions commit
     // when intrBitSetReg, allow only one instruction to commit at each clock cycle
-    val isBlocked = intrEnable || (deqNeedFlush && !deqHasFlushed && !deqHasFlushPipe) || misPredBlock || lastCycleFlush || hasWFI || io.redirect.valid || traceBlock || deqFlushBlock
+    val isBlocked = intrEnable || (deqNeedFlush && !deqHasFlushed && !deqHasFlushPipe) || misPredBlock || lastCycleFlush || hasWFI || io.redirect.valid || traceBlock || deqFlushBlock || robStuckFlushBlock || robStuckFlush
     val isBlockedByOlder = if (i != 0) commit_block.asUInt(i, 0).orR || allowOnlyOneCommit && !hasCommitted.asUInt(i - 1, 0).andR else false.B
     commitValidThisLine(i) := commit_vDeqGroup(i) && commit_wDeqGroup(i) && !isBlocked && !isBlockedByOlder && !hasCommitted(i)
     io.commits.info(i) := commitInfo(i)

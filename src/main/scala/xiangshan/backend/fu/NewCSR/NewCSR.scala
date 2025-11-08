@@ -783,8 +783,8 @@ class NewCSR(implicit val p: Parameters) extends Module
     println(mod.dumpFields)
   }
 
-  trapEntryMEvent.valid  := hasTrap && entryPrivState.isModeM && !entryDebugMode  && !debugMode && !nmi && mnstatus.regOut.NMIE
-  trapEntryMNEvent.valid := hasTrap && nmi && !entryDebugMode && !debugMode && mnstatus.regOut.NMIE
+  trapEntryMEvent.valid  := hasTrap && entryPrivState.isModeM && !entryDebugMode  && !debugMode && (!nmi || !trapIsInterrupt) && mnstatus.regOut.NMIE
+  trapEntryMNEvent.valid := hasTrap && trapIsInterrupt && nmi && !entryDebugMode && !debugMode && mnstatus.regOut.NMIE
   trapEntryHSEvent.valid := hasTrap && entryPrivState.isModeHS && !entryDebugMode && !debugMode && mnstatus.regOut.NMIE
   trapEntryVSEvent.valid := hasTrap && entryPrivState.isModeVS && !entryDebugMode && !debugMode && mnstatus.regOut.NMIE
 
@@ -1340,6 +1340,7 @@ class NewCSR(implicit val p: Parameters) extends Module
 
   io.status.custom.fusion_enable           := srnctl.regOut.FUSION_ENABLE.asBool
   io.status.custom.wfi_enable              := srnctl.regOut.WFI_ENABLE.asBool && (!io.status.singleStepFlag) && !debugMode
+  io.status.custom.stuck_value              := srnctl.regOut.STUCK_BIT.asUInt
 
   io.status.instrAddrTransType.bare := privState.isModeM ||
     (!privState.isVirtual && satp.regOut.MODE === SatpMode.Bare) ||
@@ -1499,7 +1500,7 @@ class NewCSR(implicit val p: Parameters) extends Module
     val trapValid = pendingTrap && !io.fromVecExcpMod.busy
     val trapNO = if(EnableAIA) Mux(virtualInterruptIsHvictlInject && hasTrap, hvictl.get.regOut.IID.asUInt, trapHandleMod.io.out.causeNO.ExceptionCode.asUInt) else trapHandleMod.io.out.causeNO.ExceptionCode.asUInt
     val interrupt = trapHandleMod.io.out.causeNO.Interrupt.asBool
-    val hasNMI = nmi && hasTrap
+    val hasNMI = nmi && hasTrap && trapIsInterrupt
     val interruptNO = Mux(interrupt, trapNO, 0.U)
     val exceptionNO = Mux(!interrupt, trapNO, 0.U)
     val isSv39: Bool =

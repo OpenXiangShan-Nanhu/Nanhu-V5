@@ -918,7 +918,7 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
     for(i <- 0 until LoadQueueReplaySize){
       val info = io.stuckEntry.get.entryInfo(i)
       info.valid := allocated(i)
-      info.cause := allocated(i)
+      info.cause := cause(i)
       info.rob := uop(i).robIdx
     }
   }

@@ -289,11 +289,10 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   private val intRfWaddr = Wire(Vec(io.fromIntWb.length, UInt(intSchdParams.pregIdxWidth.W)))
   private val intRfWdata = Wire(Vec(io.fromIntWb.length, UInt(intSchdParams.rfDataWidth.W)))
 
-  private val vfRfSplitNum = 1 // VLEN / XLEN
   private val vfRfRaddr = Wire(Vec(params.numPregRd(params.vfPregParams), UInt(vfSchdParams.pregIdxWidth.W)))
   private val vfRfRdata = Wire(Vec(params.numPregRd(params.vfPregParams), UInt(vfSchdParams.rfDataWidth.W)))
-  private val vfRfWen = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
-  private val vfRfWaddr = Wire(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W))))
+  private val vfRfWen = Wire(Vec(io.fromVfWb.length, Bool()))
+  private val vfRfWaddr = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W)))
   private val vfRfWdata = Wire(Vec(io.fromVfWb.length, UInt(vfSchdParams.rfDataWidth.W)))
 
   private val v0RfSplitNum = 1 // VLEN / XLEN
@@ -364,20 +363,51 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     debugReadData = intDiffRead.map(_._2)
   )
 
-  VfRegFile("VfRegFile", vfSchdParams.numPregs, vfRfSplitNum, vfRfRaddr, vfRfRdata, vfRfWen, vfRfWaddr, vfRfWdata,
-    vecdebugReadAddr = vfDiffRead.map(_._1),
-    vecdebugReadData = vfDiffRead.map(_._2),
-    fpdebugReadAddr = fpDiffRead.map(_._1),
-    fpdebugReadData = fpDiffRead.map(_._2)
-  )
-
   VfRegFile("V0RegFile", V0PhyRegs, v0RfSplitNum, v0RfRaddr, v0RfRdata, v0RfWen, v0RfWaddr, v0RfWdata,
     vecdebugReadAddr = v0DiffRead.map(_._1),
     vecdebugReadData = v0DiffRead.map(_._2),
     fpdebugReadAddr = v0DiffRead.map(_._1),
     fpdebugReadData = v0DiffRead.map(_._2)
   )
-  
+
+  vfRfWaddr :<= io.fromVfWb.map(x => x.addr).toSeq
+  vfRfWdata := io.fromVfWb.map(x => x.data).toSeq
+  vfRfWen :<= io.fromVfWb.map(x => x.wen)
+
+  val vrf = Module(new VFRegFile(params.numPregRd(params.vfPregParams), io.fromVfWb.length, VLEN, vfSchdParams.numPregs, 4, params.basicDebugEn))
+
+  vrf.io.rports.zipWithIndex.foreach {
+    case (rport, i) => {
+      rport.addr :<= vfRfRaddr(i)
+      vfRfRdata(i) :<= rport.data
+    }
+  }
+  vrf.io.wports.zipWithIndex.foreach {
+    case (wport, i) => {
+      wport.wen :<= vfRfWen(i)
+      wport.addr :<= vfRfWaddr(i)
+      wport.data :<= vfRfWdata(i)
+    }
+  }
+
+  if(vfDiffRead.nonEmpty) {
+    val vfDiffReadAddr = vfDiffRead.get._1
+    val vfDiffReadData = vfDiffRead.get._2
+    for(i <- 0 until 31) {
+      vrf.debug.vec_regs(i).addr :<= vfDiffReadAddr(i)
+      vfDiffReadData(i) :<= vrf.debug.vec_regs(i).data
+    }
+  }
+
+  if(fpDiffRead.nonEmpty) {
+    val fpDiffReadAddr = fpDiffRead.get._1
+    val fpDiffReadData = fpDiffRead.get._2
+    for(i <- 0 until 32) {
+      vrf.debug.fp_regs(i).addr :<= fpDiffReadAddr(i)
+      fpDiffReadData(i) :<= vrf.debug.fp_regs(i).data
+    }
+  }
+
   FpRegFile("VlRegFile", VlPhyRegs, vlRfRaddr, vlRfRdata, vlRfWen, vlRfWaddr, vlRfWdata,
     bankNum = 1,
     isVlRegfile = true,
@@ -395,21 +425,6 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
     else
       intRfRaddr(portIdx) := 0.U
   }
-
-  val vfRfWaddr_dup = Reg(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, UInt(vfSchdParams.pregIdxWidth.W))))
-  vfRfWaddr_dup.foreach(_.lazyZip(io.fromVfWb).foreach { case (wen_dup, wb) =>
-    when(wb.wen) {
-      wen_dup := wb.addr
-    }
-  })
-
-  vfRfWaddr := vfRfWaddr_dup
-  vfRfWdata := io.fromVfWb.map(x => RegEnable(x.data, x.wen)).toSeq
-
-  val vfRfWen_dup = Reg(Vec(vfRfSplitNum, Vec(io.fromVfWb.length, Bool())))
-  vfRfWen_dup.foreach(_.lazyZip(io.fromVfWb.map(_.wen)).foreach { case (wen_dup, wen) => wen_dup := wen })
-  
-  vfRfWen.zip(vfRfWen_dup).foreach { case (wenSink, wenSource) => wenSink := wenSource }
 
   for (portIdx <- vfRfRaddr.indices) {
     if (vfRFReadArbiter.io.out.isDefinedAt(portIdx))
@@ -846,16 +861,6 @@ class DataPathImp(override val wrapper: DataPath)(implicit p: Parameters, params
   for (i <- intRfWen.indices) {
     when (intRfWen(i)) {
       int_regcache_tag(int_regcache_enqPtr + PopCount(intRfWen.take(i))) := intRfWaddr(i)
-    }
-  }
-
-  val vf_regcache_size = 48
-  val vf_regcache_tag = RegInit(VecInit(Seq.fill(vf_regcache_size)(0.U(vfSchdParams.pregIdxWidth.W))))
-  val vf_regcache_enqPtr = RegInit(0.U(log2Up(vf_regcache_size).W))
-  vf_regcache_enqPtr := vf_regcache_enqPtr + PopCount(vfRfWen.head)
-  for (i <- vfRfWen.indices) {
-    when (vfRfWen.head(i)) {
-      vf_regcache_tag(vf_regcache_enqPtr + PopCount(vfRfWen.head.take(i))) := vfRfWaddr.head(i)
     }
   }
 

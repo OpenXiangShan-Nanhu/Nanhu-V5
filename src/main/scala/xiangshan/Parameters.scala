@@ -165,7 +165,7 @@ case class XSCoreParameters
     numWrite = None,
   ),
   vfPreg: VfPregParams = VfPregParams(
-    numEntries = 160,
+    numEntries = 175,
     numRead = None,
     numWrite = None,
   ),
@@ -399,12 +399,17 @@ case class XSCoreParameters
         ExeUnitParams("VEXU0",  Seq(VfaluCfg, VfmaCfg, VialuCfg, VimacCfg, VipuCfg, VSetRvfWvfCfg),
                                 Seq(IntWB(8, 0), VfWB(0, 0), V0WB(0, 0), VlWB(0, 0)),
                                 Seq(Seq(VfRD(0, 0)), Seq(VfRD(1, 0)), Seq(VfRD(2, 0)), Seq(V0RD(0, 0)), Seq(VlRD(0, 0)))),
-      ), numEntries = if(EnableMiniConfig) 4 else (16), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (8), sharedVf = true),
+      ), numEntries = if(EnableMiniConfig) 4 else (16), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (14), sharedVf = true),
       IssueBlockParams(Seq(
-        ExeUnitParams("VEXU1",  Seq(VfaluCfg, VfmaCfg, VialuCfg, VfcvtCfg, VfdivCfg, VidivCfg),
+        ExeUnitParams("VEXU1",  Seq(VfaluCfg, VfmaCfg, VialuCfg, VfcvtCfg),
                                 Seq(VfWB(1, 0), V0WB(1, 0), IntWB(7, 0)),
                                 Seq(Seq(VfRD(3, 0)), Seq(VfRD(4, 0)), Seq(VfRD(5, 0)), Seq(V0RD(1, 0)), Seq(VlRD(1, 0)))),
-      ), numEntries = if(EnableMiniConfig) 4 else (16), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (8), sharedVf = true),
+      ), numEntries = if(EnableMiniConfig) 4 else (16), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (14), sharedVf = true),
+      IssueBlockParams(Seq(
+        ExeUnitParams("VEXU2",  Seq(VfdivCfg, VidivCfg),
+                                Seq(VfWB(6, 0), V0WB(4, 0)),
+                                Seq(Seq(VfRD(3, 1)), Seq(VfRD(4, 1)), Seq(VfRD(5, 1)), Seq(V0RD(1, 1)), Seq(VlRD(1, 1)))),
+      ), numEntries = if(EnableMiniConfig) 4 else (8), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (6), sharedVf = true),
     ),
       numPregs = vfPreg.numEntries,
       numDeqOutside = 0,
@@ -454,8 +459,8 @@ case class XSCoreParameters
         Seq("ALU0", "BJU0", "ALU1", "BJU1", "ALU2", "BJU2", "ALU3", "BJU3", "LDU0", "LDU1", "STA0", "STD0")
       ),
       WakeUpConfig(
-        Seq("VEXU0") ->
-        Seq("VEXU0", "VEXU1")
+        Seq("VEXU0", "VEXU1") ->
+        Seq("VEXU0", "VEXU1", "VEXU2")
       ),
     ).flatten
   }

@@ -258,7 +258,7 @@ val refill = ptw.resp.fire && !(ptw.resp.bits.getGpa) && !need_gpa && !need_gpa_
     miss.suggestName(s"miss_read_${i}")
 
     val vaddr = SignExt(req_out(i).vaddr, PAddrBits)
-    resp(i).bits.miss := miss
+    resp(i).bits.miss := miss || RegNext(flush_mmu)
     resp(i).bits.ptwBack := ptw.resp.fire
     resp(i).bits.memidx := RegEnable(req_in(i).bits.memidx, req_in(i).valid)
     resp(i).bits.fastMiss := !hit && enable

@@ -375,11 +375,11 @@ class NewCSR(implicit val p: Parameters) extends Module
   val virtualInterruptIsHvictlInject = RegEnable(intrMod.io.out.virtualInterruptIsHvictlInject, false.B, intrMod.io.out.interruptVec.valid)
   val irToHS = RegEnable(intrMod.io.out.irToHS, false.B, intrMod.io.out.interruptVec.valid)
   val irToVS = RegEnable(intrMod.io.out.irToVS, false.B, intrMod.io.out.interruptVec.valid)
-  val nmi = intrMod.io.out.nmi
+  val nmi = RegNext(intrMod.io.out.nmi)
 
   when(hasTrap && trapIsInterrupt && nmi) {
-    nmip.NMI_31 := nmip.NMI_31 & (!intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_31) | intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_43))
-    nmip.NMI_43 := nmip.NMI_43 & !intrMod.io.out.interruptVec.bits(NonMaskableIRNO.NMI_43)
+    nmip.NMI_31 := nmip.NMI_31 & (!intrVec(NonMaskableIRNO.NMI_31) | intrVec(NonMaskableIRNO.NMI_43))
+    nmip.NMI_43 := nmip.NMI_43 & !intrVec(NonMaskableIRNO.NMI_43)
   }
 
   val trapHandleMod = Module(new TrapHandleModule)

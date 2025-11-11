@@ -186,7 +186,7 @@ case class XSCoreParameters
   IfuRedirectNum: Int = 1,
   LoadPipelineWidth: Int = 2,
   StorePipelineWidth: Int = 1,
-  VecLoadPipelineWidth: Int = 2,
+  VecLoadPipelineWidth: Int = 1,
   VecStorePipelineWidth: Int = 1,
   VecMemSrcInWidth: Int = 2,
   VecMemInstWbWidth: Int = 1,

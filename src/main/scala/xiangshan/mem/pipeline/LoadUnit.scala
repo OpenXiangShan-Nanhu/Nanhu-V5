@@ -1566,6 +1566,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.vecldout.bits.mmio := DontCare
   io.vecldout.bits.vstart := s3_vecout.vstart
   io.vecldout.bits.vecTriggerMask := s3_vecout.vecTriggerMask
+  io.vecldout.bits.hasException := DontCare   //todo
 
   io.vecldout.valid := s3_out.valid && !s3_out.bits.uop.robIdx.needFlush(io.redirect) && s3_vecout.isvec ||
     io.lsq.uncache.valid && !io.lsq.uncache.bits.uop.robIdx.needFlush(io.redirect) && !s3_out.valid && io.lsq.uncache.bits.isVls

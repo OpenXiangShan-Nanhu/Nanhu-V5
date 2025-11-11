@@ -21,7 +21,7 @@ import xiangshan.backend.issue.EntryBundles._
 import xiangshan.backend.regfile.{RfReadPortWithConfig, RfWritePortWithConfig}
 import xiangshan.backend.rob.RobPtr
 import xiangshan.frontend._
-import xiangshan.mem.{LqPtr, SqPtr}
+import xiangshan.mem.{LqPtr, SqPtr, VecMissalignedDebugBundle}
 import yunsuan.vector.VIFuParam
 import xiangshan.backend.trace._
 import xs.utils.HasCircularQueuePtrHelper
@@ -1014,6 +1014,7 @@ object Bundles {
     val vdIdxInField = if (isVector) Some(UInt(3.W)) else None
     val isFromLoadUnit = Bool()
     val debug = new DebugBundle
+    val vecDebug = if (isVector) Some(new VecMissalignedDebugBundle) else None
 
     def isVls = FuType.isVls(uop.fuType)
   }

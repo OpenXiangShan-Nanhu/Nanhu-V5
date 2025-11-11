@@ -43,9 +43,8 @@ import xiangshan.mem.prefetch.{BasePrefecher, L1Prefetcher, SMSParams, SMSPrefet
 import xiangshan.backend.datapath.NewPipelineConnect
 import xiangshan.mem.skidBufferConnect
 import xs.utils._
-import xs.utils.cache.common._
-import xs.utils.mbist.{MbistInterface, MbistPipeline}
-import xs.utils.sram.{SramBroadcastBundle, SramHelper}
+import xs.utils.mbist.{MbistPipeline}
+import xs.utils.sram.{SramBroadcastBundle}
 import xs.utils.perf.{HasPerfEvents, PerfEvent, XSDebug, XSError, XSPerfAccumulate}
 import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, XSPerfHistogram}
 import xs.utils.cache.common.{PrefetchRecv, CMOResp, CMOReq}
@@ -407,12 +406,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val vSegmentUnit  = Module(new VSegmentUnit)
   val vfofBuffer    = Module(new VfofBuffer)
 
-  vfofBuffer.io := DontCare
-  vlMergeBuffer.io := DontCare
-  vsMergeBuffer.foreach(_.io := DontCare)
-  vSegmentUnit.io := DontCare
-
-
   // misalign Buffer
   val loadMisalignBuffer = Module(new LoadMisalignBuffer)
   val storeMisalignBuffer = Module(new StoreMisalignBuffer)
@@ -545,7 +538,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
 
     // cmoreq from sq send to MissQueue
-  // lsq.io.cmoOpReq <> dcache.io.cmoOpReq
   val cmoOpReqConnectPipe = Module(new PipelineConnectPipe(new MissReq))
   cmoOpReqConnectPipe.io.in <> lsq.io.cmoOpReq
   cmoOpReqConnectPipe.io.out <> dcache.io.cmoOpReq
@@ -556,7 +548,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   cmoOpReqBwdConnectPipe.io.in <> lsq.io.cmoOpReq
   cmoOpReqBwdConnectPipe.io.out <> dcache.io.cmoOpReq
   cmoOpReqBwdConnectPipe.io.flush := false.B
-  // lsq.io.cmoOpResp <> dcache.io.cmoOpResp
   val cmoSkidBufferPending = cmoOpReqBwdConnectPipe.io.in.ready
 
   io.mem_to_ooo.sqHasCmo := lsq.io.sqHasCmo || !cmoSkidBufferPending
@@ -1121,6 +1112,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   }
 
   // vector
+
+  vSegmentUnit.io.csrCtrl := DontCare //todo
+
   val vLoadCanAccept  = (0 until VlduCnt).map(i =>
     vlSplit(i).io.in.ready && VlduType.isVecLd(io.ooo_to_mem.issueVldu(i).bits.uop.fuOpType)
   )
@@ -1163,6 +1157,11 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     )
     vsSplit(i).io.vstd.get := DontCare // Todo: Discuss how to pass vector store data
 
+    vsSplit(i).io.vstdMisalign.get.storeMisalignBufferEmpty := DontCare
+    vsSplit(i).io.vstdMisalign.get.storeMisalignBufferRobIdx := DontCare
+    vsSplit(i).io.vstdMisalign.get.storeMisalignBufferUopIdx := DontCare
+    vsSplit(i).io.vstdMisalign.get.storePipeEmpty := DontCare
+
   }
   (0 until VlduCnt).foreach{i =>
     vlSplit(i).io.redirect <> redirect
@@ -1170,6 +1169,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     vlSplit(i).io.in.valid := io.ooo_to_mem.issueVldu(i).valid &&
                               vLoadCanAccept(i) && !isSegment && !isFixVlUop(i)
     vlSplit(i).io.toMergeBuffer <> vlMergeBuffer.io.fromSplit(i)
+
+    vlSplit(i).io.threshold.get.valid := vlMergeBuffer.io.toSplit.get.threshold
+    vlSplit(i).io.threshold.get.bits := lsq.io.lqDeqPtr
     NewPipelineConnect(
       vlSplit(i).io.out, loadUnits(i).io.vecldin, loadUnits(i).io.vecldin.fire,
       Mux(vlSplit(i).io.out.fire, vlSplit(i).io.out.bits.uop.robIdx.needFlush(io.redirect), loadUnits(i).io.vecldin.bits.uop.robIdx.needFlush(io.redirect)),
@@ -1256,8 +1258,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       vsMergeBuffer(i).io.uopWriteback.head.ready := io.mem_to_ooo.writebackVldu(i).ready && !vlMergeBuffer.io.uopWriteback(i).valid
     }
 
-    vfofBuffer.io.mergeUopWriteback(i).valid := vlMergeBuffer.io.uopWriteback(i).valid
-    vfofBuffer.io.mergeUopWriteback(i).bits  := vlMergeBuffer.io.uopWriteback(i).bits
+    vfofBuffer.io.mergeUopWriteback(i).valid := vlMergeBuffer.io.toLsq(i).valid
+    vfofBuffer.io.mergeUopWriteback(i).bits  := vlMergeBuffer.io.toLsq(i).bits
   }
 
 

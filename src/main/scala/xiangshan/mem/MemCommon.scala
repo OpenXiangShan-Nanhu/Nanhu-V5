@@ -57,6 +57,28 @@ object genVWmask {
   }
 }
 
+object genBasemask {
+  /**
+   *
+   * @param addr
+   * @param sizeEncode
+   * @return Return 16-byte aligned mask.
+   *
+   *         Example:
+   *         Address: 0x80000003 Encoding size: ‘b11
+   *         Return: 0xff
+   */
+  def apply(addr: UInt, sizeEncode: UInt): UInt = {
+    LookupTree(sizeEncode, List(
+      "b00".U -> 0x1.U,
+      "b01".U -> 0x3.U,
+      "b10".U -> 0xf.U,
+      "b11".U -> 0xff.U
+    ))
+  }
+}
+
+
 object genWdata {
   def apply(data: UInt, sizeEncode: UInt): UInt = {
     LookupTree(sizeEncode, List(
@@ -317,6 +339,11 @@ class LqWriteBundle(implicit p: Parameters) extends LsPipelineBundle {
 
 class SqWriteBundle(implicit p: Parameters) extends LsPipelineBundle {
   val need_rep = Bool()
+}
+
+class VecMissalignedDebugBundle (implicit p: Parameters) extends XSBundle {
+  val start      = UInt(log2Up(XLEN).W) // indicate first byte position of first unit-stride's element when unaligned
+  val offset     = UInt(log2Up(XLEN).W) // indicate byte offset of unit-stride's element when unaligned
 }
 
 class LoadForwardQueryIO(implicit p: Parameters) extends XSBundle {

@@ -570,12 +570,7 @@ class StoreUnit(implicit p: Parameters) extends XSModule
   io.vecstout.bits.isForVSnonLeafPTE     := sx_last_in.isForVSnonLeafPTE
   io.vecstout.bits.vstart      := sx_last_in.output.uop.vpu.vstart
   io.vecstout.bits.vecTriggerMask := sx_last_in.vecTriggerMask
-  // io.vecstout.bits.reg_offset.map(_ := DontCare)
-  // io.vecstout.bits.elemIdx.map(_ := sx_last_in.elemIdx)
-  // io.vecstout.bits.elemIdxInsideVd.map(_ := DontCare)
-  // io.vecstout.bits.vecdata.map(_ := DontCare)
-  // io.vecstout.bits.mask.map(_ := DontCare)
-  // io.vecstout.bits.alignedType.map(_ := sx_last_in.alignedType)
+  io.vecstout.bits.hasException := DontCare //todo
 
   io.debug_ls := DontCare
   io.debug_ls.s1_robIdx := s1_in.uop.robIdx.value

@@ -51,6 +51,7 @@ class L1BankedDataReadReqWithMask(implicit p: Parameters) extends DCacheBundle
   val addr = Bits(PAddrBits.W)
   val bankMask = Bits(DCacheBanks.W)
   val lqIdx = new LqPtr
+  val highPriority = Bool()
 }
 
 class L1BankedDataReadLineReq(implicit p: Parameters) extends L1BankedDataReadReq
@@ -689,16 +690,26 @@ class BankedDataArray(implicit p: Parameters) extends AbstractBankedDataArray {
   ))
 
   val load_req_with_bank_conflict = rr_bank_conflict.map(_.reduce(_ || _))
-  val load_req_valid = io.read.map(_.valid)
   val load_req_lqIdx = io.read.map(_.bits.lqIdx)
+
   val load_req_index = (0 until LoadPipelineWidth).map(_.asUInt)
 
-  val load_req_bank_conflict_selcet = selcetOldestPort(load_req_valid, load_req_lqIdx, load_req_index)
+  val load_req_bank_conflict_selcet = selcetOldestPort(load_req_with_bank_conflict, load_req_lqIdx, load_req_index)
   val load_req_bank_select_port  = UIntToOH(load_req_bank_conflict_selcet._2).asBools
 
+  val load_req_with_high_priority = io.read.map(r => r.valid & r.bits.highPriority)
+//  val load_req_with_high_priority_bank_confilict = load_req_with_bank_conflict.zip(load_req_with_high_priority).map({case (bc,hp) => bc & hp })
+
+  val hasPH = load_req_with_high_priority.reduce(_|_)
+
+  val load_req_bank_high_priority_select = selcetOldestPort(load_req_with_high_priority, load_req_lqIdx, load_req_index)
+  val load_req_bank_high_priority_select_port  = UIntToOH(load_req_bank_high_priority_select._2).asBools
+
   val rr_bank_conflict_oldest = (0 until LoadPipelineWidth).map(i =>
-    !load_req_bank_select_port(i) && load_req_with_bank_conflict(i)
+    Mux(hasPH, !load_req_bank_high_priority_select_port(i), !load_req_bank_select_port(i)) & load_req_with_bank_conflict(i)
   )
+
+  dontTouch(hasPH)
 
   val rrl_bank_conflict = Wire(Vec(LoadPipelineWidth, Bool()))
   val rrl_bank_conflict_intend = Wire(Vec(LoadPipelineWidth, Bool()))

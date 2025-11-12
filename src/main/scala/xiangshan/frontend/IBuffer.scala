@@ -107,7 +107,6 @@ class IBufEntry(implicit p: Parameters) extends XSBundle {
     cf.waitForRobIdx := DontCare
     cf.loadWaitBit := DontCare
     cf.loadWaitStrict := DontCare
-    cf.ssid := DontCare
     cf.ftqPtr := ftqPtr
     cf.ftqOffset := ftqOffset
     cf.isLastInFtqEntry := isLastInFtqEntry

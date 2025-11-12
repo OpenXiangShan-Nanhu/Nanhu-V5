@@ -148,7 +148,6 @@ class CtrlFlow(implicit p: Parameters) extends XSBundle {
   // If (loadWaitBit && loadWaitStrict), strict load wait is needed
   // load inst will not be executed until ALL former store addr calcuated
   val loadWaitStrict = Bool()
-  val ssid = UInt(SSIDWidth.W)
   val ftqPtr = new FtqPtr
   val ftqOffset = UInt(log2Up(PredictWidth).W)
   val isLastInFtqEntry = Bool()

@@ -762,26 +762,10 @@ trait HasXSParameter {
   // dcache block cacheline when lr for LRSCCycles - LRSCBackOff cycles
   // for constrained LR/SC loop
   def LRSCCycles = 64
-  // for lr storm
-  def LRSCBackOff = 8
 
   // cache hierarchy configurations
   def l1BusDataWidth = 256
-
-  // load violation predict
-  def ResetTimeMax2Pow = 20 //1078576
-  def ResetTimeMin2Pow = 10 //1024
-  // wait table parameters
-  def WaitTableSize = coreParams.WaitTableSize
   def MemPredPCWidth = 10
-  def LWTUse2BitCounter = true
-  // store set parameters
-  def SSITSize = WaitTableSize
-  def LFSTSize = 32
-  def SSIDWidth = log2Up(LFSTSize)
-  def LFSTWidth = 4
-  def StoreSetEnable = true // LWT will be disabled if SS is enabled
-  def LFSTEnable = true
 
   def PCntIncrStep: Int = 6
   def numPCntHc: Int = 12
@@ -798,7 +782,7 @@ trait HasXSParameter {
   def hasMbist = coreParams.hasMbist
 
   // Vector load exception
-  def maxMergeNumPerCycle = 4
+  def maxMergeNumPerCycle = 2
 
   // Parameters for Sdtrig extension
   protected def TriggerNum = 4

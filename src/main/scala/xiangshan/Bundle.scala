@@ -613,7 +613,6 @@ class CustomCSRCtrlIO(implicit p: Parameters) extends XSBundle {
   val virtMode = Output(Bool())
   // xstatus.fs field is off
   val fsIsOff = Output(Bool())
-  val stuck_value = Output(UInt(5.W))
 }
 
 class DistributedCSRIO(implicit p: Parameters) extends XSBundle {

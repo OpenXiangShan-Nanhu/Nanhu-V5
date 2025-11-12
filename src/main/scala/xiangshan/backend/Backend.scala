@@ -663,6 +663,7 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   // mem io
   io.mem.lsqEnqIO <> memScheduler.io.memIO.get.lsqEnqIO
   io.mem.robLsqIO <> ctrlBlock.io.robio.lsq
+  io.mem.wfi <> ctrlBlock.io.toMem.wfi
 
   io.frontendSfence := fenceio.sfence
   io.frontendTlbCsr := csrio.tlb
@@ -848,6 +849,8 @@ class BackendMemIO(implicit p: Parameters, params: BackendParams) extends XSBund
   val sfence = Output(new SfenceBundle)
   val isStoreException = Output(Bool())
   val isVlsException = Output(Bool())
+
+  val wfi = new WfiReqBundle
 
   // ATTENTION: The issue ports' sequence order should be the same as IQs' deq config
   private [backend] def issueUops: Seq[DecoupledIO[MemExuInput]] = {

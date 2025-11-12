@@ -624,6 +624,12 @@ class CtrlBlockImp(
   io.robio.exception := rob.io.exception
   io.robio.exception.bits.pc := s1_robFlushPc
 
+  // wfi
+  io.frontend.wfi.wfiReq := rob.io.wfi.wfiReq
+  rob.io.wfi.safeFromFrontend := io.frontend.wfi.wfiSafe
+  io.toMem.wfi.wfiReq := rob.io.wfi.wfiReq
+  rob.io.wfi.safeFromMem := io.toMem.wfi.wfiSafe
+
   // rob to mem block
   io.robio.lsq <> rob.io.lsq
 
@@ -740,6 +746,9 @@ class CtrlBlockIO()(implicit p: Parameters, params: BackendParams) extends XSBun
   val fromMem = new Bundle {
     val stIn = Vec(params.StaExuCnt, Flipped(ValidIO(new DynInst))) // use storeSetHit, ssid, robIdx
     val violation = Flipped(ValidIO(new Redirect))
+  }
+  val toMem = new Bundle {
+    val wfi = new WfiReqBundle
   }
 
   val redirectPcRead =new FtqRead(UInt(VAddrBits.W))

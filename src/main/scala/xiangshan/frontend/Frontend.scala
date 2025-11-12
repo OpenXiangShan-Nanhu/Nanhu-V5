@@ -60,7 +60,6 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
 {
   val io = IO(new Bundle() {
     val hartId = Input(UInt(hartIdLen.W))
-    val halt = Input(Bool())
     val reset_vector = Input(UInt(PAddrBits.W))
     val fencei = Input(Bool())
     val ptw = new TlbPtwIO()
@@ -108,6 +107,13 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   val csrCtrl = DelayN(io.csrCtrl, 2)
   val sfence = RegNext(RegNext(io.sfence))
 
+  // wfi (backend-icache, backend-instrUncache)
+  // DelayN for better timing
+  private val wfiReq = DelayN(io.backend.wfi.wfiReq, 1)
+  icache.io.wfi.wfiReq := wfiReq
+  // return safe only when both icache & instrUncache are safe, also only when has wfiReq (like, safe := wfiReq.fire)
+  io.backend.wfi.wfiSafe := DelayN(wfiReq && icache.io.wfi.wfiSafe, 1)
+
   // trigger
   ifu.io.frontendTrigger := csrCtrl.frontend_trigger
 
@@ -117,7 +123,7 @@ class FrontendInlinedImp (outer: FrontendInlined) extends LazyModuleImp(outer)
   // bpu ctrl
   bpu.io.ctrl := csrCtrl.bp_ctrl
   bpu.io.reset_vector := io.reset_vector
-  bpu.io.halt := io.halt
+  bpu.io.halt := wfiReq
 
   // pmp
   val PortNumber = ICacheParameters().PortNumber

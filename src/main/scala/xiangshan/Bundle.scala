@@ -463,6 +463,11 @@ class LoadCancelIO(implicit p: Parameters) extends XSBundle {
   val ld2Cancel = Bool()
 }
 
+class WfiReqBundle extends Bundle {
+  val wfiReq = Output(Bool())
+  val wfiSafe = Input(Bool())
+}
+
 class FrontendToCtrlIO(implicit p: Parameters) extends XSBundle {
   // to backend end
   val cfVec = Vec(DecodeWidth, DecoupledIO(new CtrlFlow))
@@ -472,6 +477,8 @@ class FrontendToCtrlIO(implicit p: Parameters) extends XSBundle {
   // from backend
   val toFtq = Flipped(new CtrlToFtqIO)
   val canAccept = Input(Bool())
+
+  val wfi = Flipped(new WfiReqBundle)
 }
 
 class SatpStruct(implicit p: Parameters) extends XSBundle {

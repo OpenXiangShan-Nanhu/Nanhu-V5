@@ -822,6 +822,7 @@ class DCacheIO(implicit p: Parameters) extends DCacheBundle {
   // val cmoOpResp = DecoupledIO(new CMOResp)
   val cmofinish = Bool()
   val monitorInfo = if (env.EnableHWMoniter) Some(Output(new DCacheStuckInfo)) else None
+  val wfi = Flipped(new WfiReqBundle)
 }
 
 private object ArbiterCtrl {
@@ -1023,6 +1024,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   mainPipe.io.replace <> missQueue.io.replace_block_query
   mainPipe.io.sms_agt_evict_req <> io.sms_agt_evict_req
   io.csr := DontCare
+  io.wfi <> missQueue.io.wfi
 
   val errors = ldu.map(_.io.error) ++ // load error
     Seq(mainPipe.io.error) // store / misc error

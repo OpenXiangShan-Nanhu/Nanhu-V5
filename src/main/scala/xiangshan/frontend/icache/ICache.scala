@@ -447,6 +447,8 @@ class ICacheIO(implicit p: Parameters) extends ICacheBundle
   val itlbFlushPipe = Bool()
   val perfInfo    = Output(new ICachePerfInfo)
   val error       = ValidIO(new L1CacheErrorInfo)
+  // wfi
+  val wfi: WfiReqBundle = Flipped(new WfiReqBundle)
   /* CSR control signal */
   val csr_pf_enable = Input(Bool())
   val csr_parity_enable = Input(Bool())
@@ -544,6 +546,7 @@ class ICacheImp(outer: ICache) extends LazyModuleImp(outer) with HasICacheParame
   missUnit.io.hartId            := io.hartId
   missUnit.io.fencei            := io.fencei
   missUnit.io.flush             := io.flushFromIFU || io.flushFromBackend
+  missUnit.io.wfi               <> io.wfi
   missUnit.io.fetch_req         <> mainPipe.io.mshr.req
   missUnit.io.prefetch_req      <> prefetcher.io.MSHRReq
   missUnit.io.mem_grant.valid   := false.B

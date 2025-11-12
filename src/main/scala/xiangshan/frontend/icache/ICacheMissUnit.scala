@@ -114,6 +114,7 @@ class ICacheMSHR(edge: TLEdgeOut, isFetch: Boolean, ID: Int)(implicit p: Paramet
   val io = IO(new Bundle {
     val fencei      = Input(Bool())
     val flush       = Input(Bool())
+    val wfi         = Flipped(new WfiReqBundle)
     val invalid     = Input(Bool())
     val req         = Flipped(DecoupledIO(new ICacheMissReq))
     val acquire     = DecoupledIO(new MSHRAcquire(edge))
@@ -167,7 +168,7 @@ class ICacheMSHR(edge: TLEdgeOut, isFetch: Boolean, ID: Int)(implicit p: Paramet
   }
 
   // send request to L2
-  io.acquire.valid := valid && !issue && !io.flush && !io.fencei
+  io.acquire.valid := valid && !issue && !io.flush && !io.fencei && !io.wfi.wfiReq
   val getBlock = edge.Get( 
     fromSource  = ID.U,
     toAddress   = Cat(blkPaddr, 0.U(blockOffBits.W)),
@@ -193,6 +194,9 @@ class ICacheMSHR(edge: TLEdgeOut, isFetch: Boolean, ID: Int)(implicit p: Paramet
   io.resp.bits.blkPaddr := blkPaddr
   io.resp.bits.vSetIdx  := vSetIdx
   io.resp.bits.waymask  := waymask
+
+  // we are safe to enter wfi if we have no pending response from L2
+  io.wfi.wfiSafe := !(valid && issue)
 }
 
 class ICacheMissBundle(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheBundle{
@@ -201,6 +205,7 @@ class ICacheMissBundle(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheBu
   // control
   val fencei      = Input(Bool())
   val flush       = Input(Bool())
+  val wfi         = Flipped(new WfiReqBundle)
   // fetch
   val fetch_req     = Flipped(DecoupledIO(new ICacheMissReq))
   val fetch_resp    = ValidIO(new ICacheMissResp)
@@ -266,6 +271,7 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
     val mshr = Module(new ICacheMSHR(edge, true, i))
     mshr.io.flush   := false.B
     mshr.io.fencei  := io.fencei
+    mshr.io.wfi.wfiReq := io.wfi.wfiReq
     mshr.io.req <> fetchDemux.io.out(i)
     mshr.io.lookUps(0).info.valid := io.fetch_req.valid
     mshr.io.lookUps(0).info.bits  := io.fetch_req.bits
@@ -280,6 +286,7 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
     val mshr = Module(new ICacheMSHR(edge, false, nFetchMshr + i))
     mshr.io.flush := io.flush
     mshr.io.fencei  := io.fencei
+    mshr.io.wfi.wfiReq := io.wfi.wfiReq
     mshr.io.req <> prefetchDemux.io.out(i)
     mshr.io.lookUps(0).info.valid := io.fetch_req.valid
     mshr.io.lookUps(0).info.bits  := io.fetch_req.bits
@@ -413,6 +420,8 @@ class ICacheMissUnit(edge: TLEdgeOut)(implicit p: Parameters) extends ICacheMiss
   io.fetch_resp.bits.data     := respDataReg.asUInt
   io.fetch_resp.bits.corrupt  := corrupt_r
 
+  // we are safe to enter wfi if all entries have no pending response from L2
+  io.wfi.wfiSafe := allMSHRs.map(_.io.wfi.wfiSafe).reduce(_ && _)
   /**
     ******************************************************************************
     * performance counter

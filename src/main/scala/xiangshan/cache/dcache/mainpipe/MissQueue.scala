@@ -377,6 +377,7 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
     val l2_pf_store_only = Input(Bool())
 
     val lqEmpty = Input(Bool())
+    val wfi = Flipped(new WfiReqBundle)
 
     val prefetch_info = new Bundle {
       val naive = new Bundle {
@@ -642,6 +643,8 @@ class MissQueue(edge: TLEdgeOut, reqNum: Int)(implicit p: Parameters) extends DC
 
   io.full := ~Cat(entries.map(_.io.primary_ready)).andR
 
+  val mqPending = entries.map(_.io.req_addr.valid).reduce(_ || _)
+  io.wfi.wfiSafe := GatedValidRegNext(!mqPending && io.wfi.wfiReq)
   // prefetch related
   io.prefetch_info.naive.late_miss_prefetch := io.req.valid && io.req.bits.isPrefetchRead && (miss_req_pipe_reg.matched(io.req.bits) || Cat(entries.map(_.io.matched)).orR)
 

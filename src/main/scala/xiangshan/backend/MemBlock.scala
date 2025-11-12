@@ -351,6 +351,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     val memPredUpdate = Input(new MemPredUpdateReq)
     val monitorInfo = if(env.EnableHWMoniter) Some(Output(new MBHWMonitor)) else None
 
+    val wfi = Flipped(new WfiReqBundle)
     val power = new Bundle{
       val flushSb = Input(Bool())
       val sbIsEmpty = Output(Bool())
@@ -401,7 +402,15 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   private val dcache = outer.dcache.module
   val uncache = outer.uncache.module
 
-  val csrCtrl = DelayN(io.ooo_to_mem.csrCtrl, 2)
+  val _csrCtrl = DelayN(io.ooo_to_mem.csrCtrl, 2)
+  val csrCtrl = WireInit(_csrCtrl)
+  csrCtrl.l1D_pf_enable := _csrCtrl.l1D_pf_enable && !io.wfi.wfiReq
+  csrCtrl.l1D_pf_train_on_hit := _csrCtrl.l1D_pf_train_on_hit && !io.wfi.wfiReq
+  csrCtrl.l1D_pf_enable_agt := _csrCtrl.l1D_pf_enable_agt && !io.wfi.wfiReq
+  csrCtrl.l1D_pf_enable_pht := _csrCtrl.l1D_pf_enable_pht && !io.wfi.wfiReq
+  csrCtrl.l2_pf_enable := _csrCtrl.l2_pf_enable && !io.wfi.wfiReq
+  csrCtrl.l2_pf_store_only := _csrCtrl.l2_pf_store_only && !io.wfi.wfiReq
+
   dcache.io.csr.distribute_csr <> csrCtrl.distribute_csr
   dcache.io.l2_pf_store_only := RegNext(io.ooo_to_mem.csrCtrl.l2_pf_store_only, false.B)
 
@@ -595,7 +604,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   atomicsUnit.io.hartId := io.hartId
 
   dcache.io.lqEmpty := lsq.io.lqEmpty
-  
+  dcache.io.wfi.wfiReq := io.wfi.wfiReq
+  io.wfi.wfiSafe := dcache.io.wfi.wfiSafe
 
   // load/store prefetch to l2 cache
   prefetcherOpt.foreach(sms_pf => {

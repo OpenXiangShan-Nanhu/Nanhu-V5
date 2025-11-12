@@ -118,7 +118,6 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   val memBlock = outer.memBlock.module
 
   frontend.io.hartId := memBlock.io.inner_hartId
-  frontend.io.halt := backend.io.toTop.cpuHalted
   frontend.io.reset_vector := memBlock.io.inner_reset_vector
   frontend.io.softPrefetch <> memBlock.io.ifetchPrefetch
   frontend.io.backend <> backend.io.frontend
@@ -245,6 +244,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.l2_hint.bits.isKeyword := io.l2_hint.bits.isKeyword
   memBlock.io.l2PfqBusy := io.l2PfqBusy
 
+  memBlock.io.wfi <> backend.io.mem.wfi
   memBlock.io.power.flushSb := io.power.flushSb
   io.power.sbIsEmpty := memBlock.io.power.sbIsEmpty
 
@@ -268,7 +268,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   io.traceCoreInterface <> backend.io.traceCoreInterface
 
 
-  io.l2PfCtrl.l2_pf_master_en := backend.io.mem.csrCtrl.l2_pf_enable
+  io.l2PfCtrl.l2_pf_master_en := backend.io.mem.csrCtrl.l2_pf_enable && !backend.io.mem.wfi.wfiReq
   io.l2PfCtrl.l2_pf_recv_en   := true.B
   io.l2PfCtrl.l2_pbop_en      := true.B
   io.l2PfCtrl.l2_vbop_en      := true.B

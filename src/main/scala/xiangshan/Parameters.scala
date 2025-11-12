@@ -638,7 +638,6 @@ trait HasXSParameter {
   def EnableRenameSnapshot = coreParams.EnableRenameSnapshot
   def RenameSnapshotNum = coreParams.RenameSnapshotNum
   def FtqSize = coreParams.FtqSize
-  def EnableLoadFastWakeUp = coreParams.EnableLoadFastWakeUp
   def IntLogicRegs = coreParams.IntLogicRegs
   def FpLogicRegs = coreParams.FpLogicRegs
   def VecLogicRegs = coreParams.VecLogicRegs
@@ -689,11 +688,9 @@ trait HasXSParameter {
   def VirtualLoadQueueMaxStoreQueueSize = VirtualLoadQueueSize max StoreQueueSize
   def StoreQueueNWriteBanks = coreParams.StoreQueueNWriteBanks
   def StoreQueueForwardWithMask = coreParams.StoreQueueForwardWithMask
-  def VlsQueueSize = coreParams.VlsQueueSize
   def dpParams = coreParams.dpParams
 
   def MemIQSizeMax = backendParams.memSchdParams.get.issueBlockParams.map(_.numEntries).max
-  def IQSizeMax = backendParams.allSchdParams.map(_.issueBlockParams.map(_.numEntries).max).max
 
   def NumRedirect = backendParams.numRedirect
   def BackendRedirectNum = NumRedirect + 2 //2: ldReplay + Exception
@@ -703,10 +700,6 @@ trait HasXSParameter {
   def StorePipelineWidth = coreParams.StorePipelineWidth
   def VecLoadPipelineWidth = coreParams.VecLoadPipelineWidth
   def VecStorePipelineWidth = coreParams.VecStorePipelineWidth
-  def VecMemSrcInWidth = coreParams.VecMemSrcInWidth
-  def VecMemInstWbWidth = coreParams.VecMemInstWbWidth
-  def VecMemDispatchWidth = coreParams.VecMemDispatchWidth
-  def VecMemDispatchMaxNumber = coreParams.VecMemDispatchMaxNumber
   def VecMemUnitStrideMaxFlowNum = coreParams.VecMemUnitStrideMaxFlowNum
   def VecMemLSQEnqIteratorNumberSeq = coreParams.VecMemLSQEnqIteratorNumberSeq
   def StoreBufferSize = coreParams.StoreBufferSize
@@ -719,39 +712,23 @@ trait HasXSParameter {
   def VLUopWritebackWidth = coreParams.VLUopWritebackWidth
   def VSUopWritebackWidth = coreParams.VSUopWritebackWidth
   def VSegmentBufferSize = coreParams.VSegmentBufferSize
-  def VFOFBufferSize = coreParams.VFOFBufferSize
   def UncacheBufferSize = coreParams.UncacheBufferSize
-  def EnableLoadToLoadForward = coreParams.EnableLoadToLoadForward
   def EnableFastForward = coreParams.EnableFastForward
-  def EnableLdVioCheckAfterReset = coreParams.EnableLdVioCheckAfterReset
-  def EnableSoftPrefetchAfterReset = coreParams.EnableSoftPrefetchAfterReset
-  def EnableCacheErrorAfterReset = coreParams.EnableCacheErrorAfterReset
-  def EnableAccurateLoadError = coreParams.EnableAccurateLoadError
-  def EnableUncacheWriteOutstanding = coreParams.EnableUncacheWriteOutstanding
   def EnableStorePrefetchAtIssue = coreParams.EnableStorePrefetchAtIssue
   def EnableStorePrefetchAtCommit = coreParams.EnableStorePrefetchAtCommit
-  def EnableAtCommitMissTrigger = coreParams.EnableAtCommitMissTrigger
   def EnableStorePrefetchSMS = coreParams.EnableStorePrefetchSMS
   def EnableStorePrefetchSPB = coreParams.EnableStorePrefetchSPB
   def HasCMO = coreParams.HasCMO && p(EnableCHI)
 
-  def Enable3Load3Store = (LoadPipelineWidth == 3 && StorePipelineWidth == 3)
   def asidLen = coreParams.MMUAsidLen
   def vmidLen = coreParams.MMUVmidLen
   def BTLBWidth = coreParams.LoadPipelineWidth + coreParams.StorePipelineWidth
-  def refillBothTlb = coreParams.refillBothTlb
   def iwpuParam = coreParams.iwpuParameters
   def dwpuParam = coreParams.dwpuParameters
   def dtlbParams = coreParams.dtlbParameters
   def itlbParams = coreParams.itlbParameters
   def ldtlbParams = coreParams.ldtlbParameters
-  def sttlbParams = coreParams.sttlbParameters
-  def hytlbParams = coreParams.hytlbParameters
-  def pftlbParams = coreParams.pftlbParameters
-  def l2ToL1Params = coreParams.l2ToL1tlbParameters
-  def btlbParams = coreParams.btlbParameters
   def l2tlbParams = coreParams.l2tlbParameters
-  def NumPerfCounters = coreParams.NumPerfCounters
 
   def instBytes = if (HasCExtension) 2 else 4
   def instOffsetBits = log2Ceil(instBytes)

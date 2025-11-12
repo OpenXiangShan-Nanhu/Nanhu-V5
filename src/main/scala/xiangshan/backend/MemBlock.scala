@@ -1097,18 +1097,19 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   lsq.io.sbufferVecDifftestInfo   := DontCare
   vSegmentUnit.io.vecDifftestInfo := DontCare
   if (env.EnableDifftest) {
-    sbuffer.io.vecDifftestInfo .zipWithIndex.map{ case (sbufferPort, index) =>
-      if (index == 0) {
-        val vSegmentDifftestValid = vSegmentUnit.io.vecDifftestInfo.valid
-        sbufferPort.valid := Mux(vSegmentDifftestValid, vSegmentUnit.io.vecDifftestInfo.valid, lsq.io.sbufferVecDifftestInfo(0).valid)
-        sbufferPort.bits  := Mux(vSegmentDifftestValid, vSegmentUnit.io.vecDifftestInfo.bits, lsq.io.sbufferVecDifftestInfo(0).bits)
-
-        vSegmentUnit.io.vecDifftestInfo.ready  := sbufferPort.ready
-        lsq.io.sbufferVecDifftestInfo(0).ready := sbufferPort.ready
-      } else {
-         sbufferPort <> lsq.io.sbufferVecDifftestInfo(index)
-      }
-    }
+    //todo
+//    sbuffer.io.vecDifftestInfo .zipWithIndex.map{ case (sbufferPort, index) =>
+//      if (index == 0) {
+//        val vSegmentDifftestValid = vSegmentUnit.io.vecDifftestInfo.valid
+//        sbufferPort.valid := Mux(vSegmentDifftestValid, vSegmentUnit.io.vecDifftestInfo.valid, lsq.io.sbufferVecDifftestInfo(0).valid)
+//        sbufferPort.bits  := Mux(vSegmentDifftestValid, vSegmentUnit.io.vecDifftestInfo.bits, lsq.io.sbufferVecDifftestInfo(0).bits)
+//
+//        vSegmentUnit.io.vecDifftestInfo.ready  := sbufferPort.ready
+//        lsq.io.sbufferVecDifftestInfo(0).ready := sbufferPort.ready
+//      } else {
+//         sbufferPort <> lsq.io.sbufferVecDifftestInfo(index)
+//      }
+//    }
   }
 
   // vector

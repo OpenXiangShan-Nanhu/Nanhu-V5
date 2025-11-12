@@ -153,6 +153,7 @@ class LsPipelineBundle(implicit p: Parameters) extends XSBundle
   val isFastPath = Bool()
   val isFastReplay = Bool()
   val replayCarry = new ReplayCarry(nWays)
+  val highPriority = Bool()
 
   // For dcache miss load
   val mshrid = UInt(log2Up(cfg.nMissEntries).W)

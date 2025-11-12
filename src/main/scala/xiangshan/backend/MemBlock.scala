@@ -1683,9 +1683,9 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     clk_tmp := !clk_tmp
 
     io.monitorInfo.get.lqStuckInfo := lsq.io.ldStuckInfo.getOrElse(0.U)
-    io.monitorInfo.get.sb := sbuffer.io.monitorInfo.getOrElse(0.U)
+//    io.monitorInfo.get.sb := sbuffer.io.monitorInfo.getOrElse(0.U)
     io.monitorInfo.get.DCacheInfoVec := dcache.io.monitorInfo.getOrElse(0.U)
-    io.monitorInfo.get.uncacheInfoVec := uncache.io.monitorInfo.getOrElse(0.U)
+//    io.monitorInfo.get.uncacheInfoVec := uncache.io.monitorInfo.getOrElse(0.U)
 
     for(i <- 0 until LoadPipelineWidth){
       io.monitorInfo.get.ldu(i) := loadUnits(i).io.hwMonitor.getOrElse(0.U.asTypeOf(new LduDCacheReplayInfo))

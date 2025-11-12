@@ -255,6 +255,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     val alignedType   = UInt(alignTypeBits.W)
     val vecBaseVaddr  = UInt(VAddrBits.W)
     val isReplayForRAW = Bool()
+    val highPriority = Bool()
   }
   val s0_sel_src = Wire(new FlowSource)
 
@@ -388,7 +389,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.dcache.req.bits.replayCarry  := s0_sel_src.rep_carry
   io.dcache.req.bits.id           := DontCare // TODO: update cache meta
   io.dcache.req.bits.lqIdx        := s0_sel_src.uop.lqIdx
-  io.dcache.req.bits.highPriority := s0_src_select_vec(super_rep_idx)
+  io.dcache.req.bits.highPriority := s0_sel_src.highPriority
   io.dcache.pf_source             := Mux(s0_hw_prf_select, io.prefetch_req.bits.pf_source.value, L1_HW_PREFETCH_NULL)
   io.dcache.is128Req              := s0_sel_src.is128bit
 
@@ -428,6 +429,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.isvec         := false.B
     out.is128bit      := src.is128bit
     out.vecActive     := true.B
+    out.highPriority  := false.B
     out
   }
 
@@ -460,6 +462,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.elemIdx       := src.elemIdx
     out.elemIdxInsideVd := src.elemIdxInsideVd
     out.alignedType   := src.alignedType
+    out.highPriority := src.highPriority
     out
   }
 
@@ -483,6 +486,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.prf_i         := false.B
     out.sched_idx     := 0.U
     out.vecActive     := true.B
+    out.highPriority := false.B
     out
   }
 
@@ -516,6 +520,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.elemIdxInsideVd := src.elemIdxInsideVd
     out.alignedType   := src.alignedType
     out.isReplayForRAW := src.isReplayForRAW
+    out.highPriority := src.forward_tlDchannel
     out
   }
 
@@ -538,6 +543,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.prf_wr        := src.is_store
     out.prf_i         := false.B
     out.sched_idx     := 0.U
+    out.highPriority := false.B
     out
   }
 
@@ -577,6 +583,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.elemIdxInsideVd     := src.elemIdxInsideVd
     out.vecBaseVaddr        := src.basevaddr
     out.alignedType         := src.alignedType
+    out.highPriority := false.B
     out
   }
 
@@ -600,6 +607,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.prf_i         := src.uop.fuOpType === LSUOpType.prefetch_i
     out.sched_idx     := 0.U
     out.vecActive     := true.B // true for scala load
+    out.highPriority  := false.B
     out
   }
 
@@ -626,6 +634,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     out.prf_wr             := false.B
     out.prf_i              := false.B
     out.sched_idx          := 0.U
+    out.highPriority       := false.B
     out
   }
 
@@ -765,6 +774,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
     s0_out.uop.debugInfo.tlbFirstReqTime := s0_sel_src.uop.debugInfo.tlbFirstReqTime
   }
   s0_out.schedIndex     := s0_sel_src.sched_idx
+  s0_out.highPriority := io.dcache.req.bits.highPriority
 
   // load fast replay
   io.fast_rep_in.ready := (s0_can_go && io.dcache.req.ready && s0_src_ready_vec(fast_rep_idx))
@@ -1268,6 +1278,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.prefetch_train.bits.meta_prefetch := RegEnable(io.dcache.resp.bits.meta_prefetch, s2_prefetch_train_valid)
   io.prefetch_train.bits.meta_access   := RegEnable(io.dcache.resp.bits.meta_access, s2_prefetch_train_valid)
   io.prefetch_train.bits.isReplayForRAW := DontCare
+  io.prefetch_train.bits.highPriority := DontCare
   io.s1_prefetch_spec := s1_fire
   io.s2_prefetch_spec := s2_prefetch_train_valid
 
@@ -1279,6 +1290,7 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.prefetch_train_l1.bits.meta_prefetch := RegEnable(io.dcache.resp.bits.meta_prefetch, s2_prefetch_train_l1_valid)
   io.prefetch_train_l1.bits.meta_access   := RegEnable(io.dcache.resp.bits.meta_access, s2_prefetch_train_l1_valid)
   io.prefetch_train_l1.bits.isReplayForRAW := DontCare
+  io.prefetch_train_l1.bits.highPriority := DontCare
   if (env.FPGAPlatform){
     io.dcache.s0_pc := DontCare
     io.dcache.s1_pc := DontCare
@@ -1615,10 +1627,24 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.lsTopdownInfo.s2.cache_miss_en   := s2_fire && s2_in.hasROBEntry && !s2_in.tlbMiss && !s2_in.missDbUpdated
 
   if(env.EnableHWMoniter){
-    io.hwMonitor.get.valid := s2_valid
-    io.hwMonitor.get.s2_mq_nack := s2_mq_nack
-    io.hwMonitor.get.s2_fwd_frm_d_chan_or_mshr := s2_fwd_frm_d_chan_or_mshr
-    io.hwMonitor.get.s2_full_fwd := s2_full_fwd
+    val mon = io.hwMonitor.get
+    mon.s0_valid := s0_valid
+    mon.s0_rob := s0_out.uop.robIdx
+    mon.isFastReplay := s0_out.isFastReplay
+    mon.highPriority := io.dcache.req.bits.highPriority
+
+    mon.s1_valid := s1_valid
+
+    mon.s2_valid := s2_valid
+    mon.s2_mq_nack := s2_mq_nack
+    mon.s2_bankConflict := s2_bank_conflict
+    mon.s2_dcache_miss := s2_dcache_miss
+    mon.s2_dcache_fast_rep := s2_dcache_fast_rep
+    mon.s2_nuke_fast_rep := s2_nuke_fast_rep
+    mon.s2_rep_info := s2_out.rep_info
+
+    mon.s3_valid := s3_valid
+    mon.s3_rep_info := s3_rep_info
   }
 
   // perf cnt

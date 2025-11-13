@@ -1615,10 +1615,24 @@ class LoadUnit(id: Int)(implicit p: Parameters) extends XSModule
   io.lsTopdownInfo.s2.cache_miss_en   := s2_fire && s2_in.hasROBEntry && !s2_in.tlbMiss && !s2_in.missDbUpdated
 
   if(env.EnableHWMoniter){
-    io.hwMonitor.get.valid := s2_valid
-    io.hwMonitor.get.s2_mq_nack := s2_mq_nack
-    io.hwMonitor.get.s2_fwd_frm_d_chan_or_mshr := s2_fwd_frm_d_chan_or_mshr
-    io.hwMonitor.get.s2_full_fwd := s2_full_fwd
+    val mon = io.hwMonitor.get
+    mon.s0_valid := s0_valid
+    mon.s0_rob := s0_out.uop.robIdx
+    mon.isFastReplay := s0_out.isFastReplay
+    mon.highPriority := io.dcache.req.bits.highPriority
+
+    mon.s1_valid := s1_valid
+
+    mon.s2_valid := s2_valid
+    mon.s2_mq_nack := s2_mq_nack
+    mon.s2_bankConflict := s2_bank_conflict
+    mon.s2_dcache_miss := s2_dcache_miss
+    mon.s2_dcache_fast_rep := s2_dcache_fast_rep
+    mon.s2_nuke_fast_rep := s2_nuke_fast_rep
+    mon.s2_rep_info := s2_out.rep_info
+
+    mon.s3_valid := s3_valid
+    mon.s3_rep_info := s3_rep_info
   }
 
   // perf cnt

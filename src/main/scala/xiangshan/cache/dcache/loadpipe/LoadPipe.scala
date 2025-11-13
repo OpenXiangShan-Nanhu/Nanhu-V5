@@ -566,6 +566,8 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
     info.s2_nack_no_mshr := s2_nack_no_mshr
     info.mq_enq_cancel := io.mq_enq_cancel
     info.wbq_block_miss_req := io.wbq_block_miss_req
+    info.s2_miss_req.valid := io.miss_req.valid
+    info.s2_miss_req.bits := io.miss_req.bits
   }
 
   // --------------------------------------------------------------------------------

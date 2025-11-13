@@ -28,11 +28,11 @@ import utils._
 import xiangshan.backend.decode.XDecode
 import xiangshan.backend.fu.FuType
 import xiangshan.backend.rob.RobPtr
-import xiangshan.mem.{HasSbufferConst, LoadReplayCauses, LqPtr, SbufferEntryState, SqPtr}
+import xiangshan.mem.{HasSbufferConst, LoadReplayCauses, LoadToLsqReplayIO, LqPtr, SbufferEntryState, SqPtr}
 import xiangshan.backend.Bundles.{DynInst, UopIdx}
 import xiangshan.frontend.{AllAheadFoldedHistoryOldestBits, AllFoldedHistories, BPUCtrl, CGHPtr, FtqPtr, FtqToCtrlIO}
 import xiangshan.frontend.{Ftq_Redirect_SRAMEntry, HasBPUParameter, IfuToBackendIO, PreDecodeInfo, RASPtr}
-import xiangshan.cache.HasDCacheParameters
+import xiangshan.cache.{HasDCacheParameters, MissReq}
 import xiangshan.backend.CtrlToFtqIO
 import xiangshan.backend.fu.NewCSR.{Mcontrol6, Tdata1Bundle, Tdata2Bundle}
 import xiangshan.backend.rob.RobBundles.RobCommitEntryBundle
@@ -850,10 +850,10 @@ class BackendHWMonitor(implicit p: Parameters) extends XSBundle {
 class MBHWMonitor(implicit p: Parameters) extends XSBundle
   with HasDCacheParameters{
   val DCacheInfoVec = new DCacheStuckInfo
-  val uncacheInfoVec = Vec(coreParams.UncacheBufferSize, new UnCacheStuckInfo)
+//  val uncacheInfoVec = Vec(coreParams.UncacheBufferSize, new UnCacheStuckInfo)
   val lqStuckInfo = new LQStuckInfo
   val ldu = Vec(LoadPipelineWidth ,new LduDCacheReplayInfo)
-  val sb = new SbufferStuckInfo
+//  val sb = new SbufferStuckInfo
 }
 
 class SbufferStuckInfo(implicit p: Parameters) extends XSBundle with HasSbufferConst{
@@ -886,6 +886,8 @@ class LQStuckInfo(implicit p: Parameters) extends XSBundle with HasDCacheParamet
     val valid = Bool()
     val cause = UInt(LoadReplayCauses.allCauses.W)
     val rob = new RobPtr
+    val block = Bool()
+    val scheduled = Bool()
   })
 
 }
@@ -901,10 +903,25 @@ class DCacheStuckInfo(implicit p: Parameters) extends XSBundle with HasDCachePar
 }
 
 class LduDCacheReplayInfo(implicit p: Parameters) extends XSBundle with HasDCacheParameters{
-  val valid = Bool()
   val s2_mq_nack = Bool()
-  val s2_fwd_frm_d_chan_or_mshr = Bool()
-  val s2_full_fwd = Bool()
+
+  val s0_valid = Bool()
+  val s0_rob = new RobPtr
+  val isFastReplay = Bool()
+  val highPriority = Bool()
+
+
+  val s1_valid = Bool()
+
+  val s2_valid = Bool()
+  val s2_rep_info = new LoadToLsqReplayIO
+  val s2_bankConflict = Bool()
+  val s2_dcache_miss = Bool()
+  val s2_dcache_fast_rep = Bool()
+  val s2_nuke_fast_rep = Bool()
+
+  val s3_valid = Bool()
+  val s3_rep_info = new LoadToLsqReplayIO
 }
 
 
@@ -915,6 +932,7 @@ class LoadPipeDCacheReplayInfo(implicit p: Parameters) extends XSBundle with Has
   val s2_nack_no_mshr = Bool()
   val mq_enq_cancel = Bool()
   val wbq_block_miss_req = Bool()
+  val s2_miss_req = ValidIO(new MissReq)
 }
 
 

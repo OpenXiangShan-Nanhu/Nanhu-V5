@@ -73,6 +73,10 @@ trait BitFieldsVec { this: Riscv32BitInst =>
     res
   }
 
+  def isVset = {
+    this.OPCODE === "b1010111".U && this.WIDTH === "b111".U
+  }
+
   def isVecStore = {
     this.OPCODE === "b0100111".U && (this.WIDTH === 0.U || this.WIDTH(2) === 1.B)
   }

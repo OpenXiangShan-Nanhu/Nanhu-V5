@@ -16,31 +16,22 @@
 
 package xiangshan.backend.decode
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
+import org.chipsalliance.cde.config.Parameters
 import xs.utils._
 import xs.utils.perf._
-import utils._
 import xiangshan._
-import xiangshan.backend.rename.RatReadPort
-import xiangshan.backend.Bundles._
-import xiangshan.backend.fu.vector.Bundles.{VType, Vl}
-import xiangshan.backend.fu.FuType
-import xiangshan.backend.fu.wrapper.CSRToDecode
-import yunsuan.VpermType
 import xiangshan.ExceptionNO.{illegalInstr, virtualInstr, selectFrontend}
 import xiangshan.frontend.FtqPtr
-import xiangshan.ExceptionNO.illegalInstr
+import xiangshan.backend.Bundles._
+import xiangshan.backend.rename.RatReadPort
+import xiangshan.backend.fu.FuType
+import xiangshan.backend.fu.vector.Bundles.{VType, Vl}
+import xiangshan.backend.fu.wrapper.CSRToDecode
 
 class DecodeStage(implicit p: Parameters) extends XSModule
-  with HasPerfEvents
-  with VectorConstants {
-
-  // params alias
-  private val numVecRegSrc = backendParams.numVecRegSrc
-  private val numVecRatPorts = numVecRegSrc
-
+  with HasPerfEvents with VectorConstants {
   val io = IO(new Bundle() {
     val redirect = Input(Bool())
     val canAccept = Output(Bool())
@@ -51,7 +42,7 @@ class DecodeStage(implicit p: Parameters) extends XSModule
     // RAT read
     val intRat = Vec(RenameWidth, Vec(2, Flipped(new RatReadPort(IntLogicRegs)))) // Todo: make it configurable
     val fpRat = Vec(RenameWidth, Vec(3, Flipped(new RatReadPort(FpLogicRegs))))
-    val vecRat = Vec(RenameWidth, Vec(numVecRatPorts, Flipped(new RatReadPort(VecLogicRegs))))
+    val vecRat = Vec(RenameWidth, Vec(3, Flipped(new RatReadPort(VecLogicRegs))))
     val v0Rat = Vec(RenameWidth, Flipped(new RatReadPort(V0LogicRegs)))
     val vlRat = Vec(RenameWidth, Flipped(new RatReadPort(VlLogicRegs)))
     // csr control
@@ -98,14 +89,13 @@ class DecodeStage(implicit p: Parameters) extends XSModule
 
   val canAccept = Wire(Bool())
 
-  //Simple 6
   decoders.zip(io.in).foreach { case (dst, src) => dst.io.enq.ctrlFlow := src.bits }
   decoders.foreach { case dst => dst.io.csrCtrl := io.csrCtrl }
   decoders.foreach { case dst => dst.io.fromCSR := io.fromCSR }
   decoders.foreach { case dst => dst.io.enq.vtype := vtypeGen.io.vtype }
   decoders.foreach { case dst => dst.io.enq.vstart := io.vstart }
-  val isComplexVec = VecInit(inValids.zip(decoders.map(_.io.deq.isComplex)).map { case (valid, isComplex) => valid && isComplex })
-  val isSimpleVec = VecInit(inValids.zip(decoders.map(_.io.deq.isComplex)).map { case (valid, isComplex) => valid && !isComplex })
+  val isComplexVec = WireInit(VecInit(inValids.zip(decoders.map(_.io.deq.isComplex)).map { case (valid, isComplex) => valid && isComplex }))
+  val isSimpleVec = WireInit(VecInit(inValids.zip(decoders.map(_.io.deq.isComplex)).map { case (valid, isComplex) => valid && !isComplex }))
   val simpleDecodedInst = VecInit(decoders.map(_.io.deq.decodedInst))
 
   val isIllegalInstVec = VecInit((outValids lazyZip outReadys lazyZip io.out.map(_.bits)).map {
@@ -115,8 +105,8 @@ class DecodeStage(implicit p: Parameters) extends XSModule
   val hasIllegalInst = Cat(isIllegalInstVec).orR
   val illegalInst = PriorityMuxDefault(isIllegalInstVec.zip(io.out.map(_.bits)), 0.U.asTypeOf(new DecodedInst))
 
-  val complexNum = Wire(UInt(3.W))
-  // (0, 1, 2, 3, 4, 5) + complexNum
+  val complexNum = Wire(UInt(log2Ceil(RenameWidth + 1).W))
+  // (0, 1, 2, 3) + complexNum
   val complexNumAddLocation: Vec[UInt] = VecInit((0 until DecodeWidth).map(x => (x.U +& complexNum)))
   val noMoreThanRenameReady: Vec[Bool] = VecInit(complexNumAddLocation.map(x => x <= readyCounter))
   val complexValid = VecInit((isComplexVec zip noMoreThanRenameReady).map(x => x._1 & x._2)).asUInt.orR
@@ -134,7 +124,6 @@ class DecodeStage(implicit p: Parameters) extends XSModule
   vtypeGen.io.walkVType := io.fromRob.walkVType
   vtypeGen.io.vsetvlVType := io.vsetvlVType
 
-  //Comp 1
   decoderComp.io.redirect := io.redirect
   decoderComp.io.csrCtrl := io.csrCtrl
   decoderComp.io.vtypeBypass := vtypeGen.io.vtype
@@ -153,9 +142,6 @@ class DecodeStage(implicit p: Parameters) extends XSModule
   val simplePrefixVec = VecInit((0 until DecodeWidth).map(i => VecInit(isSimpleVec.take(i + 1)).asUInt.andR))
   // Vec(S,S,S,C,S,S) -> Vec(0,0,0,1,0,0)
   val firstComplexOH: Vec[Bool] = VecInit(PriorityEncoderOH(isComplexVec))
-
-  // block vector inst when vtype is resuming
-  val hasVectorInst = VecInit(decoders.map(x => FuType.FuTypeOrR(x.io.deq.decodedInst.fuType, FuType.vecArithOrMem ++ FuType.vecVSET))).asUInt.orR
 
   canAccept := !io.redirect && (io.out.head.ready || decoderComp.io.in.ready) && !io.fromRob.isResumeVType
 
@@ -240,16 +226,18 @@ class DecodeStage(implicit p: Parameters) extends XSModule
   io.toCSR.trapInstInfo.valid := hasIllegalInst && !io.redirect
   io.toCSR.trapInstInfo.bits.fromDecodedInst(illegalInst)
 
-  XSPerfAccumulate("in_valid_count", PopCount(io.in.map(_.valid)))
-  XSPerfAccumulate("in_fire_count", PopCount(io.in.map(_.fire)))
-  XSPerfAccumulate("in_valid_not_ready_count", PopCount(io.in.map(x => x.valid && !x.ready)))
-  XSPerfAccumulate("stall_cycle", io.in.head match { case x => x.valid && !x.ready})
-  XSPerfAccumulate("wait_cycle", !io.in.head.valid && io.out.head.ready)
+  chisel3.experimental.prefix("perf") {
+    XSPerfAccumulate("in_valid_count", PopCount(io.in.map(_.valid)))
+    XSPerfAccumulate("in_fire_count", PopCount(io.in.map(_.fire)))
+    XSPerfAccumulate("in_valid_not_ready_count", PopCount(io.in.map(x => x.valid && !x.ready)))
+    XSPerfAccumulate("stall_cycle", io.in.head match { case x => x.valid && !x.ready})
+    XSPerfAccumulate("wait_cycle", !io.in.head.valid && io.out.head.ready)
 
-  XSPerfHistogram("in_valid_range", PopCount(io.in.map(_.valid)), true.B, 0, DecodeWidth + 1, 1)
-  XSPerfHistogram("in_fire_range", PopCount(io.in.map(_.fire)), true.B, 0, DecodeWidth + 1, 1)
-  XSPerfHistogram("out_valid_range", PopCount(io.out.map(_.valid)), true.B, 0, DecodeWidth + 1, 1)
-  XSPerfHistogram("out_fire_range", PopCount(io.out.map(_.fire)), true.B, 0, DecodeWidth + 1, 1)
+    XSPerfHistogram("in_valid_range", PopCount(io.in.map(_.valid)), true.B, 0, DecodeWidth + 1, 1)
+    XSPerfHistogram("in_fire_range", PopCount(io.in.map(_.fire)), true.B, 0, DecodeWidth + 1, 1)
+    XSPerfHistogram("out_valid_range", PopCount(io.out.map(_.valid)), true.B, 0, DecodeWidth + 1, 1)
+    XSPerfHistogram("out_fire_range", PopCount(io.out.map(_.fire)), true.B, 0, DecodeWidth + 1, 1)
+  }
 
   val fusionValid = VecInit(io.fusion.map(x => GatedValidRegNext(x)))
   val inValidNotReady = io.in.map(in => GatedValidRegNext(in.valid && !in.ready))
@@ -259,6 +247,7 @@ class DecodeStage(implicit p: Parameters) extends XSModule
     ("decoder_stall_cycle", hasValid && !io.out(0).ready),
     ("decoder_utilization", PopCount(io.in.map(_.valid))),
   )
+
   generatePerfEvent()
 
   // for more readable verilog

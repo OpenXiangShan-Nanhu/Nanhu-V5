@@ -24,13 +24,11 @@ import xs.utils.perf.{XSError}
 import xiangshan._
 
 abstract class RegType
-case object Reg_I extends RegType
-case object Reg_F extends RegType
-case object Reg_V extends RegType
-// TODO: use vf register type
-// case object Reg_VF extends RegType
-case object Reg_V0 extends RegType
-case object Reg_Vl extends RegType
+case object Reg_I   extends RegType
+case object Reg_F   extends RegType
+case object Reg_V   extends RegType
+case object Reg_V0  extends RegType
+case object Reg_Vl  extends RegType
 
 class RatReadPort(ratAddrWidth: Int)(implicit p: Parameters) extends XSBundle {
   val hold = Input(Bool())
@@ -45,29 +43,24 @@ class RatWritePort(ratAddrWidth: Int)(implicit p: Parameters) extends XSBundle {
 }
 
 class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper {
-
-  // params alias
-  private val numVecRegSrc = backendParams.numVecRegSrc
-  private val numVecRatPorts = numVecRegSrc
-
   val readPortsNum = reg_t match {
-    case Reg_I => 2
-    case Reg_F => 3
-    case Reg_V => 3
+    case Reg_I  => 2
+    case Reg_F  => 3
+    case Reg_V  => 3
     case Reg_V0 => 1
     case Reg_Vl => 1
   }
   val rdataNums = reg_t match {
-    case Reg_I => 32
-    case Reg_F => 32
-    case Reg_V => 31 // no v0
-    case Reg_V0 => 1 // v0
-    case Reg_Vl => 1 // vl
+    case Reg_I  => 32
+    case Reg_F  => 32
+    case Reg_V  => 31 // no v0
+    case Reg_V0 => 1  // v0
+    case Reg_Vl => 1  // vl
   }
   val renameTableWidth = reg_t match {
-    case Reg_I => log2Ceil(IntLogicRegs)
-    case Reg_F => log2Ceil(FpLogicRegs)
-    case Reg_V => log2Ceil(VecLogicRegs)
+    case Reg_I  => log2Ceil(IntLogicRegs)
+    case Reg_F  => log2Ceil(FpLogicRegs)
+    case Reg_V  => log2Ceil(VecLogicRegs)
     case Reg_V0 => log2Ceil(V0LogicRegs)
     case Reg_Vl => log2Ceil(VlLogicRegs)
   }
@@ -214,11 +207,6 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
 }
 
 class RenameTableWrapper(implicit p: Parameters) extends XSModule {
-
-  // params alias
-  private val numVecRegSrc = backendParams.numVecRegSrc
-  private val numVecRatPorts = numVecRegSrc
-
   val io = IO(new Bundle() {
     val redirect = Input(Bool())
     val rabCommits = Input(new RabCommitIO)
@@ -227,7 +215,7 @@ class RenameTableWrapper(implicit p: Parameters) extends XSModule {
     val intRenamePorts = Vec(RenameWidth, Input(new RatWritePort(IntLogicRegs)))
     val fpReadPorts = Vec(RenameWidth, Vec(3, new RatReadPort(FpLogicRegs)))
     val fpRenamePorts = Vec(RenameWidth, Input(new RatWritePort(FpLogicRegs)))
-    val vecReadPorts = Vec(RenameWidth, Vec(numVecRatPorts, new RatReadPort(VecLogicRegs)))
+    val vecReadPorts = Vec(RenameWidth, Vec(3, new RatReadPort(VecLogicRegs)))
     val vecRenamePorts = Vec(RenameWidth, Input(new RatWritePort(VecLogicRegs)))
     val v0ReadPorts = Vec(RenameWidth, new RatReadPort(V0LogicRegs))
     val v0RenamePorts = Vec(RenameWidth, Input(new RatWritePort(V0LogicRegs)))

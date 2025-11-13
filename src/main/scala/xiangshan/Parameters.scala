@@ -436,10 +436,10 @@ case class XSCoreParameters
         ExeUnitParams("LDU1", Seq(LduCfg), Seq(IntWB(6, 0), VfWB(4, 0)), Seq(Seq(IntRD(9, 0))), true, 2),
       ), numEntries = if(EnableMiniConfig) 4 else (16), numEnq = if(EnableMiniConfig) 1 else (1), numComp = if(EnableMiniConfig) 3 else (15)),
       IssueBlockParams(Seq(
-        ExeUnitParams("VLSU0", Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg), Seq(VfWB(5, 0), V0WB(3, 0), VlWB(1, 0)), Seq(Seq(VfRD(6, 0)), Seq(VfRD(7, 0)), Seq(VfRD(8, 0)), Seq(V0RD(2, 0)), Seq(VlRD(2, 0)))),
+        ExeUnitParams("VLSU0", Seq(VlduCfg, VstuCfg, VseglduSeg, VsegstuCfg), Seq(VfWB(5, 0), V0WB(3, 0), VlWB(1, 0)), Seq(Seq(VfRD(0, 1)), Seq(VfRD(1, 1)), Seq(VfRD(2, 1)), Seq(V0RD(2, 0)), Seq(VlRD(2, 0)))),
       ), numEntries = if(EnableMiniConfig) 4 else (16), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (14)),
       IssueBlockParams(Seq(
-        ExeUnitParams("STD0", Seq(StdCfg, MoudCfg), Seq(), Seq(Seq(IntRD(11, 0), VfRD(9, 0)))),
+        ExeUnitParams("STD0", Seq(StdCfg, MoudCfg), Seq(), Seq(Seq(IntRD(11, 0), VfRD(6, 0)))),
       ), numEntries = if(EnableMiniConfig) 4 else (20), numEnq = if(EnableMiniConfig) 1 else (2), numComp = if(EnableMiniConfig) 3 else (18)),
     ),
       numPregs = intPreg.numEntries max vfPreg.numEntries,

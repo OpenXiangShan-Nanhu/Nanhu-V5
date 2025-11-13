@@ -920,6 +920,8 @@ class LoadQueueReplay(implicit p: Parameters) extends XSModule
       info.valid := allocated(i)
       info.cause := cause(i)
       info.rob := uop(i).robIdx
+      info.block := blocking(i)
+      info.scheduled := scheduled(i)
     }
   }
 

@@ -356,15 +356,60 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   require(StdCnt == 1)
   require(StaCnt == 1)
 
+  val loadUnits = Seq.tabulate(LduCnt)(i => Module(new LoadUnit(i)))
+  val storeUnits = Seq.fill(StaCnt)(Module(new StoreUnit))
+  val stdExeUnits = Seq.fill(StdCnt)(Module(new MemExeUnit(backendParams.memSchdParams.get.issueBlockParams.find(_.StdCnt != 0).get.exuBlockParams.head)))
+  val stData = stdExeUnits.map(_.io.out)
+  val exeUnits = loadUnits ++ storeUnits
+  val atomicsUnit = Module(new AtomicsUnit)
+
+
+  val vlSplit = Seq.fill(VlduCnt)(Module(new VLSplitImp))
+  val vsSplit = Seq.fill(VstuCnt)(Module(new VSSplitImp))
+  val vlMergeBuffer = Module(new VLMergeBufferImp)
+  val vsMergeBuffer = Seq.fill(VstuCnt)(Module(new VSMergeBufferImp))
+  val vSegmentUnit = Module(new VSegmentUnit)
+  val vfofBuffer = Module(new VfofBuffer)
+
+  val loadMisalignBuffer = Module(new LoadMisalignBuffer)
+  val storeMisalignBuffer = Module(new StoreMisalignBuffer)
+
+  val uncache = outer.uncache.module
+  val dcache = outer.dcache.module
+  val mmu = outer.mmu.module
+  val mdp = Module(new NewMDP)
+  val lsq = Module(new LsqWrapper)
+  val sbuffer = Module(new Sbuffer)
+
+  val cmoOpReqConnectPipe = Module(new PipelineConnectPipe(new MissReq))
+  val cmoOpReqBwdConnectPipe = Module(new skidBufferConnect(new MissReq))
   val redirect = RegNextWithEnable(io.redirect)
 
   val redirectDupName = List("DTLB", "LoadUnit_0", "LoadUnit_1", "StoreUnit_0")
   val redirectReg = PipeDup("redirect", redirectDupName, io.redirect)
-
-  private val dcache = outer.dcache.module
-  val uncache = outer.uncache.module
-
   val csrCtrl = DelayN(io.ooo_to_mem.csrCtrl, 2)
+  val tlbcsr = RegNext(RegNext(io.ooo_to_mem.tlbCsr))
+
+  dcache.io.hartId := io.hartId
+  lsq.io.hartId := io.hartId
+  sbuffer.io.hartId := io.hartId
+  atomicsUnit.io.hartId := io.hartId
+
+  //MMU connect
+  mmu.io.hartId := io.hartId
+  mmu.io.csr.csrCtrl := io.ooo_to_mem.csrCtrl
+  mmu.io.csr.tlbCsr := io.ooo_to_mem.tlbCsr
+  mmu.io.csr.sfence := io.ooo_to_mem.sfence
+  mmu.io.frontend <> io.frontendMMUInfo
+  mmu.io.memblock.redirect := io.redirect
+
+  //mdp connect
+  mdp.io.reUpdate.valid := io.memPredUpdate.valid
+  mdp.io.reUpdate.bits.stIdx := io.memPredUpdate.stIdx
+  mdp.io.reUpdate.bits.ld_stIdx := io.memPredUpdate.ld_stIdx
+  mdp.io.reUpdate.bits.ldFoldPc := io.memPredUpdate.ldFoldPc
+  mdp.io.reUpdate.bits.stFoldPc := io.memPredUpdate.stFoldPc
+
   dcache.io.csr.distribute_csr <> csrCtrl.distribute_csr
   dcache.io.l2_pf_store_only := RegNext(io.ooo_to_mem.csrCtrl.l2_pf_store_only, false.B)
 
@@ -374,41 +419,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     io.error.valid := false.B
   }
 
-  val mdp = Module(new NewMDP)
-  mdp.io.reUpdate.valid := io.memPredUpdate.valid
-  mdp.io.reUpdate.bits.stIdx := io.memPredUpdate.stIdx
-  mdp.io.reUpdate.bits.ld_stIdx := io.memPredUpdate.ld_stIdx
-  mdp.io.reUpdate.bits.ldFoldPc := io.memPredUpdate.ldFoldPc
-  mdp.io.reUpdate.bits.stFoldPc := io.memPredUpdate.stFoldPc
-
-  //MMU connect
-  val mmu = outer.mmu.module
-  mmu.io.hartId := io.hartId
-  mmu.io.csr.csrCtrl := io.ooo_to_mem.csrCtrl
-  mmu.io.csr.tlbCsr := io.ooo_to_mem.tlbCsr
-  mmu.io.csr.sfence := io.ooo_to_mem.sfence
-  mmu.io.frontend <> io.frontendMMUInfo
-  mmu.io.memblock.redirect := io.redirect
-
-  val loadUnits = Seq.tabulate(LduCnt)(i => Module(new LoadUnit(i)))
-  val storeUnits = Seq.fill(StaCnt)(Module(new StoreUnit))
-  val stdExeUnits = Seq.fill(StdCnt)(Module(new MemExeUnit(backendParams.memSchdParams.get.issueBlockParams.find(_.StdCnt != 0).get.exuBlockParams.head)))
-  val stData = stdExeUnits.map(_.io.out)
-  val exeUnits = loadUnits ++ storeUnits
-
-  // The number of vector load/store units is decoupled with the number of load/store units
-  val vlSplit = Seq.fill(VlduCnt)(Module(new VLSplitImp))
-  val vsSplit = Seq.fill(VstuCnt)(Module(new VSSplitImp))
-  require(StaCnt == 1)
-
-  val vlMergeBuffer = Module(new VLMergeBufferImp)
-  val vsMergeBuffer = Seq.fill(VstuCnt)(Module(new VSMergeBufferImp))
-  val vSegmentUnit  = Module(new VSegmentUnit)
-  val vfofBuffer    = Module(new VfofBuffer)
-
-  // misalign Buffer
-  val loadMisalignBuffer = Module(new LoadMisalignBuffer)
-  val storeMisalignBuffer = Module(new StoreMisalignBuffer)
 
   val l1_pf_req = Wire(Decoupled(new L1PrefetchReq()))
   dcache.io.sms_agt_evict_req.ready := false.B
@@ -457,7 +467,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   loadUnits.zipWithIndex.map(x => x._1.suggestName("LoadUnit_"+x._2))
   storeUnits.zipWithIndex.map(x => x._1.suggestName("StoreUnit_"+x._2))
-  val atomicsUnit = Module(new AtomicsUnit)
 
   val ldaWritebackOverride  = Mux(
     loadMisalignBuffer.io.writeBack.valid,
@@ -530,21 +539,17 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
     fuzzer.io.req.ready := l1_pf_req.ready
   }
 
-  // TODO: fast load wakeup
-  val lsq     = Module(new LsqWrapper)
-  val sbuffer = Module(new Sbuffer)
+
   lsq.io := DontCare
   mdp.io.ldUpdate := lsq.io.mdpTrainUpdate
   io.mem_to_ooo.stIssuePtr := lsq.io.issuePtrExt
 
     // cmoreq from sq send to MissQueue
-  val cmoOpReqConnectPipe = Module(new PipelineConnectPipe(new MissReq))
   cmoOpReqConnectPipe.io.in <> lsq.io.cmoOpReq
   cmoOpReqConnectPipe.io.out <> dcache.io.cmoOpReq
   cmoOpReqConnectPipe.io.rightOutFire := cmoOpReqConnectPipe.io.out.fire
   cmoOpReqConnectPipe.io.isFlush := false.B
   // for ready pipe
-  val cmoOpReqBwdConnectPipe = Module(new skidBufferConnect(new MissReq))
   cmoOpReqBwdConnectPipe.io.in <> lsq.io.cmoOpReq
   cmoOpReqBwdConnectPipe.io.out <> dcache.io.cmoOpReq
   cmoOpReqBwdConnectPipe.io.flush := false.B
@@ -552,10 +557,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   io.mem_to_ooo.sqHasCmo := lsq.io.sqHasCmo || !cmoSkidBufferPending
 
-  dcache.io.hartId := io.hartId
-  lsq.io.hartId := io.hartId
-  sbuffer.io.hartId := io.hartId
-  atomicsUnit.io.hartId := io.hartId
 
   dcache.io.lqEmpty := lsq.io.lqEmpty
   
@@ -596,7 +597,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
       XSPerfAccumulate("sms_block_by_l1pf", l1_pf_to_l2.valid && sms_pf_to_l2.valid)
     })
   })
-  val tlbcsr = RegNext(RegNext(io.ooo_to_mem.tlbCsr))
 
   // dtlb
   val DTLB_PORT_START_LD = 0
@@ -841,26 +841,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
 
   lsq.io.maControl                              <> storeMisalignBuffer.io.sqControl
 
-  // // lsq to l2 CMO
-  // outer.cmo_sender match {
-  //   case Some(x) =>
-  //     x.out.head._1 <> lsq.io.cmoOpReq
-  //   case None =>
-  //     lsq.io.cmoOpReq.ready  := false.B
-  // }
-  // outer.cmo_reciver match {
-  //   case Some(x) =>
-  //     x.in.head._1  <> lsq.io.cmoOpResp
-  //   case None =>
-  //     lsq.io.cmoOpResp.valid := false.B
-  //     lsq.io.cmoOpResp.bits  := 0.U.asTypeOf(new CMOResp)
-  // }
-
-
-  // Prefetcher
-//  val StreamDTLBPortIndex = TlbStartVec(dtlb_ld_idx) + LduCnt + HyuCnt
-//  val PrefetcherDTLBPortIndex = TlbStartVec(dtlb_pf_idx)
-//  val L2toL1DLBPortIndex = TlbStartVec(dtlb_pf_idx) + 1
   prefetcherOpt match {
   case Some(pf) => 
     dtlb_reqs(DTLB_PORT_START_SMS) <> pf.io.tlb_req
@@ -1404,14 +1384,7 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   }.elsewhen (vSegmentUnit.io.exceptionInfo.valid) {
     vSegmentException := true.B
   }
-  // val atomicsExceptionAddress = RegEnable(atomicsUnit.io.exceptionInfo.bits.vaddr, atomicsUnit.io.exceptionInfo.valid)
-  // val vSegmentExceptionVstart = RegEnable(vSegmentUnit.io.exceptionInfo.bits.vstart, vSegmentUnit.io.exceptionInfo.valid)
-  // val vSegmentExceptionVl     = RegEnable(vSegmentUnit.io.exceptionInfo.bits.vl, vSegmentUnit.io.exceptionInfo.valid)
-  // val vSegmentExceptionAddress = RegEnable(vSegmentUnit.io.exceptionInfo.bits.vaddr, vSegmentUnit.io.exceptionInfo.valid)
-  // val atomicsExceptionGPAddress = RegEnable(atomicsUnit.io.exceptionInfo.bits.gpaddr, atomicsUnit.io.exceptionInfo.valid)
-  // val vSegmentExceptionGPAddress = RegEnable(vSegmentUnit.io.exceptionInfo.bits.gpaddr, vSegmentUnit.io.exceptionInfo.valid)
-  // val atomicsExceptionIsForVSnonLeafPTE = RegEnable(atomicsUnit.io.exceptionInfo.bits.isForVSnonLeafPTE, atomicsUnit.io.exceptionInfo.valid)
-  // val vSegmentExceptionIsForVSnonLeafPTE = RegEnable(vSegmentUnit.io.exceptionInfo.bits.isForVSnonLeafPTE, vSegmentUnit.io.exceptionInfo.valid)
+
 
   val atomicsExceptionAddress = atomicsUnit.io.exceptionInfo.bits.vaddr
   val vSegmentExceptionVstart = vSegmentUnit.io.exceptionInfo.bits.vstart

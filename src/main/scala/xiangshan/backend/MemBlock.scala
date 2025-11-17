@@ -61,10 +61,6 @@ trait HasMemBlockParameters extends HasXSParameter {
 
   val LdExuCnt  = LduCnt + HyuCnt
   val StAddrCnt = StaCnt + HyuCnt
-  val StDataCnt = StdCnt
-  val MemExuCnt = LduCnt + HyuCnt + StaCnt + StdCnt
-  val MemAddrExtCnt = LdExuCnt + StaCnt
-  val MemVExuCnt = VlduCnt + VstuCnt
 }
 
 abstract class MemBlockBundle(implicit val p: Parameters) extends Bundle with HasMemBlockParameters
@@ -362,6 +358,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val stData = stdExeUnits.map(_.io.out)
   val exeUnits = loadUnits ++ storeUnits
   val atomicsUnit = Module(new AtomicsUnit)
+
+//  val wbRouter = Module(new MemBlockWriteBackRouter)
 
 
   val vlSplit = Seq.fill(VlduCnt)(Module(new VLSplitImp))

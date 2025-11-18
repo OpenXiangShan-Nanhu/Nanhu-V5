@@ -497,9 +497,9 @@ class NewCSR(implicit val p: Parameters) extends Module
   permitMod.io.in.status.henvcfg := henvcfg.rdata
 
   permitMod.io.in.status.mstatusFSOff  := mstatus.regOut.FS === ContextStatus.Off
-  permitMod.io.in.status.mstatusVSOff  := true.B // mstatus.regOut.VS === ContextStatus.Off
+  permitMod.io.in.status.mstatusVSOff  := mstatus.regOut.VS === ContextStatus.Off
   permitMod.io.in.status.vsstatusFSOff := vsstatus.regOut.FS === ContextStatus.Off
-  permitMod.io.in.status.vsstatusVSOff := true.B // vsstatus.regOut.VS === ContextStatus.Off
+  permitMod.io.in.status.vsstatusVSOff := vsstatus.regOut.VS === ContextStatus.Off
 
   permitMod.io.in.aia.miselectIsIllegal .foreach(_ := miselect.get.isIllegal)
   permitMod.io.in.aia.siselectIsIllegal .foreach(_ := siselect.get.isIllegal)
@@ -937,16 +937,16 @@ class NewCSR(implicit val p: Parameters) extends Module
   ), false.B, valid)
 
   val vectorStatusOnOff = false.B
-  // RegEnable(mstatus.w.wen && (
-  //   mstatus.w.wdataFields.VS === ContextStatus.Off && mstatus.regOut.VS =/= ContextStatus.Off ||
-  //   mstatus.w.wdataFields.VS =/= ContextStatus.Off && mstatus.regOut.VS === ContextStatus.Off
-  // ) || mstatus.wAliasSstatus.wen && (
-  //   mstatus.wAliasSstatus.wdataFields.VS === ContextStatus.Off && mstatus.regOut.VS =/= ContextStatus.Off ||
-  //   mstatus.wAliasSstatus.wdataFields.VS =/= ContextStatus.Off && mstatus.regOut.VS === ContextStatus.Off
-  // ) || vsstatus.w.wen && (
-  //   vsstatus.w.wdataFields.VS === ContextStatus.Off && vsstatus.regOut.VS =/= ContextStatus.Off ||
-  //   vsstatus.w.wdataFields.VS =/= ContextStatus.Off && vsstatus.regOut.VS === ContextStatus.Off
-  // ), false.B, valid)
+  RegEnable(mstatus.w.wen && (
+    mstatus.w.wdataFields.VS === ContextStatus.Off && mstatus.regOut.VS =/= ContextStatus.Off ||
+    mstatus.w.wdataFields.VS =/= ContextStatus.Off && mstatus.regOut.VS === ContextStatus.Off
+  ) || mstatus.wAliasSstatus.wen && (
+    mstatus.wAliasSstatus.wdataFields.VS === ContextStatus.Off && mstatus.regOut.VS =/= ContextStatus.Off ||
+    mstatus.wAliasSstatus.wdataFields.VS =/= ContextStatus.Off && mstatus.regOut.VS === ContextStatus.Off
+  ) || vsstatus.w.wen && (
+    vsstatus.w.wdataFields.VS === ContextStatus.Off && vsstatus.regOut.VS =/= ContextStatus.Off ||
+    vsstatus.w.wdataFields.VS =/= ContextStatus.Off && vsstatus.regOut.VS === ContextStatus.Off
+  ), false.B, valid)
 
   val triggerFrontendChange = RegInit(false.B)
 
@@ -1150,7 +1150,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   io.status.vecState.vl := vl.rdata.asUInt
   io.status.vecState.vtype := vtype.rdata.asUInt // Todo: check correct
   io.status.vecState.vlenb := vlenb.rdata.asUInt
-  io.status.vecState.off := true.B // mstatus.regOut.VS === ContextStatus.Off
+  io.status.vecState.off := mstatus.regOut.VS === ContextStatus.Off
   io.status.interrupt := intrMod.io.out.interruptVec.valid
   io.status.wfiEvent := debugIntr || (mie.rdata.asUInt & mip.rdata.asUInt).orR || nmip.asUInt.orR
   io.status.debugMode := debugMode
@@ -1434,7 +1434,7 @@ class NewCSR(implicit val p: Parameters) extends Module
   io.toDecode.illegalInst.hlsv       := isModeHU && !hstatus.regOut.HU
   io.toDecode.virtualInst.hlsv       := isModeVS || isModeVU
   io.toDecode.illegalInst.fsIsOff    := mstatus.regOut.FS === ContextStatus.Off || (isModeVS || isModeVU) && vsstatus.regOut.FS === ContextStatus.Off
-  io.toDecode.illegalInst.vsIsOff    := true.B // mstatus.regOut.VS === ContextStatus.Off || (isModeVS || isModeVU) && vsstatus.regOut.VS === ContextStatus.Off
+  io.toDecode.illegalInst.vsIsOff    := mstatus.regOut.VS === ContextStatus.Off || (isModeVS || isModeVU) && vsstatus.regOut.VS === ContextStatus.Off
   io.toDecode.illegalInst.wfi        := isModeHU || !isModeM && mstatus.regOut.TW
   io.toDecode.virtualInst.wfi        := isModeVS && !mstatus.regOut.TW && hstatus.regOut.VTW || isModeVU && !mstatus.regOut.TW
   io.toDecode.illegalInst.frm        := frmIsReserved
@@ -1570,15 +1570,15 @@ class NewCSR(implicit val p: Parameters) extends Module
     diffTriggerCSRState.tdata1    := tdata1.rdata
     diffTriggerCSRState.tinfo     := tinfo.rdata
 
-    // val diffVecCSRState = DifftestModule(new DiffVecCSRState)
-    // diffVecCSRState.coreid := hartId
-    // diffVecCSRState.vstart := vstart.rdata.asUInt
-    // diffVecCSRState.vxsat := vcsr.vxsat.asUInt
-    // diffVecCSRState.vxrm := vcsr.vxrm.asUInt
-    // diffVecCSRState.vcsr := vcsr.rdata.asUInt
-    // diffVecCSRState.vl := RegNext(io.fromRob.commit.vl)
-    // diffVecCSRState.vtype := vtype.rdata.asUInt
-    // diffVecCSRState.vlenb := vlenb.rdata.asUInt
+    val diffVecCSRState = DifftestModule(new DiffVecCSRState)
+    diffVecCSRState.coreid := hartId
+    diffVecCSRState.vstart := vstart.rdata.asUInt
+    diffVecCSRState.vxsat := vcsr.vxsat.asUInt
+    diffVecCSRState.vxrm := vcsr.vxrm.asUInt
+    diffVecCSRState.vcsr := vcsr.rdata.asUInt
+    diffVecCSRState.vl := RegNext(io.fromRob.commit.vl)
+    diffVecCSRState.vtype := vtype.rdata.asUInt
+    diffVecCSRState.vlenb := vlenb.rdata.asUInt
 
     val diffFpCSRState = DifftestModule(new DiffFpCSRState)
     CoreGateway.addOne(diffFpCSRState, 0, "difftestFpCSRState")

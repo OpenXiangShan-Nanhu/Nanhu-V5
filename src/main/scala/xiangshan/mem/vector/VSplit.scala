@@ -112,7 +112,7 @@ class VSplitPipeline(isVStore: Boolean = false)(implicit p: Parameters) extends 
   //  When emul is greater than lmul, multiple uop correspond to a Vd, e.g:
   //    vsetvli	t1,t0,e8,m1,ta,ma    lmul = 1
   //    vluxei16.v	v2,(a0),v8       emul = 2
-  //    In this case, we need to ensure the flownumis right shift by flowsPrevThisUop, However, the mask passed to mergebuff is right shift by flowsPrevThisVd e.g:
+  //    In this case, we need to ensure the flowNum is right shift by flowsPrevThisUop, However, the mask passed to mergebuff is right shift by flowsPrevThisVd e.g:
   //      vl = 9
   //      srcMask = 0x1FF
   //      uopIdxInField = 0 and vdIdxInField = 0, flowMask = 0x00FF, toMergeBuffMask = 0x01FF

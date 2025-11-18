@@ -372,8 +372,8 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   val loadMisalignBuffer = Module(new LoadMisalignBuffer)
   val storeMisalignBuffer = Module(new StoreMisalignBuffer)
 
+  private val dcache = outer.dcache.module
   val uncache = outer.uncache.module
-  val dcache = outer.dcache.module
   val mmu = outer.mmu.module
   val mdp = Module(new NewMDP)
   val lsq = Module(new LsqWrapper)

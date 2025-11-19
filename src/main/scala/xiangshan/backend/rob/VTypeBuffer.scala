@@ -109,8 +109,8 @@ class VTypeBuffer(size: Int)(implicit p: Parameters) extends XSModule with HasCi
   private val enqValids = VecInit(io.req.map(_.valid))
   private val enqVType = PriorityMux(enqValids.zip(enqVTypes).map { case (valid, vtype) => valid -> vtype })
 
-  private val walkPtrSnapshots = SnapshotGenerator(enqPtr, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect.valid, io.snpt.flushVec)
-  private val walkVTypeSnapshots = SnapshotGenerator(enqVType, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect.valid, io.snpt.flushVec)
+  private val walkPtrSnapshots = SnapshotGenerator("SnapshotGen_VTypeBuffer", enqPtr, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect.valid, io.snpt.flushVec)
+  private val walkVTypeSnapshots = SnapshotGenerator("SnapshotGen_VTypeBuffer", enqVType, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect.valid, io.snpt.flushVec)
 
   private val robWalkEndReg = RegInit(false.B)
   private val robWalkEnd = io.fromRob.walkEnd || robWalkEndReg

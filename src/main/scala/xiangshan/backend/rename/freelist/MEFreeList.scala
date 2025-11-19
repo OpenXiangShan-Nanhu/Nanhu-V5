@@ -16,16 +16,15 @@
 
 package xiangshan.backend.rename.freelist
 
-import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util._
+import org.chipsalliance.cde.config.Parameters
 import xiangshan._
-import utils._
+import xiangshan.backend.rename.RegType
 import xs.utils._
 import xs.utils.perf._
 
-
-class MEFreeList(size: Int)(implicit p: Parameters) extends BaseFreeList(size) with HasPerfEvents {
+class MEFreeList(reg_t: RegType, size: Int)(implicit p: Parameters) extends BaseFreeList(reg_t, size) with HasPerfEvents {
   val freeList = RegInit(VecInit(
     // originally {1, 2, ..., size - 1} are free. Register 0-31 are mapped to x0.
     Seq.tabulate(size - 1)(i => (i + 1).U(PhyRegIdxWidth.W)) :+ 0.U(PhyRegIdxWidth.W)))

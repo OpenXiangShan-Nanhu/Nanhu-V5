@@ -16,18 +16,26 @@
 
 package xiangshan.backend.rename.freelist
 
-import org.chipsalliance.cde.config.Parameters
+import math.max
 import chisel3._
 import chisel3.util._
+import org.chipsalliance.cde.config.Parameters
 import xiangshan._
-import xiangshan.backend.rename.SnapshotGenerator
-import utils._
+import xiangshan.backend.rename._
 import xs.utils._
 import xs.utils.perf._
-import scala.math.max
 
 
-abstract class BaseFreeList(size: Int, numLogicRegs:Int = 32)(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper {
+abstract class BaseFreeList(reg_t: RegType, size: Int, numLogicRegs:Int = 32)(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper {
+  val freelistName = reg_t match {
+    case Reg_I => "FreeListInt"
+    case Reg_F => "FreeListFp"
+    case Reg_V => "FreeListVec"
+    case Reg_V0 => "FreeListV0"
+    case Reg_Vl => "FreeListVl"
+  }
+  override def desiredName: String = freelistName
+
   val io = IO(new Bundle {
     val redirect = Input(Bool())
     val walk = Input(Bool())
@@ -70,7 +78,7 @@ abstract class BaseFreeList(size: Int, numLogicRegs:Int = 32)(implicit p: Parame
   // may shift [0, RenameWidth] steps
   val headPtrOHVec = VecInit.tabulate(max(RenameWidth, RabCommitWidth) + 1)(headPtrOHShift.left)
 
-  val snapshots = SnapshotGenerator(headPtr, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect, io.snpt.flushVec)
+  val snapshots = SnapshotGenerator(s"SnapshotGen_${freelistName}", headPtr, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect, io.snpt.flushVec)
 
   val redirectedHeadPtr = Mux(
     lastCycleSnpt.useSnpt,

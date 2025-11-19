@@ -65,6 +65,16 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
     case Reg_Vl => log2Ceil(VlLogicRegs)
   }
 
+  val ratName = reg_t match {
+    case Reg_I => "RenameTableInt"
+    case Reg_F => "RenameTableFp"
+    case Reg_V => "RenameTableVec"
+    case Reg_V0 => "RenameTableV0"
+    case Reg_Vl => "RenameTableVl"
+  }
+
+  override def desiredName: String = ratName
+
   val io = IO(new Bundle {
     val redirect = Input(Bool())
     val readPorts = Vec(readPortsNum * RenameWidth, new RatReadPort(renameTableWidth))
@@ -123,7 +133,7 @@ class RenameTable(reg_t: RegType)(implicit p: Parameters) extends XSModule with 
 
   val t1_snpt = GatedRegNext(io.snpt)
 
-  val snapshots = SnapshotGenerator(spec_table, t1_snpt.snptEnq, t1_snpt.snptDeq, t1_redirect, t1_snpt.flushVec)
+  val snapshots = SnapshotGenerator(s"SnapshotGen_${ratName}", spec_table, t1_snpt.snptEnq, t1_snpt.snptDeq, t1_redirect, t1_snpt.flushVec)
 
   // WRITE: when instruction commits or walking
   val t1_wSpec_addr = t1_wSpec.map(w => Mux(w.wen, UIntToOH(w.addr), 0.U))

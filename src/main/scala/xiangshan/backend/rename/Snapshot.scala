@@ -28,8 +28,8 @@ class SnapshotPtr(implicit p: Parameters) extends CircularQueuePtr[SnapshotPtr](
 )
 
 object SnapshotGenerator extends HasCircularQueuePtrHelper {
-  def apply[T <: Data](enqData: T, enq: Bool, deq: Bool, redirect: Bool, flushVec: Vec[Bool])(implicit p: Parameters): Vec[T] = {
-    val snapshotGen = Module(new SnapshotGenerator(enqData))
+  def apply[T <: Data](moduleName: String, enqData: T, enq: Bool, deq: Bool, redirect: Bool, flushVec: Vec[Bool])(implicit p: Parameters): Vec[T] = {
+    val snapshotGen = Module(new SnapshotGenerator(enqData, moduleName))
     snapshotGen.io.enq := enq
     snapshotGen.io.enqData := enqData
     snapshotGen.io.deq := deq
@@ -39,8 +39,9 @@ object SnapshotGenerator extends HasCircularQueuePtrHelper {
   }
 }
 
-class SnapshotGenerator[T <: Data](dataType: T)(implicit p: Parameters) extends XSModule
+class SnapshotGenerator[T <: Data](dataType: T, val moduleName: String)(implicit p: Parameters) extends XSModule
   with HasCircularQueuePtrHelper {
+    override def desiredName: String = moduleName
 
   class SnapshotGeneratorIO extends Bundle {
     val enq = Input(Bool())

@@ -26,7 +26,7 @@ import xs.utils._
 import xs.utils.perf._
 
 
-class StdFreeList(freeListSize: Int, numLogicRegs: Int, regType: RegType, realNumLogicRegs: Int = 32)(implicit p: Parameters) extends BaseFreeList(freeListSize, realNumLogicRegs) with HasPerfEvents {
+class StdFreeList(freeListSize: Int, numLogicRegs: Int, regType: RegType, realNumLogicRegs: Int = 32)(implicit p: Parameters) extends BaseFreeList(regType, freeListSize, realNumLogicRegs) with HasPerfEvents {
 
   val freeList = RegInit(VecInit(Seq.tabulate(freeListSize)( i => (i + numLogicRegs).U(PhyRegIdxWidth.W) )))
   val lastTailPtr = RegInit(FreeListPtr(true, 0)) // tailPtr in the last cycle (need to add freeReqReg)

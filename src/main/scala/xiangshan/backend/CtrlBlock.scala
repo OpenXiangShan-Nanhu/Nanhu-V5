@@ -414,7 +414,7 @@ class CtrlBlockImp(
     val isCFI = Vec(RenameWidth, Bool())
   }
   val genSnapshot = Cat(rename.io.out.map(out => out.fire && out.bits.snapshot)).orR
-  val snpt = Module(new SnapshotGenerator(0.U.asTypeOf(new CFIRobIdx)))
+  val snpt = Module(new SnapshotGenerator(0.U.asTypeOf(new CFIRobIdx), "SnapshotGen_CFIRobIdx"))
   snpt.io.enq := genSnapshot
   snpt.io.enqData.robIdx := rename.io.out.map(_.bits.robIdx)
   snpt.io.enqData.isCFI := rename.io.out.map(_.bits.snapshot)

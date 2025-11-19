@@ -87,7 +87,7 @@ class RenameBuffer(size: Int)(implicit p: Parameters) extends XSModule with HasC
   private val walkPtrOHVec = VecInit.tabulate(RabCommitWidth + 1)(CircularShift(walkPtrOH).left)
   private val walkPtrNext = Wire(new RenameBufferPtr)
 
-  private val walkPtrSnapshots = SnapshotGenerator(enqPtr, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect.valid, io.snpt.flushVec)
+  private val walkPtrSnapshots = SnapshotGenerator("SnapshotGen_Rab", enqPtr, io.snpt.snptEnq, io.snpt.snptDeq, io.redirect.valid, io.snpt.flushVec)
 
   val vcfgPtrOH = RegInit(1.U(size.W))
   val vcfgPtrOHShift = CircularShift(vcfgPtrOH)

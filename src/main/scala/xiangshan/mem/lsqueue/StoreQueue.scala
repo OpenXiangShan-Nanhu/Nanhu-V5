@@ -422,7 +422,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
         prefetch((index).value) := false.B
         uncache((index).value) := false.B
         nc((index).value) := false.B
-        isVec((index).value) := enqInstr.isVecStore // check vector store by the encoding of inst
+        isVec((index).value) := FuType.isVStore(io.enq.req(i).bits.fuType)
         vecMbCommit((index).value) := false.B
         vecDataValid((index).value) := false.B
         hasException((index).value) := false.B

@@ -404,34 +404,102 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val validVStoreOffset = vStoreFlow.zip(io.enq.needAlloc).map{case (flow, needAllocItem) => Mux(needAllocItem, flow, 0.U)}
   val validVStoreOffsetRShift = 0.U +: validVStoreOffset.take(vStoreFlow.length - 1)
 
-  for (i <- 0 until io.enq.req.length) {
-    val sqIdx = enqPtrExt(0) + validVStoreOffsetRShift.take(i + 1).reduce(_ + _)
-    val index = io.enq.req(i).bits.sqIdx
-    val enqInstr = io.enq.req(i).bits.instr.asTypeOf(new XSInstBitFields)
-    when (canEnqueue(i) && !enqCancel(i)) {
-        uop((index).value) := io.enq.req(i).bits
-        // NOTE: the index will be used when replay
-        uop((index).value).sqIdx := sqIdx
-        vecLastFlow((index).value) := false.B
-        allocated((index).value) := true.B
-        datavalid((index).value) := false.B
-        addrvalid((index).value) := false.B
-        unaligned((index).value) := false.B
-        committed((index).value) := false.B
-        pending((index).value) := false.B
-        prefetch((index).value) := false.B
-        uncache((index).value) := false.B
-        nc((index).value) := false.B
-        isVec((index).value) := FuType.isVStore(io.enq.req(i).bits.fuType)
-        vecMbCommit((index).value) := false.B
-        vecDataValid((index).value) := false.B
-        hasException((index).value) := false.B
-        waitStoreS2((index).value) := true.B
-        XSError(!io.enq.canAccept || !io.enq.lqCanAccept, s"must accept $i\n")
-        XSError(index.value =/= sqIdx.value, s"must be the same entry $i\n")
+  //todo
+//  val alcUpdate = Wire(Vec(StoreQueueSize, Bool()))
+//  val alcSet = Wire(Vec(StoreQueueSize, Bool()))
+//  val alcUSet = Wire(Vec(StoreQueueSize, Bool()))
+
+
+  val enqPortMin = io.enq.req.map(enq => enq.bits.sqIdx)
+  val enqPortMax = io.enq.req.map(enq => enq.bits.sqIdx + enq.bits.numLsElem)
+  val enqDiffFlag = enqPortMin.zip(enqPortMax).map(e => e._1.flag =/= e._2.flag)
+
+  val enqUpdate = Wire(Vec(StoreQueueSize, Bool()))
+  val enqValue = Wire(Vec(StoreQueueSize, new DynInst))
+
+  for(i <- 0 until StoreQueueSize){
+    val _enqValid = Wire(Vec(LSQLdEnqWidth, Bool()))
+    val _enqValue = Wire(Vec(LSQLdEnqWidth, new DynInst))
+
+    for(j <- 0 until LSQLdEnqWidth){  //only use LSQLdEnqWidth
+      val port_j_min = enqPortMin(j) //include
+      val port_j_max = enqPortMax(j)  //exclude
+      val diffFlag = enqDiffFlag(j)
+
+      val inRange = Mux(diffFlag, i.U < port_j_max.value | i.U > port_j_min.value ,i.U < port_j_max.value & i.U >= port_j_min.value)
+      _enqValid(j) := canEnqueue(j) & !enqCancel(j) & inRange
+      _enqValue(j) := io.enq.req(j).bits
+      _enqValue(j).sqIdx.value := i.U
     }
-    io.enq.resp(i) := sqIdx
+    enqUpdate(i) := _enqValid.reduce(_|_)
+    enqValue(i) := Mux1H(_enqValid,_enqValue)
+
+    assert(PopCount(_enqValid) <= 1.U)
   }
+
+  for(i <- 0 until StoreQueueSize){
+    when(enqUpdate(i)){
+      allocated(i) := true.B
+      uop(i) := enqValue(i)
+      vecLastFlow(i) := enqValue(i).lastUop
+      datavalid(i) := false.B
+      addrvalid(i) := false.B
+      unaligned(i) := false.B
+      committed(i) := false.B
+      pending(i) := false.B
+      uncache(i) := false.B
+      nc(i) := false.B
+      isVec(i) := FuType.isVStore(enqValue(i).fuType)
+      vecMbCommit(i) := false.B
+      vecDataValid(i) := false.B
+      hasException(i) := false.B
+      waitStoreS2(i) := true.B
+    }
+  }
+
+  io.enq.resp.foreach(_ := DontCare)  //is no use
+
+//
+//
+//  for (i <- 0 until io.enq.req.length) {
+//    val sqIdx = enqPtrExt(0) + validVStoreOffsetRShift.take(i + 1).reduce(_ + _)
+//    val index = io.enq.req(i).bits.sqIdx
+//    val enqInstr = io.enq.req(i).bits.instr.asTypeOf(new XSInstBitFields)
+//    when (canEnqueue(i) && !enqCancel(i)) {
+//        uop((index).value) := io.enq.req(i).bits
+//        // NOTE: the index will be used when replay
+//        uop((index).value).sqIdx := sqIdx
+//        vecLastFlow((index).value) := false.B
+//        allocated((index).value) := true.B
+//        datavalid((index).value) := false.B
+//        addrvalid((index).value) := false.B
+//        unaligned((index).value) := false.B
+//        committed((index).value) := false.B
+//        pending((index).value) := false.B
+//        prefetch((index).value) := false.B
+//        uncache((index).value) := false.B
+//        nc((index).value) := false.B
+//        isVec((index).value) := FuType.isVStore(io.enq.req(i).bits.fuType)
+//        vecMbCommit((index).value) := false.B
+//        vecDataValid((index).value) := false.B
+//        hasException((index).value) := false.B
+//        waitStoreS2((index).value) := true.B
+//        XSError(!io.enq.canAccept || !io.enq.lqCanAccept, s"must accept $i\n")
+//        XSError(index.value =/= sqIdx.value, s"must be the same entry $i\n")
+//    }
+//    io.enq.resp(i) := sqIdx
+//  }
+//
+
+
+
+
+
+
+
+
+
+
   XSDebug(p"(ready, valid): ${io.enq.canAccept}, ${Binary(Cat(io.enq.req.map(_.valid)))}\n")
 
   /**
@@ -1426,5 +1494,13 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     PrintFlag(allocated(i) && uncache(i), "m")
     XSDebug(false, true.B, "\n")
   }
+
+  //dont Touch list:
+  dontTouch(enqUpdate)
+  dontTouch(enqValue)
+
+  //todo: assertion for enq
+
+
 
 }

@@ -13,7 +13,7 @@ import xiangshan.backend.datapath.WbConfig._
 import xiangshan.backend.fu.FuType
 import xiangshan.backend.regfile.RfWritePortWithConfig
 import xiangshan.backend.rename.BusyTable
-import xiangshan.mem.{LsqEnqCtrl, LsqEnqIO, MemWaitUpdateReq, SqPtr, LqPtr}
+import xiangshan.mem.{LqPtr, LsqEnqCtrl, LsqEnqIO, MemWaitUpdateReq, NewLsqEnqIO, SqPtr}
 import xiangshan.backend.datapath.WbConfig.V0WB
 import xiangshan.backend.regfile.VlPregParams
 import xiangshan.backend.regcache.RegCacheTagTable
@@ -105,7 +105,7 @@ class SchedulerIO()(implicit params: SchdBlockParams, p: Parameters) extends XSB
   val ldCancel = Vec(backendParams.LduCnt + backendParams.HyuCnt, Flipped(new LoadCancelIO))
 
   val memIO = if (params.isMemSchd) Some(new Bundle {
-    val lsqEnqIO = Flipped(new LsqEnqIO)
+    val lsqEnqIO = Flipped(new NewLsqEnqIO)
   }) else None
   val fromMem = if (params.isMemSchd) Some(new Bundle {
     val ldaFeedback = Flipped(Vec(params.LduCnt, new MemRSFeedbackIO))

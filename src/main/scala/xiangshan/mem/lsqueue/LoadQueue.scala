@@ -133,13 +133,8 @@ class LqEnqIO(implicit p: Parameters) extends MemBlockBundle {
   val canAccept = Output(Bool())
   val sqCanAccept = Input(Bool())
   val needAlloc = Vec(LSQEnqWidth, Input(Bool()))
-  val req = Vec(LSQEnqWidth, Flipped(ValidIO(new DynInst)))
+  val req = Vec(LSQEnqWidth, Flipped(ValidIO(new LSQUop)))
   val resp = Vec(LSQEnqWidth, Output(new LqPtr))
-}
-
-class LqTriggerIO(implicit p: Parameters) extends XSBundle {
-  val hitLoadAddrTriggerHitVec = Input(Vec(TriggerNum, Bool()))
-  val lqLoadAddrTriggerHitVec = Output(Vec(TriggerNum, Bool()))
 }
 
 class LoadQueueTopDownIO(implicit p: Parameters) extends XSBundle {

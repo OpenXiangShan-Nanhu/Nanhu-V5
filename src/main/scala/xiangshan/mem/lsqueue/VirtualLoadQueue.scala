@@ -29,6 +29,7 @@ import xs.utils.perf._
 import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
 import xiangshan.backend.fu.FuConfig.LduCfg
 import xiangshan.backend.decode.isa.bitfield.{InstVType, XSInstBitFields}
+import xiangshan.backend.fu.FuType
 
 class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   with HasDCacheParameters
@@ -82,7 +83,7 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
 
   println("VirtualLoadQueue: size: " + VirtualLoadQueueSize)
   val allocated = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // The control signals need to explicitly indicate the initial value
-  val uop = Reg(Vec(VirtualLoadQueueSize, new DynInst))
+  val uop = Reg(Vec(VirtualLoadQueueSize, new LSQUop))
   val addrvalid = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // non-mmio addr is valid
   val datavalid = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // non-mmio data is valid
   val ignoreRARCheck = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B))) // softprefetch ignore rar check
@@ -230,7 +231,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   for (i <- 0 until io.enq.req.length) {
     val lqIdx = enqPtrExt(0) + validVLoadOffsetRShift.take(i + 1).reduce(_ + _)
     val index = io.enq.req(i).bits.lqIdx
-    val enqInstr = io.enq.req(i).bits.instr.asTypeOf(new XSInstBitFields)
     when (canEnqueue(i) && !enqCancel(i)) {
       // The maximum 'numLsElem' number that can be emitted per dispatch port is:
       //    16 2 2 2 2 2.
@@ -240,12 +240,11 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
           allocated((index + j.U).value) := true.B
           uop((index + j.U).value) := io.enq.req(i).bits
           ignoreRARCheck((index + j.U).value) := LSUOpType.isPrefetch(io.enq.req(i).bits.fuOpType)
-//          uop((index + j.U).value).lqIdx := lqIdx + j.U
 
           // init
           addrvalid((index + j.U).value) := false.B
           datavalid((index + j.U).value) := false.B
-          isvec((index + j.U).value) := enqInstr.isVecLoad
+          isvec((index + j.U).value) := io.enq.req(i).bits.isVec
           veccommitted((index + j.U).value) := false.B
 
           debug_mmio((index + j.U).value) := false.B
@@ -438,15 +437,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
               io.ldin(i).bits.isSWPrefetch
            })
 
-        //
-        when (io.ldin(i).bits.data_wen_dup(1)) {
-          uop(loadWbIndex) := io.ldin(i).bits.uop
-        }
-        when (io.ldin(i).bits.data_wen_dup(4)) {
-          uop(loadWbIndex).debugInfo := io.ldin(i).bits.uop.debugInfo
-        }
-        uop(loadWbIndex).debugInfo := io.ldin(i).bits.rep_info.debug
-
         //  Debug info
         debug_mmio(loadWbIndex) := io.ldin(i).bits.pmpIsMMIO
         debug_paddr(loadWbIndex) := io.ldin(i).bits.paddr
@@ -474,8 +464,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     datavalid(io.mmioWbPtr.bits.value) := true.B
   }
 
-
-
   //  perf counter
   QueuePerf(VirtualLoadQueueSize, validCount, !allowEnqueue)
   val vecValidVec = WireInit(VecInit((0 until VirtualLoadQueueSize).map(i => allocated(i) && isvec(i))))
@@ -483,26 +471,4 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   io.lqFull := !allowEnqueue
   val perfEvents: Seq[(String, UInt)] = Seq()
   generatePerfEvent()
-
-  // debug info
-  XSDebug("enqPtrExt %d:%d deqPtrExt %d:%d\n", enqPtrExt(0).flag, enqPtr, deqPtr.flag, deqPtr.value)
-
-  def PrintFlag(flag: Bool, name: String): Unit = {
-    when(flag) {
-      XSDebug(false, true.B, name)
-    }.otherwise {
-      XSDebug(false, true.B, " ")
-    }
-  }
-
-  for (i <- 0 until VirtualLoadQueueSize) {
-    XSDebug(s"$i pc %x pa %x ", uop(i).pc, debug_paddr(i))
-    PrintFlag(allocated(i), "v")
-    PrintFlag(allocated(i) && datavalid(i), "d")
-    PrintFlag(allocated(i) && addrvalid(i), "a")
-    PrintFlag(allocated(i) && addrvalid(i) && datavalid(i), "w")
-    PrintFlag(allocated(i) && isvec(i), "c")
-    XSDebug(false, true.B, "\n")
-  }
-  // end
 }

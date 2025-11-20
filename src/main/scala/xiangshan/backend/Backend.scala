@@ -38,15 +38,13 @@ import xiangshan.backend.issue.{Scheduler, SchedulerArithImp, SchedulerImpBase, 
 import xiangshan.backend.rob.{RobCoreTopDownIO, RobDebugRollingIO, RobLsqIO, RobPtr}
 import xiangshan.backend.trace.TraceCoreInterface
 import xiangshan.frontend.{FtqPtr, FtqRead, PreDecodeInfo}
-import xiangshan.mem.{LqPtr, LsqEnqIO, SqPtr}
-
+import xiangshan.mem.{LqPtr, LsqEnqIO, NewLsqEnqIO, SqPtr}
 
 import scala.collection.mutable
-
 import xs.utils._
 import xs.utils.tl._
 import xs.utils.sram._
-import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, PerfEvent, HasPerfEvents}
+import xs.utils.perf.{DebugOptionsKey, HPerfMonitor, HasPerfEvents, PerfEvent}
 
 class Backend(val params: BackendParams)(implicit p: Parameters) extends LazyModule
   with HasXSParameter {
@@ -234,11 +232,16 @@ class BackendInlinedImp(override val wrapper: BackendInlined)(implicit p: Parame
   ctrlBlock.io.robio.lsq <> io.mem.robLsqIO
   ctrlBlock.io.robio.lsTopdownInfo <> io.mem.lsTopdownInfo
   ctrlBlock.io.robio.debug_ls <> io.mem.debugLS
-  ctrlBlock.io.debugEnqLsq.canAccept := io.mem.lsqEnqIO.canAccept
-  ctrlBlock.io.debugEnqLsq.resp := io.mem.lsqEnqIO.resp
-  ctrlBlock.io.debugEnqLsq.req := memScheduler.io.memIO.get.lsqEnqIO.req
+  ctrlBlock.io.debugEnqLsq.canAccept := DontCare
+  ctrlBlock.io.debugEnqLsq.resp := DontCare
+  ctrlBlock.io.debugEnqLsq.req.zip(memScheduler.io.memIO.get.lsqEnqIO.req).foreach({ case (rob, lsq) =>
+    rob := DontCare
+    rob.valid := lsq.valid
+    rob.bits.lqIdx := lsq.bits.lqIdx
+    rob.bits.sqIdx := lsq.bits.sqIdx
+  })
   ctrlBlock.io.debugEnqLsq.needAlloc := memScheduler.io.memIO.get.lsqEnqIO.needAlloc
-  ctrlBlock.io.debugEnqLsq.iqAccept := memScheduler.io.memIO.get.lsqEnqIO.iqAccept
+  ctrlBlock.io.debugEnqLsq.iqAccept := DontCare
   ctrlBlock.io.fromVecExcpMod.busy := vecExcpMod.o.status.busy
   ctrlBlock.io.memPredPcRead <> pcTargetMem.io.toCtrl.memPredRead
   ctrlBlock.io.redirectPcRead <> pcTargetMem.io.toCtrl.redirectRead
@@ -782,7 +785,7 @@ class BackendMemIO(implicit p: Parameters, params: BackendParams) extends XSBund
   // params alias
   private val LoadQueueSize = VirtualLoadQueueSize
   // In/Out // Todo: split it into one-direction bundle
-  val lsqEnqIO = Flipped(new LsqEnqIO)
+  val lsqEnqIO = Flipped(new NewLsqEnqIO)
   val robLsqIO = new RobLsqIO
   val ldaIqFeedback = Vec(params.LduCnt, Flipped(new MemRSFeedbackIO))
   val staIqFeedback = Vec(params.StaCnt, Flipped(new MemRSFeedbackIO))

@@ -95,7 +95,7 @@ class ooo_to_mem(implicit p: Parameters) extends MemBlockBundle {
   val isStoreException = Input(Bool())
   val isVlsException = Input(Bool())
   val csrCtrl = Flipped(new CustomCSRCtrlIO)
-  val enqLsq = new LsqEnqIO
+  val enqLsq = new NewLsqEnqIO
   val flushSb = Input(Bool())
 
   val loadPc = Vec(LduCnt, Input(UInt(VAddrBits.W))) // for hw prefetch
@@ -1017,7 +1017,6 @@ class MemBlockInlinedImp(outer: MemBlockInlined) extends LazyModuleImp(outer)
   lsq.io.rob.pendingPtr          := io.ooo_to_mem.lsqio.pendingPtr
   lsq.io.rob.pendingPtrNext      := io.ooo_to_mem.lsqio.pendingPtrNext
 
-  //  lsq.io.rob            <> io.lsqio.rob
   lsq.io.enq            <> io.ooo_to_mem.enqLsq
   lsq.io.redirect := io.redirect
 

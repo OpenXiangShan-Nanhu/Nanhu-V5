@@ -23,14 +23,15 @@ import xs.utils._
 import xs.utils.perf._
 import xs.utils.cache.common._
 import xiangshan._
-import xiangshan.backend.Bundles.{DynInst, MemExuOutput}
+import xiangshan.backend.Bundles.{DynInst, MemExuOutput, UopIdx}
 import xiangshan.cache._
 import xiangshan.cache.mmu.{TlbHintIO, TlbRequestIO}
 import xiangshan.backend._
-import xiangshan.backend.rob.RobLsqIO
+import xiangshan.backend.rob.{RobLsqIO, RobPtr}
 import xiangshan.backend.fu.FuType
+import xiangshan.backend.fu.vector.Bundles.NumLsElem
 import xiangshan.mem.mdp.MDPResUpdateIO
-import xs.utils.cache.common.{CMOResp, CMOReq}
+import xs.utils.cache.common.{CMOReq, CMOResp}
 
 class ExceptionAddrIO(implicit p: Parameters) extends XSBundle {
   val isStore = Input(Bool())
@@ -49,10 +50,20 @@ class FwdEntry extends Bundle {
   val data = UInt(8.W) // data is generated 1 cycle after query request
 }
 
-// inflight miss block reqs
-class InflightBlockInfo(implicit p: Parameters) extends XSBundle {
-  val block_addr = UInt(PAddrBits.W)
-  val valid = Bool()
+class LSQUop(implicit p: Parameters) extends MemBlockBundle {
+  val isVec = Bool()
+  val fuOpType = FuOpType()
+  val uopIdx = UopIdx()
+  val robIdx = new RobPtr
+  val sqIdx = new SqPtr //only for store
+  val lqIdx = new LqPtr //only for load
+  val numLsElem = NumLsElem()
+  val lastUop = Bool()
+
+  val debugInfo = if (env.EnableMemBlockDebugInfo) Some(new Bundle {
+    val pc = UInt(VAddrBits.W)
+    val instr = UInt(32.W)
+  }) else None
 }
 
 class LsqEnqIO(implicit p: Parameters) extends MemBlockBundle {
@@ -63,6 +74,12 @@ class LsqEnqIO(implicit p: Parameters) extends MemBlockBundle {
   val resp      = Vec(LSQEnqWidth, Output(new LSIdx))
 }
 
+//todo: the name is tmp
+class NewLsqEnqIO(implicit p: Parameters) extends MemBlockBundle {
+  val needAlloc = Vec(LSQEnqWidth, Input(UInt(2.W)))
+  val req       = Vec(LSQEnqWidth, Flipped(ValidIO(new LSQUop)))
+}
+
 // Load / Store Queue Wrapper for XiangShan Out of Order LSU
 class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParameters with HasPerfEvents {
   val io = IO(new Bundle() {
@@ -70,7 +87,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val redirect = Flipped(ValidIO(new Redirect))
     val stvecFeedback = Vec(VecStorePipelineWidth, Flipped(ValidIO(new FeedbackToLsqIO)))
     val ldvecFeedback = Vec(VecLoadPipelineWidth, Flipped(ValidIO(new FeedbackToLsqIO)))
-    val enq = new LsqEnqIO
+    val enq = new NewLsqEnqIO
     val ldu = new Bundle() {
         val stld_nuke_query = Vec(LoadPipelineWidth, Flipped(new LoadNukeQueryIO)) // from load_s2
         val ldld_nuke_query = Vec(LoadPipelineWidth, Flipped(new LoadNukeQueryIO)) // from load_s2
@@ -147,7 +164,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   // io.enq logic
   // LSQ: send out canAccept when both load queue and store queue are ready
   // Dispatch: send instructions to LSQ only when they are ready
-  io.enq.canAccept := loadQueue.io.enq.canAccept && storeQueue.io.enq.canAccept
+//  io.enq.canAccept := loadQueue.io.enq.canAccept && storeQueue.io.enq.canAccept
   io.lqCanAccept := loadQueue.io.enq.canAccept
   io.sqCanAccept := storeQueue.io.enq.canAccept
   io.replayQValidCount := loadQueue.io.replayQValidCount
@@ -159,15 +176,15 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     loadQueue.io.enq.needAlloc(i)      := io.enq.needAlloc(i)(0)
     loadQueue.io.enq.req(i).valid      := io.enq.needAlloc(i)(0) && io.enq.req(i).valid
     loadQueue.io.enq.req(i).bits       := io.enq.req(i).bits
-    loadQueue.io.enq.req(i).bits.sqIdx := storeQueue.io.enq.resp(i)
+//    loadQueue.io.enq.req(i).bits.sqIdx := storeQueue.io.enq.resp(i)
 
     storeQueue.io.enq.needAlloc(i)      := io.enq.needAlloc(i)(1)
     storeQueue.io.enq.req(i).valid      := io.enq.needAlloc(i)(1) && io.enq.req(i).valid
     storeQueue.io.enq.req(i).bits       := io.enq.req(i).bits
-    storeQueue.io.enq.req(i).bits.lqIdx := loadQueue.io.enq.resp(i)
+//    storeQueue.io.enq.req(i).bits.lqIdx := loadQueue.io.enq.resp(i)
 
-    io.enq.resp(i).lqIdx := loadQueue.io.enq.resp(i)
-    io.enq.resp(i).sqIdx := storeQueue.io.enq.resp(i)
+//    io.enq.resp(i).lqIdx := loadQueue.io.enq.resp(i)
+//    io.enq.resp(i).sqIdx := storeQueue.io.enq.resp(i)
   }
 
   // store queue wiring
@@ -180,7 +197,6 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
   storeQueue.io.sbuffer     <> io.sbuffer
   storeQueue.io.sbufferVecDifftestInfo <> io.sbufferVecDifftestInfo
   storeQueue.io.mmioStout   <> io.mmioStout
-  // storeQueue.io.cboZeroStout <> io.cboZeroStout
   storeQueue.io.vecmmioStout <> io.vecmmioStout
   storeQueue.io.rob         <> io.rob
   storeQueue.io.exceptionAddr.isStore := DontCare
@@ -286,7 +302,7 @@ class LsqEnqCtrl(implicit p: Parameters) extends XSModule
     val sqCancelCnt = Input(UInt(log2Up(StoreQueueSize + 1).W))
     val lqFreeCount = Output(UInt(log2Up(VirtualLoadQueueSize + 1).W))
     val sqFreeCount = Output(UInt(log2Up(StoreQueueSize + 1).W))
-    val enqLsq = Flipped(new LsqEnqIO)
+    val enqLsq = Flipped(new NewLsqEnqIO)
   })
 
   val lqPtr = RegInit(0.U.asTypeOf(new LqPtr))
@@ -358,13 +374,22 @@ class LsqEnqCtrl(implicit p: Parameters) extends XSModule
   }
 
   io.enqLsq.needAlloc := RegNext(io.enq.needAlloc)
-  io.enqLsq.iqAccept := RegNext(io.enq.iqAccept)
   io.enqLsq.req.zip(io.enq.req).zip(io.enq.resp).foreach{ case ((toLsq, enq), resp) =>
     val do_enq = enq.valid && !io.redirect.valid && io.enq.canAccept
     toLsq.valid := RegNext(do_enq)
-    toLsq.bits := RegEnable(enq.bits, do_enq)
+    toLsq.bits.isVec := RegEnable(FuType.isVls(enq.bits.fuType), do_enq)
+    toLsq.bits.fuOpType := RegEnable(enq.bits.fuOpType, do_enq)
+    toLsq.bits.uopIdx := RegEnable(enq.bits.uopIdx, do_enq)
+    toLsq.bits.robIdx := RegEnable(enq.bits.robIdx, do_enq)
+    toLsq.bits.lastUop := RegEnable(enq.bits.lastUop, do_enq)
+    toLsq.bits.numLsElem := RegEnable(enq.bits.numLsElem, do_enq)
     toLsq.bits.lqIdx := RegEnable(resp.lqIdx, do_enq)
     toLsq.bits.sqIdx := RegEnable(resp.sqIdx, do_enq)
+
+    if(env.EnableMemBlockDebugInfo){
+      toLsq.bits.debugInfo.get.pc := RegEnable(enq.bits.pc, do_enq)
+      toLsq.bits.debugInfo.get.instr := RegEnable(enq.bits.instr, do_enq)
+    }
   }
 
 }

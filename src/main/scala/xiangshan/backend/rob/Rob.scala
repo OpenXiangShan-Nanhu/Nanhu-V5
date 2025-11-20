@@ -111,6 +111,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
       val excpInfo = ValidIO(new VecExcpInfo)
     })
 
+    val l2Busy = Input(Bool())
     val power = new Bundle {
       val wfiCtrRst = Input(Bool())
       val timeout = Output(Bool())
@@ -399,7 +400,7 @@ class RobImp(override val wrapper: Rob)(implicit p: Parameters, params: BackendP
   // io.csr.wfiEvent will be asserted if the WFI can resume execution, and we change the state to s_wfi_idle.
   // It does not affect how interrupts are serviced. Note that WFI is noSpecExec and it does not trigger interrupts.
   val hasWFI = RegInit(false.B)
-  val wfiSafe = io.wfi.safeFromMem && io.wfi.safeFromFrontend
+  val wfiSafe = io.wfi.safeFromMem && io.wfi.safeFromFrontend && !io.l2Busy
   io.wfi.wfiReq := hasWFI
   io.cpu_halt := hasWFI && wfiSafe
   // WFI Timeout: 2^20 = 1M cycles

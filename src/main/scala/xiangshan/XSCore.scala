@@ -89,6 +89,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     val perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
     val beu_errors = Output(new XSL1BusErrors())
     val l2_hint = Input(Valid(new L2ToL1Hint()))
+    val l2Busy = Input(Bool())
     val l2_tlb_req = Flipped(new TlbRequestIO(nRespDups = 2))
     val l2_pmp_resp = new PMPRespBundle
     val l2PfqBusy = Input(Bool())
@@ -180,6 +181,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   backend.io.fenceio.cmoFinish := memBlock.io.mem_to_ooo.cmoFinish
   backend.io.cmoFinish := memBlock.io.mem_to_ooo.cmoFinish
   backend.io.sqHasCmo := memBlock.io.mem_to_ooo.sqHasCmo
+  backend.io.l2Busy := io.l2Busy
 
   backend.io.perf.frontendInfo := frontend.io.frontendInfo
   backend.io.perf.memInfo := memBlock.io.memInfo

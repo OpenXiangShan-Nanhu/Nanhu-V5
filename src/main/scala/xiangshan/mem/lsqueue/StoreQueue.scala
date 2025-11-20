@@ -1393,6 +1393,11 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   dontTouch(enqUpdate)
   dontTouch(enqValue)
 
+  if(env.EnableMemBlockDebugInfo){
+    for(i <- 0 until StoreQueueSize){
+      dontTouch(uop(i).debugInfo.get)
+    }
+  }
   //todo: assertion for enq
 
 

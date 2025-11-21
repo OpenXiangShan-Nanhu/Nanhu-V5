@@ -176,6 +176,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       val l2_tlb_req = new TlbRequestIO(nRespDups = 2)
       val l2_pmp_resp = Flipped(new PMPRespBundle)
       val l2_hint = ValidIO(new L2ToL1Hint())
+      val l2Busy = Output(Bool())
       val pfCtrlFromCore = Input(new PrefetchCtrlFromCore)
       val perfEvents = Output(Vec(numPCntHc * coreParams.L2NBanks + 1, new PerfEvent))
       val dftIn = new Bundle() {
@@ -220,7 +221,7 @@ class L2TopInlined()(implicit p: Parameters) extends LazyModule
       l2.io.debugTopDown.robHeadPaddr := io.debugTopDown.robHeadPaddr
       l2.io.debugTopDown.robTrueCommit := io.debugTopDown.robTrueCommit
       io.debugTopDown.l2MissMatch := l2.io.debugTopDown.l2MissMatch
-
+      io.l2Busy := l2.io.l2Busy
       // l2.dft_reset := dft_reset
       // dft_reset_out := l2.dft_reset_out
 

@@ -35,7 +35,7 @@ import xs.utils.{ChiselDB, Code, Constantin, FastArbiter, GTimer, ParallelOperat
 import xs.utils.perf._
 import xs.utils.tl._
 import xs.utils.cache.common.{AliasField, IsKeywordField, IsKeywordKey, PrefetchField, VaddrField}
-import xiangshan.mem.SqInfoIO
+import xiangshan.mem.{SqInfoIO, DataBufferEntry}
 import xiangshan.mem.SbufferInfo
 
 // DCache specific parameters
@@ -433,6 +433,20 @@ class DCacheWordReqWithVaddrAndPfFlag(implicit p: Parameters) extends DCacheWord
 
     res
   }
+
+  def fromDataBufferEntry(src: DataBufferEntry, cmd: UInt) = {
+    this := DontCare
+    this := DontCare
+    this.cmd := cmd
+    this.addr := src.addr
+    this.vaddr := src.vaddr
+    this.data := src.data
+    this.mask := src.mask
+    this.wline := src.wline && src.vecValid
+    this.prefetch := src.prefetch
+    this.vecValid := src.vecValid
+  }
+
 }
 
 class BaseDCacheWordResp(implicit p: Parameters) extends DCacheBundle

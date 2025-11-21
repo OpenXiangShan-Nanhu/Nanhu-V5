@@ -26,7 +26,7 @@ import xiangshan._
 import xiangshan.backend.Bundles._
 import xiangshan.backend.fu.NewCSR.CsrTriggerBundle
 import xiangshan.backend.rob.RobPtr
-import xiangshan.backend.fu.PMPRespBundle
+import xiangshan.backend.fu.{FuType, PMPRespBundle}
 import xiangshan.backend.fu.vector.Bundles._
 import xiangshan.cache.mmu.{TlbCmd, TlbRequestIO}
 import xiangshan.cache._
@@ -288,7 +288,19 @@ class VfofDataBuffIO(implicit p: Parameters) extends VLSUBundle{
 
 // for vector difftest store event
 class ToSbufferDifftestInfoBundle(implicit p: Parameters) extends XSBundle{
-  val uop        = new DynInst
+//  val uop        = new LSQUop
+  val nf           = Nf()
+  val veew         = VEew()
+  val fuOpType     = FuOpType()
+  val fuType       = FuType()
+  val robIdx       = new RobPtr
+  val pc           = UInt(VAddrBits.W)
   val start      = UInt(log2Up(XLEN).W) // indicate first byte position of first unit-stride's element when unaligned
   val offset     = UInt(log2Up(XLEN).W) // indicate byte offset of unit-stride's element when unaligned
 }
+
+class DiffStoreIO(implicit p: Parameters) extends XSBundle{
+  val diffInfo = new ToSbufferDifftestInfoBundle()
+  val pmaStore = Valid(new DCacheWordReqWithVaddrAndPfFlag())
+}
+

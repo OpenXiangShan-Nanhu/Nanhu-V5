@@ -770,7 +770,12 @@ class VSegmentUnit (implicit p: Parameters) extends VLSUModule
   )
 
   io.vecDifftestInfo.valid         := io.sbuffer.valid
-  io.vecDifftestInfo.bits.uop      := uopq(deqPtr.value).uop
+  io.vecDifftestInfo.bits.nf        := uopq(deqPtr.value).uop.vpu.nf
+  io.vecDifftestInfo.bits.veew := uopq(deqPtr.value).uop.vpu.veew
+  io.vecDifftestInfo.bits.fuOpType      := uopq(deqPtr.value).uop.fuOpType
+  io.vecDifftestInfo.bits.fuType      := uopq(deqPtr.value).uop.fuType
+  io.vecDifftestInfo.bits.robIdx      := uopq(deqPtr.value).uop.robIdx
+  io.vecDifftestInfo.bits.pc      := uopq(deqPtr.value).uop.pc
   io.vecDifftestInfo.bits.start    := 0.U // only use in no-segment unit-stride
   io.vecDifftestInfo.bits.offset   := 0.U
 

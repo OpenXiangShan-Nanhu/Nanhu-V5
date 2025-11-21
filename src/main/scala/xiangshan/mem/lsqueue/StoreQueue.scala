@@ -196,7 +196,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val storeDataIn = Vec(StorePipelineWidth, Flipped(Valid(new MemExuOutput(isVector = true)))) // store data, send to sq from rs
     val storeMaskIn = Vec(StorePipelineWidth, Flipped(Valid(new StoreMaskBundle))) // store mask, send to sq from rs
     val sbuffer = Vec(EnsbufferWidth, Decoupled(new DCacheWordReqWithVaddrAndPfFlag)) // write committed store to sbuffer
-    val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DynInst)) // The vector store difftest needs is, write committed store to sbuffer
+    val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DiffStoreIO)) // The vector store difftest needs is, write committed store to sbuffer
     val cmoOpReq  = DecoupledIO(new MissReq)
     val mmioStout = DecoupledIO(new MemExuOutput) // writeback uncached store
     val vecmmioStout = DecoupledIO(new MemExuOutput(isVector = true))
@@ -250,7 +250,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   addrModule.io := DontCare
 
   val dataBuffer = Module(new DatamoduleResultBuffer(new DataBufferEntry))
-  val difftestBuffer = if (env.EnableDifftest) Some(Module(new DatamoduleResultBuffer(new DynInst))) else None
+  val difftestBuffer = if (env.EnableDifftest) Some(Module(new DatamoduleResultBuffer(new DiffStoreIO))) else None
   val exceptionBuffer = Module(new StoreExceptionBuffer)
   exceptionBuffer.io.redirect := io.brqRedirect
   exceptionBuffer.io.exceptionAddr.isStore := DontCare
@@ -274,6 +274,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val debug_vaddr = Reg(Vec(StoreQueueSize, UInt((VAddrBits).W)))
   val debug_data = Reg(Vec(StoreQueueSize, UInt((VLEN).W)))
   val debug_mask = Reg(Vec(StoreQueueSize, UInt((VLEN/8).W)))
+  val debug_vec_unaligned_start = Reg(Vec(StoreQueueSize, UInt((log2Up(XLEN)).W))) // only use for unit-stride difftest
+  val debug_vec_unaligned_offset = Reg(Vec(StoreQueueSize, UInt((log2Up(XLEN)).W))) // only use for unit-stride difftest
 
   // state & misc
   val allocated = RegInit(VecInit(List.fill(StoreQueueSize)(false.B))) // sq entry has been allocated
@@ -400,10 +402,10 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   val enqValue = Wire(Vec(StoreQueueSize, new LSQUop))
 
   for(i <- 0 until StoreQueueSize){
-    val _enqValid = Wire(Vec(LSQLdEnqWidth, Bool()))
-    val _enqValue = Wire(Vec(LSQLdEnqWidth, new LSQUop))
+    val _enqValid = Wire(Vec(LSQStEnqWidth, Bool()))
+    val _enqValue = Wire(Vec(LSQStEnqWidth, new LSQUop))
 
-    for(j <- 0 until LSQLdEnqWidth){  //only use LSQLdEnqWidth
+    for(j <- 0 until LSQStEnqWidth){  //only use LSQLdEnqWidth
       val port_j_min = enqPortMin(j) //include
       val port_j_max = enqPortMax(j)  //exclude
       val diffFlag = enqDiffFlag(j)
@@ -599,6 +601,8 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       dataModule.io.data.wen(i) := !LSUOpType.isCbom(io.storeDataIn(i).bits.uop.fuOpType)             //true.B
 
       debug_data(dataModule.io.data.waddr(i)) := dataModule.io.data.wdata(i)
+      debug_vec_unaligned_start(dataModule.io.data.waddr(i)) := io.storeDataIn(i).bits.vecDebug.get.start
+      debug_vec_unaligned_offset(dataModule.io.data.waddr(i)) := io.storeDataIn(i).bits.vecDebug.get.offset
 
       XSInfo("store data write to sq idx %d pc 0x%x data %x -> %x\n",
         io.storeDataIn(i).bits.uop.sqIdx.value,
@@ -1193,17 +1197,28 @@ class StoreQueue(implicit p: Parameters) extends XSModule
       val mmioStall = if(i == 0) uncache(rdataPtrExt(0).value) else (uncache(rdataPtrExt(i).value) || uncache(rdataPtrExt(i-1).value))
       difftestBuffer.get.io.enq(i).valid := dataBuffer.io.enq(i).valid
       difftestBuffer.get.io.enq(i).bits := DontCare
-      difftestBuffer.get.io.enq(i).bits.robIdx := uop(ptr).robIdx
+
+//      difftestBuffer.get.io.enq(i).bits.robIdx := uop(ptr).robIdx
+      difftestBuffer.get.io.enq(i).bits.diffInfo.nf := uop(ptr).difftestInfo.get.nf
+      difftestBuffer.get.io.enq(i).bits.diffInfo.veew := uop(ptr).difftestInfo.get.veew
+      difftestBuffer.get.io.enq(i).bits.diffInfo.fuType := uop(ptr).difftestInfo.get.fuType
+      difftestBuffer.get.io.enq(i).bits.diffInfo.fuOpType := uop(ptr).fuOpType
+      difftestBuffer.get.io.enq(i).bits.diffInfo.robIdx := uop(ptr).robIdx
+
+      difftestBuffer.get.io.enq(i).bits.diffInfo.offset := debug_vec_unaligned_offset(ptr)
+      difftestBuffer.get.io.enq(i).bits.diffInfo.start := debug_vec_unaligned_start(ptr)
+      difftestBuffer.get.io.enq(i).bits.pmaStore.valid := dataBuffer.io.enq(i).fire
+      difftestBuffer.get.io.enq(i).bits.pmaStore.bits.fromDataBufferEntry(dataBuffer.io.enq(i).bits, MemoryOpConstants.M_XWR)
 
       if(env.EnableMemBlockDebugInfo){
-        difftestBuffer.get.io.enq(i).bits.pc :=  uop(ptr).debugInfo.get.pc
+        difftestBuffer.get.io.enq(i).bits.diffInfo.pc  :=  uop(ptr).debugInfo.get.pc
       }
     }
     for (i <- 0 until EnsbufferWidth) {
       io.sbufferVecDifftestInfo(i).valid := difftestBuffer.get.io.deq(i).valid
       difftestBuffer.get.io.deq(i).ready := io.sbufferVecDifftestInfo(i).ready
-
       io.sbufferVecDifftestInfo(i).bits := difftestBuffer.get.io.deq(i).bits
+      io.sbufferVecDifftestInfo(i).bits.pmaStore.valid := difftestBuffer.get.io.deq(i).fire
     }
 
     // // commit cbo.inval to difftest

@@ -64,6 +64,12 @@ class LSQUop(implicit p: Parameters) extends MemBlockBundle {
     val pc = UInt(VAddrBits.W)
     val instr = UInt(32.W)
   }) else None
+
+  val difftestInfo = if(env.EnableDifftest) Some(new Bundle {
+    val nf = UInt(3.W)
+    val veew = UInt(2.W)
+    val fuType = FuType()
+  }) else None
 }
 
 class LsqEnqIO(implicit p: Parameters) extends MemBlockBundle {
@@ -106,7 +112,7 @@ class LsqWrapper(implicit p: Parameters) extends XSModule with HasDCacheParamete
     val ld_raw_data = Output(new LoadDataFromLQBundle)
     val replay = Vec(LoadPipelineWidth, Decoupled(new LsPipelineBundle))
     val sbuffer = Vec(EnsbufferWidth, Decoupled(new DCacheWordReqWithVaddrAndPfFlag))
-    val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DynInst)) // The vector store difftest needs is
+    val sbufferVecDifftestInfo = Vec(EnsbufferWidth, Decoupled(new DiffStoreIO)) // The vector store difftest needs is
     val forward = Vec(LoadPipelineWidth, Flipped(new PipeLoadForwardQueryIO))
     val rob = Flipped(new RobLsqIO)
     val nuke_rollback = Vec(StorePipelineWidth, Output(Valid(new Redirect)))
@@ -389,6 +395,11 @@ class LsqEnqCtrl(implicit p: Parameters) extends XSModule
     if(env.EnableMemBlockDebugInfo){
       toLsq.bits.debugInfo.get.pc := RegEnable(enq.bits.pc, do_enq)
       toLsq.bits.debugInfo.get.instr := RegEnable(enq.bits.instr, do_enq)
+    }
+    if(env.EnableDifftest){
+      toLsq.bits.difftestInfo.get.nf := RegEnable(enq.bits.vpu.nf, do_enq)
+      toLsq.bits.difftestInfo.get.veew := RegEnable(enq.bits.vpu.veew, do_enq)
+      toLsq.bits.difftestInfo.get.fuType := RegEnable(enq.bits.fuType, do_enq)
     }
   }
 

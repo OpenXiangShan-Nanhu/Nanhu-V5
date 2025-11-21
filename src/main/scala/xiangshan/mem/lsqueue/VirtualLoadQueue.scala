@@ -112,11 +112,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
   }
   val released = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(false.B)))
   val bypassPAddr = Reg(Vec(LoadPipelineWidth, UInt(PAddrBits.W)))
-  // pseudo-RAR: ld src flag 
-  // isfromDCache = false, namely totally from store forward
-  // st0 ld1 ld0 : ld1 src is totally from st0 forward, so if release occurs at ld0 is pseudo-RAR,
-  // because even if the cache line was modified, st0's result is not changed, so don't need to report RAR vio;
-  val isFromDCache = RegInit(VecInit(List.fill(VirtualLoadQueueSize)(true.B)))
 
   // LoadQueueReplay read MMIO instr's paddr when robhead is mmio
   paddrModule.io.ren(0) := io.mmioLqIdx.lqIdx.valid
@@ -240,8 +235,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
           allocated((index + j.U).value) := true.B
           uop((index + j.U).value) := io.enq.req(i).bits
           ignoreRARCheck((index + j.U).value) := LSUOpType.isPrefetch(io.enq.req(i).bits.fuOpType)
-//          uop((index + j.U).value).lqIdx := lqIdx + j.U
-
           // init
           addrvalid((index + j.U).value) := false.B
           datavalid((index + j.U).value) := false.B
@@ -295,8 +288,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
         enq.bits.paddr(PAddrBits-1, DCacheLineOffset) === release2Cycle.bits.paddr(PAddrBits-1, DCacheLineOffset) ||
         release1Cycle.valid &&
         enq.bits.paddr(PAddrBits-1, DCacheLineOffset) === release1Cycle.bits.paddr(PAddrBits-1, DCacheLineOffset))
-
-      isFromDCache(index) := !enq.bits.full_fwd   // if full from fwd , namely is not from DCache, then don't send rar vio
     }
   }
   
@@ -342,7 +333,6 @@ class VirtualLoadQueue(implicit p: Parameters) extends XSModule
     val matchMask = (0 until VirtualLoadQueueSize).map(i => {
       RegNext(
         !ignoreRARCheck(i) &
-          isFromDCache(i) &
         (allocated(i) & addrvalid(i) & datavalid(i) &
       paddrModule.io.releaseViolationMmask(w)(i) &
       lqIdxMask(i) &
